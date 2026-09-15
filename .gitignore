@@ -1,1 +1,12 @@
 /context/
+/target/
+**/node_modules/
+**/.svelte-kit/
+**/build/
+/coverage/
+**/coverage/
+/.local/
+.env
+.env.*
+!.env.example
+.DS_Store

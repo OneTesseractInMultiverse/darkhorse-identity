@@ -1,0 +1,22 @@
+{
+	admin off
+	persist_config off
+	skip_install_trust
+	auto_https disable_redirects
+	storage file_system .local/pki
+}
+
+https://localhost:8443 {
+	bind 127.0.0.1 ::1
+	tls internal
+	header X-Content-Type-Options nosniff
+	header Referrer-Policy no-referrer
+	header X-Frame-Options DENY
+	@backend path /health /health/* /api /api/* /oauth /oauth/* /oidc /oidc/* /.well-known /.well-known/* /userinfo /introspect /revoke
+	handle @backend {
+		reverse_proxy 127.0.0.1:3001
+	}
+	handle {
+		reverse_proxy 127.0.0.1:5173
+	}
+}

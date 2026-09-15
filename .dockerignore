@@ -1,0 +1,14 @@
+.git
+context
+target
+**/node_modules
+**/.svelte-kit
+**/build
+.local
+coverage
+**/coverage
+.env
+.env.*
+!.env.example
+**/*.pem
+**/*.key
