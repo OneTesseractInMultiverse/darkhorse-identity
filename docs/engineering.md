@@ -1,5 +1,23 @@
 # Engineering rules
 
+## Issue-based work on main
+
+Use [GitHub issues](https://github.com/OneTesseractInMultiverse/darkhorse-identity/issues) to track remaining work. Before implementation, select the relevant open issue or create one with a clear outcome and completion criteria. Keep progress, decisions, validation evidence, and remaining items in that issue. A slice can take several focused commits; partial implementation does not complete the issue.
+
+Work directly on `main`. Do not create extra branches or worktrees unless explicitly requested. Pull requests, project boards, and milestones are not required for the current workflow. Preserve existing published history.
+
+Every new commit must reference its corresponding issue. Use a concise subject and `Refs #<number>` in the body for progress. Use `Closes #<number>` only in the final commit after all issue criteria and required checks are satisfied; pushing that commit to the default branch closes the issue. For example:
+
+```text
+feat: add persistent principal records
+
+Refs #3
+```
+
+Use the actual issue number for the work. Keep one primary issue per commit where practical; list additional references when a change genuinely spans them. Do not add closing keywords to partial work or rewrite old commits just to attach issue references.
+
+Run the checks relevant to the change, review the staged diff, and record actual results before committing. Use project-focused language without generation notices, tool/model branding, or automatic attribution trailers. Private planning and local state remain excluded from commits and release inputs; public issues, documentation, and commands must stand alone.
+
 ## Boundaries
 
 Dependencies point inward: composition → adapters → application → domain. The core has no HTTP, serialization, environment, SQL, cache, filesystem, clock, or cloud dependencies. Introduce project-owned ports only when an actual use case needs them. Adapters translate their library types into project-owned inputs.

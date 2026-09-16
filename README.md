@@ -43,4 +43,8 @@ Tests mirror source paths under `tests/unit`. Rust includes private unit modules
 
 The [authorization contract](docs/authorization.md) explains application isolation, roles, scopes, credential ceilings, and the authoritative-state requirements for future adapters. Run `make test-authorization` for its self-contained tests.
 
+## Work tracking
+
+Remaining work is tracked in [GitHub issues](https://github.com/OneTesseractInMultiverse/darkhorse-identity/issues). Development stays on `main`, with every new commit linked to its issue. See the [contribution workflow](docs/engineering.md#issue-based-work-on-main). The next implementation slice is [PostgreSQL persistence and administrator bootstrap](https://github.com/OneTesseractInMultiverse/darkhorse-identity/issues/3).
+
 The project license has not been selected. Third-party component licenses remain applicable; see [third-party notices](docs/third-party-notices.md).
