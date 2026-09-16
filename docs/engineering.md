@@ -4,6 +4,8 @@
 
 Dependencies point inward: composition → adapters → application → domain. The core has no HTTP, serialization, environment, SQL, cache, filesystem, clock, or cloud dependencies. Introduce project-owned ports only when an actual use case needs them. Adapters translate their library types into project-owned inputs.
 
+Internal identity references use distinct types for principals, applications, resources, roles, capabilities, scopes, clients, and credentials. They preserve nonzero 128-bit values; an application ID cannot substitute for a client ID at a typed boundary. Adapters own external string formats, serialization, and generation. These identifiers are references, not authentication secrets or proof of access.
+
 Functions are either computations or coordinators. Computations decide and transform explicit inputs without external effects. Coordinators sequence effects and call computations; they do not embed business policy. Keep coordinators small, with transaction ownership visible at the use-case boundary. Mechanical error propagation and transport mapping must not conceal business rules.
 
 The frontend uses Svelte 5 runes, TypeScript strict mode, and static output. No server routes, server-only modules, remote functions, sessions, or credentials belong in the frontend. Generated build-time rendering is allowed; Node is not a production application server.
