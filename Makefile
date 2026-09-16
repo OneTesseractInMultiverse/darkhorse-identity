@@ -6,14 +6,16 @@ PNPM ?= pnpm
 NODE ?= node
 CADDY ?= caddy
 TEST_FILTER ?=
+MUTATION_JOBS ?= 2
 WEB := $(PNPM) --filter @darkhorse/console
 
 .PHONY: help doctor deps-install deps-check fmt fmt-check lint typecheck architecture-check check ci test test-unit test-unit-rust test-unit-web test-tooling test-component test-unit-watch build build-api build-web dev-setup dev dev-api dev-web proxy-up https-setup https-check https-trust https-untrust clean
 .PHONY: coverage-unit coverage-rust coverage-web
+.PHONY: test-authorization test-property test-mutation
 
 help: ## Help: list implemented targets; no setup required
 	@awk 'BEGIN { FS = ":.*## " } /^[a-zA-Z_-]+:.*## / { printf "  %-23s %s\n", $$1, $$2 }' $(MAKEFILE_LIST)
-	@printf '\nVariables: PNPM=pnpm NODE=node CADDY=caddy TEST_FILTER=<test-name>\n'
+	@printf '\nVariables: PNPM=pnpm NODE=node CADDY=caddy TEST_FILTER=<test-name> MUTATION_JOBS=2\n'
 	@printf 'Examples: make deps-install; make check; make https-setup; make dev\n'
 	@printf 'Tests need Rust + Node + pnpm. HTTPS development also needs Caddy 2.11.4.\n'
 
@@ -61,6 +63,15 @@ test-unit: test-unit-rust test-unit-web test-tooling ## Test: all isolated tests
 
 test-unit-rust: ## Test: Rust in-memory unit modules; optional TEST_FILTER
 	cargo test --workspace --lib --locked --offline $(TEST_FILTER)
+
+test-authorization: ## Test: pure authorization contracts and exhaustive set properties
+	cargo test -p darkhorse-domain --lib --locked --offline authorization::
+
+test-property: ## Test: deterministic exhaustive authorization properties
+	cargo test -p darkhorse-domain --lib --locked --offline authorization::properties::
+
+test-mutation: ## Test: authorization mutations; requires cargo-mutants 27.1.0
+	cargo mutants --no-config -p darkhorse-domain --file 'crates/domain/src/authorization/*.rs' --cargo-arg=--locked --cargo-arg=--offline --cargo-test-arg=--lib --jobs $(MUTATION_JOBS) --timeout 30 --output target/mutation
 
 test-unit-web: ## Test: frontend computations and component interactions in memory
 	$(WEB) test:unit $(TEST_FILTER)

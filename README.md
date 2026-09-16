@@ -2,7 +2,7 @@
 
 An identity server for one organization and its applications, built with Rust, a static SvelteKit/TypeScript console, PostgreSQL, and Redis.
 
-**Early development.** The repository currently contains the workspace, configuration/query adapters, a process liveness endpoint, and a console preview. Authentication, authorization, persistence, and deployment packaging are not implemented yet.
+**Early development.** The repository contains the workspace, a pure authorization policy engine, configuration/query adapters, a process liveness endpoint, and a console preview. Authentication, protocol endpoints, persistence, and deployment packaging are not implemented yet. The policy engine is not connected to HTTP requests.
 
 ## Quick start
 
@@ -31,7 +31,7 @@ Open **https://localhost:8443**. Stop the foreground stack with Ctrl-C. Run `mak
 
 | Directory            | Responsibility                                                        |
 | -------------------- | --------------------------------------------------------------------- |
-| `crates/domain`      | Framework-free domain types and future policies                       |
+| `crates/domain`      | Framework-free identity types and authorization computations          |
 | `crates/application` | Project-owned use-case inputs and future ports/coordinators           |
 | `crates/adapters`    | Axum/Serde transport, envbind configuration, restqs query translation |
 | `apps/server`        | Rust composition root and process lifecycle                           |
@@ -40,5 +40,7 @@ Open **https://localhost:8443**. Stop the foreground stack with Ctrl-C. Run `mak
 | `config`             | Local HTTPS proxy configuration                                       |
 
 Tests mirror source paths under `tests/unit`. Rust includes private unit modules from that parallel tree. Framework and serialization types remain outside domain/application contracts. See [engineering](docs/engineering.md) for the implementation rules and [dependencies](docs/dependencies.md) for library boundaries.
+
+The [authorization contract](docs/authorization.md) explains application isolation, roles, scopes, credential ceilings, and the authoritative-state requirements for future adapters. Run `make test-authorization` for its self-contained tests.
 
 The project license has not been selected. Third-party component licenses remain applicable; see [third-party notices](docs/third-party-notices.md).

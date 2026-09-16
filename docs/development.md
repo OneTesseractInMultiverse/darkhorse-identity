@@ -6,6 +6,8 @@
 
 `make test-unit-rust TEST_FILTER=configuration` selects Rust tests. `make test-unit-web TEST_FILTER=health` selects a frontend test file. `make test-unit-watch` watches frontend tests. `make dev-api` reloads Rust after source changes; a compile error stops the stack with an error so it cannot look healthy while running stale code.
 
+`make test-authorization` runs the pure authorization suite. `make test-property` selects its deterministic exhaustive set properties; both are also included in the ordinary unit suite. For mutation testing, install the optional tool with `cargo install cargo-mutants --version 27.1.0 --locked`, then run `make test-mutation`. It tests authorization source mutations in temporary copies, with locked offline Cargo commands and an unmodified baseline first. Reports go under `target/mutation/mutants.out`; use `MUTATION_JOBS=1` to reduce concurrency. A missed mutation fails the command and needs investigation; it must not be hidden by a coverage percentage. The default unit targets do not require this tool.
+
 Commands may override `NODE`, `PNPM`, and `CADDY`. The development supervisor also invokes `pnpm` from PATH. Paths containing spaces must be quoted by the shell. No machine-specific executable path is stored in the repository.
 
 ## Local HTTPS
