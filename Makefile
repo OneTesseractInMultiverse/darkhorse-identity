@@ -7,15 +7,17 @@ NODE ?= node
 CADDY ?= caddy
 TEST_FILTER ?=
 MUTATION_JOBS ?= 2
+IMAGE ?= darkhorse:local
 WEB := $(PNPM) --filter @darkhorse/console
 
 .PHONY: help doctor deps-install deps-check fmt fmt-check lint typecheck architecture-check check ci test test-unit test-unit-rust test-unit-web test-tooling test-component test-unit-watch build build-api build-web dev-setup dev dev-api dev-web proxy-up https-setup https-check https-trust https-untrust clean
-.PHONY: coverage-unit coverage-rust coverage-web
+.PHONY: coverage-unit coverage-rust coverage-web coverage-postgres
 .PHONY: test-authorization test-property test-mutation
+.PHONY: db-setup db-up db-down db-migrate bootstrap test-postgres docker-build docker-smoke
 
 help: ## Help: list implemented targets; no setup required
 	@awk 'BEGIN { FS = ":.*## " } /^[a-zA-Z_-]+:.*## / { printf "  %-23s %s\n", $$1, $$2 }' $(MAKEFILE_LIST)
-	@printf '\nVariables: PNPM=pnpm NODE=node CADDY=caddy TEST_FILTER=<test-name> MUTATION_JOBS=2\n'
+	@printf '\nVariables: PNPM=pnpm NODE=node CADDY=caddy IMAGE=darkhorse:local TEST_FILTER=<test-name> MUTATION_JOBS=2\n'
 	@printf 'Examples: make deps-install; make check; make https-setup; make dev\n'
 	@printf 'Tests need Rust + Node + pnpm. HTTPS development also needs Caddy 2.11.4.\n'
 
@@ -25,7 +27,7 @@ doctor: ## Setup: read-only toolchain and optional development diagnostics
 	@$(NODE) --version
 	@$(PNPM) --version
 	@"$(CADDY)" version || printf 'Optional: install Caddy 2.11.4 for HTTPS development.\n'
-	@docker --version 2>/dev/null || printf 'Optional: Docker is used by later persistence/deployment work.\n'
+	@docker --version 2>/dev/null || printf 'Optional: Docker is needed for PostgreSQL integration and image commands.\n'
 
 deps-install: ## Setup: fetch locked dependencies (network required)
 	cargo fetch --locked
@@ -44,7 +46,7 @@ fmt-check: ## Style: verify formatting without edits
 	$(WEB) exec prettier --check . ../../scripts ../../docs ../../README.md ../../package.json ../../pnpm-workspace.yaml
 
 lint: ## Check: Rust Clippy and frontend ESLint
-	cargo clippy --workspace --all-targets --locked --offline -- -D warnings
+	cargo clippy --workspace --all-targets --all-features --locked --offline -- -D warnings
 	$(WEB) lint
 
 typecheck: ## Check: strict TypeScript and Svelte diagnostics
@@ -92,6 +94,9 @@ coverage-rust: ## Coverage: Rust libraries; requires cargo-llvm-cov 0.9.1 + llvm
 coverage-web: ## Coverage: frontend computations/components; see documented denominator
 	$(WEB) coverage
 
+coverage-postgres: ## Coverage: combine Rust unit, real PostgreSQL and CLI execution; requires Docker
+	NODE="$(NODE)" bash scripts/coverage-postgres.sh
+
 build: build-api build-web ## Build: Rust release binary and static console
 
 build-api: ## Build: release Rust server (no network after dependency installation)
@@ -99,6 +104,30 @@ build-api: ## Build: release Rust server (no network after dependency installati
 
 build-web: ## Build: static SvelteKit console, with no runtime Node server
 	$(WEB) build
+
+db-setup: ## Database: generate owner-only local credentials; preserve existing files
+	$(NODE) scripts/database.mjs setup
+
+db-up: ## Database: start project-local PostgreSQL with loopback-only access
+	$(NODE) scripts/database.mjs up
+
+db-down: ## Database: stop this workspace's database; preserve its volume and credentials
+	$(NODE) scripts/database.mjs down
+
+db-migrate: ## Database: explicitly apply embedded migrations to the local database
+	$(NODE) scripts/database.mjs run migrate
+
+bootstrap: ## Database: interactively create the one-time local administrator
+	$(NODE) scripts/database.mjs run bootstrap
+
+test-postgres: ## Test: disposable PostgreSQL transactions and operator CLI; requires Docker
+	$(NODE) scripts/postgres-test.mjs
+
+docker-build: ## Build: pinned multi-stage Rust/static image; requires network on first build
+	docker build --tag "$(IMAGE)" .
+
+docker-smoke: ## Test: built image, temporary database, bootstrap and HTTP/static behavior
+	$(NODE) scripts/postgres-test.mjs --image "$(IMAGE)"
 
 dev-setup: https-setup ## Develop: prepare local CA without changing host trust
 

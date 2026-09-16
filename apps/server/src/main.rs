@@ -1,4 +1,10 @@
-use darkhorse_adapters::{configuration, http};
+use darkhorse_adapters::{
+    configuration, http,
+    operator::{
+        self,
+        command::{self, Command},
+    },
+};
 use std::process::ExitCode;
 
 #[tokio::main]
@@ -13,6 +19,14 @@ async fn main() -> ExitCode {
 }
 
 async fn run() -> Result<(), &'static str> {
+    let command = command::parse(&std::env::args().skip(1).collect::<Vec<_>>())?;
+    match command {
+        Command::Serve => serve().await,
+        command => operator::run(command).await,
+    }
+}
+
+async fn serve() -> Result<(), &'static str> {
     let settings = configuration::load(envbind::ProcessEnvironment)
         .map_err(|_| "Invalid server configuration; check DARKHORSE_* settings.")?;
     let listener = tokio::net::TcpListener::bind(settings.listen)

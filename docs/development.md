@@ -46,8 +46,8 @@ The Rust service reads these optional variables with validated defaults:
 | `DARKHORSE_PUBLIC_ORIGIN` | `https://localhost:8443` |
 | `DARKHORSE_STATIC_DIR`    | `apps/console/build`     |
 
-Public origin must be HTTPS with no credentials, path, query, or fragment. The development topology uses fixed ports; changing server settings alone does not reconfigure the proxy. The public origin setting is reserved for the provider contract; no issuer is advertised yet. Configuration errors never print supplied values. No credentials are needed by the current foundation.
+Public origin must be HTTPS with no credentials, path, query, or fragment. The development topology uses fixed ports; changing server settings alone does not reconfigure the proxy. The public origin setting is reserved for the provider contract; no issuer is advertised yet. Configuration errors never print supplied values. The HTTP preview needs no credentials. Explicit database operator commands use separate settings documented in [persistence](persistence.md).
 
 `make build` produces `target/release/darkhorse-server` and `apps/console/build`. Run the binary from the repository root, or set an absolute static directory. `/health/live` reports process liveness only; it does not claim database or authentication readiness.
 
-Docker image targets arrive with the first persistent service, followed by Compose/Kubernetes qualification. They are deliberately absent from help until their build definitions exist. Current container exclusions already protect local state and private planning material.
+`make db-setup`, `make db-up`, `make db-migrate`, `make bootstrap`, and `make db-down` manage the local PostgreSQL workflow. `make test-postgres` uses disposable infrastructure instead. `make docker-build` and `make docker-smoke` build and verify the first real image. See [persistence](persistence.md) for protected input, state preservation and the separate deployment qualifications.

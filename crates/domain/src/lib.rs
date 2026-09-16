@@ -1,6 +1,7 @@
 //! Infrastructure-independent identity types and computations.
 
 pub mod authorization;
+pub mod directory;
 pub mod identity;
 
 /// Account activation state; credentials and verification have separate lifecycles.

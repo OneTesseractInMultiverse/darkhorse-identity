@@ -2,6 +2,9 @@
 
 use darkhorse_domain::AccountStatus;
 
+pub mod bootstrap;
+pub mod directory;
+
 /// Bounded directory criteria. A future use case adds mandatory actor restrictions.
 /// This value neither authorizes access nor describes database identifiers.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
