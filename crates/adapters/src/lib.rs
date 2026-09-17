@@ -8,3 +8,7 @@ pub mod json;
 pub mod operator;
 pub mod password;
 pub mod postgres;
+
+pub mod redis_configuration;
+
+pub mod redis_infrastructure;

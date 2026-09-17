@@ -23,6 +23,8 @@ getrandom.workspace = true
 zeroize.workspace = true
 tokio.workspace = true
 rpassword.workspace = true
+redis.workspace = true
+percent-encoding.workspace = true
 
 [dev-dependencies]
 tower.workspace = true
@@ -34,6 +36,12 @@ required-features = ["postgres-tests"]
 
 [features]
 postgres-tests = []
+redis-tests = []
+
+[[test]]
+name = "redis"
+path = "tests/integration/redis.rs"
+required-features = ["redis-tests"]
 
 [lints]
 workspace = true

@@ -29,6 +29,8 @@ Open **https://localhost:8443**. Stop the foreground stack with Ctrl-C. Run `mak
 
 For the optional database/bootstrap and Docker workflows, see [persistence](docs/persistence.md). `make test-postgres` and `make docker-smoke` use disposable infrastructure; ordinary unit tests remain service-free. Full coverage qualification remains open in [issue #2](https://github.com/OneTesseractInMultiverse/darkhorse-identity/issues/2).
 
+Redis connection infrastructure and pure attempt-budget contracts are being implemented in [issue #4](https://github.com/OneTesseractInMultiverse/darkhorse-identity/issues/4). See [Redis setup and remaining enforcement work](docs/redis.md). A reachable Redis instance does not yet mean login limiting is enabled.
+
 ## Structure
 
 | Directory            | Responsibility                                                      |
@@ -47,6 +49,6 @@ The [authorization contract](docs/authorization.md) explains application isolati
 
 ## Work tracking
 
-Remaining work is tracked in [GitHub issues](https://github.com/OneTesseractInMultiverse/darkhorse-identity/issues). Development stays on `main`, with every new commit linked to its issue. See the [contribution workflow](docs/engineering.md#issue-based-work-on-main). Persistence and bootstrap are tracked in [issue #3](https://github.com/OneTesseractInMultiverse/darkhorse-identity/issues/3). The next planned feature slice is [Redis infrastructure and distributed limiting](https://github.com/OneTesseractInMultiverse/darkhorse-identity/issues/4).
+Remaining work is tracked in [GitHub issues](https://github.com/OneTesseractInMultiverse/darkhorse-identity/issues). Development stays on `main`, with every new commit linked to its issue. See the [contribution workflow](docs/engineering.md#issue-based-work-on-main). Persistence and bootstrap are tracked in [issue #3](https://github.com/OneTesseractInMultiverse/darkhorse-identity/issues/3). The active feature slice is [Redis infrastructure and distributed limiting](https://github.com/OneTesseractInMultiverse/darkhorse-identity/issues/4).
 
 The project license has not been selected. Third-party component licenses remain applicable; see [third-party notices](docs/third-party-notices.md).

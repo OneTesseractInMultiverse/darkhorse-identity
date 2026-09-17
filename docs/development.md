@@ -51,3 +51,5 @@ Public origin must be HTTPS with no credentials, path, query, or fragment. The d
 `make build` produces `target/release/darkhorse-server` and `apps/console/build`. Run the binary from the repository root, or set an absolute static directory. `/health/live` reports process liveness only; it does not claim database or authentication readiness.
 
 `make db-setup`, `make db-up`, `make db-migrate`, `make bootstrap`, and `make db-down` manage the local PostgreSQL workflow. `make test-postgres` uses disposable infrastructure instead. `make docker-build` and `make docker-smoke` build and verify the first real image. See [persistence](persistence.md) for protected input, state preservation and the separate deployment qualifications.
+
+For independent Redis cache/limiter development instances, use `make redis-setup`, `make redis-up`, `make redis-status`, and `make redis-down`. `make test-redis` owns isolated test infrastructure. See [Redis](redis.md) for credentials, loopback ports, resource limits, and the distinction between diagnostics and admission enforcement.

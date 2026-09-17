@@ -1,0 +1,50 @@
+services:
+  cache:
+    image: redis:8.10.1@sha256:298e5b3bc566bade82f46ad5511777a4a07a294097ce16ada2f6a42be5239df5
+    entrypoint: ["sh", "/opt/redis-entrypoint.sh"]
+    volumes:
+      - ./redis/cache.conf:/usr/local/etc/redis/redis.conf:ro
+      - ../scripts/redis-entrypoint.sh:/opt/redis-entrypoint.sh:ro
+    secrets:
+      - source: cache_acl
+        target: redis_acl
+    tmpfs: [/run/redis, /data]
+    ports: ["127.0.0.1:${DARKHORSE_REDIS_CACHE_PORT:-63791}:6379"]
+    networks: [cache]
+    mem_limit: 128m
+    cpus: 1
+    healthcheck:
+      test: ["CMD-SHELL", "test \"$$(redis-cli --raw ping 2>&1)\" = 'NOAUTH Authentication required.'"]
+      interval: 1s
+      timeout: 3s
+      retries: 30
+  limiter:
+    image: redis:8.10.1@sha256:298e5b3bc566bade82f46ad5511777a4a07a294097ce16ada2f6a42be5239df5
+    entrypoint: ["sh", "/opt/redis-entrypoint.sh"]
+    volumes:
+      - ./redis/limiter.conf:/usr/local/etc/redis/redis.conf:ro
+      - ../scripts/redis-entrypoint.sh:/opt/redis-entrypoint.sh:ro
+      - limiter-data:/data
+    secrets:
+      - source: limiter_acl
+        target: redis_acl
+    tmpfs: [/run/redis]
+    ports: ["127.0.0.1:${DARKHORSE_REDIS_LIMITER_PORT:-63792}:6379"]
+    networks: [limiter]
+    mem_limit: 128m
+    cpus: 1
+    healthcheck:
+      test: ["CMD-SHELL", "test \"$$(redis-cli --raw ping 2>&1)\" = 'NOAUTH Authentication required.'"]
+      interval: 1s
+      timeout: 3s
+      retries: 30
+networks:
+  cache: {}
+  limiter: {}
+volumes:
+  limiter-data:
+secrets:
+  cache_acl:
+    file: ../.local/redis-cache.acl
+  limiter_acl:
+    file: ../.local/redis-limiter.acl

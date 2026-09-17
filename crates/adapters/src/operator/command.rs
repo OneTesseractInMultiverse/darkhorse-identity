@@ -5,6 +5,7 @@ pub enum Command {
     Serve,
     Help,
     Migrate,
+    RedisStatus,
     Bootstrap {
         stdin: bool,
     },
@@ -22,6 +23,7 @@ pub fn parse(args: &[String]) -> Result<Command, &'static str> {
         [] | ["serve"] => Ok(Command::Serve),
         ["--help"] | ["help"] => Ok(Command::Help),
         ["migrate"] => Ok(Command::Migrate),
+        ["redis-status"] => Ok(Command::RedisStatus),
         ["bootstrap"] => Ok(Command::Bootstrap { stdin: false }),
         ["bootstrap", "--stdin"] => Ok(Command::Bootstrap { stdin: true }),
         ["account", id] => Ok(Command::Account(identifier(id)?)),

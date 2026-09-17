@@ -14,6 +14,8 @@ WEB := $(PNPM) --filter @darkhorse/console
 .PHONY: coverage-unit coverage-rust coverage-web coverage-postgres
 .PHONY: test-authorization test-property test-mutation
 .PHONY: db-setup db-up db-down db-migrate bootstrap test-postgres docker-build docker-smoke
+.PHONY: redis-setup redis-up redis-down redis-status test-redis docker-redis-smoke
+.PHONY: test-limiting test-mutation-limiting coverage-core coverage-integration
 
 help: ## Help: list implemented targets; no setup required
 	@awk 'BEGIN { FS = ":.*## " } /^[a-zA-Z_-]+:.*## / { printf "  %-23s %s\n", $$1, $$2 }' $(MAKEFILE_LIST)
@@ -72,6 +74,12 @@ test-authorization: ## Test: pure authorization contracts and exhaustive set pro
 test-property: ## Test: deterministic exhaustive authorization properties
 	cargo test -p darkhorse-domain --lib --locked --offline authorization::properties::
 
+test-limiting: ## Test: pure attempt budgets and fail-closed admission contracts
+	cargo test -p darkhorse-domain -p darkhorse-application --lib --locked --offline limiting::
+
+test-mutation-limiting: ## Test: attempt-budget mutations; requires cargo-mutants 27.1.0
+	cargo mutants --no-config -p darkhorse-domain --file 'crates/domain/src/limiting.rs' --cargo-arg=--locked --cargo-arg=--offline --cargo-test-arg=--lib --jobs $(MUTATION_JOBS) --timeout 30 --output target/mutation-limiting
+
 test-mutation: ## Test: authorization mutations; requires cargo-mutants 27.1.0
 	cargo mutants --no-config -p darkhorse-domain --file 'crates/domain/src/authorization/*.rs' --cargo-arg=--locked --cargo-arg=--offline --cargo-test-arg=--lib --jobs $(MUTATION_JOBS) --timeout 30 --output target/mutation
 
@@ -96,6 +104,12 @@ coverage-web: ## Coverage: frontend computations/components; see documented deno
 
 coverage-postgres: ## Coverage: combine Rust unit, real PostgreSQL and CLI execution; requires Docker
 	NODE="$(NODE)" bash scripts/coverage-postgres.sh
+
+coverage-core: ## Coverage: framework-free domain/application only; not overall coverage
+	cargo llvm-cov -p darkhorse-domain -p darkhorse-application --lib --locked --offline --summary-only --fail-under-lines 100
+
+coverage-integration: ## Coverage: Rust unit + PostgreSQL + Redis + operator CLI; requires Docker
+	NODE="$(NODE)" bash scripts/coverage-integration.sh
 
 build: build-api build-web ## Build: Rust release binary and static console
 
@@ -128,6 +142,24 @@ docker-build: ## Build: pinned multi-stage Rust/static image; requires network o
 
 docker-smoke: ## Test: built image, temporary database, bootstrap and HTTP/static behavior
 	$(NODE) scripts/postgres-test.mjs --image "$(IMAGE)"
+
+docker-redis-smoke: ## Test: packaged Redis diagnostics against isolated disposable services
+	$(NODE) scripts/redis-test.mjs --image "$(IMAGE)"
+
+redis-setup: ## Redis: generate separate local role credentials and protected ACL files
+	$(NODE) scripts/redis.mjs setup
+
+redis-up: ## Redis: start isolated cache and limiter services on loopback ports
+	$(NODE) scripts/redis.mjs up
+
+redis-down: ## Redis: stop owned services; preserve limiter data and credentials
+	$(NODE) scripts/redis.mjs down
+
+redis-status: ## Redis: inspect each connection and memory policy; not an enforcement probe
+	$(NODE) scripts/redis.mjs status
+
+test-redis: ## Test: disposable Redis processes and Rust infrastructure diagnostics
+	$(NODE) scripts/redis-test.mjs
 
 dev-setup: https-setup ## Develop: prepare local CA without changing host trust
 
