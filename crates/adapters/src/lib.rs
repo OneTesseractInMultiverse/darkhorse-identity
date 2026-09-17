@@ -12,3 +12,4 @@ pub mod postgres;
 pub mod redis_configuration;
 
 pub mod redis_infrastructure;
+pub mod redis_limiter;

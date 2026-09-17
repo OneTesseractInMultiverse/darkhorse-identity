@@ -85,3 +85,35 @@ fn requires_distinct_authenticated_roles_and_verified_tls_by_default() {
         .is_ok()
     );
 }
+
+#[test]
+fn private_trust_is_explicit_bounded_and_cannot_be_combined_with_plaintext() {
+    let pem = "-----BEGIN CERTIFICATE-----\nfixture\n-----END CERTIFICATE-----\n";
+    assert_eq!(
+        settings(&[("DARKHORSE_REDIS_LIMITER_CA_PEM", pem)])
+            .unwrap()
+            .limiter
+            .ca_pem
+            .as_deref(),
+        Some(pem)
+    );
+    for value in [
+        "garbage",
+        "-----BEGIN CERTIFICATE-----\nmissing end",
+        &"a".repeat(16385),
+    ] {
+        assert!(settings(&[("DARKHORSE_REDIS_LIMITER_CA_PEM", value)]).is_err());
+    }
+    assert!(
+        settings(&[
+            ("DARKHORSE_REDIS_INSECURE", "true"),
+            (
+                "DARKHORSE_REDIS_LIMITER_URL",
+                "redis://limiter:secret@localhost:63792/0"
+            ),
+            ("DARKHORSE_REDIS_LIMITER_CA_PEM", pem)
+        ])
+        .is_err()
+    );
+    assert!(settings(&[("DARKHORSE_REDIS_CACHE_CA_PEM", &"x".repeat(16385))]).is_err());
+}

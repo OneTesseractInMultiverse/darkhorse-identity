@@ -11,7 +11,7 @@ pub(super) async fn run() -> Result<(), &'static str> {
     let status = infrastructure.inspect().await;
     println!(
         "{}",
-        serde_json::json!({"cache":project(&status.cache),"limiter":project(&status.limiter),"shared_enforcement":"not_configured"})
+        serde_json::json!({"cache":project(&status.cache),"limiter":project(&status.limiter),"shared_enforcement":"not_checked"})
     );
     result(&status.cache, &status.limiter)
 }

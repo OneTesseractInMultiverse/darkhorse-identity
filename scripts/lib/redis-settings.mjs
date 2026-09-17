@@ -42,7 +42,11 @@ export function contents(secrets, ports = [63791, 63792]) {
 }
 function acl(user, secret, operator) {
   const hash = (value) => createHash("sha256").update(value).digest("hex");
-  return `user default off\nuser ${user} on #${hash(secret)} -@all +ping +info +client|setinfo +client|setname\nuser operator on #${hash(operator)} ~* &* +@all\n`;
+  const counters =
+    user === "darkhorse-limiter"
+      ? " ~darkhorse:limiter:v1 +evalsha +script|load +time +hget +hmget +hlen +hset +hscan +hdel"
+      : "";
+  return `user default off\nuser ${user} on #${hash(secret)} -@all +ping +info +client|setinfo +client|setname${counters}\nuser operator on #${hash(operator)} ~* &* +@all\n`;
 }
 export function parseEnvironment(text) {
   if (text.length > 16384)
@@ -73,4 +77,47 @@ export function runtimeEnvironment(values) {
         ].includes(key),
     ),
   );
+}
+
+export function aclUpdates(values) {
+  const keys = [
+    "CACHE_URL",
+    "LIMITER_URL",
+    "CACHE_ADMIN_URL",
+    "LIMITER_ADMIN_URL",
+  ];
+  const secrets = keys.map((key) =>
+    decodeURIComponent(new URL(values[`DARKHORSE_REDIS_${key}`]).password),
+  );
+  return Object.fromEntries(
+    Object.entries(
+      contents(secrets, [
+        Number(values.DARKHORSE_REDIS_CACHE_PORT),
+        Number(values.DARKHORSE_REDIS_LIMITER_PORT),
+      ]),
+    ).filter(([path]) => path.endsWith(".acl")),
+  );
+}
+export function databaseEnvironment(text) {
+  if (text.length > 8192)
+    throw new Error("Local database settings are too long.");
+  const names = [
+    "DARKHORSE_DATABASE_PORT",
+    "DARKHORSE_DATABASE_URL",
+    "DARKHORSE_DATABASE_INSECURE",
+  ];
+  const entries = text
+    .trim()
+    .split("\n")
+    .map((line) => {
+      const index = line.indexOf("=");
+      return [line.slice(0, index), line.slice(index + 1)];
+    });
+  if (
+    entries.length !== 3 ||
+    new Set(entries.map(([key]) => key)).size !== 3 ||
+    entries.some(([key, value]) => !names.includes(key) || !value)
+  )
+    throw new Error("Invalid local database settings.");
+  return Object.fromEntries(entries);
 }

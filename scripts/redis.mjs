@@ -1,11 +1,13 @@
 import { createHash, randomBytes } from "node:crypto";
-import { mkdir, open, lstat, readFile, unlink } from "node:fs/promises";
+import { mkdir, open, lstat, readFile, unlink, rename } from "node:fs/promises";
 import { resolve } from "node:path";
 import { run } from "./lib/command.mjs";
 import {
   contents,
   parseEnvironment,
   runtimeEnvironment,
+  aclUpdates,
+  databaseEnvironment,
 } from "./lib/redis-settings.mjs";
 const root = resolve(import.meta.dirname, "..");
 process.chdir(root);
@@ -63,7 +65,10 @@ async function environment() {
 }
 async function main() {
   const [operation, ...extra] = process.argv.slice(2);
-  if (extra.length) throw new Error("Use setup, up, down, or status.");
+  if (extra.length)
+    throw new Error(
+      "Use setup, up, down, status, acl-update, limiter-status, limiter-fence, or limiter-activate.",
+    );
   if (operation === "setup") {
     await setup();
     console.log("Redis credentials prepared; existing files preserved.");
@@ -71,6 +76,49 @@ async function main() {
   }
   if (operation === "up") await setup();
   const env = await environment();
+  if (operation === "acl-update") {
+    for (const [path, content] of Object.entries(aclUpdates(env))) {
+      const temporary = `${path}.new`;
+      const handle = await open(temporary, "wx", 0o600);
+      try {
+        await handle.writeFile(content);
+      } finally {
+        await handle.close();
+      }
+      await rename(temporary, path);
+    }
+    console.log(
+      "ACL policy updated with existing credentials. Restart both local Redis services to load it.",
+    );
+    return;
+  }
+  if (
+    ["limiter-fence", "limiter-activate", "limiter-status"].includes(operation)
+  ) {
+    if (!(await exists(".local/database.env")))
+      throw new Error("Run make db-setup first.");
+    const runtime = {
+      ...runtimeEnvironment(env),
+      ...databaseEnvironment(await readFile(".local/database.env", "utf8")),
+    };
+    if (operation === "limiter-activate")
+      runtime.DARKHORSE_REDIS_LIMITER_ADMIN_URL =
+        env.DARKHORSE_REDIS_LIMITER_ADMIN_URL;
+    await run(
+      "cargo",
+      [
+        "run",
+        "--locked",
+        "--offline",
+        "-p",
+        "darkhorse-server",
+        "--",
+        operation,
+      ],
+      { env: runtime },
+    );
+    return;
+  }
   if (operation === "status")
     await run(
       "cargo",

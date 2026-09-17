@@ -9,7 +9,7 @@ use darkhorse_application::{
 };
 use darkhorse_domain::AccountStatus;
 
-pub const HELP: &str = "darkhorse-server [serve | migrate | redis-status | bootstrap [--stdin] | account ID | deactivate ID REVISION | reactivate ID REVISION | revoke-all ID REVISION]\nDatabase operations require explicit DARKHORSE_DATABASE_URL. Bootstrap reads a hidden password from a terminal, or bounded JSON from standard input with --stdin. No secret command arguments are accepted.";
+pub const HELP: &str = "darkhorse-server [serve | migrate | redis-status | limiter-status | limiter-fence | limiter-activate | bootstrap [--stdin] | account ID | deactivate ID REVISION | reactivate ID REVISION | revoke-all ID REVISION]\nDatabase operations require explicit DARKHORSE_DATABASE_URL. Bootstrap reads a hidden password from a terminal, or bounded JSON from standard input with --stdin. No secret command arguments are accepted.";
 
 pub async fn run(command: Command) -> Result<(), &'static str> {
     match command {
@@ -18,6 +18,9 @@ pub async fn run(command: Command) -> Result<(), &'static str> {
             Ok(())
         }
         Command::RedisStatus => redis_status::run().await,
+        Command::LimiterFence => limiter::run(limiter::Operation::Fence).await,
+        Command::LimiterActivate => limiter::run(limiter::Operation::Activate).await,
+        Command::LimiterStatus => limiter::run(limiter::Operation::Status).await,
         Command::Serve => Err("Use the HTTP composition root for serve."),
         Command::Bootstrap { stdin } => run_bootstrap(stdin).await,
         command => {
@@ -125,4 +128,5 @@ fn directory_message(error: DirectoryFailure) -> &'static str {
 #[path = "../../tests/unit/operator/mod.rs"]
 mod tests;
 
+mod limiter;
 mod redis_status;

@@ -1,7 +1,57 @@
 import test from "node:test";
 import assert from "node:assert/strict";
-import { contents, parseEnvironment } from "../../lib/redis-settings.mjs";
+import {
+  contents,
+  parseEnvironment,
+  aclUpdates,
+  databaseEnvironment,
+} from "../../lib/redis-settings.mjs";
 const secrets = ["1", "2", "3", "4"].map((value) => value.repeat(64));
+test("ACL upgrades preserve credentials and database settings are parsed without executing text", () => {
+  const files = contents(secrets);
+  const values = parseEnvironment(files[".local/redis.env"]);
+  assert.deepEqual(
+    aclUpdates(values),
+    Object.fromEntries(
+      Object.entries(files).filter(([k]) => k.endsWith(".acl")),
+    ),
+  );
+  assert.throws(() =>
+    aclUpdates({ ...values, DARKHORSE_REDIS_CACHE_ADMIN_URL: "invalid" }),
+  );
+  const text =
+    "DARKHORSE_DATABASE_PORT=54329\nDARKHORSE_DATABASE_URL=postgres://unit:fixture@localhost/test\nDARKHORSE_DATABASE_INSECURE=true\n";
+  assert.equal(databaseEnvironment(text).DARKHORSE_DATABASE_PORT, "54329");
+  for (const value of [
+    "",
+    text + "PATH=x\n",
+    text.replace("54329", ""),
+    "x".repeat(8193),
+  ])
+    assert.throws(() => databaseEnvironment(value));
+});
+test("only the limiter runtime can run bounded counter commands on its exact key", () => {
+  const files = contents(secrets);
+  const limiter = files[".local/redis-limiter.acl"].split("\n")[1];
+  assert.match(limiter, /~darkhorse:limiter:v1/);
+  for (const command of [
+    "+evalsha",
+    "+script|load",
+    "+hmget",
+    "+hset",
+    "+hdel",
+    "+time",
+  ])
+    assert.ok(limiter.includes(command));
+  assert.ok(
+    !limiter.includes("+del") &&
+      !limiter.includes("+flush") &&
+      !limiter.includes("~*"),
+  );
+  assert.ok(
+    !files[".local/redis-cache.acl"].split("\n")[1].includes("+evalsha"),
+  );
+});
 test("separate credentials produce restricted ACLs and explicit development endpoints", () => {
   const files = contents(secrets);
   const environment = parseEnvironment(files[".local/redis.env"]);

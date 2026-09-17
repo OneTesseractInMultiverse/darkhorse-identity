@@ -10,12 +10,14 @@ import {
   runtimeEnvironment,
 } from "./lib/redis-settings.mjs";
 import { run } from "./lib/command.mjs";
+import { lostReplyProxy, tlsProxy } from "./lib/redis-test-proxy.mjs";
 process.chdir(resolve(import.meta.dirname, ".."));
 const image =
   "redis:8.10.1@sha256:298e5b3bc566bade82f46ad5511777a4a07a294097ce16ada2f6a42be5239df5";
 const prefix = `darkhorse-redis-test-${randomBytes(8).toString("hex")}`;
 const owned = [];
 const networks = [];
+const proxies = [];
 const abort = new AbortController();
 for (const signal of ["SIGINT", "SIGTERM"])
   process.once(signal, () => abort.abort());
@@ -83,7 +85,51 @@ async function service(role, directory) {
     .at(-1);
   return { name, port, network };
 }
-async function hostChecks(env) {
+async function database(network) {
+  const name = `${prefix}-database`;
+  const secret = randomBytes(32).toString("hex");
+  owned.push(name);
+  await docker(
+    [
+      "run",
+      "--detach",
+      "--name",
+      name,
+      "--network",
+      network,
+      "--publish",
+      "127.0.0.1::5432",
+      "--env",
+      "POSTGRES_PASSWORD",
+      "postgres:18.6@sha256:4ef4dbc939d61acea57712655ddb4b4ab27419c913f94cca0cd57cb3ea3c2280",
+    ],
+    { env: { ...process.env, POSTGRES_PASSWORD: secret } },
+  );
+  let available = false;
+  for (let i = 0; i < 60; i++) {
+    if (
+      (
+        await docker(["exec", name, "pg_isready", "-U", "postgres"], {
+          acceptFailure: true,
+        })
+      ).code === 0
+    ) {
+      available = true;
+      break;
+    }
+    await delay(500, undefined, { signal: abort.signal });
+  }
+  if (!available) throw new Error("Temporary database did not become ready.");
+  const port = (await docker(["port", name, "5432/tcp"])).stdout
+    .trim()
+    .split(":")
+    .at(-1);
+  return {
+    name,
+    url: `postgres://postgres:${secret}@127.0.0.1:${port}/postgres`,
+  };
+}
+async function hostChecks(env, db) {
   await command(
     "cargo",
     [
@@ -99,6 +145,23 @@ async function hostChecks(env) {
     ],
     { env },
   );
+  await command(
+    "cargo",
+    [
+      "test",
+      "-p",
+      "darkhorse-adapters",
+      "--features",
+      "redis-tests",
+      "--test",
+      "limiter",
+      "--locked",
+      "--offline",
+      "--",
+      "--nocapture",
+    ],
+    { env },
+  );
   await command("cargo", [
     "build",
     "-p",
@@ -106,56 +169,133 @@ async function hostChecks(env) {
     "--locked",
     "--offline",
   ]);
-  return command(
-    resolve(process.env.CARGO_TARGET_DIR ?? "target", "debug/darkhorse-server"),
-    ["redis-status"],
-    { env: runtimeEnvironment(env), capture: true },
+  const executable = resolve(
+    process.env.CARGO_TARGET_DIR ?? "target",
+    "debug/darkhorse-server",
+  );
+  const invoke = (operation, operator = false, acceptFailure = false) =>
+    command(executable, [operation], {
+      env: {
+        ...runtimeEnvironment(env),
+        ...(operator
+          ? {
+              DARKHORSE_REDIS_LIMITER_ADMIN_URL:
+                env.DARKHORSE_REDIS_LIMITER_ADMIN_URL,
+            }
+          : {}),
+      },
+      capture: true,
+      acceptFailure,
+    });
+  await verifyLimiter(invoke, db);
+  return invoke("redis-status");
+}
+async function verifyLimiter(invoke, db) {
+  await invoke("migrate");
+  const cooling = JSON.parse((await invoke("limiter-fence")).stdout);
+  assert.equal(cooling.phase, "cooling");
+  assert.ok(cooling.not_before_ms - cooling.database_ms >= 903000);
+  assert.equal(
+    JSON.parse((await invoke("limiter-status")).stdout).phase,
+    "cooling",
+  );
+  const early = await invoke("limiter-activate", true, true);
+  assert.notEqual(early.code, 0);
+  assert.match(early.stderr, /recovery wait/);
+  // Advance only the owner-controlled disposable SQL fixture; no runtime bypass exists.
+  await docker([
+    "exec",
+    db.name,
+    "psql",
+    "-U",
+    "postgres",
+    "-v",
+    "ON_ERROR_STOP=1",
+    "-c",
+    "ALTER TABLE limiter_authority DISABLE TRIGGER limiter_authority_transition; UPDATE limiter_authority SET not_before_ms=0; ALTER TABLE limiter_authority ENABLE TRIGGER limiter_authority_transition;",
+  ]);
+  assert.match(
+    (await invoke("limiter-activate", true)).stdout,
+    /generation activated/,
+  );
+  const active = JSON.parse((await invoke("limiter-status")).stdout);
+  assert.equal(active.phase, "active");
+  assert.equal(active.counter_entries, 0);
+  assert.notEqual((await invoke("limiter-activate", true, true)).code, 0);
+  console.log(
+    "Operator fencing, mandatory wait, activation and authoritative status checks passed.",
   );
 }
+
 function containerUrl(raw, name) {
   const url = new URL(raw);
   url.hostname = name;
   url.port = "6379";
   return url.href;
 }
-async function imageChecks(tag, env, cache, limiter) {
-  const name = `${prefix}-probe`;
-  owned.push(name);
-  const runtime = runtimeEnvironment(env);
-  runtime.DARKHORSE_REDIS_CACHE_URL = containerUrl(
-    runtime.DARKHORSE_REDIS_CACHE_URL,
-    cache.name,
-  );
-  runtime.DARKHORSE_REDIS_LIMITER_URL = containerUrl(
-    runtime.DARKHORSE_REDIS_LIMITER_URL,
-    limiter.name,
-  );
-  await docker(
-    [
-      "create",
-      "--name",
-      name,
-      "--read-only",
-      "--cap-drop",
-      "ALL",
-      "--security-opt",
-      "no-new-privileges",
-      "--network",
-      cache.network,
-      "--env",
+async function imageChecks(tag, env, cache, limiter, db) {
+  const base = {
+    ...runtimeEnvironment(env),
+    DARKHORSE_REDIS_CACHE_URL: containerUrl(
+      env.DARKHORSE_REDIS_CACHE_URL,
+      cache.name,
+    ),
+    DARKHORSE_REDIS_LIMITER_URL: containerUrl(
+      env.DARKHORSE_REDIS_LIMITER_URL,
+      limiter.name,
+    ),
+  };
+  const databaseUrl = new URL(db.url);
+  databaseUrl.hostname = db.name;
+  databaseUrl.port = "5432";
+  base.DARKHORSE_DATABASE_URL = databaseUrl.href;
+  const invoke = async (operation, operator = false, acceptFailure = false) => {
+    const name = `${prefix}-probe-${owned.length}`;
+    owned.push(name);
+    const runtime = {
+      ...base,
+      ...(operator
+        ? {
+            DARKHORSE_REDIS_LIMITER_ADMIN_URL: containerUrl(
+              env.DARKHORSE_REDIS_LIMITER_ADMIN_URL,
+              limiter.name,
+            ),
+          }
+        : {}),
+    };
+    const names = [
       "DARKHORSE_REDIS_CACHE_URL",
-      "--env",
       "DARKHORSE_REDIS_LIMITER_URL",
-      "--env",
       "DARKHORSE_REDIS_INSECURE",
-      tag,
-      "redis-status",
-    ],
-    { env: runtime },
-  );
-  await docker(["network", "connect", limiter.network, name]);
-  return docker(["start", "--attach", name]);
+      "DARKHORSE_DATABASE_URL",
+      "DARKHORSE_DATABASE_INSECURE",
+      ...(operator ? ["DARKHORSE_REDIS_LIMITER_ADMIN_URL"] : []),
+    ];
+    await docker(
+      [
+        "create",
+        "--name",
+        name,
+        "--read-only",
+        "--cap-drop",
+        "ALL",
+        "--security-opt",
+        "no-new-privileges",
+        "--network",
+        cache.network,
+        ...names.flatMap((n) => ["--env", n]),
+        tag,
+        operation,
+      ],
+      { env: runtime },
+    );
+    await docker(["network", "connect", limiter.network, name]);
+    return docker(["start", "--attach", name], { acceptFailure });
+  };
+  await verifyLimiter(invoke, db);
+  return invoke("redis-status");
 }
+
 async function main(args) {
   if (
     args.length &&
@@ -184,27 +324,52 @@ async function main(args) {
         ".local/redis.env"
       ],
     );
+    const fault = !args.length
+      ? await lostReplyProxy(Number(limiter.port))
+      : null;
+    if (fault) proxies.push(fault);
+    const stalled = !args.length
+      ? await lostReplyProxy(Number(limiter.port), false)
+      : null;
+    if (stalled) proxies.push(stalled);
+    const tls = !args.length
+      ? await tlsProxy(Number(limiter.port), directory, command)
+      : null;
+    if (tls) proxies.push(tls);
+    const db = await database(cache.network);
     const env = {
       ...process.env,
       ...values,
+      ...(!args.length
+        ? {
+            DARKHORSE_TEST_REDIS_DROP_PORT: String(fault.port),
+            DARKHORSE_TEST_REDIS_TIMEOUT_PORT: String(stalled.port),
+            DARKHORSE_TEST_REDIS_TLS_PORT: String(tls.port),
+            DARKHORSE_TEST_REDIS_CA_PEM: tls.ca,
+          }
+        : {}),
+      DARKHORSE_TEST_DATABASE_URL: db.url,
+      DARKHORSE_DATABASE_URL: db.url,
+      DARKHORSE_DATABASE_INSECURE: "true",
       DARKHORSE_TEST_REDIS_CACHE_CONTAINER: cache.name,
       DARKHORSE_TEST_REDIS_LIMITER_CONTAINER: limiter.name,
     };
     const result = args.length
-      ? await imageChecks(args[1], env, cache, limiter)
-      : await hostChecks(env);
+      ? await imageChecks(args[1], env, cache, limiter, db)
+      : await hostChecks(env, db);
     const status = JSON.parse(result.stdout);
     assert.equal(status.cache.connection, "reachable");
     assert.equal(status.limiter.connection, "reachable");
-    assert.equal(status.shared_enforcement, "not_configured");
+    assert.equal(status.shared_enforcement, "not_checked");
     for (const secret of secrets)
       assert.ok(!`${result.stdout}${result.stderr}`.includes(secret));
     console.log(
       args.length
-        ? "Packaged Redis diagnostics passed; live admission remains unconfigured."
-        : "Redis role isolation, infrastructure faults and redacted operator diagnostics passed; live admission remains unconfigured.",
+        ? "Packaged Redis diagnostics passed; login integration remains separate."
+        : "Redis role isolation, infrastructure faults and redacted operator diagnostics passed; login integration remains separate.",
     );
   } finally {
+    for (const proxy of proxies.reverse()) await proxy.close();
     for (const name of owned.reverse())
       await run("docker", ["rm", "--force", "--volumes", name], {
         capture: true,

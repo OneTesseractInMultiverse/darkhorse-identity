@@ -43,5 +43,10 @@ name = "redis"
 path = "tests/integration/redis.rs"
 required-features = ["redis-tests"]
 
+[[test]]
+name = "limiter"
+path = "tests/integration/limiter.rs"
+required-features = ["redis-tests"]
+
 [lints]
 workspace = true

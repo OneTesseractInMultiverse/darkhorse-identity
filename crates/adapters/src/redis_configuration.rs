@@ -5,6 +5,7 @@ pub struct Endpoint {
     pub(crate) url: url::Url,
     pub(crate) connections: u16,
     pub(crate) timeout_ms: u16,
+    pub(crate) ca_pem: Option<String>,
 }
 pub struct RedisSettings {
     pub(crate) cache: Endpoint,
@@ -19,6 +20,8 @@ struct Raw {
     limiter_connections: u16,
     timeout_ms: u16,
     insecure: bool,
+    cache_ca: String,
+    limiter_ca: String,
 }
 impl ParameterSource for Raw {
     fn bind<E: Environment>(binder: &Binder<E>) -> Result<Self, envbind::BindError> {
@@ -31,6 +34,16 @@ impl ParameterSource for Raw {
                 .bind(&U16Var::new("DARKHORSE_REDIS_LIMITER_CONNECTIONS").default(4))?,
             timeout_ms: binder.bind(&U16Var::new("DARKHORSE_REDIS_TIMEOUT_MS").default(250))?,
             insecure: binder.bind(&BoolVar::new("DARKHORSE_REDIS_INSECURE").default(false))?,
+            cache_ca: binder.bind(
+                &StringVar::new("DARKHORSE_REDIS_CACHE_CA_PEM")
+                    .default("")
+                    .max_bytes(16384),
+            )?,
+            limiter_ca: binder.bind(
+                &StringVar::new("DARKHORSE_REDIS_LIMITER_CA_PEM")
+                    .default("")
+                    .max_bytes(16384),
+            )?,
         })
     }
 }
@@ -38,18 +51,20 @@ pub fn load(environment: impl Environment) -> Result<RedisSettings, RedisConfigu
     validate(Raw::from_environment(environment).map_err(|_| RedisConfigurationError)?)
 }
 fn validate(raw: Raw) -> Result<RedisSettings, RedisConfigurationError> {
-    let cache = endpoint(
+    let mut cache = endpoint(
         &raw.cache,
         raw.cache_connections,
         raw.timeout_ms,
         raw.insecure,
     )?;
-    let limiter = endpoint(
+    let mut limiter = endpoint(
         &raw.limiter,
         raw.limiter_connections,
         raw.timeout_ms,
         raw.insecure,
     )?;
+    cache.ca_pem = certificate(&cache.url, raw.cache_ca)?;
+    limiter.ca_pem = certificate(&limiter.url, raw.limiter_ca)?;
     if (
         cache.url.host_str().map(str::to_ascii_lowercase),
         cache.url.port().unwrap_or(6379),
@@ -92,7 +107,20 @@ fn endpoint(
         url,
         connections,
         timeout_ms,
+        ca_pem: None,
     })
+}
+fn certificate(url: &url::Url, pem: String) -> Result<Option<String>, RedisConfigurationError> {
+    if pem.is_empty() {
+        return Ok(None);
+    }
+    if url.scheme() != "rediss"
+        || !pem.starts_with("-----BEGIN CERTIFICATE-----")
+        || !pem.trim_end().ends_with("-----END CERTIFICATE-----")
+    {
+        return Err(RedisConfigurationError);
+    }
+    Ok(Some(pem))
 }
 fn password(url: &url::Url) -> Result<std::borrow::Cow<'_, str>, RedisConfigurationError> {
     let raw = url

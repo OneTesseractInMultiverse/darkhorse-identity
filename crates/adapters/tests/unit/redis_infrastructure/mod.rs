@@ -20,6 +20,7 @@ async fn saturated_pool_rejects_immediately_without_opening_another_connection()
         url: url::Url::parse("rediss://unit:fixture@localhost/0").unwrap(),
         connections: 2,
         timeout_ms: 250,
+        ca_pem: None,
     })
     .unwrap();
     let _guards: Vec<_> = pool

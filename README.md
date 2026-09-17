@@ -29,7 +29,7 @@ Open **https://localhost:8443**. Stop the foreground stack with Ctrl-C. Run `mak
 
 For the optional database/bootstrap and Docker workflows, see [persistence](docs/persistence.md). `make test-postgres` and `make docker-smoke` use disposable infrastructure; ordinary unit tests remain service-free. Full coverage qualification remains open in [issue #2](https://github.com/OneTesseractInMultiverse/darkhorse-identity/issues/2).
 
-Redis connection infrastructure and pure attempt-budget contracts are being implemented in [issue #4](https://github.com/OneTesseractInMultiverse/darkhorse-identity/issues/4). See [Redis setup and remaining enforcement work](docs/redis.md). A reachable Redis instance does not yet mean login limiting is enabled.
+Redis infrastructure, atomic shared attempt budgets and durable recovery are implemented in [issue #4](https://github.com/OneTesseractInMultiverse/darkhorse-identity/issues/4). See [Redis setup, enforcement and recovery](docs/redis.md). Password login will wire this limiter in the next feature slice.
 
 ## Structure
 

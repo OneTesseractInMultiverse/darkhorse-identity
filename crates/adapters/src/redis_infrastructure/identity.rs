@@ -1,6 +1,6 @@
 use super::{Identity, ProbeFailure, Role};
 
-pub(super) fn validate(
+pub(crate) fn validate(
     role: Role,
     pong: &str,
     server: &str,
@@ -38,7 +38,7 @@ pub(super) fn validate(
         used_memory_bytes,
     })
 }
-fn field<'a>(text: &'a str, name: &str) -> Result<&'a str, ProbeFailure> {
+pub(crate) fn field<'a>(text: &'a str, name: &str) -> Result<&'a str, ProbeFailure> {
     if text.len() > 16384 {
         return Err(ProbeFailure::UnsafeConfiguration);
     }

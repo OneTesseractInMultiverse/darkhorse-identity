@@ -15,7 +15,8 @@ WEB := $(PNPM) --filter @darkhorse/console
 .PHONY: test-authorization test-property test-mutation
 .PHONY: db-setup db-up db-down db-migrate bootstrap test-postgres docker-build docker-smoke
 .PHONY: redis-setup redis-up redis-down redis-status test-redis docker-redis-smoke
-.PHONY: test-limiting test-mutation-limiting coverage-core coverage-integration
+.PHONY: redis-acl-update limiter-fence limiter-activate limiter-status
+.PHONY: test-limiting test-mutation-limiting test-mutation-recovery coverage-core coverage-integration
 
 help: ## Help: list implemented targets; no setup required
 	@awk 'BEGIN { FS = ":.*## " } /^[a-zA-Z_-]+:.*## / { printf "  %-23s %s\n", $$1, $$2 }' $(MAKEFILE_LIST)
@@ -76,6 +77,10 @@ test-property: ## Test: deterministic exhaustive authorization properties
 
 test-limiting: ## Test: pure attempt budgets and fail-closed admission contracts
 	cargo test -p darkhorse-domain -p darkhorse-application --lib --locked --offline limiting::
+	cargo test -p darkhorse-domain --lib --locked --offline limiter_recovery::
+
+test-mutation-recovery: ## Test: durable fencing/time mutations; requires cargo-mutants 27.1.0
+	cargo mutants --no-config -p darkhorse-domain --file 'crates/domain/src/limiter_recovery.rs' --cargo-arg=--locked --cargo-arg=--offline --cargo-test-arg=--lib --jobs $(MUTATION_JOBS) --timeout 30 --output target/mutation-recovery
 
 test-mutation-limiting: ## Test: attempt-budget mutations; requires cargo-mutants 27.1.0
 	cargo mutants --no-config -p darkhorse-domain --file 'crates/domain/src/limiting.rs' --cargo-arg=--locked --cargo-arg=--offline --cargo-test-arg=--lib --jobs $(MUTATION_JOBS) --timeout 30 --output target/mutation-limiting
@@ -157,6 +162,18 @@ redis-down: ## Redis: stop owned services; preserve limiter data and credentials
 
 redis-status: ## Redis: inspect each connection and memory policy; not an enforcement probe
 	$(NODE) scripts/redis.mjs status
+
+redis-acl-update: ## Redis: update local ACL policy while retaining all existing credentials
+	$(NODE) scripts/redis.mjs acl-update
+
+limiter-fence: ## Limiter: durably stop admission and begin the mandatory recovery wait
+	$(NODE) scripts/redis.mjs limiter-fence
+
+limiter-activate: ## Limiter: initialize a waited generation using protected operator credentials
+	$(NODE) scripts/redis.mjs limiter-activate
+
+limiter-status: ## Limiter: inspect durable generation, recovery wait and counter state
+	$(NODE) scripts/redis.mjs limiter-status
 
 test-redis: ## Test: disposable Redis processes and Rust infrastructure diagnostics
 	$(NODE) scripts/redis-test.mjs

@@ -11,6 +11,15 @@ fn accepts_only_explicit_operations_and_never_secret_arguments() {
     assert_eq!(parse(&args(&["--help"])), Ok(Command::Help));
     assert_eq!(parse(&args(&["migrate"])), Ok(Command::Migrate));
     assert_eq!(parse(&args(&["redis-status"])), Ok(Command::RedisStatus));
+    assert_eq!(parse(&args(&["limiter-fence"])), Ok(Command::LimiterFence));
+    assert_eq!(
+        parse(&args(&["limiter-activate"])),
+        Ok(Command::LimiterActivate)
+    );
+    assert_eq!(
+        parse(&args(&["limiter-status"])),
+        Ok(Command::LimiterStatus)
+    );
     assert_eq!(
         parse(&args(&["bootstrap"])),
         Ok(Command::Bootstrap { stdin: false })
@@ -46,6 +55,7 @@ fn accepts_only_explicit_operations_and_never_secret_arguments() {
     }
     for parts in [
         vec!["unknown"],
+        vec!["limiter-activate", "--skip-wait"],
         vec!["bootstrap", "password-secret"],
         vec!["bootstrap", "--stdin", "extra"],
         vec!["account", "invalid"],

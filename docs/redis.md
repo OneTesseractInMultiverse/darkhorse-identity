@@ -1,87 +1,104 @@
-# Redis infrastructure and admission contracts
+# Redis infrastructure and shared attempt limiting
 
-The first part of [issue #4](https://github.com/OneTesseractInMultiverse/darkhorse-identity/issues/4) provides independent cache/limiter services, bounded Rust connection pools, diagnostics, and pure attempt-budget computations. **Live shared admission enforcement is not configured.** No login or authorization path uses Redis yet. Durable recovery and an atomic counter adapter must be completed before password login can rely on it. Cached authorization computations belong to the later cache slice.
+[Issue #4](https://github.com/OneTesseractInMultiverse/darkhorse-identity/issues/4) provides separate cache/limiter services, an atomic Redis counter adapter, a PostgreSQL enforcement authority, restrictive recovery, and operator commands. `RedisLimiter` implements the application-owned `AttemptLimiter` port. Password login will integrate this port in issue #5; no public login endpoint exists yet. Cached authorization computations remain in P03.
 
-## Local services
+## Local workflow
 
-Start Docker, install the locked project dependencies, then run:
+Start Docker and install the locked dependencies. Ordinary unit tests need neither Redis nor PostgreSQL.
 
 ```sh
+make db-up db-migrate
 make redis-setup
+# Existing installations: stop Redis and upgrade ACLs without rotating credentials.
+make redis-down redis-acl-update
 make redis-up
 make redis-status
-make redis-down
+make limiter-fence
+make limiter-status
+# Wait at least 15 minutes 4 seconds after fencing, then:
+make limiter-activate
+make limiter-status
+make redis-down db-down
 ```
 
-Setup creates `.local/redis-cache.acl`, `.local/redis-limiter.acl`, and `.local/redis.env` with owner-only permissions. Four independent random credentials cover the two diagnostic users and the two operator users. Existing files are preserved; missing files in a partial setup, symlinks, or broad file permissions cause an error. Keep credentials with the corresponding limiter data; do not regenerate one while retaining the other. Private files are excluded from Git, image contexts and exports.
+Every new enforcement generation, including the first, has the same mandatory wait. `limiter-fence` commits an inactive generation immediately and starts a new wait; repeating it extends the interruption. `limiter-activate` requires the wait to have elapsed and protected operator credentials. There is no skip-wait flag or runtime test switch. Activation binds the generation to the observed Redis process and replication identity. Repeating activation cannot reset an active generation's counters.
 
-Each service has its own Docker network, memory allocation and credentials. Host ports bind only to loopback: cache `63791`, limiter `63792`. Different workspaces own different Compose projects, but the default host ports still conflict. To change ports, edit both the port settings and all corresponding URLs in `.local/redis.env`. Services use separate bridge networks so the host-run Rust process can access the loopback publications; these are development networks, not production network-policy qualification.
+Setup creates owner-only `.local/redis-cache.acl`, `.local/redis-limiter.acl` and `.local/redis.env`. Four independent random credentials cover the two runtime users and two operators. Complete existing settings are preserved; partial settings, symlinks and broad permissions are rejected. `redis-acl-update` rewrites ACL policy with the same credentials; restart services to load it. Keep limiter data and credentials together. Private files remain excluded from Git, images and exports.
 
-| Role    | Redis memory limit | Container memory limit | Eviction      | Storage                                         |
-| ------- | ------------------ | ---------------------- | ------------- | ----------------------------------------------- |
-| Cache   | 64 MiB             | 128 MiB                | `allkeys-lru` | Temporary memory-backed data directory          |
-| Limiter | 64 MiB             | 128 MiB                | `noeviction`  | Dedicated volume; AOF with `appendfsync always` |
+Each service has a separate bridge network, credentials and memory allocation. Host ports bind only to loopback: cache `63791`, limiter `63792`. Different workspace projects still share these default port numbers; change both port settings and corresponding URLs in the protected settings file when needed. These are development networks, not production network-policy qualification.
 
-`redis-down` preserves limiter data and credentials. Cache data is disposable. Neither ordinary unit tests nor HTTP startup provision/connect to these services. Compose health checks verify the local listener requires authentication; `redis-status` separately verifies configured credentials, server role and memory policy. It reports `shared_enforcement: not_configured` even when both connections are reachable.
+| Role    | Redis memory | Container memory | Eviction      | Storage                                         |
+| ------- | ------------ | ---------------- | ------------- | ----------------------------------------------- |
+| Cache   | 64 MiB       | 128 MiB          | `allkeys-lru` | Temporary memory-backed data                    |
+| Limiter | 64 MiB       | 128 MiB          | `noeviction`  | Dedicated volume; AOF with `appendfsync always` |
 
-The diagnostic users can only authenticate, ping, inspect INFO, and set client metadata. They cannot read/write keys, change ACLs or change server configuration. Operator credentials remain in the protected local settings file and are removed from the diagnostic process environment and are not read by application configuration. Counter/cache permissions will be added with their actual adapters. The container entrypoint copies the mounted ACL into a private runtime file, then the official image entrypoint runs Redis as its unprivileged user.
+Stopping the local stack preserves limiter data and credentials. A restart still requires fencing and a waited activation because persistence alone is not continuity proof. Never delete the durable PostgreSQL authority to shorten recovery. Restore/rebuild procedures must stop admission and fence before service resumes; restoring an older PostgreSQL authority while serving traffic is unsupported.
 
-## Rust connection boundary
+## Admission and recovery contract
 
-The adapter uses Redis Open Source **8.10.1**, pinned by image digest, and **redis-rs 1.7.0** with Tokio/rustls and web PKI roots. Automatic connection-manager retries, cluster, sentinel and default client features are disabled. Update the server digest/client in a reviewed change and repeat the failure tests. [Server release notes](https://redis.io/docs/latest/operate/oss_and_stack/stack-with-enterprise/release-notes/redisce/redisos-8.10-release-notes/), [client documentation](https://docs.rs/redis/1.7.0/redis/)
+The Rust core computes one to four distinct fixed-window budgets from explicit snapshots and time. Limits are 1–1,000,000 admitted attempts; windows are 1–900 seconds. A window starts with its first admitted attempt and expires at its exact end. Exhaustion charges none of the requested budgets and returns the longest remaining exhausted window. Policy changes do not silently reset stored counters.
 
-Configuration uses envbind with explicit input validation. Connection settings deliberately lack Debug output. Errors and diagnostics never print URLs, supplied passwords or ACL verifiers.
+Budget keys are caller-owned 32-byte keyed digests. Future login code must derive them from trusted server policy; raw emails, addresses, tokens and user-controlled thresholds must not enter keys or metric labels. Shared limiting counts admitted attempts. Edge/local admission limits still need to bound rejected traffic and expensive password work.
 
-| Variable                              | Default / requirement                                                    |
-| ------------------------------------- | ------------------------------------------------------------------------ |
-| `DARKHORSE_REDIS_CACHE_URL`           | Required authenticated URL for cache                                     |
-| `DARKHORSE_REDIS_LIMITER_URL`         | Required authenticated URL for limiter                                   |
-| `DARKHORSE_REDIS_CACHE_CONNECTIONS`   | 2, range 1–16                                                            |
-| `DARKHORSE_REDIS_LIMITER_CONNECTIONS` | 4, range 1–16                                                            |
-| `DARKHORSE_REDIS_TIMEOUT_MS`          | 250 ms, range 10–1000 ms                                                 |
-| `DARKHORSE_REDIS_INSECURE`            | false; local setup explicitly enables plaintext for loopback development |
+An admitted request follows these steps:
 
-URLs are limited to 4096 bytes, must use a named ACL user and explicit password, and must select database zero. Query strings/fragments, default-user authentication, and encoded socket hosts are rejected. TLS uses `rediss://` with certificate/hostname verification; there is no insecure TLS option. Private CA/client-certificate provisioning and positive TLS deployment qualification remain open. When the development plaintext switch is enabled, a `rediss://` connection still requires TLS and never downgrades.
+1. Read the active generation and Redis identity from the PostgreSQL primary.
+2. Read a bounded Redis snapshot, validating the generation, process/replication identity, memory policy, record count and server clock.
+3. Compute the budget proposal in Rust; atomically compare the exact prior records and write every proposed counter in one Redis `HSET`.
+4. Read PostgreSQL again. Return allowed only if the same active generation and identity remain authoritative and the operation deadline still holds.
 
-The adapter rejects matching endpoints and equivalent decoded passwords. Diagnostics additionally distinguish server process identities and require standalone primary roles with nonzero memory limits and the expected eviction policy. A limiter already above its memory limit is reported unsafe. These checks are a configuration observation, not a guarantee that the next operation has capacity or that acknowledged counters survived a failure.
+No PostgreSQL transaction or global database write lock is held across a Redis call. There are two database reads per admitted request; this cost is deliberate. A committed fence invalidates subsequent checks. In-flight operations that already completed their authority check are covered by the recovery wait and bounded operation lifetime.
 
-Cache and limiter have independent lazy connection pools and operation deadlines. Each pool rejects work immediately when all its slots are occupied; it has no unbounded waiting queue. Connection establishment and all diagnostic commands share one deadline. Failed/timed-out connections are discarded, and a later read-only diagnostic may reconnect. This reconnect behavior does not authorize retrying a counter mutation. Size aggregate connections across application replicas against each server's client budget. These initial limits are not throughput benchmarks.
+Only explicit, nonmutating compare/exchange conflicts or capacity rejections may retry, at most three rounds within a one-second overall deadline. A timeout, disconnect or uncertain write rejects the attempt without automatic retry. A new submitted attempt may conservatively consume another charge. `NOSCRIPT` permits one load/re-execution because the missing script did not run; other Redis errors do not. [Redis script cache behavior](https://redis.io/docs/latest/develop/programmability/eval-intro/)
 
-## Pure attempt policy
+A single bounded Redis hash holds generation metadata and at most **16,384 counter records**. Its recorded count must match its actual length. Missing fields, a missing hash or incomplete cleanup cause rejection. Records have logical window expiry; the hash has no eviction or native key/field TTL that could erase continuity evidence. When capacity is reached, bounded scanning removes expired records using exact-value comparisons. Live records are retained; an unresolved capacity limit rejects new budgets. Physical removal is incremental and does not promise immediate deletion at logical expiry.
 
-`domain::limiting` receives explicit time and counter snapshots; it does not read clocks, call Redis, or mutate external state. The policy accepts one to four distinct budgets, each with a limit of 1–1,000,000 admitted attempts and a window of 1–900 seconds. A fixed window starts at the first admitted attempt. At its exact end, a new window can start. Every requested budget charges together, or none does when a budget is exhausted. A denial reports the longest remaining exhausted window.
+The Lua adapter contains storage guards and compare/exchange operations; Rust owns budget arithmetic and expiry decisions. Counter charging uses one write command. Cleanup can remove fields before updating metadata; a failure between these commands leaves an inconsistent count and blocks admission. Scripts are atomic with respect to concurrent clients, but runtime errors are not treated as transactional rollback. [Redis scripting semantics](https://redis.io/docs/latest/develop/programmability/lua-api/)
 
-Stable budget keys are 32-byte keyed digests selected by the trusted caller. They must never be taken directly from user input; deriving and rotating them belongs with the actual login policy. Thresholds are also server-owned. Raw emails, addresses and tokens must not become Redis keys or metric labels. This counts admitted attempts; later edge/local admission controls must separately bound rejected traffic and expensive work before shared enforcement.
+Redis server time is authoritative for budget windows and must remain within one second of the PostgreSQL observation. Stored clock movement cannot go backward; apply/cleanup also reject a clock earlier than their snapshot. Application replica wall clocks do not select windows. This assumes correctly managed database/Redis clocks; common-mode clock faults are outside the tested guarantee. The recovery wait is the maximum 900-second window plus four seconds for bounded operations and clock tolerance.
 
-Stored-policy mismatches, corrupt counters and clock rollback fail closed. Time is bounded to integers exactly representable by the intended wire format, and windows cannot overflow that bound. The future adapter must choose and validate authoritative time across replicas; caller wall clocks must not reset global budgets.
+Redis process restart, primary-role changes or replication identity changes reject admission even when a connection reconnects successfully. Redis replication can lose acknowledged writes during failover. **Automatic failover is unsupported**: fence durably, repair/select the intended standalone primary, wait, then activate a new generation. Tests verify rejection after restart/promotion and state loss; they do not claim lossless Redis replication. [Redis replication guarantees](https://redis.io/docs/latest/operate/oss_and_stack/management/replication/)
 
-The application-owned `AttemptLimiter` port requires an atomic charge against authoritative enforcement state. Its coordinator calls the port once: only a known allowed result permits one immediate attempt. Limited or unavailable results reject it. An uncertain transport result is never transparently retried. A separately submitted attempt may be charged again; conservative overcounting is preferable to an unaccounted allowance. A result is not a reusable session, token or idempotency key.
+## Connections, trust and permissions
 
-## Recovery work still required
+Redis Open Source **8.10.1** is pinned by image digest. **redis-rs 1.7.0** has default features disabled; enabled features are `tokio-rustls-comp`, `tls-rustls-webpki-roots` and `script`. Connection-manager retries, cluster and sentinel are disabled. The script's SHA-1 identifier is a Redis cache key, not an authentication primitive. [Client documentation](https://docs.rs/redis/1.7.0/redis/)
 
-Redis reconnect, a persistent AOF, a matching process ID, or a successful health check cannot establish that acknowledged counters survived promotion/data loss. Redis replication is asynchronous, and a promoted process can keep its process ID while its replication history changes. [Replication guarantees](https://redis.io/docs/latest/operate/oss_and_stack/management/replication/), [connection and process identity](https://redis.io/docs/latest/develop/programmability/eval-intro/)
+| Variable                              | Default / requirement                                               |
+| ------------------------------------- | ------------------------------------------------------------------- |
+| `DARKHORSE_REDIS_CACHE_URL`           | Required authenticated URL                                          |
+| `DARKHORSE_REDIS_LIMITER_URL`         | Required authenticated URL                                          |
+| `DARKHORSE_REDIS_CACHE_CONNECTIONS`   | 2, range 1–16                                                       |
+| `DARKHORSE_REDIS_LIMITER_CONNECTIONS` | 4, range 1–16; also bounds concurrent limiter calls per instance    |
+| `DARKHORSE_REDIS_TIMEOUT_MS`          | 250 ms, range 10–1000 ms, per Redis operation                       |
+| `DARKHORSE_REDIS_INSECURE`            | false; local setup explicitly enables plaintext                     |
+| `DARKHORSE_REDIS_CACHE_CA_PEM`        | Optional PEM trust bundle, at most 16 KiB, only with `rediss://`    |
+| `DARKHORSE_REDIS_LIMITER_CA_PEM`      | Optional PEM trust bundle, at most 16 KiB, only with `rediss://`    |
+| `DARKHORSE_REDIS_LIMITER_ADMIN_URL`   | Operator-only URL for activation; not read by runtime configuration |
 
-Before enabling live enforcement, issue #4 must deliver and test:
+Configuration uses envbind. URLs are bounded to 4096 bytes and require named, nondefault ACL users, explicit distinct passwords and database zero. Query strings, fragments and encoded socket hosts are rejected. TLS verifies certificates and hostnames. An explicit private trust bundle replaces public roots for that connection. There is no insecure TLS verification option, and the development plaintext switch never downgrades `rediss://`. Client-certificate authentication is not implemented.
 
-- Atomic application of multi-budget proposals, bounded counter cardinality/expiry and policy transitions, without resetting missing state blindly.
-- A durable enforcement generation, old-primary fencing, restrictive cooldown/recovery commands, and explicit authority for restoring service after state loss. New application processes must not create a fresh global allowance.
-- Ambiguous writes, retries, script reload, simultaneous Rust replicas, restart, partitions, promotion and lost acknowledged counters at the real enforcement boundary.
-- Positive TLS/private-CA qualification, operational telemetry, and measured latency/capacity for the supported topology.
+Separate lazy pools reject immediately when their slots are occupied. Each operation's deadline includes connection establishment. The limiter adds an immediate-admission semaphore and a one-second deadline around all PostgreSQL/Redis work; there is no unbounded request queue. Size total connections across replicas against server budgets. Capacity or dependency failures reduce availability; they never authorize an attempt.
 
-Automatic failover is not supported by the current implementation. There is intentionally no operator command that resets counters or declares recovery complete yet. PostgreSQL remains authoritative for durable identity/security state, and future cached authorization computations must preserve strict post-commit revocation.
+The cache runtime user has diagnostic permissions only. The limiter runtime user can inspect Redis and execute the counter script's hash/time operations on exactly `darkhorse:limiter:v1`; it cannot delete the hash, flush the database, initialize a generation, modify ACLs or configure Redis. Operator credentials are supplied only to activation. Redis command ACLs do not enforce script identity: runtime credentials remain security-sensitive and trusted application code must use the reviewed adapter. The image entrypoint prepares the private ACL file and delegates privilege dropping to the official Redis entrypoint.
 
-## Verification
+`redis-status` reports connection health and `shared_enforcement: not_checked`. `limiter-status` separately reports the durable phase, wait deadline and validated counter count. These are observations at the time of the command, not reusable admission decisions. Each `RedisLimiter` exposes aggregate completed-call counts for allowed, limited and unavailable outcomes, without identity labels; a future metrics endpoint can export them. Cancelled futures do not produce completed-call outcome counters. CLI errors redact URLs and credentials.
+
+## Verification and limits
 
 ```sh
 make test-limiting
 make test-redis
 make coverage-core
+make coverage-integration
 make test-mutation-limiting
+make test-mutation-recovery
 make docker-build docker-redis-smoke
 ```
 
-Unit tests are in source, use explicit time/fake ports, and need no services or settings. The Redis integration runner creates its own random credentials, names, networks and host ports, then removes only those resources. It verifies role identity across separate Rust clients, restricted runtime credentials, independent authentication/ACL/configuration failures, real cache eviction, limiter memory pressure, paused connections, restart identity and TLS downgrade rejection. It also checks redacted CLI output. These are infrastructure tests, not shared-counter or recovery qualification.
+Unit tests use source-defined inputs, fake ports and explicit clocks, with no services or settings. Integration tests require Docker and OpenSSL. The runner owns random Redis/PostgreSQL services, credentials, networks, ports, a private TLS test CA and a proxy that drops a committed write response. It cleans up only its resources. Private CA verification, wrong-host/untrusted-chain rejection, real socket ambiguity, multi-replica budgets, expiry, script reload, cardinality, partial cleanup, durable fence races, ACL/memory/partition/restart/promotion failures and lost state are exercised.
 
-`docker-redis-smoke` runs the built application image as its unprivileged user with a read-only filesystem and dropped capabilities, connected to both disposable Redis networks. Only the runtime credentials enter the application container. This checks the packaged diagnostics independently of host Rust tooling.
+Recovery boundary tests use explicit times. The disposable SQL owner's fixture advances the wait only after proving premature activation fails; no production configuration or command can bypass it. Host and image smoke checks exercise actual operator commands. `docker-redis-smoke` uses the non-root application image with a read-only filesystem and dropped capabilities.
 
-`coverage-core` measures only the framework-free domain/application crates. It does not replace the unchanged full Rust library coverage gate or imply whole-system coverage. `coverage-integration` combines Rust unit tests with both PostgreSQL and Redis integration/CLI execution and keeps uncovered paths visible. Overall coverage qualification remains open in issues #2/#3; P02 remains open in #4. No performance improvement or production-readiness claim is made yet.
+A development sample of 100 warm sequential admissions, using local Docker services on an arm64 macOS host, measured approximately 1.4 ms p50, 1.5 ms p95 and 1.6 ms p99, including both PostgreSQL authority reads. This is a reproducible diagnostic sample printed by the integration suite, not an SLO, throughput/capacity result, cross-machine comparison or demonstrated Redis speedup. Full load/cold/overload benchmarking remains in P01.
+
+Coverage reports retain their existing denominators and 100% line gates. `coverage-core` measures only the framework-free domain/application crates. Combined Rust coverage includes real PostgreSQL, Redis and operator execution; Lua and tooling execution do not become Rust coverage. Overall authored-code qualification remains open in #2/#3 and must not be inferred from the core report. This slice does not establish production readiness or complete the later login and deployment qualifications.
