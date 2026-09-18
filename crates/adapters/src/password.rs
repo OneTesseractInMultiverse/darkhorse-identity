@@ -1,5 +1,9 @@
 //! Password hashing uses explicit salt; entropy and bounded worker scheduling are effects.
-use argon2::{Algorithm, Argon2, Params, PasswordHasher, Version};
+use argon2::{
+    Algorithm, Argon2, Params, PasswordHasher, PasswordVerifier, Version,
+    password_hash::phc::PasswordHash,
+};
+use darkhorse_application::authentication::{AuthError, PasswordVerification};
 use darkhorse_application::bootstrap::{BootstrapError, CredentialPreparation, PreparedCredential};
 use darkhorse_domain::identity::{CredentialId, PrincipalId};
 use std::sync::Arc;
@@ -76,6 +80,55 @@ fn hash(password: &str, salt: &[u8]) -> Result<String, BootstrapError> {
         .hash_password_with_salt(password.as_bytes(), salt)
         .map(|hash| hash.to_string())
         .map_err(|_| BootstrapError::SecretPreparation)
+}
+
+// Policy-matched, public dummy. A missing account can never authenticate, even
+// if a supplied password happened to match this output.
+const DUMMY: &str = "$argon2id$v=19$m=65536,t=3,p=1$AAAAAAAAAAAAAAAAAAAAAA$AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA";
+
+impl PasswordVerification for PasswordPreparation {
+    async fn verify(&self, password: &str, verifier: Option<&str>) -> Result<bool, AuthError> {
+        darkhorse_domain::authentication::login_password(password)
+            .map_err(|_| AuthError::Denied)?;
+        let parsed = checked_verifier(verifier.unwrap_or(DUMMY))?;
+        let exists = verifier.is_some();
+        let password = Zeroizing::new(password.to_owned());
+        bounded_work(self.slots.clone(), move || {
+            Ok(Argon2::default()
+                .verify_password(password.as_bytes(), &parsed)
+                .is_ok()
+                && exists)
+        })
+        .await
+    }
+}
+
+fn checked_verifier(value: &str) -> Result<PasswordHash, AuthError> {
+    if value.len() > 512 || !value.starts_with("$argon2id$v=19$m=65536,t=3,p=1$") {
+        return Err(AuthError::Unavailable);
+    }
+    let parsed = PasswordHash::new(value).map_err(|_| AuthError::Unavailable)?;
+    if parsed.salt.as_ref().is_none_or(|salt| salt.len() != 16)
+        || parsed.hash.as_ref().is_none_or(|hash| hash.len() != 32)
+    {
+        return Err(AuthError::Unavailable);
+    }
+    Ok(parsed)
+}
+
+async fn bounded_work<T: Send + 'static>(
+    slots: Arc<Semaphore>,
+    work: impl FnOnce() -> Result<T, AuthError> + Send + 'static,
+) -> Result<T, AuthError> {
+    let permit = slots
+        .try_acquire_owned()
+        .map_err(|_| AuthError::Unavailable)?;
+    tokio::task::spawn_blocking(move || {
+        let _permit = permit;
+        work()
+    })
+    .await
+    .map_err(|_| AuthError::Unavailable)?
 }
 
 #[cfg(test)]

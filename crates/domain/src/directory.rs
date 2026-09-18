@@ -42,6 +42,10 @@ impl Profile {
     }
 }
 
+pub(crate) fn login_email_key(email: &str) -> Result<String, DirectoryError> {
+    validate_email(email.trim()).map(str::to_ascii_lowercase)
+}
+
 fn validate_email(email: &str) -> Result<&str, DirectoryError> {
     let (local, domain) = email.split_once('@').ok_or(DirectoryError::Email)?;
     if !email.is_ascii()

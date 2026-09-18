@@ -2,6 +2,7 @@
 
 use darkhorse_domain::AccountStatus;
 
+pub mod authentication;
 pub mod bootstrap;
 pub mod directory;
 

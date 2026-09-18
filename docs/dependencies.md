@@ -17,3 +17,13 @@ Redis Open Source **8.10.1** is pinned by digest for independent cache and limit
 Redis 8 offers RSALv2, SSPLv1 and AGPLv3 licensing options; the project license/release decision remains separate and unresolved. Preserve applicable third-party notices when packaging the server. [Redis licenses](https://redis.io/legal/licenses/)
 
 Cache and limiter use separate instances/configuration, identities, memory policies, deadlines, and recovery behavior. PostgreSQL remains authoritative. New authorization checks after a revocation commit must observe authoritative state before reusing versioned computation. Cache absence/corruption must be a miss; limiter uncertainty must reject affected attempts. Unit commands never provision Redis. Connection diagnostics do not grant admission. The shared limiter validates PostgreSQL authority before and after an atomic Redis charge; computation acceleration remains future work.
+
+## Browser authentication additions
+
+RustCrypto **sha2 0.11.0** and **hmac 0.13.0** provide session digests and keyed
+login budget identifiers inside adapters. They were already transitive Rust
+dependencies; direct versions are now explicit. No custom digest/MAC primitive is
+implemented. **Playwright 1.63.0** is a root development dependency for disposable
+Chromium integration. Browser downloads are explicit through `make browser-install`;
+unit tests require no browser installation. These additions do not constitute a
+complete advisory or license audit. See [authentication](authentication.md).

@@ -2,7 +2,7 @@
 
 An identity server for one organization and its applications, built with Rust, a static SvelteKit/TypeScript console, PostgreSQL, and Redis.
 
-**Early development.** The repository contains the workspace, a pure authorization policy engine, configuration/query adapters, a process liveness endpoint, and a console preview. PostgreSQL persistence, operator-only administrator bootstrap, and a local image build are also implemented. Login, protocol endpoints, and production deployment qualification remain unfinished. The policy engine is not connected to HTTP requests.
+**Early development.** The repository contains a pure authorization policy engine, PostgreSQL persistence, operator-only administrator bootstrap, shared Redis attempt limiting, and a password login portal with Rust-owned sessions. Protocol endpoints and production deployment qualification remain unfinished. The authorization policy engine is not yet connected to protected application requests.
 
 ## Quick start
 
@@ -29,7 +29,7 @@ Open **https://localhost:8443**. Stop the foreground stack with Ctrl-C. Run `mak
 
 For the optional database/bootstrap and Docker workflows, see [persistence](docs/persistence.md). `make test-postgres` and `make docker-smoke` use disposable infrastructure; ordinary unit tests remain service-free. Full coverage qualification remains open in [issue #2](https://github.com/OneTesseractInMultiverse/darkhorse-identity/issues/2).
 
-Redis infrastructure, atomic shared attempt budgets and durable recovery are implemented in [issue #4](https://github.com/OneTesseractInMultiverse/darkhorse-identity/issues/4). See [Redis setup, enforcement and recovery](docs/redis.md). Password login will wire this limiter in the next feature slice.
+Redis infrastructure, atomic shared attempt budgets and durable recovery are implemented in [issue #4](https://github.com/OneTesseractInMultiverse/darkhorse-identity/issues/4). See [Redis setup, enforcement and recovery](docs/redis.md). For the enabled password portal, follow the [login setup and security contract](docs/authentication.md), then run `make dev-login`. The default preview keeps login disabled. `make browser-install` and `make test-browser` provide disposable HTTPS browser integration tests.
 
 ## Structure
 
@@ -49,6 +49,6 @@ The [authorization contract](docs/authorization.md) explains application isolati
 
 ## Work tracking
 
-Remaining work is tracked in [GitHub issues](https://github.com/OneTesseractInMultiverse/darkhorse-identity/issues). Development stays on `main`, with every new commit linked to its issue. See the [contribution workflow](docs/engineering.md#issue-based-work-on-main). Persistence and bootstrap are tracked in [issue #3](https://github.com/OneTesseractInMultiverse/darkhorse-identity/issues/3). The active feature slice is [Redis infrastructure and distributed limiting](https://github.com/OneTesseractInMultiverse/darkhorse-identity/issues/4).
+Remaining work is tracked in [GitHub issues](https://github.com/OneTesseractInMultiverse/darkhorse-identity/issues). Development stays on `main`, with every new commit linked to its issue. See the [contribution workflow](docs/engineering.md#issue-based-work-on-main). Persistence and bootstrap are tracked in [issue #3](https://github.com/OneTesseractInMultiverse/darkhorse-identity/issues/3). The active feature slice is [password login and browser sessions](https://github.com/OneTesseractInMultiverse/darkhorse-identity/issues/5).
 
 The project license has not been selected. Third-party component licenses remain applicable; see [third-party notices](docs/third-party-notices.md).

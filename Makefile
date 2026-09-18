@@ -17,6 +17,13 @@ WEB := $(PNPM) --filter @darkhorse/console
 .PHONY: redis-setup redis-up redis-down redis-status test-redis docker-redis-smoke
 .PHONY: redis-acl-update limiter-fence limiter-activate limiter-status
 .PHONY: test-limiting test-mutation-limiting test-mutation-recovery coverage-core coverage-integration
+.PHONY: login-setup dev-login browser-install test-browser
+
+browser-install: ## Test: install the pinned Chromium browser for integration tests
+	$(PNPM) exec playwright install chromium
+
+test-browser: build-web ## Test: disposable PostgreSQL/Redis and verified HTTPS Chromium login
+	DARKHORSE_TEST_BROWSER=true $(NODE) scripts/redis-test.mjs
 
 help: ## Help: list implemented targets; no setup required
 	@awk 'BEGIN { FS = ":.*## " } /^[a-zA-Z_-]+:.*## / { printf "  %-23s %s\n", $$1, $$2 }' $(MAKEFILE_LIST)
@@ -179,6 +186,12 @@ test-redis: ## Test: disposable Redis processes and Rust infrastructure diagnost
 	$(NODE) scripts/redis-test.mjs
 
 dev-setup: https-setup ## Develop: prepare local CA without changing host trust
+
+login-setup: ## Develop: generate a private local login limiter key; preserve an existing key
+	$(NODE) scripts/login.mjs setup
+
+dev-login: ## Develop: full HTTPS password portal using prepared local database/Redis/key
+	CADDY="$(CADDY)" $(NODE) scripts/login.mjs dev
 
 dev: ## Develop: Rust reload, frontend HMR, and HTTPS proxy; Ctrl-C stops owned processes
 	CADDY="$(CADDY)" $(NODE) scripts/dev.mjs all

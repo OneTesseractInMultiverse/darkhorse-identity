@@ -6,6 +6,7 @@ use darkhorse_adapters::{
     },
 };
 use std::process::ExitCode;
+mod authentication;
 
 #[tokio::main]
 async fn main() -> ExitCode {
@@ -29,13 +30,17 @@ async fn run() -> Result<(), &'static str> {
 async fn serve() -> Result<(), &'static str> {
     let settings = configuration::load(envbind::ProcessEnvironment)
         .map_err(|_| "Invalid server configuration; check DARKHORSE_* settings.")?;
+    let authentication = authentication::router(&settings).await?;
     let listener = tokio::net::TcpListener::bind(settings.listen)
         .await
         .map_err(|_| "Cannot bind HTTP listener; check host and port availability.")?;
-    axum::serve(listener, http::router(settings.static_dir))
-        .with_graceful_shutdown(shutdown())
-        .await
-        .map_err(|_| "HTTP server stopped unexpectedly.")
+    axum::serve(
+        listener,
+        http::with_authentication(settings.static_dir, authentication),
+    )
+    .with_graceful_shutdown(shutdown())
+    .await
+    .map_err(|_| "HTTP server stopped unexpectedly.")
 }
 
 async fn shutdown() {

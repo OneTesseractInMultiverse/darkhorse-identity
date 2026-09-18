@@ -8,6 +8,7 @@ autotests = false
 
 [dependencies]
 darkhorse-adapters.workspace = true
+darkhorse-application.workspace = true
 axum.workspace = true
 envbind.workspace = true
 tokio.workspace = true

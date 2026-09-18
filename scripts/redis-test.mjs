@@ -129,7 +129,7 @@ async function database(network) {
     url: `postgres://postgres:${secret}@127.0.0.1:${port}/postgres`,
   };
 }
-async function hostChecks(env, db) {
+async function hostChecks(env, db, directory) {
   await command(
     "cargo",
     [
@@ -188,6 +188,10 @@ async function hostChecks(env, db) {
       acceptFailure,
     });
   await verifyLimiter(invoke, db);
+  if (process.env.DARKHORSE_TEST_BROWSER === "true") {
+    const { verifyBrowser } = await import("./browser-test.mjs");
+    await verifyBrowser(env, db, directory, command, docker);
+  }
   return invoke("redis-status");
 }
 async function verifyLimiter(invoke, db) {
@@ -356,7 +360,7 @@ async function main(args) {
     };
     const result = args.length
       ? await imageChecks(args[1], env, cache, limiter, db)
-      : await hostChecks(env, db);
+      : await hostChecks(env, db, directory);
     const status = JSON.parse(result.stdout);
     assert.equal(status.cache.connection, "reachable");
     assert.equal(status.limiter.connection, "reachable");
@@ -366,7 +370,7 @@ async function main(args) {
     console.log(
       args.length
         ? "Packaged Redis diagnostics passed; login integration remains separate."
-        : "Redis role isolation, infrastructure faults and redacted operator diagnostics passed; login integration remains separate.",
+        : "Redis infrastructure, shared enforcement and password login integration passed.",
     );
   } finally {
     for (const proxy of proxies.reverse()) await proxy.close();

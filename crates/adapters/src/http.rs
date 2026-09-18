@@ -23,11 +23,24 @@ struct ErrorBody {
 /// Only explicitly registered UI paths serve HTML. Reserved protocol paths
 /// must retain their own errors as the provider grows.
 pub fn router(static_dir: PathBuf) -> Router {
+    with_authentication(static_dir, Router::new())
+}
+
+pub fn with_authentication(static_dir: PathBuf, authentication: Router) -> Router {
     Router::new()
+        .merge(authentication)
         .route("/health/live", get(liveness))
         .route_service("/", ServeFile::new(static_dir.join("index.html")))
         .nest_service("/_app", ServeDir::new(static_dir.join("_app")))
         .fallback(not_found)
+        .layer(SetResponseHeaderLayer::overriding(
+            header::X_FRAME_OPTIONS,
+            HeaderValue::from_static("DENY"),
+        ))
+        .layer(SetResponseHeaderLayer::overriding(
+            header::CONTENT_SECURITY_POLICY,
+            HeaderValue::from_static("frame-ancestors 'none'; base-uri 'none'; form-action 'self'"),
+        ))
         .layer(SetResponseHeaderLayer::overriding(
             header::X_CONTENT_TYPE_OPTIONS,
             HeaderValue::from_static("nosniff"),

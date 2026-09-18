@@ -25,6 +25,8 @@ tokio.workspace = true
 rpassword.workspace = true
 redis.workspace = true
 percent-encoding.workspace = true
+sha2.workspace = true
+hmac.workspace = true
 
 [dev-dependencies]
 tower.workspace = true

@@ -1,15 +1,25 @@
 import { fireEvent, render, screen } from '@testing-library/svelte';
 import { expect, it, vi } from 'vitest';
 import Page from '../../../src/routes/+page.svelte';
-import { checkHealth } from '../../../src/lib/health';
-
-vi.mock('../../../src/lib/health', () => ({ checkHealth: vi.fn().mockResolvedValue('ready') }));
-
-it('connects the preview page to the health boundary', async () => {
+import { authenticate, currentSession, endSession } from '../../../src/lib/authentication';
+vi.mock('../../../src/lib/authentication', () => ({
+	currentSession: vi.fn().mockResolvedValue({ kind: 'signed-out' }),
+	authenticate: vi.fn().mockResolvedValue({ kind: 'signed-in', name: 'Ada' }),
+	endSession: vi.fn().mockResolvedValue(true)
+}));
+it('connects the static portal to the Rust session boundary', async () => {
 	render(Page);
-	expect(screen.getByRole('heading', { level: 1 })).toHaveTextContent('Access begins');
+	expect(await screen.findByRole('button', { name: 'Sign in' })).toBeInTheDocument();
 	expect(screen.getByRole('link', { name: 'Darkhorse home' })).toHaveAttribute('href', '/');
-	await fireEvent.click(screen.getByRole('button', { name: 'Check connection' }));
-	expect(await screen.findByText('Service reachable')).toBeInTheDocument();
-	expect(checkHealth).toHaveBeenCalledTimes(1);
+	expect(currentSession).toHaveBeenCalledTimes(1);
+	await fireEvent.input(screen.getByLabelText('Email address'), {
+		target: { value: 'a@example.com' }
+	});
+	await fireEvent.input(screen.getByLabelText('Password'), { target: { value: 'test-only' } });
+	await fireEvent.submit(screen.getByRole('form', { name: 'Sign in' }));
+	expect(await screen.findByRole('heading', { name: 'Welcome, Ada.' })).toBeInTheDocument();
+	expect(authenticate).toHaveBeenCalledWith(fetch, 'a@example.com', 'test-only');
+	await fireEvent.click(screen.getByRole('button', { name: 'Sign out' }));
+	expect(await screen.findByRole('button', { name: 'Sign in' })).toBeInTheDocument();
+	expect(endSession).toHaveBeenCalledWith(fetch);
 });
