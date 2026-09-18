@@ -54,6 +54,7 @@ pub(super) async fn code(db: &Database, handle: [u8; 32]) -> Code {
 }
 pub(super) fn input(code: &Code) -> Redemption {
     Redemption {
+        resource: None,
         client: super::oidc::request().client,
         secret: [9; 32],
         code: material::digest(&code.value, Purpose::Code).unwrap(),

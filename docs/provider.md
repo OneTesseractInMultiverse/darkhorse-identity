@@ -2,16 +2,19 @@
 
 The initial provider supports confidential clients using `client_secret_basic`,
 mandatory PKCE S256, browser consent, one-time authorization codes, opaque access
-tokens and RS256 ID tokens. Supported scopes are `openid`, `profile` and `email`;
+tokens and RS256 ID tokens. Identity scopes are `openid`, `profile` and `email`;
 UserInfo returns only the approved claims. Authenticated introspection and revocation are available to
 the issuing client; see the [identity check contract](token-checks.md). Discovery
 advertises these implemented capabilities when an active signing key is available; otherwise it returns HTTP 503.
 
-Resource-permission issuance, refresh tokens, extended profiles and
-back-channel logout remain unfinished. Registration allowances never grant user
-capabilities. [Issue #8](https://github.com/OneTesseractInMultiverse/darkhorse-identity/issues/8)
-retains resource issuance through the existing authorization engine and coverage
-qualification. No OIDC conformance or production-readiness claim is made.
+A separate [resource issuance profile](resource-issuance.md) connects persisted role
+assignments to the existing authorization engine and freezes permission ceilings at
+consent, code issuance and redemption. Resource-server introspection, catalog
+management, refresh tokens, extended profiles and back-channel logout remain
+unfinished. Registration allowances never grant user capabilities.
+[Issue #8](https://github.com/OneTesseractInMultiverse/darkhorse-identity/issues/8)
+retains failure, coverage and operational qualification. No OIDC conformance or
+production-readiness claim is made.
 
 ## Configuration and development
 
@@ -107,17 +110,19 @@ state verbatim through URL encoding on success and safe error redirects, togethe
 with the canonical `iss` response parameter. Clients must check state, issuer and
 nonce and bind their callback to the flow they started.
 
-Requests require `openid` and may add `profile` and `email`, without a resource
-audience. Other scopes and resource indicators fail with `invalid_scope`. The
-registration catalog can retain future resource allowances, but these are not user
-grants. Before enabling resource issuance, persisted live role/capability
-assignments must feed `plan_oauth` and its immutable issuance ceiling from the
-[authorization contract](authorization.md). UserInfo credentials have no resource
-capabilities and cannot authorize application APIs. Their scope/claim ceilings
-and consent-reduction rules are described in the [identity check contract](token-checks.md).
+Identity requests require `openid` and may add `profile` and `email`, without a
+resource audience. Resource requests require one registered resource and `openid`
+plus at least one explicitly allowed resource scope. These profiles cannot be
+mixed. See [resource issuance](resource-issuance.md) for fresh consent, live role
+assignments and immutable capability ceilings. UserInfo credentials have no
+resource capabilities and cannot authorize application APIs. Their scope/claim
+ceilings and consent-reduction rules are described in the
+[identity check contract](token-checks.md).
 
 Requests accept `prompt=none`, `login`, `consent`, or `login consent`; absent prompt
-uses the current session and remembered consent. `none` cannot be combined with
+uses the current session and, for identity requests, remembered consent. Resource
+requests always require a fresh approval; `prompt=none` returns `consent_required`
+when a session exists. `none` cannot be combined with
 other values and never displays interaction: it returns `login_required`,
 `consent_required`, or a code when the current session and consent suffice.
 `max_age` accepts integer seconds from zero through 28800. Zero and `prompt=login` require a new session created after request start,
@@ -125,7 +130,7 @@ different from the session presented at the start. A bound transaction cannot be
 transferred to a different session, even for the same user.
 
 Consent is required on first use for every client, including administrator-created
-clients. A current matching consent can cover an equal or narrower request;
+clients. For identity requests, a current matching consent can cover an equal or narrower request;
 expanded access, a different resource, or a changed client/application revision
 requires consent again. Explicit `prompt=consent` requires a new approval for this
 transaction. Approval replaces remembered scope consent for that principal/client/
@@ -146,7 +151,8 @@ Approval atomically creates a 60-second code, consumes the pending request and
 writes an audit event before redirecting. `POST /token` accepts a bounded
 `application/x-www-form-urlencoded` body with `grant_type=authorization_code`,
 `code`, the exact original `redirect_uri`, and a 43–128 character unreserved-ASCII
-`code_verifier`. Client authentication is a single HTTP Basic header containing
+`code_verifier`. An optional `resource` must exactly match the resource bound to
+the code; omission uses that stored resource. Client authentication is a single HTTP Basic header containing
 form-encoded client ID and secret. Duplicate fields/authentication headers, body
 client authentication, other grants, query credentials, Origin and Cookie headers
 are rejected. This is a confidential backend endpoint with no browser CORS support.
@@ -154,8 +160,10 @@ are rejected. This is a confidential backend endpoint with no browser CORS suppo
 Codes and access tokens each contain 256 random bits from the OS, encoded as
 lowercase hex with distinct `dc_` and `da_` prefixes. PostgreSQL stores only
 purpose-bound SHA-256 verifiers. An access token has a five-minute maximum lifetime,
-audience `<issuer>/userinfo`, immutable approved identity scopes and a matching
-claim ceiling, with an empty resource capability ceiling. No refresh token is returned.
+and exactly one audience. Identity credentials target `<issuer>/userinfo`, with
+immutable approved identity scopes, a matching claim ceiling and no resource
+capabilities. Resource credentials target their registered audience, with an
+immutable capability ceiling and no UserInfo claims. No refresh token is returned.
 
 ID tokens use RS256, `typ=JWT` and the active public `kid`. Claims are canonical
 `iss`, client UUID `aud`, principal UUID `sub`, `iat`, `exp`, original session
@@ -228,7 +236,9 @@ contracts with source-defined inputs, including a public test-only RSA key. No
 files, settings or services are needed for unit tests. `make test-postgres` covers
 atomic issuance/redemption, one-winner races, replay after expiry, wrong proofs,
 current-state revocation, immutable ceilings and signing/audit rollback alongside
-the earlier persistence contracts.
+the earlier persistence contracts. It also exercises the resource HTTP flow, frozen
+consent, permission-change races and bounded policy projections; see
+[resource verification](resource-issuance.md#verification-and-remaining-work).
 
 `make test-browser` runs the static portal through verified HTTPS with real Rust,
 PostgreSQL and Redis. Its test-only confidential reference client lives in

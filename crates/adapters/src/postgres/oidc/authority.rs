@@ -57,6 +57,9 @@ pub(in crate::postgres) async fn consent(
     policy: &ClientPolicy,
     session: Option<Session>,
 ) -> Result<bool, Error> {
+    if request.resource.is_some() {
+        return Ok(false);
+    }
     let Some(session) = session else {
         return Ok(false);
     };

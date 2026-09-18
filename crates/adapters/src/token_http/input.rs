@@ -66,6 +66,7 @@ pub(super) fn request(headers: &HeaderMap, body: &[u8]) -> Result<Redemption, Er
             .ok_or(Error::InvalidRequest)
     };
     Ok(Redemption {
+        resource: values.get("resource").cloned(),
         client,
         secret,
         code: material::digest(get("code")?, Purpose::Code)?,

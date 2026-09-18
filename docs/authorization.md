@@ -65,6 +65,13 @@ The calling use case must authenticate the credential and load coherent, current
 
 Catalog validation happens when constructing a policy snapshot. Evaluation reuses immutable catalogs and indexed definitions; it visits supplied assignments, scopes, and capability sets without I/O. Future adapters may cache versioned computations only after fresh authoritative revision/status checks. They must bound input sizes and policy sizes, avoid rebuilding a whole organization catalog for every request, and measure the full request path before claiming throughput or latency targets.
 
+The PostgreSQL [resource issuance adapter](resource-issuance.md) now loads a bounded
+projection for the requested resource, principal assignments and registered scopes.
+It calls `plan_oauth` under the primary security-state fence at consent, code
+issuance and redemption. The current persistence contract restricts clients to
+resources in their owning application. Resource-server checks using
+`effective_capabilities` remain separate work.
+
 Object-level rules, such as which particular directory record a caller may edit, remain the consuming use case's responsibility. General capabilities do not bypass those rules.
 
 ## Verification

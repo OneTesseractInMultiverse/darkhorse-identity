@@ -4,14 +4,17 @@ The implemented profile covers opaque access credentials whose audience is the
 canonical issuer followed by `/userinfo`. A confidential client can introspect or
 revoke only the credentials issued to that client. These credentials have no
 resource capabilities and cannot authorize an application's protected API.
-Resource-server registration and live resource-policy evaluation remain tracked in
-[issue #8](https://github.com/OneTesseractInMultiverse/darkhorse-identity/issues/8)
-and [issue #9](https://github.com/OneTesseractInMultiverse/darkhorse-identity/issues/9).
+The separate [resource issuance profile](resource-issuance.md) creates credentials
+with capability ceilings. UserInfo rejects them and this identity introspection
+profile returns inactive for them. Resource-server registration and current
+resource-policy checks remain in
+[issue #9](https://github.com/OneTesseractInMultiverse/darkhorse-identity/issues/9).
+The issuing client can revoke its resource credentials through the same endpoint.
 
 ## Approved identity claims
 
-Every authorization request includes `openid`. It may additionally request
-`profile` and `email`; other identity scopes and resource audiences are rejected.
+Every identity authorization request includes `openid`. It may additionally request
+`profile` and `email`; resource scopes use the separate resource profile.
 Consent displays the requested scopes. Both the code and access credential retain
 immutable approved scopes, and the access credential records its claim ceiling.
 Adding scope support never expands an already-issued credential: migration 0009
@@ -66,7 +69,7 @@ Revocation authenticates the caller and verifies token ownership. Revocation and
 critical audit event commit atomically. Audit failure rolls back and returns 503.
 A successful response is empty HTTP 200; unknown, foreign, wrong-purpose and
 already-revoked credentials get the same response without changing another
-client's state. Concurrent revocations write one audit event. Revocation works even
+client's state. Concurrent revocations write one audit event. Revocation also covers owned resource credentials and works even
 when the owned token has expired or its consent is no longer valid. The response
 contract follows [RFC 7009](https://www.rfc-editor.org/rfc/rfc7009.html#section-2).
 Revoking access does not retract an accepted ID token or terminate the identity

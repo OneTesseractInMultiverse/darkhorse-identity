@@ -38,7 +38,18 @@ impl CodeStore for PostgresStore {
         .map_err(convert)?;
         ready(state)?;
         let session = current.ok_or(TokenError::InvalidGrant)?;
-        insert(&mut tx, handle, &pending, session, code.digest, now).await?;
+        let grant =
+            super::super::resource_authority::approved(&mut tx, handle, &request, session).await?;
+        insert(
+            &mut tx,
+            handle,
+            &pending,
+            session,
+            code.digest,
+            now,
+            grant.as_ref(),
+        )
+        .await?;
         writes::finish(&mut tx, handle).await.map_err(convert)?;
         super::super::tokens::audit(
             &mut tx,
@@ -71,9 +82,10 @@ async fn insert(
     s: Session,
     digest: [u8; 32],
     now: u64,
+    grant: Option<&darkhorse_domain::authorization::IssuancePlan>,
 ) -> Result<(), TokenError> {
-    sqlx::query("INSERT INTO authorization_codes(digest,request_digest,client_id,client_revision,application_revision,session_digest,principal_id,authenticated_ms,redirect_uri,challenge,nonce,created_ms,expires_ms,scopes) VALUES($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14)")
-  .bind(digest.as_slice()).bind(handle.as_slice()).bind(Uuid::from_u128(p.request.client.as_u128())).bind(p.client_revision as i64).bind(p.application_revision as i64).bind(s.digest.as_slice()).bind(Uuid::from_u128(s.principal.as_u128())).bind(s.authenticated_ms as i64).bind(&p.request.redirect).bind(p.request.challenge.as_slice()).bind(&p.request.nonce).bind(now as i64).bind(tokens::deadline(now,tokens::CODE_MS)? as i64).bind(&p.request.scopes).execute(&mut **tx).await.map_err(unavailable)?;
+    sqlx::query("INSERT INTO authorization_codes(digest,request_digest,client_id,client_revision,application_revision,session_digest,principal_id,authenticated_ms,redirect_uri,challenge,nonce,created_ms,expires_ms,scopes,resource_id,principal_epoch,capability_ceiling) VALUES($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16,$17)")
+  .bind(digest.as_slice()).bind(handle.as_slice()).bind(Uuid::from_u128(p.request.client.as_u128())).bind(p.client_revision as i64).bind(p.application_revision as i64).bind(s.digest.as_slice()).bind(Uuid::from_u128(s.principal.as_u128())).bind(s.authenticated_ms as i64).bind(&p.request.redirect).bind(p.request.challenge.as_slice()).bind(&p.request.nonce).bind(now as i64).bind(tokens::deadline(now,tokens::CODE_MS)? as i64).bind(&p.request.scopes).bind(grant.map(|g|Uuid::from_u128(g.target.resource.as_u128()))).bind(grant.map(|g|g.principal_epoch as i64)).bind(grant.map(|g|super::super::resource_authority::encoded(&g.ceiling)).unwrap_or_default()).execute(&mut **tx).await.map_err(unavailable)?;
     Ok(())
 }
 fn convert(error: Error) -> TokenError {

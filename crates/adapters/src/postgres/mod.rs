@@ -95,3 +95,5 @@ impl DirectoryStore for PostgresStore {
 }
 mod oidc;
 mod tokens;
+
+mod resource_authority;

@@ -467,3 +467,5 @@ mod oidc;
 mod tokens;
 
 mod identity_checks;
+
+mod resource_tokens;

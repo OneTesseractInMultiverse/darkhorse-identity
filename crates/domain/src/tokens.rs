@@ -1,4 +1,4 @@
-//! One-time code and subject-only protocol credential policy.
+//! One-time code and purpose-bound protocol credential policy.
 use crate::{
     identity::{ClientId, PrincipalId},
     oidc::{ClientPolicy, Session},
@@ -10,6 +10,7 @@ pub enum Error {
     InvalidRequest,
     InvalidClient,
     InvalidGrant,
+    InvalidTarget,
     InvalidScope,
     InvalidToken,
     UnsupportedGrant,
@@ -52,8 +53,10 @@ pub fn deadline(now: u64, lifetime: u64) -> Result<u64, Error> {
         .ok_or(Error::Unavailable)
 }
 pub fn profile(scopes: &[String], resource: Option<&str>) -> Result<(), Error> {
-    if resource.is_some()
-        || !scopes.iter().any(|s| s == "openid")
+    if resource.is_some() {
+        return resource_profile(scopes);
+    }
+    if !scopes.iter().any(|s| s == "openid")
         || scopes.iter().any(|s| !identity_scope(s))
         || scopes
             .iter()
@@ -62,6 +65,38 @@ pub fn profile(scopes: &[String], resource: Option<&str>) -> Result<(), Error> {
             != scopes.len()
     {
         return Err(Error::InvalidScope);
+    }
+    Ok(())
+}
+fn resource_profile(scopes: &[String]) -> Result<(), Error> {
+    if !(2..=32).contains(&scopes.len())
+        || !scopes.iter().any(|s| s == "openid")
+        || scopes.iter().any(|s| {
+            !crate::oidc::scope(s)
+                || matches!(
+                    s.as_str(),
+                    "profile" | "email" | "address" | "phone" | "offline_access"
+                )
+        })
+        || scopes
+            .iter()
+            .collect::<std::collections::BTreeSet<_>>()
+            .len()
+            != scopes.len()
+    {
+        return Err(Error::InvalidScope);
+    }
+    Ok(())
+}
+pub fn resource_scope_text(scopes: &[String]) -> Result<String, Error> {
+    resource_profile(scopes)?;
+    let mut sorted = scopes.to_vec();
+    sorted.sort();
+    Ok(sorted.join(" "))
+}
+pub fn resource_binding(granted: Option<&str>, requested: Option<&str>) -> Result<(), Error> {
+    if requested.is_some() && requested != granted {
+        return Err(Error::InvalidTarget);
     }
     Ok(())
 }

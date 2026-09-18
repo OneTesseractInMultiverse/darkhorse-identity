@@ -14,6 +14,7 @@ pub struct Code {
     pub value: String,
 }
 pub struct Redemption {
+    pub resource: Option<String>,
     pub client: ClientId,
     pub secret: [u8; 32],
     pub code: [u8; 32],

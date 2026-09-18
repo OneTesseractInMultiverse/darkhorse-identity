@@ -56,7 +56,7 @@ fn optional_text(value: Option<&str>, limit: usize) -> bool {
 fn text(s: &str, limit: usize) -> bool {
     !s.is_empty() && s.len() <= limit && s.bytes().all(|c| (0x20..=0x7e).contains(&c))
 }
-fn scope(s: &str) -> bool {
+pub(crate) fn scope(s: &str) -> bool {
     !s.is_empty()
         && s.len() <= 100
         && s.bytes()

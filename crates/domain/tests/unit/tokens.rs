@@ -191,3 +191,67 @@ fn malformed_scope_sets_cannot_be_formatted_or_disclosed() {
         Err(Error::InvalidScope)
     );
 }
+
+#[test]
+fn resource_profiles_are_explicit_bounded_and_separate_from_identity_disclosure() {
+    let scopes = vec!["read".into(), "openid".into()];
+    assert_eq!(
+        profile(&scopes, Some("urn:darkhorse:resource:example")),
+        Ok(())
+    );
+    assert_eq!(profile(&scopes, None), Err(Error::InvalidScope));
+    for scopes in [
+        vec!["openid".into()],
+        vec!["read".into()],
+        vec!["openid".into(), "profile".into(), "read".into()],
+        vec!["openid".into(), "email".into(), "read".into()],
+        vec!["openid".into(), "read".into(), "read".into()],
+        vec!["openid".into(), "read write".into()],
+        vec!["openid".into(), "offline_access".into()],
+    ] {
+        assert_eq!(
+            profile(&scopes, Some("urn:resource")),
+            Err(Error::InvalidScope)
+        );
+    }
+    assert_eq!(claim_ceiling(&scopes), Err(Error::InvalidScope));
+}
+
+#[test]
+fn resource_scope_bounds_and_token_target_binding_are_explicit() {
+    let mut scopes: Vec<String> = (0..31).map(|i| format!("scope{i}")).collect();
+    scopes.push("openid".into());
+    assert!(profile(&scopes, Some("urn:resource")).is_ok());
+    scopes.push("extra".into());
+    assert_eq!(
+        profile(&scopes, Some("urn:resource")),
+        Err(Error::InvalidScope)
+    );
+    let scopes = vec!["openid".into(), "x".repeat(100)];
+    assert!(resource_scope_text(&scopes).is_ok());
+    assert_eq!(
+        resource_scope_text(&["openid".into(), "x".repeat(101)]),
+        Err(Error::InvalidScope)
+    );
+    assert_eq!(
+        resource_scope_text(&["read".into(), "openid".into()]),
+        Ok("openid read".into())
+    );
+    for (granted, requested) in [
+        (None, None),
+        (Some("urn:a"), None),
+        (Some("urn:a"), Some("urn:a")),
+    ] {
+        assert_eq!(resource_binding(granted, requested), Ok(()));
+    }
+    for (granted, requested) in [
+        (None, Some("urn:a")),
+        (Some("urn:a"), Some("urn:b")),
+        (Some("urn:a"), Some("")),
+    ] {
+        assert_eq!(
+            resource_binding(granted, requested),
+            Err(Error::InvalidTarget)
+        );
+    }
+}

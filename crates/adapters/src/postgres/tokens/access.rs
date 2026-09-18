@@ -12,7 +12,7 @@ pub(super) async fn lookup(
     issuer: &str,
     owner: Option<ClientId>,
 ) -> Result<[u8; 32], Error> {
-    let value:Vec<u8> = sqlx::query_scalar("SELECT t.code_digest FROM access_tokens t JOIN authorization_codes c ON c.digest=t.code_digest WHERE t.digest=$1 AND t.audience=$2 AND ($3::uuid IS NULL OR c.client_id=$3)")
+    let value:Vec<u8> = sqlx::query_scalar("SELECT t.code_digest FROM access_tokens t JOIN authorization_codes c ON c.digest=t.code_digest WHERE t.digest=$1 AND t.audience=$2 AND t.resource_id IS NULL AND c.resource_id IS NULL AND ($3::uuid IS NULL OR c.client_id=$3)")
         .bind(digest.as_slice()).bind(format!("{issuer}/userinfo")).bind(owner.map(|id| Uuid::from_u128(id.as_u128())))
         .fetch_optional(&mut **tx).await.map_err(storage)?.ok_or(Error::InvalidToken)?;
     value.try_into().map_err(storage)

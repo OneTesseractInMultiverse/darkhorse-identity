@@ -187,6 +187,7 @@ fn failure(error: Error) -> Response {
         Error::InvalidRequest => (StatusCode::BAD_REQUEST, "invalid_request"),
         Error::InvalidClient => (StatusCode::UNAUTHORIZED, "invalid_client"),
         Error::InvalidGrant => (StatusCode::BAD_REQUEST, "invalid_grant"),
+        Error::InvalidTarget => (StatusCode::BAD_REQUEST, "invalid_target"),
         Error::InvalidScope => (StatusCode::BAD_REQUEST, "invalid_scope"),
         Error::InvalidToken => (StatusCode::UNAUTHORIZED, "invalid_token"),
         Error::UnsupportedGrant => (StatusCode::BAD_REQUEST, "unsupported_grant_type"),

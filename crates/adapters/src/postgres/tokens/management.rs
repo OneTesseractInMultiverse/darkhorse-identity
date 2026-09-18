@@ -39,7 +39,7 @@ async fn revoke(tx: &mut Tx<'_>, input: Management, issuer: &str) -> Result<(), 
     let Some(token) = input.token else {
         return Ok(());
     };
-    let code_digest = match access::lookup(tx, token, issuer, Some(input.client)).await {
+    let code_digest = match owned(tx, token, issuer, input.client).await {
         Ok(code) => code,
         Err(Error::InvalidToken) => return Ok(()),
         Err(error) => return Err(error),
@@ -57,4 +57,16 @@ async fn revoke(tx: &mut Tx<'_>, input: Management, issuer: &str) -> Result<(), 
         audit(tx, code.principal, code.client, "access_revoked", now).await?;
     }
     Ok(())
+}
+
+async fn owned(
+    tx: &mut Tx<'_>,
+    token: [u8; 32],
+    issuer: &str,
+    client: ClientId,
+) -> Result<[u8; 32], Error> {
+    let digest:Vec<u8>=sqlx::query_scalar("SELECT t.code_digest FROM access_tokens t JOIN authorization_codes c ON c.digest=t.code_digest WHERE t.digest=$1 AND c.client_id=$2 AND EXISTS(SELECT 1 FROM provider_state WHERE issuer=$3)")
+        .bind(token.as_slice()).bind(Uuid::from_u128(client.as_u128())).bind(issuer)
+        .fetch_optional(&mut **tx).await.map_err(storage)?.ok_or(Error::InvalidToken)?;
+    digest.try_into().map_err(storage)
 }

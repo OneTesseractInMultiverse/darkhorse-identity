@@ -49,10 +49,24 @@ fn decode(row: &PgRow) -> Result<CodeRecord, Error> {
         expires: number(row, "expires_ms")?,
         consumed: row.try_get("consumed").map_err(storage)?,
         scopes: row.try_get("scopes").map_err(storage)?,
+        resource: row
+            .try_get::<Option<Uuid>, _>("resource_id")
+            .map_err(storage)?
+            .map(|id| ResourceId::from_u128(id.as_u128()).map_err(storage))
+            .transpose()?,
+        epoch: row
+            .try_get::<Option<i64>, _>("principal_epoch")
+            .map_err(storage)?
+            .map(|n| u64::try_from(n).map_err(storage))
+            .transpose()?,
+        ceiling: super::super::resource_authority::capabilities(
+            &row.try_get::<Vec<Uuid>, _>("capability_ceiling")
+                .map_err(storage)?,
+        )?,
     })
 }
 // Identity checks need only the issuing registration and exact callback binding.
-// Resource catalogs are loaded separately when resource issuance is implemented.
+// Resource catalogs are loaded separately for resource issuance.
 async fn identity_policy(
     tx: &mut Tx<'_>,
     code: &CodeRecord,
@@ -84,9 +98,9 @@ pub(super) async fn current(tx: &mut Tx<'_>, code: &CodeRecord) -> Result<(), Er
         session,
         &code.redirect,
     )?;
-    let approved: Option<Vec<String>> = sqlx::query_scalar("SELECT scopes FROM oauth_consents WHERE principal_id=$1 AND client_id=$2 AND resource='' AND client_revision=$3 AND application_revision=$4 FOR SHARE")
+    let approved: Option<Vec<String>> = sqlx::query_scalar("SELECT scopes FROM oauth_consents WHERE principal_id=$1 AND client_id=$2 AND resource=$5 AND client_revision=$3 AND application_revision=$4 FOR SHARE")
         .bind(Uuid::from_u128(code.principal.as_u128())).bind(Uuid::from_u128(code.client.as_u128()))
-        .bind(code.client_revision as i64).bind(code.application_revision as i64)
+        .bind(code.client_revision as i64).bind(code.application_revision as i64).bind(code.audience().unwrap_or_default())
         .fetch_optional(&mut **tx).await.map_err(storage)?;
     tokens::consent(&code.scopes, approved.as_deref())
 }
@@ -124,4 +138,51 @@ fn convert(error: darkhorse_domain::oidc::Error) -> Error {
         darkhorse_domain::oidc::Error::Unavailable => Error::Unavailable,
         _ => Error::InvalidGrant,
     }
+}
+
+pub(super) async fn grant(
+    tx: &mut Tx<'_>,
+    code: &CodeRecord,
+    issuer: &str,
+) -> Result<IssuedGrant, Error> {
+    match code.audience() {
+        None => identity_grant(code, issuer),
+        Some(audience) => {
+            let plan = super::super::resource_authority::plan(
+                tx,
+                code.principal,
+                code.client,
+                &audience,
+                &code.scopes,
+                Some(&code.ceiling),
+            )
+            .await?;
+            resource_grant(code, &plan, audience)
+        }
+    }
+}
+fn identity_grant(code: &CodeRecord, issuer: &str) -> Result<IssuedGrant, Error> {
+    Ok(IssuedGrant {
+        audience: format!("{issuer}/userinfo"),
+        scope: tokens::scope_text(&code.scopes)?,
+        claims: tokens::claim_ceiling(&code.scopes)?,
+        capabilities: Vec::new(),
+        resource: None,
+    })
+}
+fn resource_grant(
+    code: &CodeRecord,
+    plan: &darkhorse_domain::authorization::IssuancePlan,
+    audience: String,
+) -> Result<IssuedGrant, Error> {
+    if code.epoch != Some(plan.principal_epoch) || code.resource != Some(plan.target.resource) {
+        return Err(Error::InvalidGrant);
+    }
+    Ok(IssuedGrant {
+        audience,
+        scope: tokens::resource_scope_text(&code.scopes)?,
+        claims: Vec::new(),
+        capabilities: super::super::resource_authority::encoded(&plan.ceiling),
+        resource: Some(Uuid::from_u128(plan.target.resource.as_u128())),
+    })
 }

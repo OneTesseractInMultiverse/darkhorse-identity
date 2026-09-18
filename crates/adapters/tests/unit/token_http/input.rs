@@ -56,6 +56,17 @@ fn token_input_keeps_authentication_and_credential_purposes_separate() {
     );
     let parsed = request(&headers, body.as_bytes()).unwrap();
     assert_eq!(parsed.redirect, "https://app.example/cb");
+    assert_eq!(parsed.resource, None);
+    assert_eq!(
+        request(
+            &headers,
+            format!("{body}&resource=urn%3Adarkhorse%3Aresource%3Atarget").as_bytes()
+        )
+        .unwrap()
+        .resource
+        .as_deref(),
+        Some("urn:darkhorse:resource:target")
+    );
     assert_eq!(
         parsed.challenge,
         material::challenge(&"a".repeat(43)).unwrap()
@@ -67,6 +78,7 @@ fn token_input_keeps_authentication_and_credential_purposes_separate() {
         "&client_assertion=x",
         "&client_assertion_type=x",
         "&bad=%GG",
+        "&resource=urn%3Aone&resource=urn%3Atwo",
     ] {
         assert!(matches!(
             request(&headers, format!("{body}{added}").as_bytes()),
