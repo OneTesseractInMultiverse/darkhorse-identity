@@ -1,7 +1,8 @@
 use darkhorse_adapters::{
     authentication_configuration, authentication_http, database_configuration,
     login_admission::SharedLoginAdmission, password::PasswordPreparation, postgres::PostgresStore,
-    redis_configuration, redis_limiter::RedisLimiter, session_secret::OsSessionEntropy,
+    redis_configuration, redis_limiter::RedisLimiter, registration::OsRegistrationEntropy,
+    registration_http, session_secret::OsSessionEntropy,
 };
 use darkhorse_application::authentication::Service;
 
@@ -29,13 +30,18 @@ pub async fn router(
     let limiter =
         RedisLimiter::new(store.clone(), redis).map_err(|_| "Cannot initialize login limiter.")?;
     let service = Service {
-        store,
+        store: store.clone(),
         admission: SharedLoginAdmission::new(limiter, authentication.key),
         passwords: PasswordPreparation::default(),
         entropy: OsSessionEntropy,
     };
-    Ok(authentication_http::router(
-        service,
-        settings.public_origin.clone(),
-    ))
+    let registration = darkhorse_application::registration::Service {
+        store,
+        entropy: OsRegistrationEntropy,
+    };
+    Ok(
+        authentication_http::router(service, settings.public_origin.clone()).merge(
+            registration_http::router(registration, settings.public_origin.clone()),
+        ),
+    )
 }

@@ -18,6 +18,10 @@ WEB := $(PNPM) --filter @darkhorse/console
 .PHONY: redis-acl-update limiter-fence limiter-activate limiter-status
 .PHONY: test-limiting test-mutation-limiting test-mutation-recovery coverage-core coverage-integration
 .PHONY: login-setup dev-login browser-install test-browser
+.PHONY: test-registration
+
+test-registration: ## Test: isolated application/client registration policies and transport
+	cargo test --workspace --lib --locked --offline registration
 
 browser-install: ## Test: install the pinned Chromium browser for integration tests
 	$(PNPM) exec playwright install chromium

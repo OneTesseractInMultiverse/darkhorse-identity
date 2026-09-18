@@ -14,7 +14,7 @@ OIDC authorization, token issuance and back-channel logout are separate features
 | `GET /api/auth/session` | Current display name after an authoritative session check.                 |
 | `POST /api/auth/logout` | Revoke the current handle and clear its cookie; repeat logout is harmless. |
 
-POST requires the exact configured HTTPS `Origin`, `X-Darkhorse-CSRF: 1`, and a
+Unsafe browser methods require the exact configured HTTPS `Origin`, `X-Darkhorse-CSRF: 1`, and a
 canonical `Host`. Login accepts only JSON. No CORS permission is granted. A supplied
 Fetch Metadata site must be `same-origin`; missing/duplicate security headers,
 query strings and ambiguous session cookies are rejected. The custom header plus

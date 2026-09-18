@@ -73,6 +73,20 @@ fn body() -> Body {
     Body::from(r#"{"email":"a@example.com","password":"test-only password"}"#)
 }
 
+#[test]
+fn every_unsafe_method_requires_origin_and_csrf() {
+    let boundary = Boundary {
+        origin: "https://localhost:8443".into(),
+        host: "localhost:8443".into(),
+        slots: Semaphore::new(1),
+    };
+    let mut headers = HeaderMap::new();
+    headers.insert("host", HeaderValue::from_static("localhost:8443"));
+    for method in [Method::POST, Method::PUT, Method::PATCH, Method::DELETE] {
+        assert!(!allowed(&boundary, &headers, &method, None));
+    }
+}
+
 #[tokio::test]
 async fn disabled_authentication_never_claims_login_or_logout_success() {
     for (path, method) in [

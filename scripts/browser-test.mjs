@@ -9,6 +9,7 @@ import { chromium } from "@playwright/test";
 import { tlsProxy } from "./lib/redis-test-proxy.mjs";
 import { runtimeEnvironment } from "./lib/redis-settings.mjs";
 import { startProcess } from "./lib/process.mjs";
+import { verifyRegistration } from "./lib/registration-browser.mjs";
 
 async function freePort() {
   const server = createServer();
@@ -210,6 +211,7 @@ async function exerciseBrowser(
   });
   const initial = await verifySignIn(page, context, origin, password);
   await verifyRotation(page, context, origin, ca, password, initial);
+  await verifyRegistration(page, principal);
   await verifyLogoutAndRevocation(page, context, password, principal, invoke);
   assert.deepEqual(errors, []);
   assert.deepEqual(await page.evaluate(() => window.securityViolations), []);

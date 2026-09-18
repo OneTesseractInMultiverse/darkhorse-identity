@@ -18,6 +18,7 @@ mod authentication;
 mod bootstrap;
 mod directory;
 mod limiting;
+mod registration;
 
 #[derive(Clone)]
 pub struct PostgresStore {

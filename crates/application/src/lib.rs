@@ -5,6 +5,7 @@ use darkhorse_domain::AccountStatus;
 pub mod authentication;
 pub mod bootstrap;
 pub mod directory;
+pub mod registration;
 
 /// Bounded directory criteria. A future use case adds mandatory actor restrictions.
 /// This value neither authorizes access nor describes database identifiers.

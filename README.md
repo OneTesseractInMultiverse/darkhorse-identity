@@ -2,7 +2,7 @@
 
 An identity server for one organization and its applications, built with Rust, a static SvelteKit/TypeScript console, PostgreSQL, and Redis.
 
-**Early development.** The repository contains a pure authorization policy engine, PostgreSQL persistence, operator-only administrator bootstrap, shared Redis attempt limiting, and a password login portal with Rust-owned sessions. Protocol endpoints and production deployment qualification remain unfinished. The authorization policy engine is not yet connected to protected application requests.
+**Early development.** The repository contains a pure authorization policy engine, PostgreSQL persistence, operator-only administrator bootstrap, shared Redis attempt limiting, a password login portal with Rust-owned sessions, and administrator-only application/client registration. Protocol endpoints and production deployment qualification remain unfinished. The authorization policy engine is not yet connected to protected application requests.
 
 ## Quick start
 
@@ -49,6 +49,6 @@ The [authorization contract](docs/authorization.md) explains application isolati
 
 ## Work tracking
 
-Remaining work is tracked in [GitHub issues](https://github.com/OneTesseractInMultiverse/darkhorse-identity/issues). Development stays on `main`, with every new commit linked to its issue. See the [contribution workflow](docs/engineering.md#issue-based-work-on-main). Persistence and bootstrap are tracked in [issue #3](https://github.com/OneTesseractInMultiverse/darkhorse-identity/issues/3). The active feature slice is [password login and browser sessions](https://github.com/OneTesseractInMultiverse/darkhorse-identity/issues/5).
+Remaining work is tracked in [GitHub issues](https://github.com/OneTesseractInMultiverse/darkhorse-identity/issues). Development stays on `main`, with every new commit linked to its issue. See the [contribution workflow](docs/engineering.md#issue-based-work-on-main). Persistence and bootstrap are tracked in [issue #3](https://github.com/OneTesseractInMultiverse/darkhorse-identity/issues/3). Application and confidential client registration is tracked in [issue #6](https://github.com/OneTesseractInMultiverse/darkhorse-identity/issues/6). See the [registration API and security contract](docs/registration.md), including exact callbacks, explicit resource/scope allowances and one-time client-secret issuance.
 
 The project license has not been selected. Third-party component licenses remain applicable; see [third-party notices](docs/third-party-notices.md).

@@ -23,17 +23,21 @@ struct Boundary {
     slots: Semaphore,
 }
 pub fn router<S: BrowserAuthentication + 'static>(service: S, origin: url::Url) -> Router {
-    let boundary = Arc::new(Boundary {
-        host: origin[url::Position::BeforeHost..url::Position::AfterPort].into(),
-        origin: origin.origin().ascii_serialization(),
-        slots: Semaphore::new(32),
-    });
-    Router::new()
+    let router = Router::new()
         .route("/api/auth/login", post(login::<S>))
         .route("/api/auth/session", get(session::<S>))
         .route("/api/auth/logout", post(logout::<S>))
-        .with_state(Arc::new(service))
-        .layer(DefaultBodyLimit::max(4096))
+        .with_state(Arc::new(service));
+    protect(router, origin, 4096, 32)
+}
+pub(crate) fn protect(router: Router, origin: url::Url, body_limit: usize, slots: usize) -> Router {
+    let boundary = Arc::new(Boundary {
+        host: origin[url::Position::BeforeHost..url::Position::AfterPort].into(),
+        origin: origin.origin().ascii_serialization(),
+        slots: Semaphore::new(slots),
+    });
+    router
+        .layer(DefaultBodyLimit::max(body_limit))
         .layer(middleware::from_fn_with_state(boundary, guard))
 }
 pub fn disabled_router() -> Router {
@@ -73,7 +77,7 @@ fn allowed(b: &Boundary, headers: &HeaderMap, method: &Method, query: Option<&st
     if query.is_some() || one(headers, "host") != Some(b.host.as_str()) {
         return false;
     }
-    if method != Method::POST {
+    if method.is_safe() {
         return true;
     }
     one(headers, "origin") == Some(b.origin.as_str())
@@ -89,7 +93,7 @@ fn one<'a>(headers: &'a HeaderMap, name: &str) -> Option<&'a str> {
     }
     Some(first)
 }
-fn cookie(headers: &HeaderMap) -> Result<Option<[u8; 32]>, AuthError> {
+pub(crate) fn cookie(headers: &HeaderMap) -> Result<Option<[u8; 32]>, AuthError> {
     let mut found = None;
     for value in headers.get_all(header::COOKIE) {
         let value = value.to_str().map_err(|_| AuthError::Denied)?;

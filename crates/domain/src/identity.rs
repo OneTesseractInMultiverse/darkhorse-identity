@@ -28,7 +28,8 @@ identifier!(
     CapabilityId,
     ScopeId,
     ClientId,
-    CredentialId
+    CredentialId,
+    ClientSecretId
 );
 
 #[cfg(test)]

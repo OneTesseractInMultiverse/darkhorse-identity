@@ -11,6 +11,7 @@ use darkhorse_domain::{
 use sqlx::{PgPool, postgres::PgPoolOptions};
 use uuid::Uuid;
 mod authentication;
+mod registration;
 
 struct Database {
     pool: PgPool,
