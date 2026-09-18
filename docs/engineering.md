@@ -1,12 +1,12 @@
 # Engineering rules
 
-## Issue-based work on main
+## Issue-based contributions
 
 Use [GitHub issues](https://github.com/OneTesseractInMultiverse/darkhorse-identity/issues) to track remaining work. Before implementation, select the relevant open issue or create one with a clear outcome and completion criteria. Keep progress, decisions, validation evidence, and remaining items in that issue. A slice can take several focused commits; partial implementation does not complete the issue.
 
-Work directly on `main`. Do not create extra branches or worktrees unless explicitly requested. Pull requests, project boards, and milestones are not required for the current workflow. Preserve existing published history.
+The normal workflow is an issue, a short-lived feature branch, and a reviewed pull request into `main`. External contributors work in forks; maintainers may use branches in this repository. Keep each pull request focused on one reviewable outcome. See [Contributing](../CONTRIBUTING.md) for setup, branch naming, validation, review, and merge requirements. Project boards and milestones are optional.
 
-Every new commit must reference its corresponding issue. Use a concise subject and `Refs #<number>` in the body for progress. Use `Closes #<number>` only in the final commit after all issue criteria and required checks are satisfied; pushing that commit to the default branch closes the issue. For example:
+Every new commit must reference its corresponding issue. Use a concise subject and `Refs #<number>` in the body for progress. Use `Closes #<number>` in a pull request description only when the merge completes all issue criteria and required checks. For example:
 
 ```text
 feat: add persistent principal records
@@ -14,7 +14,7 @@ feat: add persistent principal records
 Refs #3
 ```
 
-Use the actual issue number for the work. Keep one primary issue per commit where practical; list additional references when a change genuinely spans them. Do not add closing keywords to partial work or rewrite old commits just to attach issue references.
+Use the actual issue number for the work. In fork commits, qualify the reference as `Refs OneTesseractInMultiverse/darkhorse-identity#<number>`. Keep one primary issue per commit where practical; list additional references when a change genuinely spans them. Partial pull requests use ordinary issue references, with remaining work recorded in the issue. Reserve closing keywords and GitHub's closing issue links for completion. Preserve issue references in the final squash commit. Never rewrite published `main` history or force-push shared branches.
 
 Run the checks relevant to the change, review the staged diff, and record actual results before committing. Use project-focused language without generation notices, tool/model branding, or automatic attribution trailers. Private planning and local state remain excluded from commits and release inputs; public issues, documentation, and commands must stand alone.
 

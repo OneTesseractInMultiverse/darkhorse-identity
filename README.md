@@ -55,6 +55,8 @@ The [authorization contract](docs/authorization.md) explains application isolati
 
 ## Work tracking
 
-Remaining work is tracked in [GitHub issues](https://github.com/OneTesseractInMultiverse/darkhorse-identity/issues). Development stays on `main`, with every new commit linked to its issue. See the [contribution workflow](docs/engineering.md#issue-based-work-on-main). Persistence and bootstrap are tracked in [issue #3](https://github.com/OneTesseractInMultiverse/darkhorse-identity/issues/3). Application and confidential client registration is tracked in [issue #6](https://github.com/OneTesseractInMultiverse/darkhorse-identity/issues/6). See the [registration API and security contract](docs/registration.md), including exact callbacks, explicit resource/scope allowances and one-time client-secret issuance.
+Contributions follow an issue → feature branch → reviewed pull request workflow. Every new commit references its issue. Start with [Contributing](CONTRIBUTING.md) and the [engineering rules](docs/engineering.md).
+
+Remaining work is tracked in [GitHub issues](https://github.com/OneTesseractInMultiverse/darkhorse-identity/issues). Persistence and bootstrap are tracked in [issue #3](https://github.com/OneTesseractInMultiverse/darkhorse-identity/issues/3). Application and confidential client registration is tracked in [issue #6](https://github.com/OneTesseractInMultiverse/darkhorse-identity/issues/6). See the [registration API and security contract](docs/registration.md), including exact callbacks, explicit resource/scope allowances and one-time client-secret issuance.
 
 The project license has not been selected. Third-party component licenses remain applicable; see [third-party notices](docs/third-party-notices.md).

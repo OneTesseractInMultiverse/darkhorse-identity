@@ -53,11 +53,11 @@ deps-check: ## Check: verify lockfiles using installed dependencies
 
 fmt: ## Style: format Rust, frontend, scripts, and public documentation
 	cargo fmt --all
-	$(WEB) exec prettier --write . ../../scripts ../../docs ../../README.md ../../package.json ../../pnpm-workspace.yaml
+	$(WEB) exec prettier --write . ../../scripts ../../docs ../../.github ../../README.md ../../CONTRIBUTING.md ../../package.json ../../pnpm-workspace.yaml
 
 fmt-check: ## Style: verify formatting without edits
 	cargo fmt --all -- --check
-	$(WEB) exec prettier --check . ../../scripts ../../docs ../../README.md ../../package.json ../../pnpm-workspace.yaml
+	$(WEB) exec prettier --check . ../../scripts ../../docs ../../.github ../../README.md ../../CONTRIBUTING.md ../../package.json ../../pnpm-workspace.yaml
 
 lint: ## Check: Rust Clippy and frontend ESLint
 	cargo clippy --workspace --all-targets --all-features --locked --offline -- -D warnings

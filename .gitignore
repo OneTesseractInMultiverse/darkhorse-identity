@@ -1,4 +1,5 @@
 /context/
+/.context/
 /target/
 **/node_modules/
 **/.svelte-kit/
