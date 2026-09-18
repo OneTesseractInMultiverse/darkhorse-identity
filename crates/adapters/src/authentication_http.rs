@@ -22,6 +22,7 @@ struct Boundary {
     host: String,
     slots: Semaphore,
     queries: bool,
+    service: bool,
 }
 pub fn router<S: BrowserAuthentication + 'static>(service: S, origin: url::Url) -> Router {
     let router = Router::new()
@@ -41,11 +42,30 @@ pub(crate) fn protect_with_queries(
     slots: usize,
     queries: bool,
 ) -> Router {
+    protected(router, origin, body_limit, slots, queries, false)
+}
+pub(crate) fn protect_service(
+    router: Router,
+    origin: url::Url,
+    body_limit: usize,
+    slots: usize,
+) -> Router {
+    protected(router, origin, body_limit, slots, false, true)
+}
+fn protected(
+    router: Router,
+    origin: url::Url,
+    body_limit: usize,
+    slots: usize,
+    queries: bool,
+    service: bool,
+) -> Router {
     let boundary = Arc::new(Boundary {
         host: origin[url::Position::BeforeHost..url::Position::AfterPort].into(),
         origin: origin.origin().ascii_serialization(),
         slots: Semaphore::new(slots),
         queries,
+        service,
     });
     router
         .layer(DefaultBodyLimit::max(body_limit))
@@ -90,6 +110,9 @@ fn allowed(b: &Boundary, headers: &HeaderMap, method: &Method, query: Option<&st
     }
     if method.is_safe() {
         return true;
+    }
+    if b.service {
+        return !headers.contains_key("origin") && !headers.contains_key("cookie");
     }
     one(headers, "origin") == Some(b.origin.as_str())
         && one(headers, "x-darkhorse-csrf") == Some("1")

@@ -49,7 +49,13 @@ pub async fn router(
             )
             .await
             .map_err(|_| "Provider issuer or wrapping key conflicts with persisted state.")?;
-        provider_http::router(store.clone(), settings.public_origin.clone())
+        provider_http::router(store.clone(), settings.public_origin.clone()).merge(
+            darkhorse_adapters::token_http::router(
+                store.clone(),
+                darkhorse_adapters::tokens::signer::Signer::new(wrap),
+                settings.public_origin.clone(),
+            ),
+        )
     } else {
         axum::Router::new()
     };

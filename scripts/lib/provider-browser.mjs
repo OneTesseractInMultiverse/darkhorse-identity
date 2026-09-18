@@ -5,6 +5,12 @@ import {
   randomBytes,
   generateKeyPairSync,
 } from "node:crypto";
+import {
+  exchange,
+  userinfo,
+  validateIdToken,
+  validateCallback,
+} from "./reference-client.mjs";
 async function call(page, path, body) {
   return page.evaluate(
     async ({ path, body }) => {
@@ -67,9 +73,16 @@ export async function seedSigning(invoke, docker, db) {
     der.fill(0);
   }
 }
-export async function verifyProvider(page, context, origin, principal) {
+export async function verifyProvider(page, context, origin, principal, ca) {
   const metadata = await call(page, "/.well-known/openid-configuration");
-  assert.equal(metadata.status, 503);
+  assert.equal(metadata.status, 200);
+  assert.equal(metadata.body.issuer, origin);
+  assert.equal(metadata.body.token_endpoint, `${origin}/token`);
+  assert.equal(metadata.body.userinfo_endpoint, `${origin}/userinfo`);
+  assert.deepEqual(metadata.body.token_endpoint_auth_methods_supported, [
+    "client_secret_basic",
+  ]);
+  assert.deepEqual(metadata.body.scopes_supported, ["openid"]);
   const jwks = await call(page, "/jwks");
   assert.equal(jwks.status, 200);
   assert.equal(jwks.body.keys.length, 1);
@@ -110,6 +123,7 @@ export async function verifyProvider(page, context, origin, principal) {
     },
   });
   assert.equal(registered.status, 200);
+  const verifier = randomBytes(32).toString("base64url");
   const query = new URLSearchParams({
     client_id: registered.body.record.id,
     redirect_uri: `${origin}/callback?fixed=1`,
@@ -117,9 +131,7 @@ export async function verifyProvider(page, context, origin, principal) {
     scope: "openid",
     state: "state&fixed=x",
     nonce: randomBytes(32).toString("base64url"),
-    code_challenge: createHash("sha256")
-      .update(randomBytes(32))
-      .digest("base64url"),
+    code_challenge: createHash("sha256").update(verifier).digest("base64url"),
     code_challenge_method: "S256",
   });
   await page.goto(`${origin}/authorize?${query}`);
@@ -167,9 +179,6 @@ export async function verifyProvider(page, context, origin, principal) {
     ),
     403,
   );
-  await page.getByRole("button", { name: "Allow connection" }).click();
-  await page.getByRole("heading", { name: "Unable to connect" }).waitFor();
-  assert.equal((await call(page, "/api/authorization")).body.status, "ready");
   await page.route(`${origin}/callback?**`, (route) =>
     route.fulfill({
       status: 200,
@@ -177,13 +186,104 @@ export async function verifyProvider(page, context, origin, principal) {
       contentType: "text/plain",
     }),
   );
+  await page.getByRole("button", { name: "Allow connection" }).click();
+  await page.waitForURL(`${origin}/callback?**`);
+  const expected = {
+    issuer: origin,
+    client: registered.body.record.id,
+    subject: principal,
+    nonce: query.get("nonce"),
+    state: query.get("state"),
+    redirect: query.get("redirect_uri"),
+  };
+  const code = validateCallback(page.url(), expected);
+  const redeem = (
+    value = code,
+    secret = registered.body.client_secret,
+    proof = verifier,
+    headers = {},
+  ) =>
+    exchange(
+      origin,
+      ca,
+      expected.client,
+      secret,
+      expected.redirect,
+      value,
+      proof,
+      headers,
+    );
+  assert.equal((await redeem(code, "00".repeat(32))).status, 401);
+  assert.equal(
+    (await redeem(code, registered.body.client_secret, "z".repeat(43))).status,
+    400,
+  );
+  for (const headers of [{ origin }, { cookie: "unrelated=1" }])
+    assert.equal(
+      (await redeem(code, registered.body.client_secret, verifier, headers))
+        .status,
+      403,
+    );
+  const issued = await redeem();
+  assert.equal(issued.status, 200);
+  assert.equal(issued.headers["cache-control"], "no-store");
+  assert.equal(issued.headers.pragma, "no-cache");
+  assert.match(issued.body.access_token, /^da_[a-f0-9]{64}$/);
+  assert.equal(issued.body.refresh_token, undefined);
+  assert.equal(issued.body.token_type, "Bearer");
+  assert.equal(issued.body.expires_in, 300);
+  const validation = { ...expected, now: Math.floor(Date.now() / 1000) };
+  validateIdToken(issued.body.id_token, jwks.body.keys, validation);
+  for (const changed of [
+    { issuer: "https://other.example" },
+    { client: principal },
+    { nonce: "substitution" },
+    { now: validation.now + 301 },
+  ]) {
+    assert.throws(() =>
+      validateIdToken(issued.body.id_token, jwks.body.keys, {
+        ...validation,
+        ...changed,
+      }),
+    );
+  }
+  const info = await userinfo(origin, ca, issued.body.access_token);
+  assert.equal(info.status, 200);
+  assert.deepEqual(info.body, { sub: principal });
+  for (const credential of [
+    issued.body.id_token,
+    code,
+    "eyJ0eXAiOiJsb2dvdXQrand0In0.eyJldmVudHMiOnt9fQ.signature",
+  ]) {
+    assert.equal((await userinfo(origin, ca, credential)).status, 401);
+  }
+  // An authenticated replay rejects and revokes the issued access credential.
+  assert.equal((await redeem()).status, 400);
+  assert.equal(
+    (await userinfo(origin, ca, issued.body.access_token)).status,
+    401,
+  );
   query.set("prompt", "none");
   await page.goto(`${origin}/authorize?${query}`);
-  let returned = new URL(page.url());
-  assert.equal(returned.searchParams.get("error"), "temporarily_unavailable");
-  assert.equal(returned.searchParams.get("state"), "state&fixed=x");
-  assert.equal(returned.searchParams.get("fixed"), "1");
-  assert.equal(returned.searchParams.has("code"), false);
+  const silentCode = validateCallback(page.url(), expected);
+  assert.ok(silentCode !== code);
+  assert.equal((await redeem(silentCode)).status, 200);
+  await page.goto(`${origin}/authorize?${query}`);
+  const lostCode = validateCallback(page.url(), expected);
+  const discarded = await exchange(
+    origin,
+    ca,
+    expected.client,
+    registered.body.client_secret,
+    expected.redirect,
+    lostCode,
+    verifier,
+    {},
+    true,
+  );
+  assert.equal(discarded.status, 200);
+  assert.equal((await redeem(lostCode)).status, 400);
+  let returned;
   query.set("prompt", "consent");
   await page.goto(`${origin}/authorize?${query}`);
   await page.getByRole("button", { name: "Cancel", exact: true }).click();
@@ -197,6 +297,6 @@ export async function verifyProvider(page, context, origin, principal) {
   await page.goto(origin);
   await page.getByRole("heading", { name: "Welcome, Browser." }).waitFor();
   console.log(
-    "Provider HTTPS, independent JWK import/thumbprint, consent, session cookie, substitution, silent response and redirect checks passed.",
+    "Provider HTTPS discovery, PKCE code exchange, independent RS256 validation, UserInfo, replay revocation, consent and substitution checks passed.",
   );
 }

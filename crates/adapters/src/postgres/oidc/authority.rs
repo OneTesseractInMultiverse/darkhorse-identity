@@ -1,10 +1,10 @@
 use super::*;
 use darkhorse_domain::authentication::{SessionFacts, session_live};
-pub(super) async fn lock(tx: &mut Tx<'_>) -> Result<(), Error> {
+pub(in crate::postgres) async fn lock(tx: &mut Tx<'_>) -> Result<(), Error> {
     sqlx::query("SELECT singleton FROM security_state WHERE singleton AND NOT pg_is_in_recovery() FOR SHARE").fetch_one(&mut **tx).await.map_err(storage)?;
     Ok(())
 }
-pub(super) async fn now(tx: &mut Tx<'_>) -> Result<u64, Error> {
+pub(in crate::postgres) async fn now(tx: &mut Tx<'_>) -> Result<u64, Error> {
     sqlx::query_scalar::<_, i64>("SELECT floor(extract(epoch FROM clock_timestamp())*1000)::bigint")
         .fetch_one(&mut **tx)
         .await
@@ -12,7 +12,7 @@ pub(super) async fn now(tx: &mut Tx<'_>) -> Result<u64, Error> {
         .try_into()
         .map_err(storage)
 }
-pub(super) async fn session(
+pub(in crate::postgres) async fn session(
     tx: &mut Tx<'_>,
     digest: Option<[u8; 32]>,
 ) -> Result<Option<Session>, Error> {
@@ -51,7 +51,7 @@ fn checked_session(row: &PgRow, digest: [u8; 32], now: u64) -> Result<Option<Ses
         authenticated_ms: facts.created_ms,
     }))
 }
-pub(super) async fn consent(
+pub(in crate::postgres) async fn consent(
     tx: &mut Tx<'_>,
     request: &Request,
     policy: &ClientPolicy,

@@ -21,3 +21,9 @@ pub mod redis_configuration;
 pub mod provider_http;
 pub mod redis_infrastructure;
 pub mod redis_limiter;
+pub mod token_http;
+pub mod tokens;
+
+#[cfg(test)]
+#[path = "../tests/unit/signing/fixture.rs"]
+mod signing_fixture;

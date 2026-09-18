@@ -101,7 +101,7 @@ fn fields(query: &str) -> Result<BTreeMap<String, String>, Error> {
     }
     Ok(fields)
 }
-fn decode(value: &str) -> Result<String, Error> {
+pub(crate) fn decode(value: &str) -> Result<String, Error> {
     let bytes = value.as_bytes();
     for (index, byte) in bytes.iter().enumerate() {
         if *byte == b'%'

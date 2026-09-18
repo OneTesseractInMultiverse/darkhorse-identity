@@ -1,5 +1,8 @@
 use super::*;
-pub(super) async fn catalog(tx: &mut Tx<'_>, client: ClientId) -> Result<Catalog, Error> {
+pub(in crate::postgres) async fn catalog(
+    tx: &mut Tx<'_>,
+    client: ClientId,
+) -> Result<Catalog, Error> {
     let id = Uuid::from_u128(client.as_u128());
     let row=sqlx::query("SELECT c.name,c.active AND a.active AS active,c.revision,a.revision AS application_revision FROM oauth_clients c JOIN applications a ON a.id=c.application_id WHERE c.id=$1")
   .bind(id).fetch_optional(&mut **tx).await.map_err(storage)?.ok_or(Error::InvalidRequest)?;

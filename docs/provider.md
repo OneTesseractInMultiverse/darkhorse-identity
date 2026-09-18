@@ -1,18 +1,16 @@
-# Pending OpenID Connect authorization
+# OpenID Connect code flow
 
-This milestone implements protected signing-key management, public JWKS, and
-browser-bound pending authorization transactions. It does **not** issue authorization
-codes, ID tokens, access tokens or refresh tokens. Approval displays an unavailable
-connection; the pending request remains usable only through its server-side port
-until its five-minute deadline. It is not a working SSO integration yet.
+The initial provider supports confidential clients using `client_secret_basic`,
+mandatory PKCE S256, browser consent, one-time authorization codes, opaque access
+tokens and RS256 ID tokens. The supported scope is `openid`; UserInfo returns only
+`sub`. Discovery advertises these implemented capabilities when an active signing
+key is available; otherwise it returns HTTP 503.
 
-`/.well-known/openid-configuration` deliberately returns HTTP 503. Discovery for
-an authorization-code provider requires a token endpoint; advertising one before
-it exists would mislead clients. [Issue #8](https://github.com/OneTesseractInMultiverse/darkhorse-identity/issues/8)
-must connect one-time code issuance/redemption and token profiles before successful
-discovery is enabled. [Issue #7](https://github.com/OneTesseractInMultiverse/darkhorse-identity/issues/7)
-remains open for that metadata integration and qualification. No OIDC conformance
-or production-readiness claim is made.
+Resource-permission issuance, refresh tokens, introspection, richer profiles and
+back-channel logout remain unfinished. Registration allowances never grant user
+capabilities. [Issue #8](https://github.com/OneTesseractInMultiverse/darkhorse-identity/issues/8)
+retains resource issuance through the existing authorization engine and coverage
+qualification. No OIDC conformance or production-readiness claim is made.
 
 ## Configuration and development
 
@@ -32,7 +30,7 @@ make dev-provider
 `provider-setup` creates `.local/signing-wrap.key` with owner-only permissions and
 preserves an existing file. The operator targets read that file and the local
 protected database configuration. `dev-provider` starts the HTTPS proxy, frontend
-and Rust server with login and pending authorization enabled. Ordinary `make dev`
+and Rust server with login and the code flow enabled. Ordinary `make dev`
 and `make dev-login` retain their prior behavior. Existing local deployments are
 not automatically migrated or enabled by tests/builds.
 
@@ -56,7 +54,7 @@ proxy must forward the canonical Host header and restrict direct backend access.
   accept the same profile as binary PKCS#8 DER, through bounded standard input:
   `make signing-import REVISION=<revision> < private-key.der`. PEM and secret
   command-line arguments are unsupported. Imports are at most 8192 bytes.
-- The intended signature algorithm is RS256. Key IDs are SHA-256 JWK thumbprints
+- The signature algorithm is RS256. Key IDs are SHA-256 JWK thumbprints
   over canonical public `e`, `kty`, and `n` members. `/jwks` publishes only
   `kid`, `kty`, `n`, `e`, `use=sig`, and `alg=RS256`.
 - Private material is encrypted with AES-256-GCM and an OS-generated 96-bit nonce.
@@ -78,8 +76,8 @@ proxy must forward the canonical Host header and restrict direct backend access.
   use `typ=logout+jwt`. Future issuing/validating adapters must keep their claim
   schemas separate: ID tokens bind nonce/authentication context, while Logout
   Tokens require the logout event and session/subject targeting and prohibit nonce.
-  This milestone does not yet implement either JWT claim validator or issuer.
-  Access and refresh credentials remain opaque in the planned flow.
+  This milestone issues ID tokens; Logout Token issuance/delivery remains later
+  work. Access credentials are opaque; refresh credentials are not issued yet.
 
 Key operations and their audit write commit together; failed audit writes roll back
 all lifecycle changes. The initial implementation uses non-FIPS AWS-LC and does not
@@ -92,7 +90,7 @@ decision or private key is cached in Redis.
 ## Authorization request profile
 
 `GET /authorize` accepts a bounded query for an active, administrator-registered
-confidential client. HEAD does not create transactions. The supported pending
+confidential client. HEAD does not create transactions. The supported
 profile is `response_type=code`, query response mode, and mandatory PKCE S256.
 The challenge must be canonical unpadded base64url encoding of exactly 32 bytes.
 Plain PKCE, implicit/password grants, request objects, request URIs, claims,
@@ -104,21 +102,23 @@ Callbacks containing reserved response query names (`code`, `state`, `error`,
 `error_description`, `error_uri`, `iss`) cannot start a transaction. State and nonce
 are optional, immutable, and bounded to 512 and 256 printable ASCII bytes respectively;
 clients should supply unpredictable state and nonce. The server returns accepted
-state verbatim through URL encoding on its safe error redirects. Clients remain
-responsible for state, issuer and nonce checks in the eventual complete flow.
+state verbatim through URL encoding on success and safe error redirects, together
+with the canonical `iss` response parameter. Clients must check state, issuer and
+nonce and bind their callback to the flow they started.
 
-`openid` is required. Other provider scopes are unavailable until their claims and
-endpoints exist. Resource scopes require one explicitly allowed resource audience
-and an explicitly allowed scope on that resource in the same application. Scope
-names are unique, at most 32 per request. Registration allowances and consent do not
-grant user capabilities. Code/token issuance must independently compute live user
-access and issuance ceilings under the existing authorization contract.
+Exactly `openid` without a resource audience is supported by the public endpoint.
+Other scopes and resource indicators fail with `invalid_scope`. The registration
+catalog can retain future resource allowances, but these are not user grants.
+Before enabling resource issuance, persisted live role/capability assignments must
+feed `plan_oauth` and its immutable issuance ceiling from the existing
+[authorization contract](authorization.md). The subject-only UserInfo credential
+has an empty resource capability ceiling and cannot authorize application APIs.
 
 Requests accept `prompt=none`, `login`, `consent`, or `login consent`; absent prompt
 uses the current session and remembered consent. `none` cannot be combined with
 other values and never displays interaction: it returns `login_required`,
-`consent_required`, or, when prepared but issuance is unavailable,
-`temporarily_unavailable`. `max_age` accepts integer seconds from zero through 28800. Zero and `prompt=login` require a new session created after request start,
+`consent_required`, or a code when the current session and consent suffice.
+`max_age` accepts integer seconds from zero through 28800. Zero and `prompt=login` require a new session created after request start,
 different from the session presented at the start. A bound transaction cannot be
 transferred to a different session, even for the same user.
 
@@ -137,6 +137,50 @@ parameters are ignored. A query is at most 8192 bytes and 32 parameters; malform
 or unsupported request syntax currently gets a local error even when a callback
 could otherwise be valid. Broader protocol error interoperation remains part of
 conformance qualification.
+
+## Exchange and token contract
+
+Approval atomically creates a 60-second code, consumes the pending request and
+writes an audit event before redirecting. `POST /token` accepts a bounded
+`application/x-www-form-urlencoded` body with `grant_type=authorization_code`,
+`code`, the exact original `redirect_uri`, and a 43–128 character unreserved-ASCII
+`code_verifier`. Client authentication is a single HTTP Basic header containing
+form-encoded client ID and secret. Duplicate fields/authentication headers, body
+client authentication, other grants, query credentials, Origin and Cookie headers
+are rejected. This is a confidential backend endpoint with no browser CORS support.
+
+Codes and access tokens each contain 256 random bits from the OS, encoded as
+lowercase hex with distinct `dc_` and `da_` prefixes. PostgreSQL stores only
+purpose-bound SHA-256 verifiers. An access token has a five-minute maximum lifetime,
+audience `<issuer>/userinfo`, scope `openid`, immutable claim ceiling `sub` and
+an empty resource capability ceiling. No refresh token is returned.
+
+ID tokens use RS256, `typ=JWT` and the active public `kid`. Claims are canonical
+`iss`, client UUID `aud`, principal UUID `sub`, `iat`, `exp`, original session
+`auth_time`, and the original `nonce` when supplied. Lifetimes are 300 seconds.
+Signing runs in at most four blocking workers per process; private keys are
+unwrapped for each exchange. JWKS exposes only public material.
+
+A transaction authenticates the current client, locks the code, checks its client,
+redirect and S256 proof, revalidates the original session and current registration,
+locks the active provider key, signs the ID token, consumes the code, creates its
+access credential and appends the audit event. Commit precedes the response.
+Signing, storage or audit failure rolls everything back; retry is possible only
+when that attempt did not commit. A lost committed response requires a new
+browser flow. Correctly bound replay (including after code expiry) is rejected
+and revokes the associated access token. Wrong authentication or binding cannot
+revoke another flow's token. Replay cannot retract an ID token already received
+and accepted by a client; downstream session logout is separate unfinished work.
+Token responses/errors carry `Cache-Control: no-store` and `Pragma: no-cache`.
+
+`GET /userinfo` accepts only an opaque access credential in a single Bearer header
+and returns `{ "sub": "<principal UUID>" }`. Each check reads the PostgreSQL primary
+and revalidates token lifetime/revocation, audience, client/application revisions
+and the original live session/credential epoch. Logout, credential revocation,
+account deactivation or changed registration invalidate subsequent checks after
+commit. Code/access rows use a consistent lock order to avoid replay/read inversion.
+No positive authorization result is cached. UserInfo does not extend browser idle
+lifetime. ID tokens, Logout Tokens, codes and browser handles are not access tokens.
 
 ## Transaction and transport integrity
 
@@ -166,48 +210,60 @@ rows per new request. A separate capacity row serializes creation; resumes lock
 only their request after the shared authority lock. These conservative limits bound
 memory and work but are not a throughput guarantee or abuse-rate limiter. Ingress
 flood protection, production sizing and contention/load benchmarks remain release
-work. Sustained quotas can deny new requests. Consent and audit retention also need
-an operational policy; expiry cleanup does not erase audit records.
+work. Sustained quotas can deny new requests. Code, access-token, consent and audit retention also need
+an operational policy; expiry cleanup does not erase those records. Code and token
+records currently accumulate; retention and sustained-load qualification are release
+requirements. Token HTTP admission is capped at 16 concurrent requests per replica
+with a 4096-byte body limit and the shared transport deadline. These are bounds,
+not a distributed token-endpoint abuse limiter or a measured throughput guarantee.
 
 ## Verification
 
-`make test-provider` runs isolated policy/parser/crypto/operator tests. They use
-source-defined inputs, including an explicitly public test-only RSA key, and do not
-read files or require settings/services. `make test-postgres` exercises real
-constraints, transaction races, expiry, revocation, consent rollback, quotas and
-key lifecycle. `make test-browser` exercises the static consent portal through
-verified HTTPS with real Rust, PostgreSQL and Redis. It imports the published JWK
-using Node's crypto provider and independently checks its thumbprint; Rust unit
-checks also verify an AWS-LC RS256 signature using ring.
+`make test-provider` runs isolated policy/parser/crypto/operator/code-exchange
+contracts with source-defined inputs, including a public test-only RSA key. No
+files, settings or services are needed for unit tests. `make test-postgres` covers
+atomic issuance/redemption, one-winner races, replay after expiry, wrong proofs,
+current-state revocation, immutable ceilings and signing/audit rollback alongside
+the earlier persistence contracts.
 
-The 2026-09-17 verification passed `make ci`, the final `make check`, 173 isolated
-Rust/frontend/tooling tests, 31 PostgreSQL scenarios, five Redis infrastructure
-scenarios and 14 limiter/login scenarios plus the separate-process helper. The
-HTTPS browser run included operator generation, PKCS#8 import, duplicate import
-rejection and retirement. Docker build and non-root/read-only smoke passed. A
-clean staged export installed dependencies offline and passed all unit tests with
-network access denied and no private input folders. Caddy 2.11.4 accepted the
-updated development proxy configuration and its provider-to-Rust route mapping.
+`make test-browser` runs the static portal through verified HTTPS with real Rust,
+PostgreSQL and Redis. Its test-only confidential reference client lives in
+`scripts/lib/reference-client.mjs`; it keeps secrets in test-process memory,
+checks callback state/issuer, exchanges the code with Basic and S256, independently
+verifies the RS256 signature with Node crypto and published JWKS, checks ID claims,
+calls UserInfo, and verifies JWT/code substitution rejection and replay revocation.
+It also disconnects after committed response headers without reading the body and
+checks that retry cannot redeem the code again.
+It is an interoperability probe, not a deployed application or production client SDK.
+Rust owns all deployed server behavior.
 
-Core line/function/region coverage is 100%. Frontend unit coverage is 100% lines
-and functions, 99.06% statements and 94.39% branches. Combined Rust unit,
-PostgreSQL, Redis, operator and browser-driven process coverage is 98.40% lines,
-99.56% functions and 92.56% regions, with 83 uncovered lines. Its 100% gate still
-fails and remains unchanged. Missing paths include startup/terminal errors and
-some provider parsing, persistence and transport failures. JavaScript tooling,
-SQL triggers and production topology/load qualification remain separate.
+The 2026-09-18 checks passed `make ci` and the final `make check`, with 185
+isolated tests (65 adapter, 14 application, 66 domain, 26 frontend and 14 tooling),
+37 PostgreSQL scenarios, five Redis infrastructure scenarios and 14 limiter/login
+scenarios plus their separate-process helper. The HTTPS browser/reference-client
+flow, Docker build/non-root/read-only smoke and Caddy route adaptation passed.
+A clean staged export installed dependencies offline and passed unit tests with
+network denied and no private input folders.
+
+Core line/function/region coverage remains 100%. Combined Rust unit, PostgreSQL,
+Redis, operator and browser process coverage is 98.02% lines, 99.21% functions and
+92.05% regions, with 118 uncovered lines. The unchanged 100% line gate fails.
+Remaining paths include input/storage/startup failures and transport outcomes;
+SQL and JavaScript tooling coverage and production load/topology are separate.
 
 Coverage qualification and full-provider interoperability remain open. The existing
-100% authored-code target is unchanged. A successful pending request or independent
-signature verification is not an OIDC conformance test. No external identity
-application has completed a successful code exchange at this milestone.
+100% authored-code target is unchanged. Passing these checks does not establish
+OIDC conformance or production throughput. Resource-permission issuance, token
+retention and further failure paths remain tracked in issue #8 and release qualification.
 
 ## Protocol references
 
 The choices and narrower project profile above use the
 [OIDC authentication request](https://openid.net/specs/openid-connect-core-1_0.html#AuthRequest),
 [discovery metadata](https://openid.net/specs/openid-connect-discovery-1_0.html#ProviderMetadata),
-[PKCE S256](https://www.rfc-editor.org/rfc/rfc7636.html#section-4.3),
+[token endpoint](https://openid.net/specs/openid-connect-core-1_0.html#TokenEndpoint),
+[one-time codes](https://www.rfc-editor.org/rfc/rfc6749.html#section-4.1.2),
+[PKCE verification](https://www.rfc-editor.org/rfc/rfc7636.html#section-4.6),
 [resource indicators](https://www.rfc-editor.org/rfc/rfc8707.html#section-2.1),
 [JWK thumbprints](https://www.rfc-editor.org/rfc/rfc7638.html#section-3.1), and
 [back-channel Logout Tokens](https://openid.net/specs/openid-connect-backchannel-1_0.html#LogoutToken).

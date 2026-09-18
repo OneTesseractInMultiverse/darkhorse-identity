@@ -248,7 +248,9 @@ signing-activate: ## Provider: activate a prepublished key; requires KID and REV
 signing-retire: ## Provider: retire staged/expired retiring key; requires KID and REVISION
 	$(NODE) scripts/provider.mjs run signing-retire "$(KID)" "$(REVISION)"
 
-test-provider: ## Test: isolated pending authorization and signing contracts
+test-provider: ## Test: isolated authorization, signing and code exchange contracts
 	cargo test --workspace --lib --locked --offline oidc
 	cargo test --workspace --lib --locked --offline signing
 	cargo test --workspace --lib --locked --offline provider_http
+	cargo test --workspace --lib --locked --offline tokens
+	cargo test --workspace --lib --locked --offline token_http

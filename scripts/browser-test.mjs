@@ -216,7 +216,7 @@ async function exerciseBrowser(
   const initial = await verifySignIn(page, context, origin, password);
   await verifyRotation(page, context, origin, ca, password, initial);
   await verifyRegistration(page, principal);
-  await verifyProvider(page, context, origin, principal);
+  await verifyProvider(page, context, origin, principal, ca);
   await verifyLogoutAndRevocation(page, context, password, principal, invoke);
   assert.deepEqual(errors, []);
   assert.deepEqual(await page.evaluate(() => window.securityViolations), []);

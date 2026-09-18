@@ -100,8 +100,12 @@ async fn lock(
     issuer: &str,
     expected: Option<u64>,
 ) -> Result<(u64, u64), KeyError> {
-    let row=sqlx::query("SELECT revision,last_ms FROM provider_state WHERE issuer=$1 AND NOT pg_is_in_recovery() FOR UPDATE")
-        .bind(issuer).fetch_optional(&mut **tx).await.map_err(storage)?.ok_or(KeyError::NotFound)?;
+    let row = sqlx::query(lock_query(expected))
+        .bind(issuer)
+        .fetch_optional(&mut **tx)
+        .await
+        .map_err(storage)?
+        .ok_or(KeyError::NotFound)?;
     let now: i64 =
         sqlx::query_scalar("SELECT floor(extract(epoch FROM clock_timestamp())*1000)::bigint")
             .fetch_one(&mut **tx)
@@ -116,6 +120,16 @@ async fn lock(
         return Err(KeyError::Unavailable);
     }
     Ok((revision, now))
+}
+fn lock_query(expected: Option<u64>) -> &'static str {
+    match expected {
+        Some(_) => {
+            "SELECT revision,last_ms FROM provider_state WHERE issuer=$1 AND NOT pg_is_in_recovery() FOR UPDATE"
+        }
+        None => {
+            "SELECT revision,last_ms FROM provider_state WHERE issuer=$1 AND NOT pg_is_in_recovery() FOR SHARE"
+        }
+    }
 }
 async fn check_wrap(tx: &mut Tx<'_>, digest: [u8; 32]) -> Result<(), KeyError> {
     let matches: bool =

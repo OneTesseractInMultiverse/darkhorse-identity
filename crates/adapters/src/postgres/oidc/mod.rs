@@ -6,8 +6,8 @@ use darkhorse_domain::{
 };
 use sqlx::{Postgres, Row, Transaction, postgres::PgRow};
 use uuid::Uuid;
-mod authority;
-mod records;
+pub(super) mod authority;
+pub(super) mod records;
 mod writes;
 type Tx<'a> = Transaction<'a, Postgres>;
 struct Pending {
@@ -19,9 +19,9 @@ struct Pending {
     client_revision: u64,
     application_revision: u64,
 }
-struct Catalog {
+pub(super) struct Catalog {
     name: String,
-    policy: ClientPolicy,
+    pub(super) policy: ClientPolicy,
 }
 impl AuthorizationStore for PostgresStore {
     async fn begin(
@@ -155,3 +155,4 @@ fn digest(row: &PgRow, key: &str) -> Result<Option<[u8; 32]>, Error> {
         .map(|v| v.try_into().map_err(storage))
         .transpose()
 }
+mod codes;

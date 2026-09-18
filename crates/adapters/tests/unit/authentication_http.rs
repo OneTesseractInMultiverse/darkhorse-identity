@@ -79,6 +79,7 @@ fn every_unsafe_method_requires_origin_and_csrf() {
         origin: "https://localhost:8443".into(),
         host: "localhost:8443".into(),
         queries: false,
+        service: false,
         slots: Semaphore::new(1),
     };
     let mut headers = HeaderMap::new();
@@ -110,6 +111,7 @@ async fn exhausted_http_admission_never_reads_a_body_or_invokes_service() {
         origin: "https://localhost:8443".into(),
         host: "localhost:8443".into(),
         queries: false,
+        service: false,
         slots: Semaphore::new(0),
     });
     let (inner, calls) = app(None);
@@ -316,4 +318,32 @@ async fn session_logout_and_dependency_outcomes_have_explicit_transport_contract
             .contains("Max-Age=0")
     );
     assert_eq!(calls.load(Ordering::SeqCst), 0);
+}
+
+#[test]
+fn confidential_token_requests_require_a_canonical_host_and_no_browser_credentials() {
+    let boundary = Boundary {
+        origin: "https://localhost:8443".into(),
+        host: "localhost:8443".into(),
+        queries: false,
+        service: true,
+        slots: Semaphore::new(1),
+    };
+    let mut headers = HeaderMap::new();
+    headers.insert("host", HeaderValue::from_static("localhost:8443"));
+    assert!(allowed(&boundary, &headers, &Method::POST, None));
+    assert!(!allowed(
+        &boundary,
+        &headers,
+        &Method::POST,
+        Some("secret=untrusted")
+    ));
+    for (name, value) in [
+        ("origin", "https://localhost:8443"),
+        ("cookie", "unrelated=1"),
+    ] {
+        headers.insert(name, HeaderValue::from_static(value));
+        assert!(!allowed(&boundary, &headers, &Method::POST, None));
+        headers.remove(name);
+    }
 }

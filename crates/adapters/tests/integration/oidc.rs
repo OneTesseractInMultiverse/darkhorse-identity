@@ -7,7 +7,7 @@ use darkhorse_domain::{
     identity::ClientId,
     oidc::{Error, Interaction, Prompt, Request},
 };
-async fn fixture() -> Database {
+pub(super) async fn fixture() -> Database {
     let db = Database::new().await;
     db.store
         .bootstrap(administrator(1, "one@example.com"))
@@ -23,7 +23,7 @@ async fn fixture() -> Database {
     sqlx::raw_sql("INSERT INTO applications(id,name,owner_id,active) VALUES('00000000-0000-0000-0000-000000000010','App','00000000-0000-0000-0000-000000000001',true); INSERT INTO oauth_clients(id,application_id,name,active) VALUES('00000000-0000-0000-0000-000000000020','00000000-0000-0000-0000-000000000010','Client',true); INSERT INTO client_redirects VALUES('00000000-0000-0000-0000-000000000020','https://client.example/callback?fixed=1');").execute(&db.pool).await.unwrap();
     db
 }
-fn request() -> Request {
+pub(super) fn request() -> Request {
     Request {
         client: ClientId::from_u128(32).unwrap(),
         redirect: "https://client.example/callback?fixed=1".into(),
@@ -404,7 +404,7 @@ async fn transport_enforces_origin_cookie_confirmation_and_no_false_discovery() 
             "/.well-known/openid-configuration",
             "issuer.example",
             "GET",
-            503,
+            404,
         ),
         ("/jwks", "issuer.example", "GET", 200),
         ("/jwks", "spoofed.example", "GET", 403),

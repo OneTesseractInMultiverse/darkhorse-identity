@@ -1,5 +1,5 @@
-//! Opt-in pending authorization transport; no token issuance or discovery claims yet.
-mod request;
+//! Browser-bound consent and one-time code redirects; token exchange is a separate transport.
+pub(crate) mod request;
 mod response;
 use crate::{authentication_http, json::SafeJson, session_secret};
 use axum::{
@@ -9,7 +9,12 @@ use axum::{
     response::{IntoResponse, Redirect, Response},
     routing::{get, post},
 };
-use darkhorse_application::{authentication::AuthError, oidc::*, signing::SigningStore};
+use darkhorse_application::{
+    authentication::AuthError,
+    oidc::*,
+    signing::SigningStore,
+    tokens::{Code, CodeStore},
+};
 use darkhorse_domain::oidc::Error;
 use serde::Deserialize;
 use sha2::{Digest, Sha256};
@@ -19,7 +24,7 @@ struct Provider<S> {
     store: S,
     issuer: String,
 }
-pub fn router<S: AuthorizationStore + SigningStore + 'static>(
+pub fn router<S: AuthorizationStore + CodeStore + SigningStore + 'static>(
     store: S,
     origin: url::Url,
 ) -> Router {
@@ -30,7 +35,6 @@ pub fn router<S: AuthorizationStore + SigningStore + 'static>(
     let public = Router::new()
         .route("/authorize", get(begin::<S>))
         .route("/jwks", get(jwks::<S>))
-        .route("/.well-known/openid-configuration", get(discovery))
         .with_state(state.clone());
     let private = Router::new()
         .route("/api/authorization", get(inspect::<S>))
@@ -39,17 +43,13 @@ pub fn router<S: AuthorizationStore + SigningStore + 'static>(
     authentication_http::protect_with_queries(public, origin.clone(), 0, 32, true)
         .merge(authentication_http::protect(private, origin, 1024, 32))
 }
-// A code-flow discovery document must advertise an implemented token endpoint.
-async fn discovery() -> Response {
-    response::error(Error::Unavailable)
-}
 async fn jwks<S: SigningStore>(State(state): State<Arc<Provider<S>>>) -> Response {
     match state.store.published(&state.issuer).await {
   Ok(keys)=>Json(serde_json::json!({"keys":keys.into_iter().map(|key|serde_json::json!({"kty":"RSA","use":"sig","alg":"RS256","kid":key.kid,"n":key.n,"e":key.e})).collect::<Vec<_>>()})).into_response(),
   Err(_)=>response::error(Error::Unavailable),
  }
 }
-async fn begin<S: AuthorizationStore>(
+async fn begin<S: AuthorizationStore + CodeStore>(
     State(state): State<Arc<Provider<S>>>,
     method: Method,
     headers: HeaderMap,
@@ -62,11 +62,9 @@ async fn begin<S: AuthorizationStore>(
         Ok(request) => request,
         Err(error) => return response::error(error),
     };
-    let silent = request.prompt == darkhorse_domain::oidc::Prompt::None;
-    let target = ReturnTo {
-        uri: request.redirect.clone(),
-        state: request.state.clone(),
-    };
+    if darkhorse_domain::tokens::profile(&request.scopes, request.resource.as_deref()).is_err() {
+        return response::error(Error::InvalidScope);
+    }
     let session = match authentication_http::cookie(&headers) {
         Ok(value) => value,
         Err(_) => return response::error(Error::InvalidRequest),
@@ -76,7 +74,11 @@ async fn begin<S: AuthorizationStore>(
         Err(error) => return response::error(error),
     };
     match state.store.begin(request, digest, session).await {
-        Ok(Outcome::Pending(_)) if silent => response::redirect(target, Error::Unavailable),
+        Ok(Outcome::Pending(view))
+            if view.interaction == darkhorse_domain::oidc::Interaction::Ready =>
+        {
+            complete(&state, digest, session, false).await
+        }
         Ok(Outcome::Pending(_)) => {
             let mut response = Redirect::to("/authorization").into_response();
             let cookie =
@@ -87,11 +89,11 @@ async fn begin<S: AuthorizationStore>(
             );
             response
         }
-        Ok(Outcome::Return { target, error }) => response::redirect(target, error),
+        Ok(Outcome::Return { target, error }) => response::redirect(target, error, &state.issuer),
         Err(error) => response::error(error),
     }
 }
-async fn inspect<S: AuthorizationStore>(
+async fn inspect<S: AuthorizationStore + CodeStore>(
     State(state): State<Arc<Provider<S>>>,
     headers: HeaderMap,
 ) -> Response {
@@ -109,7 +111,7 @@ enum Choice {
     Approve,
     Deny,
 }
-async fn decide<S: AuthorizationStore>(
+async fn decide<S: AuthorizationStore + CodeStore>(
     State(state): State<Arc<Provider<S>>>,
     headers: HeaderMap,
     SafeJson(body): SafeJson<Submission>,
@@ -120,7 +122,7 @@ async fn decide<S: AuthorizationStore>(
     };
     resume(&state, &headers, decision, Some(&body.request_id)).await
 }
-async fn resume<S: AuthorizationStore>(
+async fn resume<S: AuthorizationStore + CodeStore>(
     state: &Provider<S>,
     headers: &HeaderMap,
     decision: Decision,
@@ -138,9 +140,31 @@ async fn resume<S: AuthorizationStore>(
         Err(_) => return response::error(Error::InvalidTransaction),
     };
     match state.store.resume(digest, session, decision).await {
+        Ok(Outcome::Pending(view))
+            if view.interaction == darkhorse_domain::oidc::Interaction::Ready =>
+        {
+            complete(state, digest, session, true).await
+        }
         Ok(Outcome::Pending(view)) => response::view(view, digest),
-        Ok(Outcome::Return { target, error }) => response::return_json(target, error),
+        Ok(Outcome::Return { target, error }) => {
+            response::return_json(target, error, &state.issuer)
+        }
         Err(error) => response::error(error),
+    }
+}
+async fn complete<S: CodeStore>(
+    state: &Provider<S>,
+    handle: [u8; 32],
+    session: Option<[u8; 32]>,
+    json: bool,
+) -> Response {
+    let code = match crate::tokens::material::generate(crate::tokens::material::Purpose::Code) {
+        Ok(code) => code,
+        Err(_) => return response::error(Error::Unavailable),
+    };
+    match state.store.issue(handle, session, code).await {
+        Ok(code) => response::success(code, &state.issuer, json),
+        Err(_) => response::error(Error::Unavailable),
     }
 }
 fn handle() -> Result<(String, [u8; 32]), Error> {

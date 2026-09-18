@@ -1,6 +1,6 @@
 use super::*;
+use crate::signing_fixture as fixture;
 use base64::engine::general_purpose::STANDARD;
-mod fixture;
 fn key() -> KeyPair {
     parse(&STANDARD.decode(fixture::PKCS8).unwrap()).unwrap()
 }

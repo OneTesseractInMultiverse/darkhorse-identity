@@ -12,7 +12,7 @@ https://localhost:8443 {
 	header X-Content-Type-Options nosniff
 	header Referrer-Policy no-referrer
 	header X-Frame-Options DENY
-	@backend path /health /health/* /api /api/* /oauth /oauth/* /oidc /oidc/* /.well-known /.well-known/* /userinfo /introspect /revoke /authorize /authorize/* /jwks /jwks/*
+	@backend path /health /health/* /api /api/* /oauth /oauth/* /oidc /oidc/* /.well-known /.well-known/* /userinfo /introspect /revoke /token /token/* /authorize /authorize/* /jwks /jwks/*
 	handle @backend {
 		reverse_proxy 127.0.0.1:3001
 	}
