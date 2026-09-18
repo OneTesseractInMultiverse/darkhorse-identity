@@ -64,21 +64,14 @@ footer {
 	border-bottom: 1px solid #b8d4c112;
 }
 .wordmark {
-	display: flex;
-	align-items: center;
-	gap: 12px;
-	font-size: 13px;
-	font-weight: 650;
-	letter-spacing: 0.17em;
+	display: inline-flex;
+	flex-shrink: 0;
 	text-decoration: none;
 }
-.mark {
-	color: #91e4b4;
-	font-family: monospace;
-	border: 1px solid #91e4b447;
-	border-radius: 8px;
-	padding: 7px;
-	font-size: 17px;
+.wordmark img {
+	display: block;
+	width: 224px;
+	height: auto;
 }
 .edition,
 .panel-top,

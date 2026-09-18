@@ -1,5 +1,9 @@
 # Darkhorse
 
+<p>
+  <img src="docs/brand/readme-banner.svg" alt="DarkHorse Identity Server" width="560">
+</p>
+
 An identity server for one organization and its applications, built with Rust, a static SvelteKit/TypeScript console, PostgreSQL, and Redis.
 
 **Early development.** The repository contains a pure authorization policy engine, PostgreSQL persistence, operator-only administrator bootstrap, shared Redis attempt limiting, a password login portal with Rust-owned sessions, administrator-only application/client registration, protected signing keys/JWKS, and an initial `openid` authorization-code flow with consent, opaque access tokens, signed ID tokens, scoped UserInfo, client-authenticated introspection and revocation. Resource-permission issuance, refresh tokens, logout propagation and production deployment qualification remain unfinished. The authorization policy engine is not yet connected to protected application requests.
