@@ -254,3 +254,9 @@ test-provider: ## Test: isolated authorization, signing, code exchange and ident
 	cargo test --workspace --lib --locked --offline provider_http
 	cargo test --workspace --lib --locked --offline tokens
 	cargo test --workspace --lib --locked --offline token_http
+
+.PHONY: test-resource-introspection
+
+test-resource-introspection: ## Test: isolated resource credential lifecycle, transport and projections
+	cargo test --workspace --lib --locked --offline resource_servers
+	cargo test --workspace --lib --locked --offline token_http

@@ -44,3 +44,33 @@ fn inactive_introspection_discloses_nothing_and_active_metadata_has_no_profile()
     assert!(value.get("name").is_none());
     assert!(value.get("capabilities").is_none());
 }
+
+#[test]
+fn resource_projection_discloses_only_the_exact_audience_and_effective_capabilities() {
+    use darkhorse_domain::identity::{CapabilityId, ResourceId};
+    assert_eq!(
+        resource_response(None, "https://issuer.example"),
+        serde_json::json!({"active":false})
+    );
+    let response = resource_response(
+        Some(ActiveResourceToken {
+            token: ActiveToken {
+                subject: PrincipalId::from_u128(1).unwrap(),
+                client: ClientId::from_u128(2).unwrap(),
+                scope: "openid operate".into(),
+                issued: 1000,
+                expires: 1300,
+            },
+            resource: ResourceId::from_u128(3).unwrap(),
+            capabilities: std::collections::BTreeSet::from([
+                CapabilityId::from_u128(5).unwrap(),
+                CapabilityId::from_u128(4).unwrap(),
+            ]),
+        }),
+        "https://issuer.example",
+    );
+    assert_eq!(
+        response,
+        serde_json::json!({"active":true,"token_type":"Bearer","iss":"https://issuer.example","aud":"urn:darkhorse:resource:00000000-0000-0000-0000-000000000003","client_id":"00000000-0000-0000-0000-000000000002","sub":"00000000-0000-0000-0000-000000000001","scope":"openid operate","iat":1000,"exp":1300,"capabilities":["00000000-0000-0000-0000-000000000004","00000000-0000-0000-0000-000000000005"]})
+    );
+}

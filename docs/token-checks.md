@@ -6,9 +6,8 @@ revoke only the credentials issued to that client. These credentials have no
 resource capabilities and cannot authorize an application's protected API.
 The separate [resource issuance profile](resource-issuance.md) creates credentials
 with capability ceilings. UserInfo rejects them and this identity introspection
-profile returns inactive for them. Resource-server registration and current
-resource-policy checks remain in
-[issue #9](https://github.com/OneTesseractInMultiverse/darkhorse-identity/issues/9).
+profile returns inactive for them. Dedicated [resource-server credentials](resource-introspection.md)
+now enable current capability checks for protected APIs.
 The issuing client can revoke its resource credentials through the same endpoint.
 
 ## Approved identity claims
@@ -101,10 +100,13 @@ application's later write. Object-specific rules remain in the consuming service
 Introspection and UserInfo perform no synchronous usage/audit writes and do not
 extend browser idle lifetime. There is no last-used telemetry presented as exact
 accounting. This avoids a write and hot counter on every read without weakening
-revocation. Retention, ingress abuse controls, failure qualification, full resource
-policy and sustained-load measurement remain release requirements.
+revocation. Retention, ingress abuse controls, failure qualification, policy-management
+interfaces and sustained-load measurement remain release requirements.
 
 ## Verification
+
+The latest combined results, including resource-server checks, are recorded in
+[resource introspection verification](resource-introspection.md#verification).
 
 `make test-provider` runs isolated policy, parser, projection and credential tests.
 `make test-postgres` covers claim ceilings, consent reduction, caller isolation,
@@ -135,7 +137,7 @@ regions, with 122 uncovered lines. The unchanged 100% line gate fails. Remaining
 paths include startup, input, storage and transport failures; JavaScript tooling,
 SQL and deployment/load qualification remain separate.
 
-The unchanged 100% authored-code target and the remaining resource-policy and
+The unchanged 100% authored-code target and the remaining policy-management and
 production qualification are tracked in the open issues. Functional evidence for
 this identity profile does not claim complete resource authorization or provider
 conformance.

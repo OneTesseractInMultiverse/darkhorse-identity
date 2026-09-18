@@ -20,7 +20,7 @@ fn one<'a>(headers: &'a HeaderMap, name: &str) -> Result<&'a str, Error> {
     }
     Ok(value)
 }
-pub(super) fn basic(headers: &HeaderMap) -> Result<(ClientId, [u8; 32]), Error> {
+fn credentials(headers: &HeaderMap) -> Result<(String, Zeroizing<String>), Error> {
     let value = one(headers, "authorization")?;
     if value.len() > 2048 {
         return Err(Error::InvalidClient);
@@ -36,13 +36,20 @@ pub(super) fn basic(headers: &HeaderMap) -> Result<(ClientId, [u8; 32]), Error> 
         .ok_or(Error::InvalidClient)?;
     let id = decode(id).map_err(|_| Error::InvalidClient)?;
     let secret = Zeroizing::new(decode(secret).map_err(|_| Error::InvalidClient)?);
-    let uuid = uuid::Uuid::parse_str(&id).map_err(|_| Error::InvalidClient)?;
+    Ok((id, secret))
+}
+pub(super) fn basic(headers: &HeaderMap) -> Result<(ClientId, [u8; 32]), Error> {
+    let (id, secret) = credentials(headers)?;
+    client_credentials(&id, &secret)
+}
+fn client_credentials(id: &str, secret: &str) -> Result<(ClientId, [u8; 32]), Error> {
+    let uuid = uuid::Uuid::parse_str(id).map_err(|_| Error::InvalidClient)?;
     if uuid.to_string() != id {
         return Err(Error::InvalidClient);
     }
     Ok((
         ClientId::from_u128(uuid.as_u128()).map_err(|_| Error::InvalidClient)?,
-        crate::registration::secret_digest(&secret).map_err(|_| Error::InvalidClient)?,
+        crate::registration::secret_digest(secret).map_err(|_| Error::InvalidClient)?,
     ))
 }
 pub(super) fn bearer(headers: &HeaderMap) -> Result<[u8; 32], Error> {
@@ -88,17 +95,54 @@ fn content_type(headers: &HeaderMap) -> Result<(), Error> {
 pub(super) fn management(headers: &HeaderMap, body: &[u8]) -> Result<Management, Error> {
     content_type(headers)?;
     let (client, secret) = basic(headers)?;
-    let values = fields(std::str::from_utf8(body).map_err(|_| Error::InvalidRequest)?)?;
-    let token = values
-        .get("token")
-        .filter(|v| !v.is_empty() && v.len() <= 2048)
-        .ok_or(Error::InvalidRequest)?;
     Ok(Management {
         client,
         secret,
-        token: material::digest(token, Purpose::Access).ok(),
+        token: token(body)?,
     })
 }
+fn token(body: &[u8]) -> Result<Option<[u8; 32]>, Error> {
+    let values = fields(std::str::from_utf8(body).map_err(|_| Error::InvalidRequest)?)?;
+    let value = values
+        .get("token")
+        .filter(|v| !v.is_empty() && v.len() <= 2048)
+        .ok_or(Error::InvalidRequest)?;
+    Ok(material::digest(value, Purpose::Access).ok())
+}
+pub(super) enum Inquiry {
+    Client(Management),
+    Resource(darkhorse_application::resource_servers::Probe),
+}
+pub(super) fn introspection(headers: &HeaderMap, body: &[u8]) -> Result<Inquiry, Error> {
+    content_type(headers)?;
+    let (id, secret) = credentials(headers)?;
+    match id.strip_prefix("rs_") {
+        Some(id) => {
+            let uuid = uuid::Uuid::parse_str(id).map_err(|_| Error::InvalidClient)?;
+            if uuid.to_string() != id {
+                return Err(Error::InvalidClient);
+            }
+            Ok(Inquiry::Resource(
+                darkhorse_application::resource_servers::Probe {
+                    resource: darkhorse_domain::identity::ResourceId::from_u128(uuid.as_u128())
+                        .map_err(|_| Error::InvalidClient)?,
+                    secret: crate::resource_servers::secret_digest(&secret)
+                        .map_err(|_| Error::InvalidClient)?,
+                    token: token(body)?,
+                },
+            ))
+        }
+        None => {
+            let (client, secret) = client_credentials(&id, &secret)?;
+            Ok(Inquiry::Client(Management {
+                client,
+                secret,
+                token: token(body)?,
+            }))
+        }
+    }
+}
+
 fn form(value: &str) -> Result<BTreeMap<String, String>, Error> {
     let fields = fields(value)?;
     match fields.get("grant_type").map(String::as_str) {

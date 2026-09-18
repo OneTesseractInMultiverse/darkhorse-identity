@@ -169,3 +169,71 @@ fn management_requires_authentication_but_wrong_token_types_remain_opaque() {
         Err(Error::InvalidClient)
     ));
 }
+
+#[test]
+fn introspection_credentials_have_an_explicit_purpose_and_cannot_authenticate_token_exchange() {
+    let mut headers = HeaderMap::new();
+    headers.insert(
+        "content-type",
+        "application/x-www-form-urlencoded".parse().unwrap(),
+    );
+    headers.insert(
+        "authorization",
+        format!(
+            "Basic {}",
+            STANDARD.encode(format!(
+                "rs_00000000-0000-0000-0000-000000000030:{}",
+                "ab".repeat(32)
+            ))
+        )
+        .parse()
+        .unwrap(),
+    );
+    let input = introspection(&headers, b"token=unknown").unwrap();
+    match input {
+        Inquiry::Resource(probe) => {
+            assert_eq!(probe.resource.as_u128(), 0x30);
+            assert_eq!(
+                probe.secret,
+                crate::resource_servers::secret_digest(&"ab".repeat(32)).unwrap()
+            );
+            assert_eq!(probe.token, None);
+        }
+        _ => panic!("expected resource credential"),
+    }
+    assert!(basic(&headers).is_err());
+    assert!(management(&headers, b"token=unknown").is_err());
+    assert!(introspection(&headers, b"token=unknown&token=duplicate").is_err());
+    assert_ne!(
+        crate::resource_servers::secret_digest(&"ab".repeat(32)).unwrap(),
+        crate::registration::secret_digest(&"ab".repeat(32)).unwrap()
+    );
+}
+
+#[test]
+fn resource_authentication_rejects_noncanonical_identifiers_and_secret_substitution() {
+    for (id, secret) in [
+        ("rs_00000000-0000-0000-0000-000000000000", "ab".repeat(32)),
+        ("rs_00000000000000000000000000000030", "ab".repeat(32)),
+        ("rs_00000000-0000-0000-0000-0000000000AB", "ab".repeat(32)),
+        ("rs_invalid", "ab".repeat(32)),
+        ("rs_00000000-0000-0000-0000-000000000030", "AB".repeat(32)),
+        ("rs_00000000-0000-0000-0000-000000000030", "da_token".into()),
+    ] {
+        let mut headers = HeaderMap::new();
+        headers.insert(
+            "content-type",
+            "application/x-www-form-urlencoded".parse().unwrap(),
+        );
+        headers.insert(
+            "authorization",
+            format!("Basic {}", STANDARD.encode(format!("{id}:{secret}")))
+                .parse()
+                .unwrap(),
+        );
+        assert!(matches!(
+            introspection(&headers, b"token=unknown"),
+            Err(Error::InvalidClient)
+        ));
+    }
+}

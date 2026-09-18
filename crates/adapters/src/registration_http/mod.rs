@@ -12,7 +12,7 @@ use darkhorse_domain::{identity::*, registration::*};
 use serde::Deserialize;
 use serde_json::{Value, json};
 use std::sync::Arc;
-mod input;
+pub(crate) mod input;
 mod output;
 pub fn router<S: Registration + 'static>(service: S, origin: url::Url) -> Router {
     let router = Router::new()
@@ -87,13 +87,13 @@ async fn read(
         Err(e) => error(e),
     }
 }
-fn actor(headers: &HeaderMap) -> Result<[u8; 32], RegistrationError> {
+pub(crate) fn actor(headers: &HeaderMap) -> Result<[u8; 32], RegistrationError> {
     authentication_http::cookie(headers)
         .ok()
         .flatten()
         .ok_or(RegistrationError::Unauthorized)
 }
-fn error(error: RegistrationError) -> Response {
+pub(crate) fn error(error: RegistrationError) -> Response {
     let (status, code) = match error {
         RegistrationError::Invalid => (StatusCode::BAD_REQUEST, "invalid_registration"),
         RegistrationError::Unauthorized => (StatusCode::UNAUTHORIZED, "authentication_required"),

@@ -69,8 +69,8 @@ The PostgreSQL [resource issuance adapter](resource-issuance.md) now loads a bou
 projection for the requested resource, principal assignments and registered scopes.
 It calls `plan_oauth` under the primary security-state fence at consent, code
 issuance and redemption. The current persistence contract restricts clients to
-resources in their owning application. Resource-server checks using
-`effective_capabilities` remain separate work.
+resources in their owning application. [Resource-server checks](resource-introspection.md)
+now reuse that projection and `effective_capabilities` under the same fence.
 
 Object-level rules, such as which particular directory record a caller may edit, remain the consuming use case's responsibility. General capabilities do not bypass those rules.
 

@@ -8,7 +8,7 @@ use darkhorse_application::{
 use darkhorse_domain::{oidc::Request, tokens::Error};
 
 const AUDIENCE: &str = "urn:darkhorse:resource:00000000-0000-0000-0000-000000000030";
-async fn policy(db: &Database) {
+pub(super) async fn policy(db: &Database) {
     sqlx::raw_sql("INSERT INTO protected_resources(id,application_id,name,audience) VALUES('00000000-0000-0000-0000-000000000030','00000000-0000-0000-0000-000000000010','API','urn:darkhorse:resource:00000000-0000-0000-0000-000000000030');
     INSERT INTO resource_scopes VALUES('00000000-0000-0000-0000-000000000040','00000000-0000-0000-0000-000000000010','00000000-0000-0000-0000-000000000030','operate');
     INSERT INTO client_resources VALUES('00000000-0000-0000-0000-000000000010','00000000-0000-0000-0000-000000000020','00000000-0000-0000-0000-000000000030');
@@ -30,7 +30,7 @@ fn request() -> Request {
         ..super::oidc::request()
     }
 }
-async fn approve(db: &Database, handle: [u8; 32]) {
+pub(super) async fn approve(db: &Database, handle: [u8; 32]) {
     db.store
         .begin(request(), handle, Some([1; 32]))
         .await

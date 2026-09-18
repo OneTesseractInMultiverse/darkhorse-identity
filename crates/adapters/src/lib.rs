@@ -27,3 +27,6 @@ pub mod tokens;
 #[cfg(test)]
 #[path = "../tests/unit/signing/fixture.rs"]
 mod signing_fixture;
+
+pub mod resource_servers;
+pub mod resource_servers_http;

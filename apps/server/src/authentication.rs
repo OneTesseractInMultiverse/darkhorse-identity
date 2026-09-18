@@ -59,6 +59,10 @@ pub async fn router(
     } else {
         axum::Router::new()
     };
+    let resource_registration = darkhorse_application::resource_servers::Service {
+        store: store.clone(),
+        entropy: darkhorse_adapters::resource_servers::OsResourceEntropy,
+    };
     let registration = darkhorse_application::registration::Service {
         store,
         entropy: OsRegistrationEntropy,
@@ -66,6 +70,10 @@ pub async fn router(
     Ok(
         authentication_http::router(service, settings.public_origin.clone())
             .merge(provider)
+            .merge(darkhorse_adapters::resource_servers_http::router(
+                resource_registration,
+                settings.public_origin.clone(),
+            ))
             .merge(registration_http::router(
                 registration,
                 settings.public_origin.clone(),

@@ -11,6 +11,7 @@ import {
   validateIdToken,
   validateCallback,
 } from "./reference-client.mjs";
+import { verifyResourceChecks } from "./resource-checks-browser.mjs";
 import { verifyIdentityChecks } from "./identity-checks-browser.mjs";
 async function call(page, path, body) {
   return page.evaluate(
@@ -74,7 +75,14 @@ export async function seedSigning(invoke, docker, db) {
     der.fill(0);
   }
 }
-export async function verifyProvider(page, context, origin, principal, ca) {
+export async function verifyProvider(
+  page,
+  context,
+  origin,
+  principal,
+  ca,
+  runSql,
+) {
   const metadata = await call(page, "/.well-known/openid-configuration");
   assert.equal(metadata.status, 200);
   assert.equal(metadata.body.issuer, origin);
@@ -299,6 +307,16 @@ export async function verifyProvider(page, context, origin, principal, ca) {
     first: registered.body,
     firstToken: live.body.access_token,
     keys: jwks.body.keys,
+  });
+  await verifyResourceChecks({
+    page,
+    context,
+    origin,
+    ca,
+    principal,
+    call,
+    keys: jwks.body.keys,
+    runSql,
   });
   let returned;
   query.set("prompt", "consent");

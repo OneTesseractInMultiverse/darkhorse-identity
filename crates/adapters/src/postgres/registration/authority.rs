@@ -1,11 +1,11 @@
 use super::*;
 use darkhorse_domain::authentication::SessionFacts;
 
-pub(super) async fn lock(tx: &mut Tx<'_>) -> Result<(), Error> {
+pub(in crate::postgres) async fn lock(tx: &mut Tx<'_>) -> Result<(), Error> {
     sqlx::query("SELECT singleton FROM security_state WHERE singleton AND NOT pg_is_in_recovery() FOR UPDATE").fetch_one(&mut **tx).await.map_err(storage)?;
     Ok(())
 }
-pub(super) async fn actor(
+pub(in crate::postgres) async fn actor(
     tx: &mut Tx<'_>,
     digest: [u8; 32],
     mutation: bool,

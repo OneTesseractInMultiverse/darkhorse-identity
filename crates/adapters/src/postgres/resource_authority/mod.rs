@@ -13,6 +13,60 @@ struct Projection {
     capabilities: Vec<Uuid>,
     roles: Vec<PgRow>,
     scopes: Vec<PgRow>,
+    historical: Vec<Uuid>,
+}
+pub(in crate::postgres) struct Policy {
+    catalog: Catalog,
+    principal: Principal,
+    target: Target,
+    client: ClientId,
+    scopes: BTreeSet<ScopeId>,
+    exposed: CapabilitySet,
+}
+pub(in crate::postgres) struct StoredGrant {
+    pub credential: CredentialId,
+    pub resource: ResourceId,
+    pub epoch: u64,
+    pub ceiling: CapabilitySet,
+    pub created: u64,
+    pub expires: u64,
+}
+impl Policy {
+    pub(in crate::postgres) fn evaluate(
+        &self,
+        stored: &StoredGrant,
+        now: u64,
+    ) -> Result<CapabilitySet, Error> {
+        if stored.resource != self.target.resource
+            || !darkhorse_domain::tokens::live(stored.created, stored.expires, now)
+        {
+            return Err(Error::InvalidToken);
+        }
+        let grant = CredentialGrant {
+            credential: stored.credential,
+            subject: self.principal.id,
+            target: self.target,
+            revoked: false,
+            principal_epoch: stored.epoch,
+            valid_from: stored.created / 1000,
+            expires_at: Some(stored.expires / 1000),
+            ceiling: stored.ceiling.clone(),
+            delegation: Delegation::OAuth {
+                client: self.client,
+                scopes: self.scopes.clone(),
+            },
+        };
+        effective_capabilities(
+            &self.catalog,
+            &Evaluation {
+                principal: &self.principal,
+                credential: &grant,
+                target: self.target,
+                now: now / 1000,
+            },
+        )
+        .map_err(|_| Error::InvalidToken)
+    }
 }
 
 pub(super) async fn plan(
@@ -23,6 +77,25 @@ pub(super) async fn plan(
     scopes: &[String],
     limit: Option<&CapabilitySet>,
 ) -> Result<IssuancePlan, Error> {
+    let policy = load(tx, principal, client, audience, scopes, None).await?;
+    plan_oauth(
+        &policy.catalog,
+        &policy.principal,
+        policy.target,
+        client,
+        policy.scopes,
+        limit.unwrap_or(&policy.exposed),
+    )
+    .map_err(|_| Error::InvalidGrant)
+}
+pub(in crate::postgres) async fn load(
+    tx: &mut Tx<'_>,
+    principal: PrincipalId,
+    client: ClientId,
+    audience: &str,
+    scopes: &[String],
+    historical: Option<&CapabilitySet>,
+) -> Result<Policy, Error> {
     darkhorse_domain::tokens::profile(scopes, Some(audience))?;
     let row = sqlx::query("SELECT r.id,r.application_id,a.active,c.active AS client_active,p.active AS principal_active,p.credential_epoch FROM protected_resources r JOIN applications a ON a.id=r.application_id JOIN client_resources cr ON cr.resource_id=r.id AND cr.client_id=$1 JOIN oauth_clients c ON c.id=cr.client_id JOIN principals p ON p.id=$2 WHERE r.audience=$3")
         .bind(uuid(client.as_u128())).bind(uuid(principal.as_u128())).bind(audience)
@@ -35,17 +108,27 @@ pub(super) async fn plan(
         .bind(uuid(principal.as_u128())).bind(application).bind(&capabilities).fetch_all(&mut **tx).await.map_err(storage)?;
     let selected = sqlx::query("SELECT s.id,ARRAY(SELECT capability_id FROM scope_capabilities WHERE scope_id=s.id AND capability_id=ANY($4) ORDER BY capability_id) AS capabilities FROM resource_scopes s JOIN client_scopes cs ON cs.scope_id=s.id AND cs.client_id=$1 WHERE s.resource_id=$2 AND s.name=ANY($3) ORDER BY s.id LIMIT 33")
         .bind(uuid(client.as_u128())).bind(resource).bind(scopes).bind(&capabilities).fetch_all(&mut **tx).await.map_err(storage)?;
+    let historical = match historical {
+        None => Vec::new(),
+        Some(ceiling) => {
+            sqlx::query_scalar("SELECT id FROM capabilities WHERE id=ANY($1) ORDER BY id LIMIT 257")
+                .bind(encoded(ceiling))
+                .fetch_all(&mut **tx)
+                .await
+                .map_err(storage)?
+        }
+    };
     assemble(
         &Projection {
             target: row,
             capabilities,
             roles,
             scopes: selected,
+            historical,
         },
         principal,
         client,
         scopes,
-        limit,
     )
 }
 fn assemble(
@@ -53,15 +136,18 @@ fn assemble(
     principal: PrincipalId,
     client: ClientId,
     names: &[String],
-    limit: Option<&CapabilitySet>,
-) -> Result<IssuancePlan, Error> {
+) -> Result<Policy, Error> {
     let Projection {
         target: row,
         capabilities: caps,
         roles,
         scopes,
+        historical,
     } = projection;
-    if caps.len() > MAX_CAPABILITIES || roles.len() > MAX_ROLES {
+    if caps.len() > MAX_CAPABILITIES
+        || roles.len() > MAX_ROLES
+        || historical.len() > MAX_CAPABILITIES
+    {
         return Err(Error::Unavailable);
     }
     if scopes.len() + 1 != names.len() {
@@ -70,6 +156,7 @@ fn assemble(
     let application = ApplicationId::from_u128(id(row, "application_id")?).map_err(storage)?;
     let resource = ResourceId::from_u128(id(row, "id")?).map_err(storage)?;
     let exposed = capabilities(caps)?;
+    let known: CapabilitySet = exposed.union(&capabilities(historical)?).copied().collect();
     let role_defs = roles
         .iter()
         .map(|r| role(r, application))
@@ -113,11 +200,15 @@ fn assemble(
             active: true,
             capabilities: exposed.clone(),
         }],
-        capabilities: exposed
+        capabilities: known
             .iter()
             .map(|&id| Capability {
                 id,
-                applications: BTreeSet::from([application]),
+                applications: if exposed.contains(&id) {
+                    BTreeSet::from([application])
+                } else {
+                    BTreeSet::new()
+                },
             })
             .collect(),
         roles: role_defs,
@@ -135,18 +226,17 @@ fn assemble(
         .iter()
         .map(|s| ScopeId::from_u128(id(s, "id")?).map_err(storage))
         .collect::<Result<_, _>>()?;
-    plan_oauth(
-        &catalog,
-        &subject,
-        Target {
+    Ok(Policy {
+        catalog,
+        principal: subject,
+        target: Target {
             application,
             resource,
         },
         client,
-        selected,
-        limit.unwrap_or(&exposed),
-    )
-    .map_err(|_| Error::InvalidGrant)
+        scopes: selected,
+        exposed,
+    })
 }
 fn role(row: &PgRow, application: ApplicationId) -> Result<Role, Error> {
     Ok(Role {

@@ -160,7 +160,7 @@ impl Input {
         })
     }
 }
-pub(super) fn id<T, E>(
+pub(crate) fn id<T, E>(
     value: &str,
     constructor: impl FnOnce(u128) -> Result<T, E>,
 ) -> Result<T, RegistrationError> {

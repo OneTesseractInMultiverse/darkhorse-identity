@@ -97,3 +97,5 @@ mod oidc;
 mod tokens;
 
 mod resource_authority;
+
+mod resource_servers;

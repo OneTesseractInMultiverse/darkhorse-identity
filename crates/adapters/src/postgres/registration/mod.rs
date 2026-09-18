@@ -3,7 +3,7 @@ use darkhorse_application::registration::*;
 use darkhorse_domain::{identity::*, registration::*};
 use sqlx::{Postgres, Row, Transaction, postgres::PgRow};
 use uuid::Uuid;
-mod authority;
+pub(in crate::postgres) mod authority;
 mod records;
 mod writes;
 type Tx<'a> = Transaction<'a, Postgres>;

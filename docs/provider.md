@@ -9,8 +9,9 @@ advertises these implemented capabilities when an active signing key is availabl
 
 A separate [resource issuance profile](resource-issuance.md) connects persisted role
 assignments to the existing authorization engine and freezes permission ceilings at
-consent, code issuance and redemption. Resource-server introspection, catalog
-management, refresh tokens, extended profiles and back-channel logout remain
+consent, code issuance and redemption. [Resource-server introspection](resource-introspection.md)
+recomputes live capabilities within those ceilings. Catalog management, refresh
+tokens, extended profiles and back-channel logout remain
 unfinished. Registration allowances never grant user capabilities.
 [Issue #8](https://github.com/OneTesseractInMultiverse/darkhorse-identity/issues/8)
 retains failure, coverage and operational qualification. No OIDC conformance or
@@ -252,10 +253,10 @@ It is an interoperability probe, not a deployed application or production client
 Rust owns all deployed server behavior.
 
 Current combined verification and remaining coverage are recorded in the
-[identity-check verification](token-checks.md#verification). The unchanged 100%
+[resource-introspection verification](resource-introspection.md#verification). The unchanged 100%
 authored-code target and full-provider interoperability remain open. Passing these
 checks does not establish OIDC conformance or production throughput. Resource
-issuance, retention and further failure paths remain tracked in issues #8 and #9
+issuance qualification, retention and further failure paths remain tracked in issues #8 and #9
 and release qualification.
 
 ## Protocol references

@@ -6,7 +6,7 @@
 
 An identity server for one organization and its applications, built with Rust, a static SvelteKit/TypeScript console, PostgreSQL, and Redis.
 
-**Early development.** The repository contains a pure authorization policy engine, PostgreSQL persistence, operator-only administrator bootstrap, shared Redis attempt limiting, a password login portal with Rust-owned sessions, administrator-only application/client registration, protected signing keys/JWKS, and an initial `openid` authorization-code flow with consent, opaque access tokens, signed ID tokens, scoped UserInfo, client-authenticated introspection and revocation. Resource token issuance now binds persisted role permissions to immutable consent and token ceilings. Resource-server introspection, catalog management, refresh tokens, logout propagation and production deployment qualification remain unfinished. The authorization policy engine is not yet connected to protected application requests.
+**Early development.** The repository contains a pure authorization policy engine, PostgreSQL persistence, operator-only administrator bootstrap, shared Redis attempt limiting, a password login portal with Rust-owned sessions, administrator-only application/client registration, protected signing keys/JWKS, and an initial `openid` authorization-code flow with consent, opaque access tokens, signed ID tokens, scoped UserInfo, client-authenticated introspection and revocation. Resource token issuance now binds persisted role permissions to immutable consent and token ceilings. Dedicated resource-server introspection now recomputes current capabilities for protected API checks. Catalog management, refresh tokens, logout propagation and production deployment qualification remain unfinished.
 
 ## Quick start
 
@@ -51,7 +51,7 @@ For opt-in code authorization and signing-key commands, see the [provider contra
 
 Tests mirror source paths under `tests/unit`. Rust includes private unit modules from that parallel tree. Framework and serialization types remain outside domain/application contracts. See [engineering](docs/engineering.md) for the implementation rules and [dependencies](docs/dependencies.md) for library boundaries.
 
-The [resource issuance contract](docs/resource-issuance.md) describes persisted role assignments, bounded policy loading and the remaining resource-server boundary. The [authorization contract](docs/authorization.md) explains application isolation, roles, scopes, credential ceilings, and the authoritative-state requirements for future adapters. Run `make test-authorization` for its self-contained tests.
+The [resource issuance contract](docs/resource-issuance.md) describes persisted role assignments and bounded policy loading. The [resource introspection contract](docs/resource-introspection.md) covers dedicated resource credentials and live capability checks. The [authorization contract](docs/authorization.md) explains application isolation, roles, scopes, credential ceilings, and the authoritative-state requirements for future adapters. Run `make test-authorization` for its self-contained tests.
 
 ## Work tracking
 

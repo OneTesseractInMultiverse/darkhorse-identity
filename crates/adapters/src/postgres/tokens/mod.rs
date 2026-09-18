@@ -179,3 +179,4 @@ fn bytes(row: &PgRow, key: &str) -> Result<[u8; 32], Error> {
         .try_into()
         .map_err(storage)
 }
+mod resources;

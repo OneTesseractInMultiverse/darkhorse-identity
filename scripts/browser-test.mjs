@@ -98,7 +98,29 @@ export async function verifyBrowser(env, db, directory, command, docker) {
     await ready(origin, tls.ca);
     await assert.rejects(https(origin, undefined, "/health/live"));
     browser = await launchBrowser(directory);
-    await exerciseBrowser(browser, origin, tls.ca, password, principal, invoke);
+    const runSql = (statement) =>
+      docker([
+        "exec",
+        db.name,
+        "psql",
+        "-U",
+        "postgres",
+        "-d",
+        "browser_test",
+        "-v",
+        "ON_ERROR_STOP=1",
+        "-c",
+        statement,
+      ]);
+    await exerciseBrowser(
+      browser,
+      origin,
+      tls.ca,
+      password,
+      principal,
+      invoke,
+      runSql,
+    );
     console.log(
       "HTTPS Chromium login, rotation, reload, cookies, CSRF, logout, revocation and limiter failure checks passed.",
     );
@@ -202,6 +224,7 @@ async function exerciseBrowser(
   password,
   principal,
   invoke,
+  runSql,
 ) {
   const context = await browser.newContext();
   const page = await context.newPage();
@@ -216,7 +239,7 @@ async function exerciseBrowser(
   const initial = await verifySignIn(page, context, origin, password);
   await verifyRotation(page, context, origin, ca, password, initial);
   await verifyRegistration(page, principal);
-  await verifyProvider(page, context, origin, principal, ca);
+  await verifyProvider(page, context, origin, principal, ca, runSql);
   await verifyLogoutAndRevocation(page, context, password, principal, invoke);
   assert.deepEqual(errors, []);
   assert.deepEqual(await page.evaluate(() => window.securityViolations), []);
@@ -328,6 +351,7 @@ async function verifyLogoutAndRevocation(
   password,
   principal,
   invoke,
+  runSql,
 ) {
   await page.getByRole("button", { name: "Sign out" }).click();
   await page.getByRole("button", { name: "Sign in", exact: true }).waitFor();

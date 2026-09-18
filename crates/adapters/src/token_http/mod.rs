@@ -11,7 +11,11 @@ use axum::{
     response::{IntoResponse, Response},
     routing::{get, post},
 };
-use darkhorse_application::{signing::SigningStore, tokens::*};
+use darkhorse_application::{
+    resource_servers::{ActiveResourceToken, ResourceTokenStore},
+    signing::SigningStore,
+    tokens::*,
+};
 use darkhorse_domain::{signing::Phase, tokens::Error};
 use std::sync::Arc;
 struct Endpoint<S, K> {
@@ -20,7 +24,7 @@ struct Endpoint<S, K> {
     issuer: String,
 }
 pub fn router<
-    S: TokenStore + TokenManagementStore + SigningStore + 'static,
+    S: TokenStore + TokenManagementStore + ResourceTokenStore + SigningStore + 'static,
     K: IdSigner + 'static,
 >(
     store: S,
@@ -104,20 +108,50 @@ fn profile_response(profile: UserInfo) -> serde_json::Value {
     }
     response
 }
-async fn introspect<S: TokenManagementStore, K>(
+async fn introspect<S: TokenManagementStore + ResourceTokenStore, K>(
     State(e): State<Arc<Endpoint<S, K>>>,
     headers: HeaderMap,
     body: Bytes,
 ) -> Response {
-    let input = match input::management(&headers, &body) {
+    let input = match input::introspection(&headers, &body) {
         Ok(input) => input,
         Err(error) => return failure(error),
     };
-    match e.store.introspect(input, &e.issuer).await {
-        Ok(token) => Json(introspection_response(token, &e.issuer)).into_response(),
-        Err(error) => failure(error),
+    match input {
+        input::Inquiry::Client(input) => match e.store.introspect(input, &e.issuer).await {
+            Ok(token) => Json(introspection_response(token, &e.issuer)).into_response(),
+            Err(error) => failure(error),
+        },
+        input::Inquiry::Resource(input) => {
+            match e.store.introspect_resource(input, &e.issuer).await {
+                Ok(token) => Json(resource_response(token, &e.issuer)).into_response(),
+                Err(error) => failure(error),
+            }
+        }
     }
 }
+fn resource_response(active: Option<ActiveResourceToken>, issuer: &str) -> serde_json::Value {
+    match active {
+        None => serde_json::json!({"active":false}),
+        Some(active) => {
+            let mut response = introspection_response(Some(active.token), issuer);
+            response["aud"] = format!(
+                "urn:darkhorse:resource:{}",
+                uuid::Uuid::from_u128(active.resource.as_u128())
+            )
+            .into();
+            response["capabilities"] = serde_json::json!(
+                active
+                    .capabilities
+                    .iter()
+                    .map(|id| uuid::Uuid::from_u128(id.as_u128()).to_string())
+                    .collect::<Vec<_>>()
+            );
+            response
+        }
+    }
+}
+
 async fn revoke<S: TokenManagementStore, K>(
     State(e): State<Arc<Endpoint<S, K>>>,
     headers: HeaderMap,

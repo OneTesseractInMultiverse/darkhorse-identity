@@ -5,11 +5,11 @@ mappings to issue opaque access credentials for one registered resource. The
 adapter calls the existing pure `plan_oauth` engine. Client registration, application
 ownership and platform-administrator status cannot grant resource permissions.
 
-This is issuance infrastructure. Resource-server authentication/introspection and
-management interfaces for these policy definitions are still unfinished. UserInfo
-rejects resource credentials, and the existing issuing-client identity introspection
-returns inactive for them. Applications cannot yet use them to authorize API calls.
-The issuing client can revoke them. See [identity checks](token-checks.md).
+[Resource-server introspection](resource-introspection.md) now authenticates dedicated
+resource credentials and recomputes effective capabilities for API authorization.
+Management interfaces for policy definitions remain unfinished. UserInfo rejects
+resource credentials; issuing-client identity introspection returns inactive for
+them. The issuing client can revoke them. See [identity checks](token-checks.md).
 
 ## Request and grant profile
 
@@ -39,7 +39,7 @@ The issuing client can revoke them. See [identity checks](token-checks.md).
   describes the authentication event for the client. No refresh token is issued.
 
 Scope text identifies the selected delegation limits; it is not proof that a user
-holds every capability named by a scope. Future resource introspection must return
+holds every capability named by a scope. Resource introspection returns
 only the effective intersection of current authority and the token's immutable
 ceiling. Consuming APIs must check that result and the intended audience.
 
@@ -82,7 +82,7 @@ security-state lock. Graph writers serialize against those reads. A redemption
 started after a permission reduction commits observes the reduction; one already
 holding the shared lock can finish before that change commits. No positive decision
 or permission ceiling is loaded from Redis. This does not close the separate gap
-between a future resource authorization check and an application's protected write.
+between a resource authorization check and an application's protected write.
 
 Apply migrations explicitly using `make db-migrate`. Existing identity codes and
 tokens retain their identity-only constraints. Old pending resource requests without
@@ -107,14 +107,17 @@ measurement before changing the consistency design or adding caching.
 
 ## Verification and remaining work
 
+The latest combined results, including resource-server checks, are recorded in
+[resource introspection verification](resource-introspection.md#verification).
+
 `make test-provider` exercises source-defined scope and binding tests without
 services. `make test-postgres` verifies frozen consent, permission reduction and
 expansion, role requirements, retirement, scope/consent withdrawal, replay,
 cross-application constraints, audit rollback, a concurrent permission reduction,
 oversized projections and an HTTP authorization/consent/exchange flow. That flow
 also verifies wrong-resource rejection, UserInfo/ID-token separation, inactive
-identity introspection and resource-token revocation. `make test-browser` continues
-to verify the identity profile through the static portal over HTTPS.
+identity introspection and resource-token revocation. `make test-browser` verifies identity and two-resource checks through the static
+portal over HTTPS; see [resource introspection verification](resource-introspection.md#verification).
 
 The 2026-09-18 resource increment passed `make ci` (193 isolated tests), 54
 PostgreSQL scenarios, five Redis infrastructure scenarios, 14 limiter/login
@@ -127,8 +130,8 @@ remain separate evidence; these figures do not establish full authored-code cove
 
 [Issue #8](https://github.com/OneTesseractInMultiverse/darkhorse-identity/issues/8)
 retains failure/log qualification, the unchanged 100% authored-code coverage target,
-retention, load and remaining interoperability evidence. Resource-server checks
-remain in [#9](https://github.com/OneTesseractInMultiverse/darkhorse-identity/issues/9);
+retention, load and remaining interoperability evidence. Resource-server checks and their remaining qualification
+are tracked in [#9](https://github.com/OneTesseractInMultiverse/darkhorse-identity/issues/9);
 policy management remains in [#16](https://github.com/OneTesseractInMultiverse/darkhorse-identity/issues/16)
 and the local operator interface in [#26](https://github.com/OneTesseractInMultiverse/darkhorse-identity/issues/26).
 Issuance tests do not establish provider conformance or production readiness.

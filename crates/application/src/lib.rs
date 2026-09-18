@@ -19,5 +19,6 @@ pub struct DirectoryCriteria {
 
 pub mod limiting;
 pub mod oidc;
+pub mod resource_servers;
 pub mod shared_limiting;
 pub mod tokens;
