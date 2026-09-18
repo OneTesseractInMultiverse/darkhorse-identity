@@ -118,8 +118,38 @@ export function userinfo(origin, ca, access) {
     headers: { authorization: `Bearer ${access}` },
   });
 }
+export function manage(
+  origin,
+  ca,
+  endpoint,
+  client,
+  secret,
+  token,
+  hint = "access_token",
+  extraHeaders = {},
+) {
+  requireValid(["introspect", "revoke"].includes(endpoint));
+  const authorization = Buffer.from(
+    `${encodeURIComponent(client)}:${encodeURIComponent(secret)}`,
+  ).toString("base64");
+  return send(
+    origin,
+    ca,
+    `/${endpoint}`,
+    {
+      method: "POST",
+      headers: {
+        authorization: `Basic ${authorization}`,
+        "content-type": "application/x-www-form-urlencoded",
+        ...extraHeaders,
+      },
+    },
+    new URLSearchParams({ token, token_type_hint: hint }).toString(),
+  );
+}
 function send(origin, ca, path, options, body, discardResponse = false) {
   return new Promise((resolve, reject) => {
+    const started = performance.now();
     const req = request(
       `${origin}${path}`,
       { ca, timeout: 5000, ...options },
@@ -144,7 +174,8 @@ function send(origin, ca, path, options, body, discardResponse = false) {
             resolve({
               status: res.statusCode,
               headers: res.headers,
-              body: JSON.parse(data),
+              body: data.length === 0 ? null : JSON.parse(data),
+              elapsedMs: performance.now() - started,
             });
           } catch {
             reject(new Error("Invalid reference response."));

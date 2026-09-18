@@ -4,7 +4,7 @@ use crate::{
 };
 use axum::http::HeaderMap;
 use base64::{Engine as _, engine::general_purpose::STANDARD};
-use darkhorse_application::tokens::Redemption;
+use darkhorse_application::tokens::{Management, Redemption};
 use darkhorse_domain::{identity::ClientId, tokens::Error};
 use std::collections::BTreeMap;
 use zeroize::Zeroizing;
@@ -56,14 +56,7 @@ pub(super) fn bearer(headers: &HeaderMap) -> Result<[u8; 32], Error> {
     material::digest(value, Purpose::Access).map_err(|_| Error::InvalidToken)
 }
 pub(super) fn request(headers: &HeaderMap, body: &[u8]) -> Result<Redemption, Error> {
-    if one(headers, "content-type")
-        .map_err(|_| Error::InvalidRequest)?
-        .split(';')
-        .next()
-        != Some("application/x-www-form-urlencoded")
-    {
-        return Err(Error::InvalidRequest);
-    }
+    content_type(headers)?;
     let (client, secret) = basic(headers)?;
     let values = form(std::str::from_utf8(body).map_err(|_| Error::InvalidRequest)?)?;
     let get = |key: &str| {
@@ -80,7 +73,40 @@ pub(super) fn request(headers: &HeaderMap, body: &[u8]) -> Result<Redemption, Er
         challenge: material::challenge(get("code_verifier")?)?,
     })
 }
+fn content_type(headers: &HeaderMap) -> Result<(), Error> {
+    if one(headers, "content-type")
+        .map_err(|_| Error::InvalidRequest)?
+        .split(';')
+        .next()
+        != Some("application/x-www-form-urlencoded")
+    {
+        return Err(Error::InvalidRequest);
+    }
+    Ok(())
+}
+pub(super) fn management(headers: &HeaderMap, body: &[u8]) -> Result<Management, Error> {
+    content_type(headers)?;
+    let (client, secret) = basic(headers)?;
+    let values = fields(std::str::from_utf8(body).map_err(|_| Error::InvalidRequest)?)?;
+    let token = values
+        .get("token")
+        .filter(|v| !v.is_empty() && v.len() <= 2048)
+        .ok_or(Error::InvalidRequest)?;
+    Ok(Management {
+        client,
+        secret,
+        token: material::digest(token, Purpose::Access).ok(),
+    })
+}
 fn form(value: &str) -> Result<BTreeMap<String, String>, Error> {
+    let fields = fields(value)?;
+    match fields.get("grant_type").map(String::as_str) {
+        Some("authorization_code") => Ok(fields),
+        Some(_) => Err(Error::UnsupportedGrant),
+        None => Err(Error::InvalidRequest),
+    }
+}
+fn fields(value: &str) -> Result<BTreeMap<String, String>, Error> {
     if value.len() > 4096 {
         return Err(Error::InvalidRequest);
     }
@@ -106,11 +132,7 @@ fn form(value: &str) -> Result<BTreeMap<String, String>, Error> {
             return Err(Error::InvalidRequest);
         }
     }
-    match fields.get("grant_type").map(String::as_str) {
-        Some("authorization_code") => Ok(fields),
-        Some(_) => Err(Error::UnsupportedGrant),
-        None => Err(Error::InvalidRequest),
-    }
+    Ok(fields)
 }
 #[cfg(test)]
 #[path = "../../tests/unit/token_http/input.rs"]

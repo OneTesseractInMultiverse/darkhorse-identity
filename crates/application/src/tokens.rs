@@ -33,6 +33,7 @@ pub struct Tokens {
     pub access: String,
     pub id_token: String,
     pub expires_in: u64,
+    pub scope: String,
 }
 pub trait IdSigner: Send + Sync {
     fn sign(
@@ -61,5 +62,40 @@ pub trait TokenStore: Send + Sync {
         &self,
         digest: [u8; 32],
         issuer: &str,
-    ) -> impl Future<Output = Result<PrincipalId, Error>> + Send;
+    ) -> impl Future<Output = Result<UserInfo, Error>> + Send;
+}
+
+// Only approved profile fields cross this port. No credential material is projected.
+pub struct UserInfo {
+    pub subject: PrincipalId,
+    pub profile: Option<Names>,
+    pub email: Option<String>,
+}
+pub struct Names {
+    pub given: String,
+    pub family: String,
+}
+pub struct Management {
+    pub client: ClientId,
+    pub secret: [u8; 32],
+    pub token: Option<[u8; 32]>,
+}
+pub struct ActiveToken {
+    pub subject: PrincipalId,
+    pub client: ClientId,
+    pub scope: String,
+    pub issued: u64,
+    pub expires: u64,
+}
+pub trait TokenManagementStore: Send + Sync {
+    fn introspect(
+        &self,
+        input: Management,
+        issuer: &str,
+    ) -> impl Future<Output = Result<Option<ActiveToken>, Error>> + Send;
+    fn revoke(
+        &self,
+        input: Management,
+        issuer: &str,
+    ) -> impl Future<Output = Result<(), Error>> + Send;
 }

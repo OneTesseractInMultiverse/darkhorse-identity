@@ -26,7 +26,7 @@ test-registration: ## Test: isolated application/client registration policies an
 browser-install: ## Test: install the pinned Chromium browser for integration tests
 	$(PNPM) exec playwright install chromium
 
-test-browser: build-web ## Test: disposable PostgreSQL/Redis and verified HTTPS Chromium login
+test-browser: build-web ## Test: disposable PostgreSQL/Redis and verified HTTPS login, SSO and token checks
 	DARKHORSE_TEST_BROWSER=true $(NODE) scripts/redis-test.mjs
 
 help: ## Help: list implemented targets; no setup required
@@ -248,7 +248,7 @@ signing-activate: ## Provider: activate a prepublished key; requires KID and REV
 signing-retire: ## Provider: retire staged/expired retiring key; requires KID and REVISION
 	$(NODE) scripts/provider.mjs run signing-retire "$(KID)" "$(REVISION)"
 
-test-provider: ## Test: isolated authorization, signing and code exchange contracts
+test-provider: ## Test: isolated authorization, signing, code exchange and identity-check contracts
 	cargo test --workspace --lib --locked --offline oidc
 	cargo test --workspace --lib --locked --offline signing
 	cargo test --workspace --lib --locked --offline provider_http

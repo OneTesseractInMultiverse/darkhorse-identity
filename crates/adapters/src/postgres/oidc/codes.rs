@@ -72,8 +72,8 @@ async fn insert(
     digest: [u8; 32],
     now: u64,
 ) -> Result<(), TokenError> {
-    sqlx::query("INSERT INTO authorization_codes(digest,request_digest,client_id,client_revision,application_revision,session_digest,principal_id,authenticated_ms,redirect_uri,challenge,nonce,created_ms,expires_ms) VALUES($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13)")
-  .bind(digest.as_slice()).bind(handle.as_slice()).bind(Uuid::from_u128(p.request.client.as_u128())).bind(p.client_revision as i64).bind(p.application_revision as i64).bind(s.digest.as_slice()).bind(Uuid::from_u128(s.principal.as_u128())).bind(s.authenticated_ms as i64).bind(&p.request.redirect).bind(p.request.challenge.as_slice()).bind(&p.request.nonce).bind(now as i64).bind(tokens::deadline(now,tokens::CODE_MS)? as i64).execute(&mut **tx).await.map_err(unavailable)?;
+    sqlx::query("INSERT INTO authorization_codes(digest,request_digest,client_id,client_revision,application_revision,session_digest,principal_id,authenticated_ms,redirect_uri,challenge,nonce,created_ms,expires_ms,scopes) VALUES($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14)")
+  .bind(digest.as_slice()).bind(handle.as_slice()).bind(Uuid::from_u128(p.request.client.as_u128())).bind(p.client_revision as i64).bind(p.application_revision as i64).bind(s.digest.as_slice()).bind(Uuid::from_u128(s.principal.as_u128())).bind(s.authenticated_ms as i64).bind(&p.request.redirect).bind(p.request.challenge.as_slice()).bind(&p.request.nonce).bind(now as i64).bind(tokens::deadline(now,tokens::CODE_MS)? as i64).bind(&p.request.scopes).execute(&mut **tx).await.map_err(unavailable)?;
     Ok(())
 }
 fn convert(error: Error) -> TokenError {

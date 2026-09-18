@@ -15,8 +15,8 @@ use darkhorse_application::{
 use darkhorse_domain::tokens::Error;
 #[path = "../unit/signing/fixture.rs"]
 mod fixture;
-const ISSUER: &str = "https://issuer.example";
-async fn setup() -> (Database, Signer) {
+pub(super) const ISSUER: &str = "https://issuer.example";
+pub(super) async fn setup() -> (Database, Signer) {
     let db = super::oidc::fixture().await;
     let wrap = WrapKey::from_hex(&"12".repeat(32)).unwrap();
     db.store
@@ -34,7 +34,7 @@ async fn setup() -> (Database, Signer) {
     sqlx::query("INSERT INTO oauth_client_secrets(id,client_id,verifier,created_ms) VALUES('00000000-0000-0000-0000-000000000060','00000000-0000-0000-0000-000000000020',$1,0)").bind([9u8;32].as_slice()).execute(&db.pool).await.unwrap();
     (db, Signer::new(wrap))
 }
-async fn code(db: &Database, handle: [u8; 32]) -> Code {
+pub(super) async fn code(db: &Database, handle: [u8; 32]) -> Code {
     db.store
         .begin(super::oidc::request(), handle, Some([1; 32]))
         .await
@@ -52,7 +52,7 @@ async fn code(db: &Database, handle: [u8; 32]) -> Code {
         .await
         .unwrap()
 }
-fn input(code: &Code) -> Redemption {
+pub(super) fn input(code: &Code) -> Redemption {
     Redemption {
         client: super::oidc::request().client,
         secret: [9; 32],
@@ -100,6 +100,7 @@ async fn exchange_is_single_use_and_replay_revokes_the_issued_credential() {
                 ISSUER
             )
             .await
+            .map(|view| view.subject)
             .is_err()
     );
     assert_eq!(
@@ -186,11 +187,20 @@ async fn signing_audit_and_wrong_proofs_never_partially_consume_a_code() {
         .await
         .unwrap();
     let digest = material::digest(&token.access, Purpose::Access).unwrap();
-    assert_eq!(db.store.userinfo(digest, ISSUER).await, Ok(id(1)));
+    assert_eq!(
+        db.store
+            .userinfo(digest, ISSUER)
+            .await
+            .map(|view| view.subject),
+        Ok(id(1))
+    );
     use darkhorse_application::authentication::AuthenticationStore;
     db.store.logout([1; 32]).await.unwrap();
     assert_eq!(
-        db.store.userinfo(digest, ISSUER).await,
+        db.store
+            .userinfo(digest, ISSUER)
+            .await
+            .map(|view| view.subject),
         Err(Error::InvalidToken)
     );
     db.store.close().await;
@@ -239,7 +249,8 @@ async fn committed_registration_and_account_changes_reject_both_code_and_access(
                     material::digest(&issued.access, Purpose::Access).unwrap(),
                     ISSUER
                 )
-                .await,
+                .await
+                .map(|view| view.subject),
             Err(Error::InvalidToken)
         );
         db.store.close().await;
@@ -281,7 +292,8 @@ async fn expired_fresh_codes_deny_and_expired_replays_still_revoke_access() {
                 material::digest(&issued.access, Purpose::Access).unwrap(),
                 ISSUER
             )
-            .await,
+            .await
+            .map(|view| view.subject),
         Err(Error::InvalidToken)
     );
     assert_eq!(
@@ -363,10 +375,19 @@ async fn issuance_failure_and_constraints_preserve_pending_request_and_grant_cei
     }
     let digest = material::digest(&issued.access, Purpose::Access).unwrap();
     assert_eq!(
-        db.store.userinfo(digest, "https://other.example").await,
+        db.store
+            .userinfo(digest, "https://other.example")
+            .await
+            .map(|view| view.subject),
         Err(Error::InvalidToken)
     );
-    assert_eq!(db.store.userinfo(digest, ISSUER).await, Ok(id(1)));
+    assert_eq!(
+        db.store
+            .userinfo(digest, ISSUER)
+            .await
+            .map(|view| view.subject),
+        Ok(id(1))
+    );
     sqlx::query("UPDATE access_tokens SET revoked=true")
         .execute(&db.pool)
         .await

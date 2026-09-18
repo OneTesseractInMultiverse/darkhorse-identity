@@ -48,10 +48,28 @@ fn decode(row: &PgRow) -> Result<CodeRecord, Error> {
         created: number(row, "created_ms")?,
         expires: number(row, "expires_ms")?,
         consumed: row.try_get("consumed").map_err(storage)?,
+        scopes: row.try_get("scopes").map_err(storage)?,
+    })
+}
+// Identity checks need only the issuing registration and exact callback binding.
+// Resource catalogs are loaded separately when resource issuance is implemented.
+async fn identity_policy(
+    tx: &mut Tx<'_>,
+    code: &CodeRecord,
+) -> Result<darkhorse_domain::oidc::ClientPolicy, Error> {
+    let row = sqlx::query("SELECT c.active AND a.active AS active,c.revision,a.revision AS application_revision,ARRAY(SELECT uri FROM client_redirects WHERE client_id=c.id AND uri=$2 LIMIT 1) AS redirects FROM oauth_clients c JOIN applications a ON a.id=c.application_id WHERE c.id=$1")
+        .bind(Uuid::from_u128(code.client.as_u128())).bind(&code.redirect)
+        .fetch_one(&mut **tx).await.map_err(storage)?;
+    Ok(darkhorse_domain::oidc::ClientPolicy {
+        active: row.try_get("active").map_err(storage)?,
+        revision: number(&row, "revision")?,
+        application_revision: number(&row, "application_revision")?,
+        redirects: row.try_get("redirects").map_err(storage)?,
+        resources: Vec::new(),
     })
 }
 pub(super) async fn current(tx: &mut Tx<'_>, code: &CodeRecord) -> Result<(), Error> {
-    let catalog = records::catalog(tx, code.client).await.map_err(convert)?;
+    let policy = identity_policy(tx, code).await?;
     let session = authority::session(tx, Some(code.session))
         .await
         .map_err(convert)?;
@@ -62,10 +80,15 @@ pub(super) async fn current(tx: &mut Tx<'_>, code: &CodeRecord) -> Result<(), Er
             principal: code.principal,
             authenticated_ms: code.authenticated,
         },
-        &catalog.policy,
+        &policy,
         session,
         &code.redirect,
-    )
+    )?;
+    let approved: Option<Vec<String>> = sqlx::query_scalar("SELECT scopes FROM oauth_consents WHERE principal_id=$1 AND client_id=$2 AND resource='' AND client_revision=$3 AND application_revision=$4 FOR SHARE")
+        .bind(Uuid::from_u128(code.principal.as_u128())).bind(Uuid::from_u128(code.client.as_u128()))
+        .bind(code.client_revision as i64).bind(code.application_revision as i64)
+        .fetch_optional(&mut **tx).await.map_err(storage)?;
+    tokens::consent(&code.scopes, approved.as_deref())
 }
 
 pub(super) async fn key(tx: &mut Tx<'_>, issuer: &str) -> Result<WrappedKey, Error> {

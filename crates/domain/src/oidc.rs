@@ -89,7 +89,8 @@ pub fn authorize_request(request: &Request, policy: &ClientPolicy) -> Result<(),
     };
     if !request.scopes.iter().any(|scope| scope == "openid")
         || request.scopes.iter().any(|scope| {
-            scope != "openid" && resource.is_none_or(|(_, scopes)| !scopes.contains(scope))
+            !crate::tokens::identity_scope(scope)
+                && resource.is_none_or(|(_, scopes)| !scopes.contains(scope))
         })
     {
         return Err(Error::InvalidScope);

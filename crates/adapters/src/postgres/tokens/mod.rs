@@ -1,7 +1,4 @@
-use super::{
-    PostgresStore,
-    oidc::{authority, records},
-};
+use super::{PostgresStore, oidc::authority};
 use darkhorse_application::{
     signing::{PublicKey, WrappedKey},
     tokens::*,
@@ -12,6 +9,8 @@ use darkhorse_domain::{
 };
 use sqlx::{Postgres, Row, Transaction, postgres::PgRow};
 use uuid::Uuid;
+mod access;
+mod management;
 mod reads;
 type Tx<'a> = Transaction<'a, Postgres>;
 pub(super) struct CodeRecord {
@@ -27,6 +26,7 @@ pub(super) struct CodeRecord {
     created: u64,
     expires: u64,
     consumed: bool,
+    scopes: Vec<String>,
 }
 impl TokenStore for PostgresStore {
     async fn redeem<S: IdSigner>(
@@ -53,49 +53,34 @@ impl TokenStore for PostgresStore {
         let now = authority::now(&mut tx).await.map_err(storage)?;
         tokens::exchange(&facts(&code), &proof(&input), now)?;
         let id_token = signer.sign(key, claims(&code, issuer, now)).await?;
-        persist(&mut tx, input.code, access.digest, issuer, now).await?;
+        persist(
+            &mut tx,
+            input.code,
+            access.digest,
+            issuer,
+            now,
+            &code.scopes,
+        )
+        .await?;
         audit(&mut tx, code.principal, code.client, "code_redeemed", now).await?;
         tx.commit().await.map_err(storage)?;
         Ok(Tokens {
             access: access.value,
             id_token,
             expires_in: tokens::ACCESS_MS / 1000,
+            scope: tokens::scope_text(&code.scopes)?,
         })
     }
-    async fn userinfo(&self, digest: [u8; 32], issuer: &str) -> Result<PrincipalId, Error> {
+    async fn userinfo(&self, digest: [u8; 32], issuer: &str) -> Result<UserInfo, Error> {
         let mut tx = self.pool.begin().await.map_err(storage)?;
         authority::lock(&mut tx).await.map_err(storage)?;
-        let code_digest: Vec<u8> = sqlx::query_scalar(
-            "SELECT code_digest FROM access_tokens WHERE digest=$1 AND audience=$2",
-        )
-        .bind(digest.as_slice())
-        .bind(format!("{issuer}/userinfo"))
-        .fetch_optional(&mut *tx)
-        .await
-        .map_err(storage)?
-        .ok_or(Error::InvalidToken)?;
-        let code = reads::code_shared(&mut tx, code_digest.try_into().map_err(storage)?).await?;
-        let row=sqlx::query("SELECT created_ms,expires_ms FROM access_tokens WHERE digest=$1 AND NOT revoked FOR SHARE")
-   .bind(digest.as_slice()).fetch_optional(&mut *tx).await.map_err(storage)?.ok_or(Error::InvalidToken)?;
-        let now = authority::now(&mut tx).await.map_err(storage)?;
-        if !tokens::live(
-            number(&row, "created_ms")?,
-            number(&row, "expires_ms")?,
-            now,
-        ) {
-            return Err(Error::InvalidToken);
-        }
-        reads::current(&mut tx, &code).await.map_err(|e| {
-            if e == Error::Unavailable {
-                e
-            } else {
-                Error::InvalidToken
-            }
-        })?;
+        let access = access::load(&mut tx, digest, issuer, None).await?;
+        let profile = access::profile(&mut tx, &access).await?;
         tx.commit().await.map_err(storage)?;
-        Ok(code.principal)
+        Ok(profile)
     }
 }
+
 fn facts(code: &CodeRecord) -> CodeFacts<'_> {
     CodeFacts {
         client: code.client,
@@ -129,14 +114,15 @@ async fn persist(
     access: [u8; 32],
     issuer: &str,
     now: u64,
+    scopes: &[String],
 ) -> Result<(), Error> {
     sqlx::query("UPDATE authorization_codes SET consumed=true WHERE digest=$1")
         .bind(digest.as_slice())
         .execute(&mut **tx)
         .await
         .map_err(storage)?;
-    sqlx::query("INSERT INTO access_tokens(digest,code_digest,audience,scope,claim_ceiling,capability_ceiling,created_ms,expires_ms) VALUES($1,$2,$3,'openid',ARRAY['sub'],ARRAY[]::uuid[],$4,$5)")
-  .bind(access.as_slice()).bind(digest.as_slice()).bind(format!("{issuer}/userinfo")).bind(now as i64).bind(tokens::deadline(now,tokens::ACCESS_MS)? as i64).execute(&mut **tx).await.map_err(storage)?;
+    sqlx::query("INSERT INTO access_tokens(digest,code_digest,audience,scope,claim_ceiling,capability_ceiling,created_ms,expires_ms) VALUES($1,$2,$3,$6,$7,ARRAY[]::uuid[],$4,$5)")
+  .bind(access.as_slice()).bind(digest.as_slice()).bind(format!("{issuer}/userinfo")).bind(now as i64).bind(tokens::deadline(now,tokens::ACCESS_MS)? as i64).bind(tokens::scope_text(scopes)?).bind(tokens::claim_ceiling(scopes)?).execute(&mut **tx).await.map_err(storage)?;
     Ok(())
 }
 async fn revoke(tx: &mut Tx<'_>, code: [u8; 32]) -> Result<(), Error> {

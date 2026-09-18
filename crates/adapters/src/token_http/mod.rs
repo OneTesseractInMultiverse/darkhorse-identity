@@ -19,7 +19,10 @@ struct Endpoint<S, K> {
     signer: K,
     issuer: String,
 }
-pub fn router<S: TokenStore + SigningStore + 'static, K: IdSigner + 'static>(
+pub fn router<
+    S: TokenStore + TokenManagementStore + SigningStore + 'static,
+    K: IdSigner + 'static,
+>(
     store: S,
     signer: K,
     origin: url::Url,
@@ -32,6 +35,8 @@ pub fn router<S: TokenStore + SigningStore + 'static, K: IdSigner + 'static>(
     let routes = Router::new()
         .route("/token", post(redeem::<S, K>))
         .route("/userinfo", get(userinfo::<S, K>))
+        .route("/introspect", post(introspect::<S, K>))
+        .route("/revoke", post(revoke::<S, K>))
         .route("/.well-known/openid-configuration", get(discovery::<S, K>))
         .with_state(endpoint);
     authentication_http::protect_service(routes, origin, 4096, 16)
@@ -68,7 +73,7 @@ fn token_response(tokens: Tokens) -> Response {
         "token_type": "Bearer",
         "expires_in": tokens.expires_in,
         "id_token": tokens.id_token,
-        "scope": "openid"
+        "scope": tokens.scope
     }))
     .into_response()
 }
@@ -81,11 +86,61 @@ async fn userinfo<S: TokenStore, K>(
         Err(error) => return failure(error),
     };
     match e.store.userinfo(digest, &e.issuer).await {
-        Ok(subject) => {
-            Json(serde_json::json!({"sub":uuid::Uuid::from_u128(subject.as_u128()).to_string()}))
-                .into_response()
-        }
+        Ok(profile) => Json(profile_response(profile)).into_response(),
         Err(error) => failure(error),
+    }
+}
+fn profile_response(profile: UserInfo) -> serde_json::Value {
+    let mut response =
+        serde_json::json!({"sub":uuid::Uuid::from_u128(profile.subject.as_u128()).to_string()});
+    if let Some(names) = profile.profile {
+        response["name"] = format!("{} {}", names.given, names.family).into();
+        response["given_name"] = names.given.into();
+        response["family_name"] = names.family.into();
+    }
+    if let Some(email) = profile.email {
+        response["email"] = email.into();
+        response["email_verified"] = false.into();
+    }
+    response
+}
+async fn introspect<S: TokenManagementStore, K>(
+    State(e): State<Arc<Endpoint<S, K>>>,
+    headers: HeaderMap,
+    body: Bytes,
+) -> Response {
+    let input = match input::management(&headers, &body) {
+        Ok(input) => input,
+        Err(error) => return failure(error),
+    };
+    match e.store.introspect(input, &e.issuer).await {
+        Ok(token) => Json(introspection_response(token, &e.issuer)).into_response(),
+        Err(error) => failure(error),
+    }
+}
+async fn revoke<S: TokenManagementStore, K>(
+    State(e): State<Arc<Endpoint<S, K>>>,
+    headers: HeaderMap,
+    body: Bytes,
+) -> Response {
+    let input = match input::management(&headers, &body) {
+        Ok(input) => input,
+        Err(error) => return failure(error),
+    };
+    match e.store.revoke(input, &e.issuer).await {
+        Ok(()) => StatusCode::OK.into_response(),
+        Err(error) => failure(error),
+    }
+}
+fn introspection_response(active: Option<ActiveToken>, issuer: &str) -> serde_json::Value {
+    match active {
+        None => serde_json::json!({"active":false}),
+        Some(token) => serde_json::json!({
+            "active":true, "token_type":"Bearer", "iss":issuer, "aud":format!("{issuer}/userinfo"),
+            "client_id":uuid::Uuid::from_u128(token.client.as_u128()).to_string(),
+            "sub":uuid::Uuid::from_u128(token.subject.as_u128()).to_string(),
+            "scope":token.scope, "iat":token.issued, "exp":token.expires
+        }),
     }
 }
 async fn discovery<S: SigningStore, K>(State(e): State<Arc<Endpoint<S, K>>>) -> Response {
@@ -108,6 +163,10 @@ fn metadata(issuer: &str) -> serde_json::Value {
         "token_endpoint": format!("{issuer}/token"),
         "userinfo_endpoint": format!("{issuer}/userinfo"),
         "jwks_uri": format!("{issuer}/jwks"),
+        "introspection_endpoint": format!("{issuer}/introspect"),
+        "introspection_endpoint_auth_methods_supported": ["client_secret_basic"],
+        "revocation_endpoint": format!("{issuer}/revoke"),
+        "revocation_endpoint_auth_methods_supported": ["client_secret_basic"],
         "response_types_supported": ["code"],
         "response_modes_supported": ["query"],
         "grant_types_supported": ["authorization_code"],
@@ -115,8 +174,8 @@ fn metadata(issuer: &str) -> serde_json::Value {
         "id_token_signing_alg_values_supported": ["RS256"],
         "token_endpoint_auth_methods_supported": ["client_secret_basic"],
         "code_challenge_methods_supported": ["S256"],
-        "scopes_supported": ["openid"],
-        "claims_supported": ["iss", "sub", "aud", "exp", "iat", "auth_time", "nonce"],
+        "scopes_supported": ["openid", "profile", "email"],
+        "claims_supported": ["iss", "sub", "aud", "exp", "iat", "auth_time", "nonce", "name", "given_name", "family_name", "email", "email_verified"],
         "claims_parameter_supported": false,
         "request_parameter_supported": false,
         "request_uri_parameter_supported": false,
@@ -148,3 +207,7 @@ fn failure(error: Error) -> Response {
     }
     response
 }
+
+#[cfg(test)]
+#[path = "../../tests/unit/token_http/response.rs"]
+mod tests;

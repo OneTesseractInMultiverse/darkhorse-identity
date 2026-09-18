@@ -11,6 +11,7 @@ import {
   validateIdToken,
   validateCallback,
 } from "./reference-client.mjs";
+import { verifyIdentityChecks } from "./identity-checks-browser.mjs";
 async function call(page, path, body) {
   return page.evaluate(
     async ({ path, body }) => {
@@ -82,7 +83,11 @@ export async function verifyProvider(page, context, origin, principal, ca) {
   assert.deepEqual(metadata.body.token_endpoint_auth_methods_supported, [
     "client_secret_basic",
   ]);
-  assert.deepEqual(metadata.body.scopes_supported, ["openid"]);
+  assert.deepEqual(metadata.body.scopes_supported, [
+    "openid",
+    "profile",
+    "email",
+  ]);
   const jwks = await call(page, "/jwks");
   assert.equal(jwks.status, 200);
   assert.equal(jwks.body.keys.length, 1);
@@ -267,7 +272,8 @@ export async function verifyProvider(page, context, origin, principal, ca) {
   await page.goto(`${origin}/authorize?${query}`);
   const silentCode = validateCallback(page.url(), expected);
   assert.ok(silentCode !== code);
-  assert.equal((await redeem(silentCode)).status, 200);
+  const live = await redeem(silentCode);
+  assert.equal(live.status, 200);
   await page.goto(`${origin}/authorize?${query}`);
   const lostCode = validateCallback(page.url(), expected);
   const discarded = await exchange(
@@ -283,6 +289,17 @@ export async function verifyProvider(page, context, origin, principal, ca) {
   );
   assert.equal(discarded.status, 200);
   assert.equal((await redeem(lostCode)).status, 400);
+  await verifyIdentityChecks({
+    page,
+    context,
+    origin,
+    ca,
+    principal,
+    call,
+    first: registered.body,
+    firstToken: live.body.access_token,
+    keys: jwks.body.keys,
+  });
   let returned;
   query.set("prompt", "consent");
   await page.goto(`${origin}/authorize?${query}`);

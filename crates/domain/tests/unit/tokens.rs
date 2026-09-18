@@ -121,3 +121,73 @@ fn access_requires_current_registration_and_the_original_live_session() {
         );
     }
 }
+
+#[test]
+fn profile_claims_require_explicit_scopes_and_an_unchanged_issuance_ceiling() {
+    for (scopes, expected) in [
+        (vec!["openid"], vec!["sub"]),
+        (
+            vec!["profile", "openid"],
+            vec!["sub", "name", "given_name", "family_name"],
+        ),
+        (
+            vec!["openid", "email"],
+            vec!["sub", "email", "email_verified"],
+        ),
+        (
+            vec!["email", "openid", "profile"],
+            vec![
+                "sub",
+                "name",
+                "given_name",
+                "family_name",
+                "email",
+                "email_verified",
+            ],
+        ),
+    ] {
+        let scopes = scopes.into_iter().map(String::from).collect::<Vec<_>>();
+        let expected = expected.into_iter().map(String::from).collect::<Vec<_>>();
+        assert_eq!(claim_ceiling(&scopes), Ok(expected.clone()));
+        let disclosure = disclosure(&scopes, &expected).unwrap();
+        assert_eq!(disclosure.profile, scopes.contains(&"profile".into()));
+        assert_eq!(disclosure.email, scopes.contains(&"email".into()));
+        let mut invalid = expected;
+        invalid.push("address".into());
+        assert_eq!(self::disclosure(&scopes, &invalid), Err(Error::Unavailable));
+    }
+    for scopes in [
+        vec!["profile"],
+        vec!["openid", "openid"],
+        vec!["openid", "phone"],
+    ] {
+        assert_eq!(
+            claim_ceiling(&scopes.into_iter().map(String::from).collect::<Vec<_>>()),
+            Err(Error::InvalidScope)
+        );
+    }
+    assert_eq!(
+        scope_text(&["email".into(), "openid".into(), "profile".into()]),
+        Ok("openid profile email".into())
+    );
+}
+
+#[test]
+fn consent_reduction_cannot_keep_an_earlier_disclosure_grant_live() {
+    let wanted = vec!["openid".into(), "email".into()];
+    assert_eq!(consent(&wanted, Some(&wanted)), Ok(()));
+    assert_eq!(consent(&wanted, None), Err(Error::InvalidGrant));
+    assert_eq!(
+        consent(&wanted, Some(&["openid".into()])),
+        Err(Error::InvalidGrant)
+    );
+}
+
+#[test]
+fn malformed_scope_sets_cannot_be_formatted_or_disclosed() {
+    assert_eq!(scope_text(&[]), Err(Error::InvalidScope));
+    assert_eq!(
+        disclosure(&["profile".into()], &["sub".into()]),
+        Err(Error::InvalidScope)
+    );
+}

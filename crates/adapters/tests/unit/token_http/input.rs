@@ -107,3 +107,53 @@ fn token_input_keeps_authentication_and_credential_purposes_separate() {
         .is_err()
     );
 }
+
+#[test]
+fn management_requires_authentication_but_wrong_token_types_remain_opaque() {
+    let mut headers = HeaderMap::new();
+    headers.insert(
+        "content-type",
+        "application/x-www-form-urlencoded".parse().unwrap(),
+    );
+    headers.insert(
+        "authorization",
+        format!(
+            "Basic {}",
+            STANDARD.encode(format!(
+                "00000000-0000-0000-0000-000000000001:{}",
+                "ab".repeat(32)
+            ))
+        )
+        .parse()
+        .unwrap(),
+    );
+    for token in ["eyJ.test.jwt", "unknown", "dc_test", "browser-handle"] {
+        let parsed = management(
+            &headers,
+            format!("token={token}&token_type_hint=refresh_token").as_bytes(),
+        )
+        .unwrap();
+        assert_eq!(parsed.client.as_u128(), 1);
+        assert_eq!(parsed.token, None);
+    }
+    let token = format!("da_{}", "ab".repeat(32));
+    assert_eq!(
+        management(&headers, format!("token={token}").as_bytes())
+            .unwrap()
+            .token,
+        Some(material::digest(&token, Purpose::Access).unwrap())
+    );
+    for body in [
+        "",
+        "token=",
+        "token=x&token=y",
+        "token=x&client_secret=secret",
+    ] {
+        assert!(management(&headers, body.as_bytes()).is_err());
+    }
+    headers.remove("authorization");
+    assert!(matches!(
+        management(&headers, b"token=unknown"),
+        Err(Error::InvalidClient)
+    ));
+}

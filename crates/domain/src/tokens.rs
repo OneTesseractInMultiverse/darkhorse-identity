@@ -52,8 +52,59 @@ pub fn deadline(now: u64, lifetime: u64) -> Result<u64, Error> {
         .ok_or(Error::Unavailable)
 }
 pub fn profile(scopes: &[String], resource: Option<&str>) -> Result<(), Error> {
-    if scopes != ["openid"] || resource.is_some() {
+    if resource.is_some()
+        || !scopes.iter().any(|s| s == "openid")
+        || scopes.iter().any(|s| !identity_scope(s))
+        || scopes
+            .iter()
+            .collect::<std::collections::BTreeSet<_>>()
+            .len()
+            != scopes.len()
+    {
         return Err(Error::InvalidScope);
+    }
+    Ok(())
+}
+pub fn identity_scope(scope: &str) -> bool {
+    matches!(scope, "openid" | "profile" | "email")
+}
+
+pub fn scope_text(scopes: &[String]) -> Result<String, Error> {
+    profile(scopes, None)?;
+    Ok(["openid", "profile", "email"]
+        .into_iter()
+        .filter(|scope| scopes.iter().any(|s| s == scope))
+        .collect::<Vec<_>>()
+        .join(" "))
+}
+pub fn claim_ceiling(scopes: &[String]) -> Result<Vec<String>, Error> {
+    profile(scopes, None)?;
+    let mut claims = vec!["sub".into()];
+    if scopes.iter().any(|s| s == "profile") {
+        claims.extend(["name", "given_name", "family_name"].map(String::from));
+    }
+    if scopes.iter().any(|s| s == "email") {
+        claims.extend(["email", "email_verified"].map(String::from));
+    }
+    Ok(claims)
+}
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub struct Disclosure {
+    pub profile: bool,
+    pub email: bool,
+}
+pub fn disclosure(scopes: &[String], ceiling: &[String]) -> Result<Disclosure, Error> {
+    if claim_ceiling(scopes)? != ceiling {
+        return Err(Error::Unavailable);
+    }
+    Ok(Disclosure {
+        profile: scopes.iter().any(|s| s == "profile"),
+        email: scopes.iter().any(|s| s == "email"),
+    })
+}
+pub fn consent(requested: &[String], approved: Option<&[String]>) -> Result<(), Error> {
+    if approved.is_none_or(|allowed| requested.iter().any(|scope| !allowed.contains(scope))) {
+        return Err(Error::InvalidGrant);
     }
     Ok(())
 }

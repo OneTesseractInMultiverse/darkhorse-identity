@@ -2,11 +2,12 @@
 
 The initial provider supports confidential clients using `client_secret_basic`,
 mandatory PKCE S256, browser consent, one-time authorization codes, opaque access
-tokens and RS256 ID tokens. The supported scope is `openid`; UserInfo returns only
-`sub`. Discovery advertises these implemented capabilities when an active signing
-key is available; otherwise it returns HTTP 503.
+tokens and RS256 ID tokens. Supported scopes are `openid`, `profile` and `email`;
+UserInfo returns only the approved claims. Authenticated introspection and revocation are available to
+the issuing client; see the [identity check contract](token-checks.md). Discovery
+advertises these implemented capabilities when an active signing key is available; otherwise it returns HTTP 503.
 
-Resource-permission issuance, refresh tokens, introspection, richer profiles and
+Resource-permission issuance, refresh tokens, extended profiles and
 back-channel logout remain unfinished. Registration allowances never grant user
 capabilities. [Issue #8](https://github.com/OneTesseractInMultiverse/darkhorse-identity/issues/8)
 retains resource issuance through the existing authorization engine and coverage
@@ -106,13 +107,14 @@ state verbatim through URL encoding on success and safe error redirects, togethe
 with the canonical `iss` response parameter. Clients must check state, issuer and
 nonce and bind their callback to the flow they started.
 
-Exactly `openid` without a resource audience is supported by the public endpoint.
-Other scopes and resource indicators fail with `invalid_scope`. The registration
-catalog can retain future resource allowances, but these are not user grants.
-Before enabling resource issuance, persisted live role/capability assignments must
-feed `plan_oauth` and its immutable issuance ceiling from the existing
-[authorization contract](authorization.md). The subject-only UserInfo credential
-has an empty resource capability ceiling and cannot authorize application APIs.
+Requests require `openid` and may add `profile` and `email`, without a resource
+audience. Other scopes and resource indicators fail with `invalid_scope`. The
+registration catalog can retain future resource allowances, but these are not user
+grants. Before enabling resource issuance, persisted live role/capability
+assignments must feed `plan_oauth` and its immutable issuance ceiling from the
+[authorization contract](authorization.md). UserInfo credentials have no resource
+capabilities and cannot authorize application APIs. Their scope/claim ceilings
+and consent-reduction rules are described in the [identity check contract](token-checks.md).
 
 Requests accept `prompt=none`, `login`, `consent`, or `login consent`; absent prompt
 uses the current session and remembered consent. `none` cannot be combined with
@@ -152,8 +154,8 @@ are rejected. This is a confidential backend endpoint with no browser CORS suppo
 Codes and access tokens each contain 256 random bits from the OS, encoded as
 lowercase hex with distinct `dc_` and `da_` prefixes. PostgreSQL stores only
 purpose-bound SHA-256 verifiers. An access token has a five-minute maximum lifetime,
-audience `<issuer>/userinfo`, scope `openid`, immutable claim ceiling `sub` and
-an empty resource capability ceiling. No refresh token is returned.
+audience `<issuer>/userinfo`, immutable approved identity scopes and a matching
+claim ceiling, with an empty resource capability ceiling. No refresh token is returned.
 
 ID tokens use RS256, `typ=JWT` and the active public `kid`. Claims are canonical
 `iss`, client UUID `aud`, principal UUID `sub`, `iat`, `exp`, original session
@@ -173,14 +175,16 @@ revoke another flow's token. Replay cannot retract an ID token already received
 and accepted by a client; downstream session logout is separate unfinished work.
 Token responses/errors carry `Cache-Control: no-store` and `Pragma: no-cache`.
 
-`GET /userinfo` accepts only an opaque access credential in a single Bearer header
-and returns `{ "sub": "<principal UUID>" }`. Each check reads the PostgreSQL primary
-and revalidates token lifetime/revocation, audience, client/application revisions
-and the original live session/credential epoch. Logout, credential revocation,
-account deactivation or changed registration invalidate subsequent checks after
-commit. Code/access rows use a consistent lock order to avoid replay/read inversion.
-No positive authorization result is cached. UserInfo does not extend browser idle
-lifetime. ID tokens, Logout Tokens, codes and browser handles are not access tokens.
+`GET /userinfo` accepts only an opaque access credential in a single Bearer header.
+It returns the subject plus the current profile/email fields allowed by the immutable
+claim ceiling. Each check reads the PostgreSQL primary and revalidates token
+lifetime/revocation, audience, client/application revisions, the original live
+session/credential epoch and current consent. Logout, credential revocation,
+account deactivation, changed registration or consent reduction invalidate new
+checks after commit. No positive authorization result is cached. UserInfo does not
+extend browser idle lifetime. ID tokens, Logout Tokens, codes and browser handles
+are not access tokens. See [introspection, revocation and freshness](token-checks.md)
+for the complete supported identity-check contract.
 
 ## Transaction and transport integrity
 
@@ -237,24 +241,12 @@ checks that retry cannot redeem the code again.
 It is an interoperability probe, not a deployed application or production client SDK.
 Rust owns all deployed server behavior.
 
-The 2026-09-18 checks passed `make ci` and the final `make check`, with 185
-isolated tests (65 adapter, 14 application, 66 domain, 26 frontend and 14 tooling),
-37 PostgreSQL scenarios, five Redis infrastructure scenarios and 14 limiter/login
-scenarios plus their separate-process helper. The HTTPS browser/reference-client
-flow, Docker build/non-root/read-only smoke and Caddy route adaptation passed.
-A clean staged export installed dependencies offline and passed unit tests with
-network denied and no private input folders.
-
-Core line/function/region coverage remains 100%. Combined Rust unit, PostgreSQL,
-Redis, operator and browser process coverage is 98.02% lines, 99.21% functions and
-92.05% regions, with 118 uncovered lines. The unchanged 100% line gate fails.
-Remaining paths include input/storage/startup failures and transport outcomes;
-SQL and JavaScript tooling coverage and production load/topology are separate.
-
-Coverage qualification and full-provider interoperability remain open. The existing
-100% authored-code target is unchanged. Passing these checks does not establish
-OIDC conformance or production throughput. Resource-permission issuance, token
-retention and further failure paths remain tracked in issue #8 and release qualification.
+Current combined verification and remaining coverage are recorded in the
+[identity-check verification](token-checks.md#verification). The unchanged 100%
+authored-code target and full-provider interoperability remain open. Passing these
+checks does not establish OIDC conformance or production throughput. Resource
+issuance, retention and further failure paths remain tracked in issues #8 and #9
+and release qualification.
 
 ## Protocol references
 
