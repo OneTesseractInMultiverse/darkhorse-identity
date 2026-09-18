@@ -662,3 +662,87 @@ async fn steady_state_admissions_expose_only_aggregate_outcomes() {
         times[49], times[94], times[98]
     );
 }
+
+#[tokio::test]
+async fn separate_processes_share_one_budget_without_shared_connection_pools() {
+    let _serial = SERIAL.lock().await;
+    let f = Fixture::new().await;
+    f.activate().await;
+    sqlx::query("CREATE TABLE limiter_test_barrier (worker integer PRIMARY KEY)")
+        .execute(&f.pool)
+        .await
+        .unwrap();
+    let executable = std::env::current_exe().unwrap();
+    let mut children = Vec::new();
+    for worker in [1, 2] {
+        children.push(
+            std::process::Command::new(&executable)
+                .args(["multiprocess_worker", "--exact", "--ignored", "--nocapture"])
+                .env("DARKHORSE_TEST_LIMITER_WORKER", worker.to_string())
+                .stdout(std::process::Stdio::piped())
+                .stderr(std::process::Stdio::piped())
+                .spawn()
+                .unwrap(),
+        );
+    }
+    let mut admitted = 0;
+    for child in children {
+        let result = child.wait_with_output().unwrap();
+        assert!(result.status.success(), "independent limiter worker failed");
+        let stdout = String::from_utf8(result.stdout).unwrap();
+        admitted += stdout
+            .lines()
+            .find_map(|line| line.strip_prefix("worker_admitted="))
+            .unwrap()
+            .parse::<usize>()
+            .unwrap();
+    }
+    assert_eq!(admitted, 5);
+    assert!(matches!(
+        f.limiter().consume(&attempt(22, 5, 30_000)).await,
+        Ok(Admission::Limited { .. })
+    ));
+    sqlx::query("DROP TABLE limiter_test_barrier")
+        .execute(&f.pool)
+        .await
+        .unwrap();
+}
+
+#[tokio::test]
+#[ignore = "executed by the separate-process parent scenario with disposable infrastructure"]
+async fn multiprocess_worker() {
+    let worker = variable("DARKHORSE_TEST_LIMITER_WORKER")
+        .parse::<i32>()
+        .unwrap();
+    assert!([1, 2].contains(&worker));
+    let pool = PgPool::connect(&variable("DARKHORSE_TEST_DATABASE_URL"))
+        .await
+        .unwrap();
+    sqlx::query("INSERT INTO limiter_test_barrier(worker) VALUES($1)")
+        .bind(worker)
+        .execute(&pool)
+        .await
+        .unwrap();
+    tokio::time::timeout(Duration::from_secs(10), async {
+        loop {
+            let ready: i64 = sqlx::query_scalar("SELECT count(*) FROM limiter_test_barrier")
+                .fetch_one(&pool)
+                .await
+                .unwrap();
+            if ready == 2 {
+                break;
+            }
+            tokio::time::sleep(Duration::from_millis(5)).await;
+        }
+    })
+    .await
+    .expect("both independent workers must join the barrier");
+    let limiter = RedisLimiter::new(PostgresStore::from_pool(pool), settings(false)).unwrap();
+    let mut admitted = 0;
+    for _ in 0..20 {
+        if limiter.consume(&attempt(22, 5, 30_000)).await == Ok(Admission::Allowed) {
+            admitted += 1;
+        }
+    }
+    println!("worker_admitted={admitted}");
+}
