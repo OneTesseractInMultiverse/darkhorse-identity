@@ -40,7 +40,7 @@ export default defineConfig({
 		setupFiles: ['tests/setup.ts'],
 		coverage: {
 			provider: 'v8',
-			include: ['src/lib/**/*.ts', 'src/lib/**/*.svelte', 'src/routes/+page.svelte'],
+			include: ['src/lib/**/*.ts', 'src/lib/**/*.svelte', 'src/routes/**/+page.svelte'],
 			exclude: ['src/lib/index.ts', 'src/lib/components/ui/**'],
 			reporter: ['text', 'html', 'json-summary']
 		}

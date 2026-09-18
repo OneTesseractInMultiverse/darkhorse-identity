@@ -9,6 +9,7 @@ pub enum Command {
     LimiterFence,
     LimiterActivate,
     LimiterStatus,
+    Signing(super::signing::Operation),
     Bootstrap {
         stdin: bool,
     },
@@ -30,6 +31,25 @@ pub fn parse(args: &[String]) -> Result<Command, &'static str> {
         ["limiter-fence"] => Ok(Command::LimiterFence),
         ["limiter-activate"] => Ok(Command::LimiterActivate),
         ["limiter-status"] => Ok(Command::LimiterStatus),
+        ["signing-status"] => Ok(Command::Signing(super::signing::Operation::Status)),
+        ["signing-generate", revision] => Ok(Command::Signing(
+            super::signing::Operation::Generate(counter(revision)?),
+        )),
+        ["signing-import", "--stdin", revision] => Ok(Command::Signing(
+            super::signing::Operation::Import(counter(revision)?),
+        )),
+        ["signing-activate", kid, revision] => {
+            Ok(Command::Signing(super::signing::Operation::Activate {
+                kid: super::signing::identifier(kid)?,
+                revision: counter(revision)?,
+            }))
+        }
+        ["signing-retire", kid, revision] => {
+            Ok(Command::Signing(super::signing::Operation::Retire {
+                kid: super::signing::identifier(kid)?,
+                revision: counter(revision)?,
+            }))
+        }
         ["bootstrap"] => Ok(Command::Bootstrap { stdin: false }),
         ["bootstrap", "--stdin"] => Ok(Command::Bootstrap { stdin: true }),
         ["account", id] => Ok(Command::Account(identifier(id)?)),

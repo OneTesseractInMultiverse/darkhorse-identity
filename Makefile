@@ -224,3 +224,31 @@ https-untrust: ## HTTPS: explicitly remove this project's CA trust from macOS
 clean: ## Clean: delete only reproducible outputs; preserve dependencies and local CA
 	cargo clean
 	rm -rf apps/console/.svelte-kit apps/console/build apps/console/coverage coverage
+
+.PHONY: provider-setup dev-provider signing-status signing-generate signing-import signing-activate signing-retire test-provider
+
+provider-setup: ## Provider: generate owner-only local wrapping key; preserve existing key
+	$(NODE) scripts/provider.mjs setup
+
+dev-provider: ## Provider: HTTPS login and pending authorization using prepared local services
+	CADDY="$(CADDY)" $(NODE) scripts/provider.mjs dev
+
+signing-status: ## Provider: inspect public signing-key metadata and current revision
+	$(NODE) scripts/provider.mjs run signing-status
+
+signing-generate: ## Provider: generate and stage RSA-3072 key; requires REVISION
+	$(NODE) scripts/provider.mjs run signing-generate "$(REVISION)"
+
+signing-import: ## Provider: stage PKCS#8 DER from stdin; requires REVISION
+	$(NODE) scripts/provider.mjs run signing-import --stdin "$(REVISION)"
+
+signing-activate: ## Provider: activate a prepublished key; requires KID and REVISION
+	$(NODE) scripts/provider.mjs run signing-activate "$(KID)" "$(REVISION)"
+
+signing-retire: ## Provider: retire staged/expired retiring key; requires KID and REVISION
+	$(NODE) scripts/provider.mjs run signing-retire "$(KID)" "$(REVISION)"
+
+test-provider: ## Test: isolated pending authorization and signing contracts
+	cargo test --workspace --lib --locked --offline oidc
+	cargo test --workspace --lib --locked --offline signing
+	cargo test --workspace --lib --locked --offline provider_http

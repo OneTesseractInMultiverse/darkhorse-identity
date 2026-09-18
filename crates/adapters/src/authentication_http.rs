@@ -21,6 +21,7 @@ struct Boundary {
     origin: String,
     host: String,
     slots: Semaphore,
+    queries: bool,
 }
 pub fn router<S: BrowserAuthentication + 'static>(service: S, origin: url::Url) -> Router {
     let router = Router::new()
@@ -31,10 +32,20 @@ pub fn router<S: BrowserAuthentication + 'static>(service: S, origin: url::Url) 
     protect(router, origin, 4096, 32)
 }
 pub(crate) fn protect(router: Router, origin: url::Url, body_limit: usize, slots: usize) -> Router {
+    protect_with_queries(router, origin, body_limit, slots, false)
+}
+pub(crate) fn protect_with_queries(
+    router: Router,
+    origin: url::Url,
+    body_limit: usize,
+    slots: usize,
+    queries: bool,
+) -> Router {
     let boundary = Arc::new(Boundary {
         host: origin[url::Position::BeforeHost..url::Position::AfterPort].into(),
         origin: origin.origin().ascii_serialization(),
         slots: Semaphore::new(slots),
+        queries,
     });
     router
         .layer(DefaultBodyLimit::max(body_limit))
@@ -74,7 +85,7 @@ async fn guard(State(boundary): State<Arc<Boundary>>, request: Request, next: Ne
     }
 }
 fn allowed(b: &Boundary, headers: &HeaderMap, method: &Method, query: Option<&str>) -> bool {
-    if query.is_some() || one(headers, "host") != Some(b.host.as_str()) {
+    if (!b.queries && query.is_some()) || one(headers, "host") != Some(b.host.as_str()) {
         return false;
     }
     if method.is_safe() {
@@ -94,18 +105,25 @@ fn one<'a>(headers: &'a HeaderMap, name: &str) -> Option<&'a str> {
     Some(first)
 }
 pub(crate) fn cookie(headers: &HeaderMap) -> Result<Option<[u8; 32]>, AuthError> {
+    named_cookie(headers, COOKIE, session_secret::digest)
+}
+pub(crate) fn named_cookie(
+    headers: &HeaderMap,
+    name: &str,
+    digest: impl Fn(&str) -> Result<[u8; 32], AuthError>,
+) -> Result<Option<[u8; 32]>, AuthError> {
     let mut found = None;
     for value in headers.get_all(header::COOKIE) {
         let value = value.to_str().map_err(|_| AuthError::Denied)?;
         for part in value.split(';') {
-            let Some((name, value)) = part.trim().split_once('=') else {
+            let Some((cookie_name, value)) = part.trim().split_once('=') else {
                 return Err(AuthError::Denied);
             };
-            if name == COOKIE {
+            if cookie_name == name {
                 if found.is_some() {
                     return Err(AuthError::Denied);
                 }
-                found = Some(session_secret::digest(value)?);
+                found = Some(digest(value)?);
             }
         }
     }

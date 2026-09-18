@@ -3,8 +3,7 @@
 The private administrator API creates separate applications, protected resources,
 resource scopes, and confidential web clients. It is available with the enabled
 [password portal](authentication.md#configuration-and-development), after migration 0005. The application-management UI belongs to a later milestone. This API is not
-OpenID Connect Dynamic Client Registration. Discovery, authorization, token
-issuance, introspection and logout protocol endpoints remain separate work.
+OpenID Connect Dynamic Client Registration. Signing keys/JWKS and pending authorization are described in the [provider contract](provider.md). Successful discovery, code/token issuance, introspection and logout delivery remain separate work.
 
 ## Authority and consistency
 

@@ -5,6 +5,7 @@ pub mod authorization;
 pub mod directory;
 pub mod identity;
 pub mod registration;
+pub mod signing;
 
 /// Account activation state; credentials and verification have separate lifecycles.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -15,3 +16,5 @@ pub enum AccountStatus {
 
 pub mod limiter_recovery;
 pub mod limiting;
+
+pub mod oidc;

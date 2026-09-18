@@ -2,7 +2,7 @@
 
 An identity server for one organization and its applications, built with Rust, a static SvelteKit/TypeScript console, PostgreSQL, and Redis.
 
-**Early development.** The repository contains a pure authorization policy engine, PostgreSQL persistence, operator-only administrator bootstrap, shared Redis attempt limiting, a password login portal with Rust-owned sessions, and administrator-only application/client registration. Protocol endpoints and production deployment qualification remain unfinished. The authorization policy engine is not yet connected to protected application requests.
+**Early development.** The repository contains a pure authorization policy engine, PostgreSQL persistence, operator-only administrator bootstrap, shared Redis attempt limiting, a password login portal with Rust-owned sessions, administrator-only application/client registration, protected signing keys/JWKS, and pending authorization with consent. Code/token issuance, successful OIDC discovery and production deployment qualification remain unfinished. The authorization policy engine is not yet connected to protected application requests.
 
 ## Quick start
 
@@ -30,6 +30,8 @@ Open **https://localhost:8443**. Stop the foreground stack with Ctrl-C. Run `mak
 For the optional database/bootstrap and Docker workflows, see [persistence](docs/persistence.md). `make test-postgres` and `make docker-smoke` use disposable infrastructure; ordinary unit tests remain service-free. Full coverage qualification remains open in [issue #2](https://github.com/OneTesseractInMultiverse/darkhorse-identity/issues/2).
 
 Redis infrastructure, atomic shared attempt budgets and durable recovery are implemented in [issue #4](https://github.com/OneTesseractInMultiverse/darkhorse-identity/issues/4). See [Redis setup, enforcement and recovery](docs/redis.md). For the enabled password portal, follow the [login setup and security contract](docs/authentication.md), then run `make dev-login`. The default preview keeps login disabled. `make browser-install` and `make test-browser` provide disposable HTTPS browser integration tests.
+
+For opt-in pending authorization and signing-key commands, see the [provider contract](docs/provider.md). `make provider-setup` and `make dev-provider` extend the prepared login environment; this milestone cannot complete an SSO code exchange.
 
 ## Structure
 

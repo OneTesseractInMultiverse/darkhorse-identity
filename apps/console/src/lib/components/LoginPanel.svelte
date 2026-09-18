@@ -9,7 +9,7 @@
 	}: {
 		signIn: (email: string, password: string) => Promise<AuthState>;
 		checkSession: () => Promise<AuthState>;
-		signOut: () => Promise<boolean>;
+		signOut?: () => Promise<boolean>;
 	} = $props();
 	let email = $state('');
 	let password = $state('');
@@ -48,7 +48,7 @@
 	async function logout() {
 		pending = true;
 		error = '';
-		if (await signOut()) account = { kind: 'signed-out' };
+		if (await signOut?.()) account = { kind: 'signed-out' };
 		else error = 'Sign out could not be confirmed. Please try again.';
 		pending = false;
 	}
@@ -63,9 +63,9 @@
 		{#if account.kind === 'signed-in'}
 			<h1 id="login-title">Welcome, {account.name}.</h1>
 			<p class="intro">You're signed in to Darkhorse.</p>
-			<Button onclick={logout} disabled={pending} class="mt-6 h-11 w-full font-mono"
-				>{pending ? 'Signing out…' : 'Sign out'}</Button
-			>
+			{#if signOut}<Button onclick={logout} disabled={pending} class="mt-6 h-11 w-full font-mono"
+					>{pending ? 'Signing out…' : 'Sign out'}</Button
+				>{/if}
 		{:else}
 			<h1 id="login-title">Welcome<br /><span>back.</span></h1>
 			<p class="intro">Sign in to your organization’s workspace.</p>

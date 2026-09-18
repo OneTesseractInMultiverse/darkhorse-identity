@@ -12,6 +12,7 @@ use sqlx::{PgPool, postgres::PgPoolOptions};
 use uuid::Uuid;
 mod authentication;
 mod registration;
+mod signing;
 
 struct Database {
     pool: PgPool,
@@ -462,3 +463,4 @@ async fn overflow_and_unavailable_storage_never_partially_change_authority() {
     );
     assert_eq!(db.store.migrate().await, Err(DirectoryFailure::Unavailable));
 }
+mod oidc;

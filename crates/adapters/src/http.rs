@@ -31,6 +31,10 @@ pub fn with_authentication(static_dir: PathBuf, authentication: Router) -> Route
         .merge(authentication)
         .route("/health/live", get(liveness))
         .route_service("/", ServeFile::new(static_dir.join("index.html")))
+        .route_service(
+            "/authorization",
+            ServeFile::new(static_dir.join("authorization.html")),
+        )
         .nest_service("/_app", ServeDir::new(static_dir.join("_app")))
         .fallback(not_found)
         .layer(SetResponseHeaderLayer::overriding(

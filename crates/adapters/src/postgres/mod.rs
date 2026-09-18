@@ -19,6 +19,7 @@ mod bootstrap;
 mod directory;
 mod limiting;
 mod registration;
+mod signing;
 
 #[derive(Clone)]
 pub struct PostgresStore {
@@ -92,3 +93,4 @@ impl DirectoryStore for PostgresStore {
         directory::change(&self.pool, id, expected_revision, action).await
     }
 }
+mod oidc;

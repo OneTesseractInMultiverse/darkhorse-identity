@@ -9,6 +9,7 @@ import { chromium } from "@playwright/test";
 import { tlsProxy } from "./lib/redis-test-proxy.mjs";
 import { runtimeEnvironment } from "./lib/redis-settings.mjs";
 import { startProcess } from "./lib/process.mjs";
+import { seedSigning, verifyProvider } from "./lib/provider-browser.mjs";
 import { verifyRegistration } from "./lib/registration-browser.mjs";
 
 async function freePort() {
@@ -60,6 +61,8 @@ export async function verifyBrowser(env, db, directory, command, docker) {
     DARKHORSE_HTTP_PORT: String(port),
     DARKHORSE_PUBLIC_ORIGIN: origin,
     DARKHORSE_LOGIN_ENABLED: "true",
+    DARKHORSE_PROVIDER_ENABLED: "true",
+    DARKHORSE_SIGNING_WRAP_KEY: randomBytes(32).toString("hex"),
     DARKHORSE_LOGIN_LIMIT_KEY: randomBytes(32).toString("hex"),
   };
   const executable = resolve(
@@ -90,6 +93,7 @@ export async function verifyBrowser(env, db, directory, command, docker) {
   let server, browser;
   try {
     const { password, principal } = await seedDatabase(db, invoke, docker);
+    await seedSigning(invoke, docker, db);
     server = startProcess({ command: executable, args: [], env: runtime });
     await ready(origin, tls.ca);
     await assert.rejects(https(origin, undefined, "/health/live"));
@@ -212,6 +216,7 @@ async function exerciseBrowser(
   const initial = await verifySignIn(page, context, origin, password);
   await verifyRotation(page, context, origin, ca, password, initial);
   await verifyRegistration(page, principal);
+  await verifyProvider(page, context, origin, principal);
   await verifyLogoutAndRevocation(page, context, password, principal, invoke);
   assert.deepEqual(errors, []);
   assert.deepEqual(await page.evaluate(() => window.securityViolations), []);

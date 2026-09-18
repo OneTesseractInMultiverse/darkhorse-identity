@@ -1,5 +1,6 @@
 pub mod command;
 pub mod input;
+pub mod signing;
 
 use crate::{database_configuration, password::PasswordPreparation, postgres::PostgresStore};
 use command::Command;
@@ -9,7 +10,7 @@ use darkhorse_application::{
 };
 use darkhorse_domain::AccountStatus;
 
-pub const HELP: &str = "darkhorse-server [serve | migrate | redis-status | limiter-status | limiter-fence | limiter-activate | bootstrap [--stdin] | account ID | deactivate ID REVISION | reactivate ID REVISION | revoke-all ID REVISION]\nDatabase operations require explicit DARKHORSE_DATABASE_URL. Bootstrap reads a hidden password from a terminal, or bounded JSON from standard input with --stdin. No secret command arguments are accepted.";
+pub const HELP: &str = "darkhorse-server [serve | migrate | redis-status | limiter-status | limiter-fence | limiter-activate | bootstrap [--stdin] | account ID | deactivate ID REVISION | reactivate ID REVISION | revoke-all ID REVISION]\nDatabase operations require explicit DARKHORSE_DATABASE_URL. Bootstrap reads a hidden password from a terminal, or bounded JSON from standard input with --stdin. Signing operations: signing-status | signing-generate REVISION | signing-import --stdin REVISION (PKCS#8 DER) | signing-activate KID REVISION | signing-retire KID REVISION. Provider operations require DARKHORSE_PROVIDER_ENABLED=true and DARKHORSE_SIGNING_WRAP_KEY. No secret command arguments are accepted.";
 
 pub async fn run(command: Command) -> Result<(), &'static str> {
     match command {
@@ -21,6 +22,7 @@ pub async fn run(command: Command) -> Result<(), &'static str> {
         Command::LimiterFence => limiter::run(limiter::Operation::Fence).await,
         Command::LimiterActivate => limiter::run(limiter::Operation::Activate).await,
         Command::LimiterStatus => limiter::run(limiter::Operation::Status).await,
+        Command::Signing(operation) => signing::run(operation).await,
         Command::Serve => Err("Use the HTTP composition root for serve."),
         Command::Bootstrap { stdin } => run_bootstrap(stdin).await,
         command => {

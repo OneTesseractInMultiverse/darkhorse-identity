@@ -14,8 +14,10 @@ pub mod postgres;
 pub mod registration;
 pub mod registration_http;
 pub mod session_secret;
+pub mod signing;
 
 pub mod redis_configuration;
 
+pub mod provider_http;
 pub mod redis_infrastructure;
 pub mod redis_limiter;

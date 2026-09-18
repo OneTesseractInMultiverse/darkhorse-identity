@@ -78,6 +78,7 @@ fn every_unsafe_method_requires_origin_and_csrf() {
     let boundary = Boundary {
         origin: "https://localhost:8443".into(),
         host: "localhost:8443".into(),
+        queries: false,
         slots: Semaphore::new(1),
     };
     let mut headers = HeaderMap::new();
@@ -108,6 +109,7 @@ async fn exhausted_http_admission_never_reads_a_body_or_invokes_service() {
     let boundary = Arc::new(Boundary {
         origin: "https://localhost:8443".into(),
         host: "localhost:8443".into(),
+        queries: false,
         slots: Semaphore::new(0),
     });
     let (inner, calls) = app(None);

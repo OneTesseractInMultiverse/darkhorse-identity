@@ -68,3 +68,43 @@ fn accepts_only_explicit_operations_and_never_secret_arguments() {
         assert!(!error.contains("password-secret"));
     }
 }
+
+#[test]
+fn signing_operations_accept_only_bounded_public_arguments() {
+    use crate::operator::signing::Operation;
+    assert_eq!(
+        parse(&args(&["signing-status"])),
+        Ok(Command::Signing(Operation::Status))
+    );
+    assert_eq!(
+        parse(&args(&["signing-generate", "0"])),
+        Ok(Command::Signing(Operation::Generate(0)))
+    );
+    assert_eq!(
+        parse(&args(&["signing-import", "--stdin", "1"])),
+        Ok(Command::Signing(Operation::Import(1)))
+    );
+    let kid = "A".repeat(43);
+    assert_eq!(
+        parse(&args(&["signing-activate", &kid, "2"])),
+        Ok(Command::Signing(Operation::Activate {
+            kid: [0; 32],
+            revision: 2
+        }))
+    );
+    assert_eq!(
+        parse(&args(&["signing-retire", &kid, "3"])),
+        Ok(Command::Signing(Operation::Retire {
+            kid: [0; 32],
+            revision: 3
+        }))
+    );
+    for bad in [
+        vec!["signing-import", "private-key", "0"],
+        vec!["signing-activate", "invalid", "0"],
+        vec!["signing-generate", "-1"],
+        vec!["signing-retire", &kid, "9223372036854775808"],
+    ] {
+        assert!(parse(&args(&bad)).is_err());
+    }
+}

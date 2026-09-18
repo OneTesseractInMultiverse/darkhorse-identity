@@ -27,3 +27,22 @@ implemented. **Playwright 1.63.0** is a root development dependency for disposab
 Chromium integration. Browser downloads are explicit through `make browser-install`;
 unit tests require no browser installation. These additions do not constitute a
 complete advisory or license audit. See [authentication](authentication.md).
+
+## Signing-key additions
+
+**aws-lc-rs 1.18.1** (ISC/Apache-2.0; locked **aws-lc-sys 0.45.0**) supplies RSA-3072
+key generation/PKCS#8 import, RS256 and AES-256-GCM. It stays inside adapters.
+Default features are disabled; allocation, non-FIPS, prebuilt NASM and ring-compatible
+public-key component access are explicit. This build does not claim FIPS certification.
+The native dependency requires a C/C++ build toolchain; macOS command-line developer
+tools and the pinned Rust Docker builder provide it. **base64 0.22.1** supplies
+canonical unpadded URL-safe encoding, and **ring 0.17.14** is a direct development
+dependency for independent RS256 verification. SHA-256 and OS entropy reuse existing
+adapters. [AWS-LC API](https://docs.rs/aws-lc-rs/1.18.1/aws_lc_rs/),
+[build requirements](https://aws.github.io/aws-lc-rs/requirements/index.html).
+
+The five public AWS-LC Rust advisories reviewed on 2026-09-17 identify affected
+`aws-lc-sys` ranges ending below 0.38.0 or 0.39.0; the resolved 0.45.0 is outside
+those ranges. This targeted check is not a complete transitive dependency advisory
+or license audit; no cargo-audit run is claimed. Recheck advisories when updating
+or releasing. [Maintainer advisories](https://github.com/aws/aws-lc-rs/security/advisories).
