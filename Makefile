@@ -277,3 +277,11 @@ benchmark-arrivals: ## Performance: short paced arrivals with bounded concurrenc
 
 benchmark-arrivals-baseline: ## Performance: sustained paced arrivals and concurrent security changes
 	$(MAKE) benchmark BENCH_PROFILE=arrival-baseline
+
+.PHONY: benchmark-profile benchmark-profile-baseline
+
+benchmark-profile: ## Performance: paced smoke with opt-in Rust stage/pool and PostgreSQL statement/WAL profiling
+	$(MAKE) benchmark BENCH_PROFILE=profile-smoke
+
+benchmark-profile-baseline: ## Performance: paced baseline with opt-in stage and SQL profiling
+	$(MAKE) benchmark BENCH_PROFILE=profile-baseline

@@ -1,7 +1,9 @@
+use super::super::profiling::{self, Stage};
 use super::super::resource_authority::{self, StoredGrant};
 use super::*;
 use darkhorse_application::resource_servers::{ActiveResourceToken, Probe, ResourceTokenStore};
 use darkhorse_domain::registration::secret_live;
+use sqlx::Acquire;
 struct Authentication {
     created: u64,
     expires: Option<u64>,
@@ -17,17 +19,35 @@ impl ResourceTokenStore for PostgresStore {
         input: Probe,
         issuer: &str,
     ) -> Result<Option<ActiveResourceToken>, Error> {
-        let mut tx = self.pool.begin().await.map_err(storage)?;
-        authority::lock(&mut tx).await.map_err(storage)?;
-        let authentication = authenticate(&mut tx, &input).await?;
-        let result = inspect(&mut tx, &input, issuer).await;
-        let now = authority::now(&mut tx).await.map_err(storage)?;
-        valid_authentication(&authentication, now)?;
-        let active = inactive(result)?;
-        tx.commit().await.map_err(storage)?;
-        Ok(active)
+        profiling::measure(Stage::Total, introspect(self, input, issuer)).await
     }
 }
+async fn introspect(
+    store: &PostgresStore,
+    input: Probe,
+    issuer: &str,
+) -> Result<Option<ActiveResourceToken>, Error> {
+    let mut connection = profiling::measure(Stage::PoolAcquire, store.pool.acquire())
+        .await
+        .map_err(storage)?;
+    let mut tx = profiling::measure(Stage::Begin, connection.begin())
+        .await
+        .map_err(storage)?;
+    profiling::measure(Stage::Fence, authority::lock(&mut tx))
+        .await
+        .map_err(storage)?;
+    let authentication =
+        profiling::measure(Stage::Authenticate, authenticate(&mut tx, &input)).await?;
+    let result = profiling::measure(Stage::Inspect, inspect(&mut tx, &input, issuer)).await;
+    let now = authority::now(&mut tx).await.map_err(storage)?;
+    valid_authentication(&authentication, now)?;
+    let active = inactive(result)?;
+    profiling::measure(Stage::Commit, tx.commit())
+        .await
+        .map_err(storage)?;
+    Ok(active)
+}
+
 fn valid_authentication(authentication: &Authentication, now: u64) -> Result<(), Error> {
     if !secret_live(authentication.created, authentication.expires, false, now) {
         return Err(Error::InvalidClient);
@@ -62,17 +82,20 @@ async fn inspect(
         .bind(token.as_slice()).fetch_optional(&mut **tx).await.map_err(storage)?.ok_or(Error::InvalidToken)?;
     reads::current(tx, &code).await?;
     let stored = decode(&row, &code)?;
-    let policy = resource_authority::load(
-        tx,
-        code.principal,
-        code.client,
-        &code.audience().ok_or(Error::InvalidToken)?,
-        &stored.scopes,
-        Some(&stored.grant.ceiling),
+    let policy = profiling::measure(
+        Stage::PolicyLoad,
+        resource_authority::load(
+            tx,
+            code.principal,
+            code.client,
+            &code.audience().ok_or(Error::InvalidToken)?,
+            &stored.scopes,
+            Some(&stored.grant.ceiling),
+        ),
     )
     .await?;
     let now = authority::now(tx).await.map_err(storage)?;
-    active(&code, stored, &policy, now)
+    profiling::compute(Stage::Decision, || active(&code, stored, &policy, now))
 }
 fn decode(row: &PgRow, code: &CodeRecord) -> Result<Access, Error> {
     let scope: String = row.try_get("scope").map_err(storage)?;

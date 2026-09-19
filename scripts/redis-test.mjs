@@ -85,7 +85,7 @@ async function service(role, directory) {
     .at(-1);
   return { name, port, network };
 }
-async function database(network) {
+async function database(network, profiling) {
   const name = `${prefix}-database`;
   const secret = randomBytes(32).toString("hex");
   owned.push(name);
@@ -102,6 +102,19 @@ async function database(network) {
       "--env",
       "POSTGRES_PASSWORD",
       "percona/percona-distribution-postgresql:18.6@sha256:dae47360e8137cafc1e8d66f9a1be348f1405e3cf51daa383b94e6c277e6b256",
+      ...(profiling
+        ? [
+            "postgres",
+            "-c",
+            "shared_preload_libraries=pg_stat_statements",
+            "-c",
+            "pg_stat_statements.track=top",
+            "-c",
+            "pg_stat_statements.track_planning=off",
+            "-c",
+            "pg_stat_statements.track_utility=on",
+          ]
+        : []),
     ],
     { env: { ...process.env, POSTGRES_PASSWORD: secret } },
   );
@@ -132,7 +145,13 @@ async function database(network) {
     url: `postgres://postgres:${secret}@127.0.0.1:${port}/postgres`,
   };
 }
-async function hostChecks(env, db, directory, benchmark = false) {
+async function hostChecks(
+  env,
+  db,
+  directory,
+  benchmark = false,
+  profiling = false,
+) {
   if (!benchmark) {
     await command(
       "cargo",
@@ -170,6 +189,7 @@ async function hostChecks(env, db, directory, benchmark = false) {
   await command("cargo", [
     "build",
     ...(benchmark ? ["--release"] : []),
+    ...(profiling ? ["--features", "benchmark-profiling"] : []),
     "-p",
     "darkhorse-server",
     "--locked",
@@ -199,6 +219,7 @@ async function hostChecks(env, db, directory, benchmark = false) {
     const options = benchmark
       ? {
           profile: "release",
+          profiling,
           exercise: (await import("./lib/benchmark-browser.mjs"))
             .benchmarkBrowser,
         }
@@ -315,9 +336,11 @@ async function imageChecks(tag, env, cache, limiter, db) {
 
 async function main(args) {
   const benchmark = args.length === 1 && args[0] === "--benchmark";
+  let profiling = false;
   if (benchmark) {
     const { benchmarkProfile } = await import("./lib/benchmark-model.mjs");
-    benchmarkProfile(process.env.BENCH_PROFILE ?? "smoke");
+    profiling =
+      benchmarkProfile(process.env.BENCH_PROFILE ?? "smoke").profiling === true;
   }
   if (
     args.length &&
@@ -359,7 +382,7 @@ async function main(args) {
       ? await tlsProxy(Number(limiter.port), directory, command)
       : null;
     if (tls) proxies.push(tls);
-    const db = await database(cache.network);
+    const db = await database(cache.network, profiling);
     const env = {
       ...process.env,
       ...values,
@@ -380,7 +403,7 @@ async function main(args) {
     const result =
       args.length && !benchmark
         ? await imageChecks(args[1], env, cache, limiter, db)
-        : await hostChecks(env, db, directory, benchmark);
+        : await hostChecks(env, db, directory, benchmark, profiling);
     const status = JSON.parse(result.stdout);
     assert.equal(status.cache.connection, "reachable");
     assert.equal(status.limiter.connection, "reachable");

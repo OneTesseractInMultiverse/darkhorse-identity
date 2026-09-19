@@ -13,5 +13,8 @@ axum.workspace = true
 envbind.workspace = true
 tokio.workspace = true
 
+[features]
+benchmark-profiling = ["darkhorse-adapters/benchmark-profiling"]
+
 [lints]
 workspace = true

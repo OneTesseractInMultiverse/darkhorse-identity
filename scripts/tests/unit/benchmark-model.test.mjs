@@ -11,6 +11,14 @@ import {
 test("benchmark profiles bound load and reject accidental unbounded settings", () => {
   assert.equal(benchmarkProfile("smoke").requests, 128);
   assert.equal(benchmarkProfile("baseline").requests, 2048);
+  for (const suffix of ["smoke", "baseline"]) {
+    const profiled = benchmarkProfile(`profile-${suffix}`);
+    assert.deepEqual(profiled, {
+      ...benchmarkProfile(`arrival-${suffix}`),
+      name: `profile-${suffix}`,
+      profiling: true,
+    });
+  }
   assert.throws(() => benchmarkProfile("production"), /profile/);
   assert.equal(benchmarkProfile("arrival-smoke").arrivals.durationMs, 2000);
   assert.equal(benchmarkProfile("arrival-baseline").clients, 8);

@@ -9,6 +9,8 @@ import { registerResource, authorizeResource } from "./resource-fixture.mjs";
 import { manage, health } from "./reference-client.mjs";
 import { benchmarkProfile, phaseSummary } from "./benchmark-model.mjs";
 import { runLoad } from "./benchmark-load.mjs";
+import { verifyPhaseProfile } from "./benchmark-profile-consistency.mjs";
+import { profiler } from "./benchmark-profiler.mjs";
 import { metadata, snapshot } from "./benchmark-observations.mjs";
 
 function expectation(options, fixture, reduced = false) {
@@ -83,6 +85,7 @@ async function phase(
   agent,
   concurrentChange,
 ) {
+  await state.observer?.before();
   const clock = () => performance.now() - state.started;
   let begin;
   const dispatched = new Promise((resolve) => {
@@ -112,6 +115,10 @@ async function phase(
   return summary;
 }
 async function recordPhase(state, name, rows, summary) {
+  if (state.observer) {
+    summary.profiling = await state.observer.after();
+    verifyPhaseProfile(summary.profiling, summary);
+  }
   state.report.phases.push(summary);
   await appendFile(
     join(state.directory, "requests.jsonl"),
@@ -286,6 +293,7 @@ async function changes(state, agent, measure = phase) {
   );
 }
 async function pacedPhase(state, name, select, agent, rate, change) {
+  await state.observer?.before();
   const settings = { ...state.profile.arrivals, rate };
   const { rows, summary } = await measureArrivals({
     name,
@@ -372,6 +380,10 @@ export async function benchmarkBrowser(options) {
     state.fixtures = provisioned.fixtures;
     report.sso = provisioned.sso;
     report.before = await snapshot(options);
+    if (profile.profiling) {
+      state.observer = await profiler(options);
+      report.profiling = { enabled: true, postgres: state.observer.settings };
+    }
     if (profile.arrivals) await arrivalWorkloads(state, agent);
     else {
       await steady(state, agent);

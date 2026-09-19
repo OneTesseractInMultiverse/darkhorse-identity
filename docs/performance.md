@@ -13,6 +13,8 @@ make benchmark          # smoke: four resource clients, 128 requests per main ph
 make benchmark-baseline # baseline: eight resource clients, 2,048 requests per main phase
 make benchmark-arrivals # paced traffic: four clients, two seconds per arrival phase
 make benchmark-arrivals-baseline # eight clients, ten seconds per arrival phase
+make benchmark-profile # same paced smoke with diagnostic instrumentation
+make benchmark-profile-baseline # same paced baseline with diagnostic instrumentation
 ```
 
 These commands build the static console and release server with locked dependencies. They create disposable Percona PostgreSQL and separate Redis limiter/cache containers, a temporary TLS certificate, a Rust server and Chromium. They require neither existing local settings nor host certificate trust. The existing development database, credentials and volumes are untouched. Owned processes, containers, anonymous volumes and temporary secrets are cleaned up on exit. The browser fixture advances only disposable recovery/key-publication setup timestamps; runtime authorization and limiting remain enabled.
@@ -74,8 +76,35 @@ Fixed-arrival summaries additionally include configured and scheduled rates, pla
 
 Before/after observations include server cumulative CPU time/RSS, database-container CPU/memory/block I/O, cumulative PostgreSQL transaction/buffer/tuple counters, and snapshots of activity waits/ungranted locks. These are coarse observations, not a continuously sampled profiler. PostgreSQL statistics can lag; counters include fixture/observer work. Tuple changes and container block I/O are not an exact WAL/write-volume measurement. Boundary lock snapshots cannot exclude contention during the workload.
 
+## Opt-in stage and database profiling
+
+`make benchmark-profile` and `make benchmark-profile-baseline` use the same source-defined arrival workloads as their `benchmark-arrivals` counterparts. They enable the `benchmark-profiling` Cargo feature and preload `pg_stat_statements` **only in the disposable benchmark database**. Normal builds and deployment configurations do not enable either facility. Use normal runs for latency comparisons; profiling changes overhead and phase spacing. Repeat matching profiles on an otherwise idle host to assess variability before interpreting differences as instrumentation cost.
+
+The feature adds fixed-size, process-local timing histograms to the PostgreSQL resource-introspection adapter. A signal handler returns and resets aggregate counters over the owned child's stdout. There is no diagnostics HTTP route. Only the harness signals its own child, after HTTP readiness and between drained workload phases. It waits for application database sessions to become idle, including rollback cleanup, before taking boundaries. Missing, oversized, malformed, unsolicited or inconsistent frames fail collection; it never echoes frame contents in errors. A five-second response deadline bounds collection. No token, principal, resource identifier, SQL text or parameter becomes a timing label.
+
+Each phase gains a `profiling` object. `rust.stages` contains:
+
+| Stage             | Meaning                                                                                                             |
+| ----------------- | ------------------------------------------------------------------------------------------------------------------- |
+| `total`           | PostgreSQL adapter call, excluding HTTP parsing, TLS and pre-admission rejection.                                   |
+| `pool_acquire`    | Complete SQLx acquisition, including queued time, connection creation and liveness checks; not a queue-only metric. |
+| `begin`, `commit` | Transaction operations as observed by Rust.                                                                         |
+| `fence`           | Primary shared security-fence read, including database/transport time and any locking delay.                        |
+| `authenticate`    | Resource credential lookup and freshness check.                                                                     |
+| `inspect`         | Token, code, session, client, consent and policy inspection.                                                        |
+| `policy_load`     | Bounded policy SQL reads, decoding and catalog assembly.                                                            |
+| `decision`        | Pure effective-capability evaluation and response-value construction.                                               |
+
+Stages are nested: `inspect` includes `policy_load` and `decision`; `total` includes the others plus unlabelled coordination/final freshness checks. Do not add nested timings. Histograms mix outcomes, retaining `ok`, `error` and `cancelled` counts separately. A stage error can be an expected denial: revoked token inspection returns an error internally that the outer adapter maps to a successful inactive response. The surrounding HTTP outcome counts remain authoritative for request classification. Health requests, identity-client introspection and rejections before the adapter are outside these counters.
+
+Times use integer microseconds, rounding individual durations down. `sum_us`, `max_us`, non-cumulative buckets, count and mean are retained. `percentile_upper_us` reports the inclusive **bucket upper bound**, not an exact latency percentile; null means an empty population or overflow beyond the ten-second top bucket (distinguish with count/buckets). Very small computations may round to zero. Counters have fixed memory/cardinality, but their mutex and clock reads add measurement overhead. A normal build compiles out these effects. Cancellation accounting and signal-failure scenarios still need broader real-process qualification.
+
+The SQL observer resets statistics for the disposable fixture database before each phase. It saves fixed statement-category aggregates: calls, execution milliseconds, rows, buffer hits/reads/dirties/writes, WAL records/full-page images and WAL bytes. Classification occurs inside PostgreSQL; query text, fingerprints and parameters are not returned. Unknown statements remain in `other`. Observer statements are excluded. Calls include transaction commands, concurrent security mutations and SQLx cleanup. They count completed top-level SQL statements, **not wire-protocol round trips**; parsing, preparation, failed executions and nested trigger operations need separate attribution. Planning timing is disabled. Statement eviction invalidates a phase. See [PostgreSQL's statement statistics](https://www.postgresql.org/docs/18/pgstatstatements.html) for counter semantics and overhead.
+
+`clusterWalBytes` separately measures the database cluster's WAL insertion-position difference across the phase. It includes commit/abort records and any background or unrelated work in that disposable cluster; it is not a per-request attribution or disk-flush measurement. Per-statement WAL and this cluster total have different scopes. Row-locking reads can generate WAL, so an introspection path without logical data updates is not necessarily free of write activity; PostgreSQL also documents that [row locks may cause disk writes](https://www.postgresql.org/docs/18/explicit-locking.html#LOCKING-ROWS). SQL execution time does not isolate network, pool or lock waits. Query plans, protocol tracing and continuous wait/CPU/memory sampling remain separate qualification work.
+
 ## Remaining qualification
 
-The harness establishes a repeatable uncached starting point. Issue #10 stays open for larger user/policy populations, genuinely cold database state, longer endurance and production arrival distributions, multi-host/production proxy measurements, SQL query plans and round-trip attribution, WAL/write volume, pool-acquisition and lock-wait instrumentation, continuous CPU/memory sampling, and shared-limiter overhead comparisons. SSO samples currently cover one principal, not password-login saturation or a latency distribution.
+The harness establishes a repeatable uncached starting point. Issue #10 stays open for larger user/policy populations, genuinely cold database state, longer endurance and production arrival distributions, multi-host/production proxy measurements, SQL query plans and wire-protocol round-trip attribution, continuous lock-wait/CPU/memory sampling, longer WAL and pool-acquisition observations, and shared-limiter overhead comparisons. SSO samples currently cover one principal, not password-login saturation or a latency distribution.
 
 Latency, capacity and error budgets remain unset until workload goals and repeated measurements support them. Freshness has an explicit security requirement: no stale grant on a check started after the acknowledged commit. Authorization caching must retain the same authentication, admission, failure and freshness semantics when compared with this baseline. The current measurements do not justify enabling it yet.

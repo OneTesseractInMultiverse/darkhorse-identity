@@ -9,7 +9,14 @@ import {
 import { createHash } from "node:crypto";
 import { readFile } from "node:fs/promises";
 
-export async function metadata({ command, docker, db, env, executable }) {
+export async function metadata({
+  command,
+  docker,
+  db,
+  env,
+  executable,
+  profileSnapshot,
+}) {
   const capture = async (program, args) =>
     (await command(program, args, { capture: true })).stdout.trim();
   const paths = (
@@ -93,6 +100,7 @@ export async function metadata({ command, docker, db, env, executable }) {
     ),
     topology:
       "One host release Rust process, Node TLS proxy and load generator; Docker Percona primary plus separate Redis cache/limiter containers on loopback. Chromium provisions real login/SSO credentials.",
+    buildFeatures: profileSnapshot ? ["benchmark-profiling"] : [],
     protections: {
       httpsVerification: true,
       clientAuthentication: "client_secret_basic",
@@ -107,7 +115,12 @@ export async function metadata({ command, docker, db, env, executable }) {
       "database-cold state",
       "multi-host latency",
       "large policy populations",
-      "pool acquire waits",
+      ...(profileSnapshot
+        ? []
+        : [
+            "pool acquisition and authorization stage timings",
+            "SQL statement counts and WAL observations",
+          ]),
       "SQL round trips and plans",
       "limiter incremental overhead",
       "multi-hour endurance and production arrival distributions",

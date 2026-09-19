@@ -8,6 +8,7 @@ import { setTimeout as delay } from "node:timers/promises";
 import { chromium } from "@playwright/test";
 import { tlsProxy } from "./lib/redis-test-proxy.mjs";
 import { runtimeEnvironment } from "./lib/redis-settings.mjs";
+import { profileChannel } from "./lib/benchmark-profile-channel.mjs";
 import { startProcess } from "./lib/process.mjs";
 import { seedSigning, verifyProvider } from "./lib/provider-browser.mjs";
 import { verifyRegistration } from "./lib/registration-browser.mjs";
@@ -55,7 +56,7 @@ export async function verifyBrowser(
   directory,
   command,
   docker,
-  { profile = "debug", exercise = exerciseBrowser } = {},
+  { profile = "debug", exercise = exerciseBrowser, profiling = false } = {},
 ) {
   const port = await freePort();
   const tls = await tlsProxy(port, directory, command);
@@ -102,7 +103,14 @@ export async function verifyBrowser(
   try {
     const { password, principal } = await seedDatabase(db, invoke, docker);
     await seedSigning(invoke, docker, db);
-    server = startProcess({ command: executable, args: [], env: runtime });
+    const channel = profiling ? profileChannel() : undefined;
+    server = startProcess({
+      command: executable,
+      args: [],
+      env: runtime,
+      stdout: channel?.accept,
+    });
+    if (channel) void server.done.then(channel.close, channel.close);
     await ready(origin, tls.ca);
     await assert.rejects(https(origin, undefined, "/health/live"));
     browser = await launchBrowser(directory);
@@ -129,6 +137,9 @@ export async function verifyBrowser(
       invoke,
       runSql,
       serverPid: server.pid,
+      profileSnapshot: channel
+        ? () => channel.request(() => server.signal("SIGUSR1"))
+        : undefined,
       db,
       command,
       docker,
