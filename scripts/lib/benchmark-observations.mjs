@@ -16,6 +16,7 @@ export async function metadata({
   env,
   executable,
   profileSnapshot,
+  poolSize,
 }) {
   const capture = async (program, args) =>
     (await command(program, args, { capture: true })).stdout.trim();
@@ -107,7 +108,7 @@ export async function metadata({
       loginSharedRedisLimiter: true,
       introspectionSharedRedisLimiter: false,
       tokenRouteConcurrency: 16,
-      databasePoolConnections: 5,
+      databasePoolConnections: poolSize,
       positiveDecisionCache: false,
       computationCache: false,
     },

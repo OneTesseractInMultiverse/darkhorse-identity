@@ -37,7 +37,7 @@ Redis infrastructure, atomic shared attempt budgets and durable recovery are imp
 
 For opt-in code authorization and signing-key commands, see the [provider contract](docs/provider.md). `make provider-setup` and `make dev-provider` extend the prepared login environment; two-application SSO and [identity token checks](docs/token-checks.md) are exercised by `make test-browser`.
 
-For a reproducible release-build HTTPS workload, run `make benchmark` or `make benchmark-baseline`. Use `make benchmark-arrivals` or `make benchmark-arrivals-baseline` for paced arrivals that continue independently of response times. Use `make benchmark-profile` or `make benchmark-profile-baseline` for opt-in Rust stage/pool and SQL/WAL profiling. See the [performance baseline](docs/performance.md) for raw reports, revocation checks, topology and measurement limits.
+For a reproducible release-build HTTPS workload, run `make benchmark` or `make benchmark-baseline`. Use `make benchmark-arrivals` or `make benchmark-arrivals-baseline` for paced arrivals that continue independently of response times. Use `make benchmark-profile` or `make benchmark-profile-baseline` for opt-in Rust stage/pool and SQL/WAL profiling. Use `make benchmark-pools` or `make benchmark-pools-baseline` for sequential, repeated connection-pool comparisons. See the [performance baseline](docs/performance.md) for raw reports, revocation checks, topology and measurement limits.
 
 ## Structure
 

@@ -56,7 +56,12 @@ export async function verifyBrowser(
   directory,
   command,
   docker,
-  { profile = "debug", exercise = exerciseBrowser, profiling = false } = {},
+  {
+    profile = "debug",
+    exercise = exerciseBrowser,
+    profiling = false,
+    poolSize = 5,
+  } = {},
 ) {
   const port = await freePort();
   const tls = await tlsProxy(port, directory, command);
@@ -66,7 +71,7 @@ export async function verifyBrowser(
   const runtime = {
     ...runtimeEnvironment(env),
     DARKHORSE_DATABASE_URL: url.href,
-    DARKHORSE_DATABASE_POOL_SIZE: "5",
+    DARKHORSE_DATABASE_POOL_SIZE: String(poolSize),
     DARKHORSE_HTTP_PORT: String(port),
     DARKHORSE_PUBLIC_ORIGIN: origin,
     DARKHORSE_LOGIN_ENABLED: "true",
@@ -145,6 +150,7 @@ export async function verifyBrowser(
       docker,
       env,
       executable,
+      poolSize,
     });
   } finally {
     await browser?.close();

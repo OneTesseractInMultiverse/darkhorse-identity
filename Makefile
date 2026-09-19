@@ -262,10 +262,11 @@ test-resource-introspection: ## Test: isolated resource credential lifecycle, tr
 	cargo test --workspace --lib --locked --offline token_http
 
 BENCH_PROFILE ?= smoke
+BENCH_POOL_SIZE ?= 5
 .PHONY: benchmark benchmark-baseline
 
 benchmark: build-web ## Performance: release HTTPS SSO/introspection baseline; disposable Docker services
-	BENCH_PROFILE="$(BENCH_PROFILE)" $(NODE) scripts/redis-test.mjs --benchmark
+	BENCH_PROFILE="$(BENCH_PROFILE)" BENCH_POOL_SIZE="$(BENCH_POOL_SIZE)" $(NODE) scripts/redis-test.mjs --benchmark
 
 benchmark-baseline: ## Performance: larger bounded baseline with eight resource clients
 	$(MAKE) benchmark BENCH_PROFILE=baseline
@@ -285,3 +286,14 @@ benchmark-profile: ## Performance: paced smoke with opt-in Rust stage/pool and P
 
 benchmark-profile-baseline: ## Performance: paced baseline with opt-in stage and SQL profiling
 	$(MAKE) benchmark BENCH_PROFILE=profile-baseline
+
+BENCH_POOL_PROFILE ?= arrival-smoke
+.PHONY: benchmark-pools benchmark-pools-baseline
+
+benchmark-pools: build-web ## Performance: sequential pool sizes 2/5/10/16, repeated in reverse order
+	@set -eu; for pool in 2 5 10 16 16 10 5 2; do \
+		BENCH_PROFILE="$(BENCH_POOL_PROFILE)" BENCH_POOL_SIZE="$$pool" $(NODE) scripts/redis-test.mjs --benchmark; \
+	done
+
+benchmark-pools-baseline: ## Performance: eight complete paced baseline runs with controlled pool sizes
+	$(MAKE) benchmark-pools BENCH_POOL_PROFILE=arrival-baseline

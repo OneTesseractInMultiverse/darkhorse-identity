@@ -19,9 +19,27 @@ make benchmark-profile-baseline # same paced baseline with diagnostic instrument
 
 These commands build the static console and release server with locked dependencies. They create disposable Percona PostgreSQL and separate Redis limiter/cache containers, a temporary TLS certificate, a Rust server and Chromium. They require neither existing local settings nor host certificate trust. The existing development database, credentials and volumes are untouched. Owned processes, containers, anonymous volumes and temporary secrets are cleaned up on exit. The browser fixture advances only disposable recovery/key-publication setup timestamps; runtime authorization and limiting remain enabled.
 
-The client verifies the temporary CA and localhost name. The TLS endpoint is the test harness's Node TLS proxy, with one Rust backend over loopback. This is a single-host measurement, including the host/container database boundary, rather than the planned production reverse-proxy or Kubernetes topology. Database and Redis links are plaintext over isolated local test infrastructure. The PostgreSQL pool is fixed at five connections. The token-route admission limit remains 16 concurrent requests per server process. No positive decisions or authorization computations are cached. Redis shared login limiting is enabled; a shared introspection-attempt limiter is **not implemented**.
+The client verifies the temporary CA and localhost name. The TLS endpoint is the test harness's Node TLS proxy, with one Rust backend over loopback. This is a single-host measurement, including the host/container database boundary, rather than the planned production reverse-proxy or Kubernetes topology. Database and Redis links are plaintext over isolated local test infrastructure. The PostgreSQL pool defaults to five connections and can be varied explicitly for controlled comparisons. The token-route admission limit remains 16 concurrent requests per server process. No positive decisions or authorization computations are cached. Redis shared login limiting is enabled; a shared introspection-attempt limiter is **not implemented**.
 
 Use the same revision, profile, hardware, Docker resource allocation and idle-host conditions for comparisons. Do not run other load tests alongside the benchmark. Repeat runs to assess variability. The runner bounds workers and total attempts; it has no production-target URL option.
+
+### Controlled connection-pool comparisons
+
+```sh
+make benchmark-arrivals-baseline BENCH_POOL_SIZE=10
+make benchmark-profile-baseline BENCH_POOL_SIZE=10
+make benchmark-pools # eight short runs: 2, 5, 10, 16, 16, 10, 5, 2 connections
+make benchmark-pools-baseline # same sequence with complete arrival-baseline workloads
+make benchmark-pools BENCH_POOL_PROFILE=profile-baseline # separate diagnostic series
+```
+
+`BENCH_POOL_SIZE` accepts canonical decimal integers from 1 through 32, matching the server's supported range. Invalid values fail before creating test services. The runner parses workload and pool settings once and passes them explicitly to the browser fixture. The report's `metadata.protections.databasePoolConnections` records the limit passed to the Rust server. This is a configured maximum, not a measurement of active connections. Deployment environment settings cannot silently override this benchmark value; normal browser integration tests still use five connections.
+
+The matrix builds the frontend once, then runs each complete fixture sequentially with fresh disposable services and the same profile. Every run includes concurrent permission reduction, revocation and explicit post-commit checks. A failed run stops the sequence after that run's cleanup. Each run prints its pool size and report directory. All eight reports must have `status: passed` before describing the matrix as completed. The reverse repeat helps expose order effects; two samples per size cannot establish statistical confidence or eliminate host drift.
+
+Compare only reports with matching source/binary digests, workload profile, host/Docker resources, versions, images and protection settings other than pool size. Compare normal and diagnostic series separately. For each size and offered rate, retain authorized throughput and scheduled authorized p95/p99 alongside unavailable responses and generator drops. Diagnostic runs additionally expose pool acquisition and adapter timings. A smaller acquisition time alone does not prove an improvement: more database concurrency can move waiting into statement execution or locking. Inspect the full request latency, useful throughput, security checks and failure counts together. Before/after activity snapshots help confirm connections were used but do not capture their peak.
+
+These commands change only disposable benchmark configuration. Choosing a deployment pool also requires the connection budget across all server replicas, other database clients and the target database. The production default, token-route admission limit and strict primary-state freshness contract remain unchanged.
 
 ## Workloads and interpretation
 
@@ -111,7 +129,7 @@ The query retains overflow sentinels: at most 257 exposed capabilities, 65 roles
 
 The caller acquires the shared primary security fence **in a preceding statement**, then holds it through the complete authorization transaction. Do not fold that lock into the projection query: after waiting for a writer, a later statement must obtain the committed policy snapshot. PostgreSQL documents the [statement snapshot behavior of Read Committed](https://www.postgresql.org/docs/18/transaction-iso.html#XACT-READ-COMMITTED). Token/session/client/consent checks, final expiration checks and commit handling remain in place. No positive decision is cached.
 
-For the small steady introspection fixture, combining the five policy reads removes four top-level statements per authorized check. Verify the actual count and performance using `make benchmark-profile-baseline`; statement counts are not wire-protocol round-trip counts. Keep the five-connection pool and existing admission limits constant for comparisons. Larger policy populations, query plans and different topologies still need qualification before generalizing any measured gain.
+For the small steady introspection fixture, combining the five policy reads removes four top-level statements per authorized check. Verify the actual count and performance using `make benchmark-profile-baseline`; statement counts are not wire-protocol round-trip counts. Hold pool size and existing admission limits constant when comparing query changes. Vary only pool size in a separate controlled series. Larger policy populations, query plans and different topologies still need qualification before generalizing any measured gain.
 
 ## Remaining qualification
 

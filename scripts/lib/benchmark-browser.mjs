@@ -7,7 +7,7 @@ import { resolve, join } from "node:path";
 import { call } from "./provider-browser.mjs";
 import { registerResource, authorizeResource } from "./resource-fixture.mjs";
 import { manage, health } from "./reference-client.mjs";
-import { benchmarkProfile, phaseSummary } from "./benchmark-model.mjs";
+import { phaseSummary } from "./benchmark-model.mjs";
 import { runLoad } from "./benchmark-load.mjs";
 import { verifyPhaseProfile } from "./benchmark-profile-consistency.mjs";
 import { profiler } from "./benchmark-profiler.mjs";
@@ -342,8 +342,7 @@ async function save(state) {
     { mode: 0o600 },
   );
 }
-export async function benchmarkBrowser(options) {
-  const profile = benchmarkProfile(process.env.BENCH_PROFILE ?? "smoke");
+export async function benchmarkBrowser(options, profile) {
   await mkdir(resolve(".local/benchmarks"), { recursive: true, mode: 0o700 });
   const directory = await mkdtemp(resolve(".local/benchmarks/run-"));
   const report = {
@@ -369,6 +368,7 @@ export async function benchmarkBrowser(options) {
     started: performance.now(),
   };
   await save(state);
+  console.log(`Benchmark: ${profile.name}, pool=${options.poolSize}`);
   console.log(`Benchmark reports: ${directory}`);
   const agent = new Agent({
     keepAlive: true,

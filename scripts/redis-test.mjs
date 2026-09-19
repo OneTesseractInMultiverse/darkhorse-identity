@@ -145,13 +145,8 @@ async function database(network, profiling) {
     url: `postgres://postgres:${secret}@127.0.0.1:${port}/postgres`,
   };
 }
-async function hostChecks(
-  env,
-  db,
-  directory,
-  benchmark = false,
-  profiling = false,
-) {
+async function hostChecks(env, db, directory, benchmark) {
+  const profiling = benchmark?.profile.profiling === true;
   if (!benchmark) {
     await command(
       "cargo",
@@ -220,8 +215,12 @@ async function hostChecks(
       ? {
           profile: "release",
           profiling,
-          exercise: (await import("./lib/benchmark-browser.mjs"))
-            .benchmarkBrowser,
+          poolSize: benchmark.poolSize,
+          exercise: async (options) =>
+            (await import("./lib/benchmark-browser.mjs")).benchmarkBrowser(
+              options,
+              benchmark.profile,
+            ),
         }
       : undefined;
     await verifyBrowser(env, db, directory, command, docker, options);
@@ -336,11 +335,10 @@ async function imageChecks(tag, env, cache, limiter, db) {
 
 async function main(args) {
   const benchmark = args.length === 1 && args[0] === "--benchmark";
-  let profiling = false;
+  let settings;
   if (benchmark) {
-    const { benchmarkProfile } = await import("./lib/benchmark-model.mjs");
-    profiling =
-      benchmarkProfile(process.env.BENCH_PROFILE ?? "smoke").profiling === true;
+    const { benchmarkSettings } = await import("./lib/benchmark-settings.mjs");
+    settings = benchmarkSettings(process.env);
   }
   if (
     args.length &&
@@ -382,7 +380,10 @@ async function main(args) {
       ? await tlsProxy(Number(limiter.port), directory, command)
       : null;
     if (tls) proxies.push(tls);
-    const db = await database(cache.network, profiling);
+    const db = await database(
+      cache.network,
+      settings?.profile.profiling === true,
+    );
     const env = {
       ...process.env,
       ...values,
@@ -403,7 +404,7 @@ async function main(args) {
     const result =
       args.length && !benchmark
         ? await imageChecks(args[1], env, cache, limiter, db)
-        : await hostChecks(env, db, directory, benchmark, profiling);
+        : await hostChecks(env, db, directory, settings);
     const status = JSON.parse(result.stdout);
     assert.equal(status.cache.connection, "reachable");
     assert.equal(status.limiter.connection, "reachable");
