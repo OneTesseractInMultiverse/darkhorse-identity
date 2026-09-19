@@ -65,7 +65,7 @@ fn inactive(error: Error) -> Error {
 pub(super) async fn profile(tx: &mut Tx<'_>, access: &Stored) -> Result<UserInfo, Error> {
     let scopes = scope_values(&access.scope);
     let disclosure = tokens::disclosure(&scopes, &access.ceiling)?;
-    let row = sqlx::query("SELECT CASE WHEN $2 THEN first_name END AS given, CASE WHEN $2 THEN last_name END AS family, CASE WHEN $3 THEN email END AS email FROM principals WHERE id=$1")
+    let row = sqlx::query("SELECT CASE WHEN $2 THEN first_name END AS given, CASE WHEN $2 THEN last_name END AS family, CASE WHEN $3 THEN email END AS email, ($3 AND email_verified_ms IS NOT NULL) AS email_verified FROM principals WHERE id=$1")
         .bind(Uuid::from_u128(access.code.principal.as_u128())).bind(disclosure.profile).bind(disclosure.email)
         .fetch_one(&mut **tx).await.map_err(storage)?;
     project(&row, access.code.principal)
@@ -79,6 +79,7 @@ fn project(row: &PgRow, subject: PrincipalId) -> Result<UserInfo, Error> {
             .zip(family)
             .map(|(given, family)| Names { given, family }),
         email: row.try_get("email").map_err(storage)?,
+        email_verified: row.try_get("email_verified").map_err(storage)?,
     })
 }
 pub(super) fn metadata(stored: Stored) -> ActiveToken {

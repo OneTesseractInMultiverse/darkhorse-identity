@@ -24,4 +24,5 @@ pub mod resource_servers;
 pub mod shared_limiting;
 pub mod tokens;
 
+pub mod email_verification;
 pub mod sessions;

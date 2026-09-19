@@ -305,3 +305,15 @@ benchmark-pools: build-web ## Performance: sequential pool sizes 2/5/10/16, repe
 
 benchmark-pools-baseline: ## Performance: eight complete paced baseline runs with controlled pool sizes
 	$(MAKE) benchmark-pools BENCH_POOL_PROFILE=arrival-baseline
+
+.PHONY: email-setup dev-email test-email
+
+email-setup: ## Email: generate owner-only local verification key; preserve existing key
+	$(NODE) scripts/email.mjs setup
+
+dev-email: ## Email: HTTPS login and email verification using configured implicit-TLS SMTP
+	CADDY="$(CADDY)" $(NODE) scripts/email.mjs dev
+
+test-email: ## Test: isolated email proof, queue orchestration, HTTP and UI contracts
+	cargo test --workspace --lib --locked --offline email_verification
+	$(WEB) test:unit email

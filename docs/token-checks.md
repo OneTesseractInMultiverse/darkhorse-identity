@@ -19,14 +19,13 @@ immutable approved scopes, and the access credential records its claim ceiling.
 Adding scope support never expands an already-issued credential: migration 0009
 preserves existing codes/tokens as `openid` and `sub` only.
 
-| Scope     | UserInfo claims                     |
-| --------- | ----------------------------------- |
-| `openid`  | `sub`                               |
-| `profile` | `name`, `given_name`, `family_name` |
-| `email`   | `email`, `email_verified=false`     |
+| Scope     | UserInfo claims                         |
+| --------- | --------------------------------------- |
+| `openid`  | `sub`                                   |
+| `profile` | `name`, `given_name`, `family_name`     |
+| `email`   | `email`, authoritative `email_verified` |
 
-Profile values come from the current directory record. Email verification is not
-implemented, so the server always reports false. Country, phone, secondary names,
+Profile values come from the current directory record. Email ownership comes from the current persisted [email verification](email-verification.md) state; existing accounts start unverified and changing an email clears its proof. Country, phone, secondary names,
 bio and picture remain later profile work. Unapproved fields are omitted from the
 response and are not selected by the profile query. ID tokens retain their
 existing authentication-event claims; these new profile values appear in UserInfo.

@@ -46,3 +46,20 @@ The five public AWS-LC Rust advisories reviewed on 2026-09-17 identify affected
 those ranges. This targeted check is not a complete transitive dependency advisory
 or license audit; no cargo-audit run is claimed. Recheck advisories when updating
 or releasing. [Maintainer advisories](https://github.com/aws/aws-lc-rs/security/advisories).
+
+## Email delivery additions
+
+**Lettre 0.11.23** (MIT) stays in the SMTP adapter. Defaults are disabled; the
+selected features are `builder`, `smtp-transport`, `tokio1-rustls`, `ring`, and
+`webpki-roots`. There is no sendmail, tracing, connection pool or Boring TLS
+backend. SMTP uses implicit TLS with certificate and hostname validation; an
+optional explicit private CA adds a trust anchor. SHA-256, HMAC, OS entropy and
+zeroization reuse existing dependencies. [Pinned API](https://docs.rs/lettre/0.11.23/lettre/).
+
+The three published Lettre RustSec advisories were reviewed on 2026-09-19.
+The pinned version is outside their affected ranges: the Boring TLS hostname
+issue is fixed from 0.11.22 (and does not affect rustls); the older SMTP-body and
+sendmail-injection issues were fixed before 0.11. This targeted review is not a
+complete transitive advisory or license audit. [Lettre advisories](https://rustsec.org/packages/lettre.html).
+
+**rustls-pki-types 1.15.1** (MIT/Apache-2.0; already present transitively) is now an explicit adapter dependency for strict single-certificate PEM parsing. Empty or multi-certificate custom trust inputs are rejected before TLS configuration.

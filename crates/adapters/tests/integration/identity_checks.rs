@@ -254,3 +254,57 @@ async fn readers_wait_for_in_flight_revocation_and_new_checks_observe_commit() {
     }
     db.store.close().await;
 }
+#[tokio::test]
+async fn verified_current_email_is_live_scope_limited_and_never_changes_subject_or_access() {
+    use darkhorse_application::email_verification::{Material, VerificationStore};
+    use darkhorse_domain::identity::EmailVerificationId;
+    let (db, signer) = setup().await;
+    let minimal = issue(&db, &signer, &["openid"], [3; 32]).await;
+    let full = issue(&db, &signer, &["openid", "email"], [4; 32]).await;
+    let digest = material::digest(&full.access, Purpose::Access).unwrap();
+    assert!(
+        !db.store
+            .userinfo(digest, ISSUER)
+            .await
+            .unwrap()
+            .email_verified
+    );
+    let before = db.store.account(id(1)).await.unwrap();
+    db.store
+        .request_verification(
+            [1; 32],
+            Material {
+                id: EmailVerificationId::from_u128(20).unwrap(),
+                seed: [7; 32],
+                digest: [8; 32],
+            },
+        )
+        .await
+        .unwrap();
+    db.store.verify_email([1; 32], [8; 32]).await.unwrap();
+    let verified = db.store.userinfo(digest, ISSUER).await.unwrap();
+    assert!(verified.email_verified);
+    assert_eq!(verified.subject, id(1));
+    let narrow = db
+        .store
+        .userinfo(
+            material::digest(&minimal.access, Purpose::Access).unwrap(),
+            ISSUER,
+        )
+        .await
+        .unwrap();
+    assert!(narrow.email.is_none());
+    assert!(!narrow.email_verified);
+    let after = db.store.account(id(1)).await.unwrap();
+    assert_eq!(before.credential_epoch, after.credential_epoch);
+    assert_eq!(before.administrator, after.administrator);
+    sqlx::query("UPDATE principals SET email='new@example.com',revision=revision+1")
+        .execute(&db.pool)
+        .await
+        .unwrap();
+    let changed = db.store.userinfo(digest, ISSUER).await.unwrap();
+    assert!(!changed.email_verified);
+    assert_eq!(changed.email.as_deref(), Some("new@example.com"));
+    assert_eq!(changed.subject, id(1));
+    db.store.close().await;
+}

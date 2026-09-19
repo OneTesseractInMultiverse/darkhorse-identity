@@ -21,4 +21,5 @@ pub mod oidc;
 pub mod refresh;
 pub mod tokens;
 
+pub mod email_verification;
 pub mod sessions;

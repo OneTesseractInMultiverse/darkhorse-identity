@@ -31,4 +31,6 @@ mod signing_fixture;
 pub mod resource_servers;
 pub mod resource_servers_http;
 
+pub mod email_verification;
+pub mod email_verification_http;
 pub mod sessions_http;

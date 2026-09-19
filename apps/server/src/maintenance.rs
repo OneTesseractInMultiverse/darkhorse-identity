@@ -18,3 +18,24 @@ pub async fn run(store: Option<PostgresStore>) {
         }
     }
 }
+
+/// One in-flight SMTP operation per process; no network operation holds a SQL transaction.
+pub async fn email(
+    runtime: Option<(
+        PostgresStore,
+        darkhorse_adapters::email_verification::smtp::Smtp,
+    )>,
+) {
+    let Some((store, sender)) = runtime else {
+        return std::future::pending().await;
+    };
+    loop {
+        let result = darkhorse_application::email_verification::deliver_next(&store, &sender).await;
+        if result.is_err() {
+            eprintln!("Email queue unavailable; retrying after a delay.");
+        }
+        if !matches!(result, Ok(true)) {
+            tokio::time::sleep(Duration::from_secs(2)).await;
+        }
+    }
+}

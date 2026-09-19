@@ -26,8 +26,9 @@ fn refresh_responses_omit_id_tokens_and_disabled_clients_receive_no_refresh() {
     );
 }
 #[test]
-fn profile_projection_omits_unapproved_fields_and_never_claims_email_verification() {
+fn profile_projection_omits_unapproved_fields_and_uses_authoritative_email_verification() {
     let profile = UserInfo {
+        email_verified: false,
         subject: PrincipalId::from_u128(1).unwrap(),
         profile: None,
         email: None,
@@ -35,6 +36,7 @@ fn profile_projection_omits_unapproved_fields_and_never_claims_email_verificatio
     let result = profile_response(profile);
     assert_eq!(result.as_object().unwrap().len(), 1);
     let full = profile_response(UserInfo {
+        email_verified: true,
         subject: PrincipalId::from_u128(1).unwrap(),
         profile: Some(Names {
             given: "Ada".into(),
@@ -43,7 +45,7 @@ fn profile_projection_omits_unapproved_fields_and_never_claims_email_verificatio
         email: Some("ada@example.com".into()),
     });
     assert_eq!(full["name"], "Ada Lovelace");
-    assert_eq!(full["email_verified"], false);
+    assert_eq!(full["email_verified"], true);
     assert!(full.get("active").is_none());
     assert!(full.get("roles").is_none());
 }

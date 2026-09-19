@@ -30,7 +30,8 @@ identifier!(
     ClientId,
     CredentialId,
     ClientSecretId,
-    SessionId
+    SessionId,
+    EmailVerificationId
 );
 
 #[cfg(test)]

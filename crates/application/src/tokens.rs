@@ -76,6 +76,7 @@ pub struct UserInfo {
     pub subject: PrincipalId,
     pub profile: Option<Names>,
     pub email: Option<String>,
+    pub email_verified: bool,
 }
 pub struct Names {
     pub given: String,

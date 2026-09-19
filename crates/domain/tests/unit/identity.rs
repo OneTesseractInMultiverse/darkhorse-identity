@@ -22,3 +22,4 @@ identifier_contract!(client_identifier_contract, ClientId);
 identifier_contract!(credential_identifier_contract, CredentialId);
 
 identifier_contract!(session_identifier_contract, SessionId);
+identifier_contract!(email_verification_identifier_contract, EmailVerificationId);

@@ -69,6 +69,9 @@
 			{#if showSecurityLink}<a
 					href={resolve('/security/sessions')}
 					class="text-primary underline underline-offset-4">Manage sessions</a
+				>
+				<a href={resolve('/security/email')} class="ml-4 text-primary underline underline-offset-4"
+					>Verify email</a
 				>{/if}
 			{#if signOut}<Button onclick={logout} disabled={pending} class="mt-6 h-11 w-full font-mono"
 					>{pending ? 'Signing out…' : 'Sign out'}</Button

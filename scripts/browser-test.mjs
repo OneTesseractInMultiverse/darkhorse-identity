@@ -12,6 +12,8 @@ import { profileChannel } from "./lib/benchmark-profile-channel.mjs";
 import { startProcess } from "./lib/process.mjs";
 import { seedSigning, verifyProvider } from "./lib/provider-browser.mjs";
 import { verifyRegistration } from "./lib/registration-browser.mjs";
+import { verificationMailbox } from "./lib/email-test-smtp.mjs";
+import { verifyEmail } from "./lib/email-verification-browser.mjs";
 import { verifySessionManagement } from "./lib/sessions-browser.mjs";
 
 async function freePort() {
@@ -105,8 +107,33 @@ export async function verifyBrowser(
       );
     return result;
   };
-  let server, browser;
+  let server, browser, mailbox;
   try {
+    if (!profiling && exercise === exerciseBrowser) {
+      mailbox = await verificationMailbox(directory);
+      Object.assign(runtime, mailbox.settings);
+      await command(
+        "cargo",
+        [
+          "test",
+          "-p",
+          "darkhorse-adapters",
+          "--features",
+          "email-tests",
+          "--test",
+          "email",
+          "--locked",
+          "--offline",
+        ],
+        { env: { ...process.env, ...mailbox.settings } },
+      );
+      assert.equal(
+        mailbox.messages.length,
+        1,
+        "only the trusted, authenticated SMTP attempt may submit a message",
+      );
+      mailbox.messages.length = 0;
+    }
     const { password, principal } = await seedDatabase(db, invoke, docker);
     await seedSigning(invoke, docker, db);
     const channel = profiling ? profileChannel() : undefined;
@@ -135,6 +162,7 @@ export async function verifyBrowser(
         statement,
       ]);
     await exercise({
+      mailbox,
       browser,
       origin,
       ca: tls.ca,
@@ -156,6 +184,7 @@ export async function verifyBrowser(
   } finally {
     await browser?.close();
     await server?.stop();
+    await mailbox?.close();
     await tls.close();
   }
 }
@@ -247,6 +276,7 @@ async function launchBrowser(directory) {
 }
 
 async function exerciseBrowser({
+  mailbox,
   browser,
   origin,
   ca,
@@ -269,6 +299,7 @@ async function exerciseBrowser({
   await verifyRotation(page, context, origin, ca, password, initial);
   await verifyRegistration(page, principal);
   await verifyProvider(page, context, origin, principal, ca, runSql);
+  await verifyEmail(page, origin, mailbox);
   await verifySessionManagement(browser, page, origin, password, invoke, ca);
   await verifyLogoutAndRevocation(page, context, password, principal, invoke);
   assert.deepEqual(errors, []);
@@ -395,7 +426,8 @@ async function verifyLogoutAndRevocation(
   await page.getByLabel("Password", { exact: true }).fill(password);
   await page.getByRole("button", { name: "Sign in", exact: true }).click();
   await page.getByRole("heading", { name: "Welcome, Browser." }).waitFor();
-  await invoke(["revoke-all", principal, "0"]);
+  const account = JSON.parse((await invoke(["account", principal])).stdout);
+  await invoke(["revoke-all", principal, String(account.revision)]);
   await page.reload();
   await page.getByRole("button", { name: "Sign in", exact: true }).waitFor();
   await invoke(["limiter-fence"]);

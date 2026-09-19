@@ -134,3 +134,11 @@ fn number(row: &PgRow, key: &str) -> Result<u64, Error> {
 fn storage<T>(_: T) -> Error {
     Error::Unavailable
 }
+
+pub(super) async fn owner(
+    tx: &mut Tx<'_>,
+    digest: [u8; 32],
+) -> Result<(PrincipalId, SessionId), Error> {
+    let actor = records::actor(tx, digest).await?;
+    Ok((actor.principal, actor.id))
+}

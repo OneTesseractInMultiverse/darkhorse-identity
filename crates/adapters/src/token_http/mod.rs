@@ -114,7 +114,7 @@ fn profile_response(profile: UserInfo) -> serde_json::Value {
     }
     if let Some(email) = profile.email {
         response["email"] = email.into();
-        response["email_verified"] = false.into();
+        response["email_verified"] = profile.email_verified.into();
     }
     response
 }

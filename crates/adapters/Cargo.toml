@@ -7,6 +7,8 @@ publish.workspace = true
 autotests = false
 
 [dependencies]
+rustls-pki-types.workspace = true
+lettre.workspace = true
 darkhorse-domain.workspace = true
 darkhorse-application.workspace = true
 axum.workspace = true
@@ -40,6 +42,7 @@ path = "tests/integration/postgres.rs"
 required-features = ["postgres-tests"]
 
 [features]
+email-tests = []
 benchmark-profiling = []
 postgres-tests = []
 redis-tests = []
@@ -56,3 +59,8 @@ required-features = ["redis-tests"]
 
 [lints]
 workspace = true
+
+[[test]]
+name = "email"
+path = "tests/integration/email.rs"
+required-features = ["email-tests"]
