@@ -25,11 +25,22 @@ pub(super) async fn load(
 ) -> Result<Stored, Error> {
     let code_digest = lookup(tx, digest, issuer, owner).await?;
     let code = reads::code_shared(tx, code_digest).await?;
-    let row = sqlx::query("SELECT created_ms,expires_ms,scope,claim_ceiling FROM access_tokens WHERE digest=$1 AND NOT revoked FOR SHARE")
+    let row = sqlx::query("SELECT created_ms,expires_ms,scope,claim_ceiling FROM access_tokens t WHERE digest=$1 AND NOT revoked AND (t.refresh_generation IS NULL OR EXISTS(SELECT 1 FROM refresh_families f WHERE f.code_digest=t.code_digest AND NOT f.revoked)) FOR SHARE")
         .bind(digest.as_slice()).fetch_optional(&mut **tx).await.map_err(storage)?.ok_or(Error::InvalidToken)?;
-    reads::current(tx, &code).await.map_err(inactive)?;
+    let scopes = row_scopes(&row)?;
+    reads::current_scopes(tx, &code, &scopes)
+        .await
+        .map_err(inactive)?;
     let now = authority::now(tx).await.map_err(storage)?;
     decode(&row, code, now)
+}
+fn row_scopes(row: &PgRow) -> Result<Vec<String>, Error> {
+    Ok(scope_values(
+        &row.try_get::<String, _>("scope").map_err(storage)?,
+    ))
+}
+fn scope_values(scope: &str) -> Vec<String> {
+    scope.split(' ').map(String::from).collect()
 }
 fn decode(row: &PgRow, code: CodeRecord, now: u64) -> Result<Stored, Error> {
     let created = number(row, "created_ms")?;
@@ -52,11 +63,7 @@ fn inactive(error: Error) -> Error {
     }
 }
 pub(super) async fn profile(tx: &mut Tx<'_>, access: &Stored) -> Result<UserInfo, Error> {
-    let scopes = access
-        .scope
-        .split(' ')
-        .map(String::from)
-        .collect::<Vec<_>>();
+    let scopes = scope_values(&access.scope);
     let disclosure = tokens::disclosure(&scopes, &access.ceiling)?;
     let row = sqlx::query("SELECT CASE WHEN $2 THEN first_name END AS given, CASE WHEN $2 THEN last_name END AS family, CASE WHEN $3 THEN email END AS email FROM principals WHERE id=$1")
         .bind(Uuid::from_u128(access.code.principal.as_u128())).bind(disclosure.profile).bind(disclosure.email)

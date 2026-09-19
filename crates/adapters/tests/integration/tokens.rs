@@ -77,23 +77,15 @@ async fn exchange_is_single_use_and_replay_revokes_the_issued_credential() {
             .is_err()
     );
     let (a, b) = tokio::join!(
-        db.store.redeem(
-            input(&code),
-            material::generate(Purpose::Access).unwrap(),
-            ISSUER,
-            &signer
-        ),
-        db.store.redeem(
-            input(&code),
-            material::generate(Purpose::Access).unwrap(),
-            ISSUER,
-            &signer
-        )
+        db.store
+            .redeem(input(&code), material::pair().unwrap(), ISSUER, &signer),
+        db.store
+            .redeem(input(&code), material::pair().unwrap(), ISSUER, &signer)
     );
     assert_eq!(usize::from(a.is_ok()) + usize::from(b.is_ok()), 1);
     let tokens = a.or(b).unwrap();
     assert!(tokens.access.starts_with("da_"));
-    assert_eq!(tokens.id_token.split('.').count(), 3);
+    assert_eq!(tokens.id_token.as_ref().unwrap().split('.').count(), 3);
     assert!(
         db.store
             .userinfo(
@@ -133,36 +125,21 @@ async fn signing_audit_and_wrong_proofs_never_partially_consume_a_code() {
         };
         assert!(
             db.store
-                .redeem(
-                    proof,
-                    material::generate(Purpose::Access).unwrap(),
-                    ISSUER,
-                    &signer
-                )
+                .redeem(proof, material::pair().unwrap(), ISSUER, &signer)
                 .await
                 .is_err()
         );
     }
     assert!(matches!(
         db.store
-            .redeem(
-                input(&code),
-                material::generate(Purpose::Access).unwrap(),
-                ISSUER,
-                &Broken
-            )
+            .redeem(input(&code), material::pair().unwrap(), ISSUER, &Broken)
             .await,
         Err(Error::Unavailable)
     ));
     sqlx::raw_sql("CREATE FUNCTION reject_token_audit() RETURNS trigger LANGUAGE plpgsql AS $$ BEGIN RAISE EXCEPTION 'injected audit failure'; END $$; CREATE TRIGGER reject_token_audit BEFORE INSERT ON token_audit FOR EACH ROW EXECUTE FUNCTION reject_token_audit();").execute(&db.pool).await.unwrap();
     assert!(
         db.store
-            .redeem(
-                input(&code),
-                material::generate(Purpose::Access).unwrap(),
-                ISSUER,
-                &signer
-            )
+            .redeem(input(&code), material::pair().unwrap(), ISSUER, &signer)
             .await
             .is_err()
     );
@@ -179,12 +156,7 @@ async fn signing_audit_and_wrong_proofs_never_partially_consume_a_code() {
         .unwrap();
     let token = db
         .store
-        .redeem(
-            input(&code),
-            material::generate(Purpose::Access).unwrap(),
-            ISSUER,
-            &signer,
-        )
+        .redeem(input(&code), material::pair().unwrap(), ISSUER, &signer)
         .await
         .unwrap();
     let digest = material::digest(&token.access, Purpose::Access).unwrap();
@@ -224,23 +196,13 @@ async fn committed_registration_and_account_changes_reject_both_code_and_access(
         let second = code(&db, [4; 32]).await;
         let issued = db
             .store
-            .redeem(
-                input(&first),
-                material::generate(Purpose::Access).unwrap(),
-                ISSUER,
-                &signer,
-            )
+            .redeem(input(&first), material::pair().unwrap(), ISSUER, &signer)
             .await
             .unwrap();
         sqlx::query(statement).execute(&db.pool).await.unwrap();
         assert!(
             db.store
-                .redeem(
-                    input(&second),
-                    material::generate(Purpose::Access).unwrap(),
-                    ISSUER,
-                    &signer
-                )
+                .redeem(input(&second), material::pair().unwrap(), ISSUER, &signer)
                 .await
                 .is_err()
         );
@@ -264,12 +226,7 @@ async fn expired_fresh_codes_deny_and_expired_replays_still_revoke_access() {
     let second = code(&db, [4; 32]).await;
     let issued = db
         .store
-        .redeem(
-            input(&first),
-            material::generate(Purpose::Access).unwrap(),
-            ISSUER,
-            &signer,
-        )
+        .redeem(input(&first), material::pair().unwrap(), ISSUER, &signer)
         .await
         .unwrap();
     // Fixture clock advancement is restricted to this disposable owner connection.
@@ -277,12 +234,7 @@ async fn expired_fresh_codes_deny_and_expired_replays_still_revoke_access() {
     for attempt in [&first, &second] {
         assert!(matches!(
             db.store
-                .redeem(
-                    input(attempt),
-                    material::generate(Purpose::Access).unwrap(),
-                    ISSUER,
-                    &signer
-                )
+                .redeem(input(attempt), material::pair().unwrap(), ISSUER, &signer)
                 .await,
             Err(Error::InvalidGrant)
         ));
@@ -358,7 +310,7 @@ async fn issuance_failure_and_constraints_preserve_pending_request_and_grant_cei
         .store
         .redeem(
             input(&issued_code),
-            material::generate(Purpose::Access).unwrap(),
+            material::pair().unwrap(),
             ISSUER,
             &signer,
         )

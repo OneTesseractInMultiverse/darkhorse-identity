@@ -10,7 +10,7 @@ fn request(token: Option<[u8; 32]>) -> Management {
     Management {
         client: ClientId::from_u128(32).unwrap(),
         secret: [9; 32],
-        token,
+        token: token.map(ManagedToken::Access),
     }
 }
 async fn issue(db: &Database, signer: &impl IdSigner, scopes: &[&str], handle: [u8; 32]) -> Tokens {
@@ -34,12 +34,7 @@ async fn issue(db: &Database, signer: &impl IdSigner, scopes: &[&str], handle: [
         .await
         .unwrap();
     db.store
-        .redeem(
-            input(&code),
-            material::generate(Purpose::Access).unwrap(),
-            ISSUER,
-            signer,
-        )
+        .redeem(input(&code), material::pair().unwrap(), ISSUER, signer)
         .await
         .unwrap()
 }
@@ -108,7 +103,7 @@ async fn revocation_is_atomic_idempotent_and_never_crosses_the_client_boundary()
     let foreign = || Management {
         client: ClientId::from_u128(33).unwrap(),
         secret: [8; 32],
-        token: Some(digest),
+        token: Some(ManagedToken::Access(digest)),
     };
     assert!(
         db.store
@@ -188,12 +183,7 @@ async fn unknown_issuer_expired_or_unavailable_authority_never_becomes_active() 
     let code = code(&db, [3; 32]).await;
     let token = db
         .store
-        .redeem(
-            input(&code),
-            material::generate(Purpose::Access).unwrap(),
-            ISSUER,
-            &signer,
-        )
+        .redeem(input(&code), material::pair().unwrap(), ISSUER, &signer)
         .await
         .unwrap();
     let digest = material::digest(&token.access, Purpose::Access).unwrap();

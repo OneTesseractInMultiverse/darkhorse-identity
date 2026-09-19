@@ -5,14 +5,22 @@ use sha2::{Digest, Sha256};
 pub enum Purpose {
     Code,
     Access,
+    Refresh,
 }
 impl Purpose {
     fn prefix(self) -> &'static str {
         match self {
             Self::Code => "dc_",
             Self::Access => "da_",
+            Self::Refresh => "dr_",
         }
     }
+}
+pub fn pair() -> Result<darkhorse_application::tokens::Material, Error> {
+    Ok(darkhorse_application::tokens::Material {
+        access: generate(Purpose::Access)?,
+        refresh: generate(Purpose::Refresh)?,
+    })
 }
 pub fn generate(purpose: Purpose) -> Result<Opaque, Error> {
     let mut bytes = zeroize::Zeroizing::new([0; 32]);

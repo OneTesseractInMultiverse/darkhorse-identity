@@ -113,6 +113,40 @@ export function exchange(
     discardResponse,
   );
 }
+export function refresh(
+  origin,
+  ca,
+  client,
+  secret,
+  token,
+  scope,
+  extraHeaders = {},
+  discardResponse = false,
+) {
+  const form = new URLSearchParams({
+    grant_type: "refresh_token",
+    refresh_token: token,
+  });
+  if (scope !== undefined) form.set("scope", scope);
+  const basic = Buffer.from(
+    `${encodeURIComponent(client)}:${encodeURIComponent(secret)}`,
+  ).toString("base64");
+  return send(
+    origin,
+    ca,
+    "/token",
+    {
+      method: "POST",
+      headers: {
+        authorization: `Basic ${basic}`,
+        "content-type": "application/x-www-form-urlencoded",
+        ...extraHeaders,
+      },
+    },
+    form.toString(),
+    discardResponse,
+  );
+}
 export function userinfo(origin, ca, access) {
   return send(origin, ca, "/userinfo", {
     headers: { authorization: `Bearer ${access}` },

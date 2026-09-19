@@ -1,8 +1,5 @@
 mod input;
-use crate::{
-    authentication_http,
-    tokens::material::{self, Purpose},
-};
+use crate::{authentication_http, tokens::material};
 use axum::{
     Json, Router,
     body::Bytes,
@@ -12,6 +9,7 @@ use axum::{
     routing::{get, post},
 };
 use darkhorse_application::{
+    refresh::RefreshStore,
     resource_servers::{ActiveResourceToken, ResourceTokenStore},
     signing::SigningStore,
     tokens::*,
@@ -24,7 +22,7 @@ struct Endpoint<S, K> {
     issuer: String,
 }
 pub fn router<
-    S: TokenStore + TokenManagementStore + ResourceTokenStore + SigningStore + 'static,
+    S: TokenStore + TokenManagementStore + ResourceTokenStore + RefreshStore + SigningStore + 'static,
     K: IdSigner + 'static,
 >(
     store: S,
@@ -53,7 +51,7 @@ pub fn router<
             HeaderValue::from_static("no-cache"),
         ))
 }
-async fn redeem<S: TokenStore, K: IdSigner>(
+async fn redeem<S: TokenStore + RefreshStore, K: IdSigner>(
     State(e): State<Arc<Endpoint<S, K>>>,
     headers: HeaderMap,
     body: Bytes,
@@ -62,24 +60,36 @@ async fn redeem<S: TokenStore, K: IdSigner>(
         Ok(input) => input,
         Err(error) => return failure(error),
     };
-    let access = match material::generate(Purpose::Access) {
+    let material = match material::pair() {
         Ok(value) => value,
         Err(error) => return failure(error),
     };
-    match e.store.redeem(input, access, &e.issuer, &e.signer).await {
+    let result = match input {
+        input::Grant::Code(input) => e.store.redeem(input, material, &e.issuer, &e.signer).await,
+        input::Grant::Refresh(input) => e.store.refresh(input, material, &e.issuer).await,
+    };
+    match result {
         Ok(tokens) => token_response(tokens),
         Err(error) => failure(error),
     }
 }
 fn token_response(tokens: Tokens) -> Response {
-    Json(serde_json::json!({
+    Json(token_fields(tokens)).into_response()
+}
+fn token_fields(tokens: Tokens) -> serde_json::Value {
+    let mut fields = serde_json::json!({
         "access_token": tokens.access,
         "token_type": "Bearer",
         "expires_in": tokens.expires_in,
-        "id_token": tokens.id_token,
         "scope": tokens.scope
-    }))
-    .into_response()
+    });
+    if let Some(refresh) = tokens.refresh {
+        fields["refresh_token"] = refresh.into();
+    }
+    if let Some(id_token) = tokens.id_token {
+        fields["id_token"] = id_token.into();
+    }
+    fields
 }
 async fn userinfo<S: TokenStore, K>(
     State(e): State<Arc<Endpoint<S, K>>>,
@@ -203,7 +213,7 @@ fn metadata(issuer: &str) -> serde_json::Value {
         "revocation_endpoint_auth_methods_supported": ["client_secret_basic"],
         "response_types_supported": ["code"],
         "response_modes_supported": ["query"],
-        "grant_types_supported": ["authorization_code"],
+        "grant_types_supported": ["authorization_code", "refresh_token"],
         "subject_types_supported": ["public"],
         "id_token_signing_alg_values_supported": ["RS256"],
         "token_endpoint_auth_methods_supported": ["client_secret_basic"],

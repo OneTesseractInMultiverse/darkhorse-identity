@@ -1,5 +1,73 @@
 use super::*;
 #[test]
+fn refresh_input_binds_basic_authentication_and_rejects_mixed_grants() {
+    let mut headers = HeaderMap::new();
+    headers.insert(
+        "content-type",
+        "application/x-www-form-urlencoded".parse().unwrap(),
+    );
+    headers.insert(
+        "authorization",
+        format!(
+            "Basic {}",
+            STANDARD.encode(format!(
+                "00000000-0000-0000-0000-000000000001:{}",
+                "ab".repeat(32)
+            ))
+        )
+        .parse()
+        .unwrap(),
+    );
+    let token = format!("dr_{}", "cd".repeat(32));
+    let body = format!(
+        "grant_type=refresh_token&refresh_token={token}&scope=openid+email&resource=urn%3Atarget"
+    );
+    let Grant::Refresh(parsed) = request(&headers, body.as_bytes()).unwrap() else {
+        panic!("refresh input")
+    };
+    assert_eq!(parsed.client.as_u128(), 1);
+    assert_eq!(
+        parsed.digest,
+        material::digest(&token, Purpose::Refresh).unwrap()
+    );
+    assert_eq!(parsed.scopes, Some(vec!["openid".into(), "email".into()]));
+    assert_eq!(parsed.resource.as_deref(), Some("urn:target"));
+    let Grant::Refresh(parsed) = request(
+        &headers,
+        format!("grant_type=refresh_token&refresh_token={token}").as_bytes(),
+    )
+    .unwrap() else {
+        panic!("refresh input")
+    };
+    assert!(parsed.scopes.is_none());
+    for added in [
+        "&code=x",
+        "&redirect_uri=x",
+        "&code_verifier=x",
+        "&refresh_token=x",
+        "&scope=x",
+        "&client_secret=x",
+    ] {
+        assert!(matches!(
+            request(&headers, format!("{body}{added}").as_bytes()),
+            Err(Error::InvalidRequest)
+        ));
+    }
+    assert!(matches!(
+        request(&headers, body.replace("dr_", "da_").as_bytes()),
+        Err(Error::InvalidGrant)
+    ));
+    assert!(
+        matches!(management(&headers,format!("token={token}&token_type_hint=access_token").as_bytes()).unwrap().token,
+        Some(darkhorse_application::tokens::ManagedToken::Refresh(digest)) if digest==material::digest(&token,Purpose::Refresh).unwrap())
+    );
+    assert!(
+        super::token(&format!("token={token}").into_bytes())
+            .unwrap()
+            .is_none()
+    );
+}
+#[test]
 fn basic_uses_form_decoding_and_rejects_multiple_authentication_methods() {
     let id = "00000000-0000-0000-0000-000000000001";
     let secret = "ab".repeat(32);
@@ -54,11 +122,11 @@ fn token_input_keeps_authentication_and_credential_purposes_separate() {
         "ab".repeat(32),
         "a".repeat(43)
     );
-    let parsed = request(&headers, body.as_bytes()).unwrap();
+    let parsed = code_request(&headers, body.as_bytes()).unwrap();
     assert_eq!(parsed.redirect, "https://app.example/cb");
     assert_eq!(parsed.resource, None);
     assert_eq!(
-        request(
+        code_request(
             &headers,
             format!("{body}&resource=urn%3Adarkhorse%3Aresource%3Atarget").as_bytes()
         )
@@ -81,15 +149,15 @@ fn token_input_keeps_authentication_and_credential_purposes_separate() {
         "&resource=urn%3Aone&resource=urn%3Atwo",
     ] {
         assert!(matches!(
-            request(&headers, format!("{body}{added}").as_bytes()),
+            code_request(&headers, format!("{body}{added}").as_bytes()),
             Err(Error::InvalidRequest)
         ));
     }
-    assert!(request(&headers, body.replace("dc_", "da_").as_bytes()).is_err());
-    assert!(request(&headers, b"grant_type=authorization_code").is_err());
+    assert!(code_request(&headers, body.replace("dc_", "da_").as_bytes()).is_err());
+    assert!(code_request(&headers, b"grant_type=authorization_code").is_err());
     headers.insert("content-type", "application/json".parse().unwrap());
     assert!(matches!(
-        request(&headers, body.as_bytes()),
+        code_request(&headers, body.as_bytes()),
         Err(Error::InvalidRequest)
     ));
     for value in [
@@ -146,14 +214,12 @@ fn management_requires_authentication_but_wrong_token_types_remain_opaque() {
         )
         .unwrap();
         assert_eq!(parsed.client.as_u128(), 1);
-        assert_eq!(parsed.token, None);
+        assert!(parsed.token.is_none());
     }
     let token = format!("da_{}", "ab".repeat(32));
-    assert_eq!(
-        management(&headers, format!("token={token}").as_bytes())
-            .unwrap()
-            .token,
-        Some(material::digest(&token, Purpose::Access).unwrap())
+    assert!(
+        matches!(management(&headers, format!("token={token}").as_bytes()).unwrap().token,
+        Some(darkhorse_application::tokens::ManagedToken::Access(digest)) if digest == material::digest(&token, Purpose::Access).unwrap())
     );
     for body in [
         "",
@@ -235,5 +301,12 @@ fn resource_authentication_rejects_noncanonical_identifiers_and_secret_substitut
             introspection(&headers, b"token=unknown"),
             Err(Error::InvalidClient)
         ));
+    }
+}
+
+fn code_request(headers: &HeaderMap, body: &[u8]) -> Result<Redemption, Error> {
+    match request(headers, body)? {
+        Grant::Code(input) => Ok(input),
+        Grant::Refresh(_) => Err(Error::UnsupportedGrant),
     }
 }

@@ -98,14 +98,17 @@ async fn update_client(
     revision: u64,
     spec: &ClientSpec,
 ) -> Result<Record, Error> {
-    sqlx::query("UPDATE oauth_clients SET name=$2,active=$3,revision=$4 WHERE id=$1")
-        .bind(uuid(client.as_u128()))
-        .bind(spec.name.as_str())
-        .bind(spec.active)
-        .bind(integer(next_revision(revision, revision)?)?)
-        .execute(&mut **tx)
-        .await
-        .map_err(constraint)?;
+    sqlx::query(
+        "UPDATE oauth_clients SET name=$2,active=$3,revision=$4,refresh_tokens=$5 WHERE id=$1",
+    )
+    .bind(uuid(client.as_u128()))
+    .bind(spec.name.as_str())
+    .bind(spec.active)
+    .bind(integer(next_revision(revision, revision)?)?)
+    .bind(spec.refresh_tokens)
+    .execute(&mut **tx)
+    .await
+    .map_err(constraint)?;
     replace_grants(tx, application, client, spec).await?;
     records::client(tx, application, client)
         .await
@@ -195,11 +198,12 @@ async fn create_client(
     now: u64,
 ) -> Result<Record, Error> {
     let id = ClientId::from_u128(new_id(&prepared)?).map_err(storage)?;
-    sqlx::query("INSERT INTO oauth_clients (id,application_id,name,active) VALUES ($1,$2,$3,$4)")
+    sqlx::query("INSERT INTO oauth_clients (id,application_id,name,active,refresh_tokens) VALUES ($1,$2,$3,$4,$5)")
         .bind(uuid(id.as_u128()))
         .bind(uuid(application.as_u128()))
         .bind(spec.name.as_str())
         .bind(spec.active)
+        .bind(spec.refresh_tokens)
         .execute(&mut **tx)
         .await
         .map_err(constraint)?;

@@ -1,5 +1,17 @@
 use super::*;
 #[test]
+fn refresh_verifiers_are_distinct_from_access_and_authorization_codes() {
+    let text = format!("dr_{}", "ab".repeat(32));
+    let refresh = digest(&text, Purpose::Refresh).unwrap();
+    assert!(digest(&text, Purpose::Access).is_err());
+    assert!(digest(&text, Purpose::Code).is_err());
+    assert_ne!(
+        refresh,
+        digest(&text.replace("dr_", "da_"), Purpose::Access).unwrap()
+    );
+    assert!(digest(&text.replace("dr_", "da_"), Purpose::Refresh).is_err());
+}
+#[test]
 fn credentials_have_distinct_purposes_and_jwt_inputs_never_match() {
     let code = generate(Purpose::Code).unwrap();
     let access = generate(Purpose::Access).unwrap();

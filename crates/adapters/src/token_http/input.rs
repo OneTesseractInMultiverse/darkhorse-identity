@@ -62,7 +62,11 @@ pub(super) fn bearer(headers: &HeaderMap) -> Result<[u8; 32], Error> {
     }
     material::digest(value, Purpose::Access).map_err(|_| Error::InvalidToken)
 }
-pub(super) fn request(headers: &HeaderMap, body: &[u8]) -> Result<Redemption, Error> {
+pub(super) enum Grant {
+    Code(Redemption),
+    Refresh(darkhorse_application::refresh::Request),
+}
+pub(super) fn request(headers: &HeaderMap, body: &[u8]) -> Result<Grant, Error> {
     content_type(headers)?;
     let (client, secret) = basic(headers)?;
     let values = form(std::str::from_utf8(body).map_err(|_| Error::InvalidRequest)?)?;
@@ -72,14 +76,34 @@ pub(super) fn request(headers: &HeaderMap, body: &[u8]) -> Result<Redemption, Er
             .map(String::as_str)
             .ok_or(Error::InvalidRequest)
     };
-    Ok(Redemption {
+    if get("grant_type")? == "refresh_token" {
+        if ["code", "code_verifier", "redirect_uri"]
+            .iter()
+            .any(|key| values.contains_key(*key))
+        {
+            return Err(Error::InvalidRequest);
+        }
+        return Ok(Grant::Refresh(darkhorse_application::refresh::Request {
+            client,
+            secret,
+            digest: material::digest(get("refresh_token")?, Purpose::Refresh)?,
+            scopes: values
+                .get("scope")
+                .map(|value| value.split(' ').map(String::from).collect()),
+            resource: values.get("resource").cloned(),
+        }));
+    }
+    if values.contains_key("refresh_token") {
+        return Err(Error::InvalidRequest);
+    }
+    Ok(Grant::Code(Redemption {
         resource: values.get("resource").cloned(),
         client,
         secret,
         code: material::digest(get("code")?, Purpose::Code)?,
         redirect: get("redirect_uri")?.into(),
         challenge: material::challenge(get("code_verifier")?)?,
-    })
+    }))
 }
 fn content_type(headers: &HeaderMap) -> Result<(), Error> {
     if one(headers, "content-type")
@@ -98,16 +122,29 @@ pub(super) fn management(headers: &HeaderMap, body: &[u8]) -> Result<Management,
     Ok(Management {
         client,
         secret,
-        token: token(body)?,
+        token: managed_token(body)?,
     })
 }
 fn token(body: &[u8]) -> Result<Option<[u8; 32]>, Error> {
+    Ok(material::digest(&token_value(body)?, Purpose::Access).ok())
+}
+fn managed_token(
+    body: &[u8],
+) -> Result<Option<darkhorse_application::tokens::ManagedToken>, Error> {
+    use darkhorse_application::tokens::ManagedToken;
+    let value = token_value(body)?;
+    Ok(material::digest(&value, Purpose::Access)
+        .map(ManagedToken::Access)
+        .or_else(|_| material::digest(&value, Purpose::Refresh).map(ManagedToken::Refresh))
+        .ok())
+}
+fn token_value(body: &[u8]) -> Result<Zeroizing<String>, Error> {
     let values = fields(std::str::from_utf8(body).map_err(|_| Error::InvalidRequest)?)?;
     let value = values
         .get("token")
         .filter(|v| !v.is_empty() && v.len() <= 2048)
         .ok_or(Error::InvalidRequest)?;
-    Ok(material::digest(value, Purpose::Access).ok())
+    Ok(Zeroizing::new(value.clone()))
 }
 pub(super) enum Inquiry {
     Client(Management),
@@ -137,7 +174,7 @@ pub(super) fn introspection(headers: &HeaderMap, body: &[u8]) -> Result<Inquiry,
             Ok(Inquiry::Client(Management {
                 client,
                 secret,
-                token: token(body)?,
+                token: managed_token(body)?,
             }))
         }
     }
@@ -146,7 +183,7 @@ pub(super) fn introspection(headers: &HeaderMap, body: &[u8]) -> Result<Inquiry,
 fn form(value: &str) -> Result<BTreeMap<String, String>, Error> {
     let fields = fields(value)?;
     match fields.get("grant_type").map(String::as_str) {
-        Some("authorization_code") => Ok(fields),
+        Some("authorization_code" | "refresh_token") => Ok(fields),
         Some(_) => Err(Error::UnsupportedGrant),
         None => Err(Error::InvalidRequest),
     }

@@ -10,8 +10,9 @@ advertises these implemented capabilities when an active signing key is availabl
 A separate [resource issuance profile](resource-issuance.md) connects persisted role
 assignments to the existing authorization engine and freezes permission ceilings at
 consent, code issuance and redemption. [Resource-server introspection](resource-introspection.md)
-recomputes live capabilities within those ceilings. Catalog management, refresh
-tokens, extended profiles and back-channel logout remain
+recomputes live capabilities within those ceilings. Opted-in clients support
+[session-bound refresh rotation](refresh-tokens.md). Catalog management,
+extended profiles and back-channel logout remain
 unfinished. Registration allowances never grant user capabilities.
 [Issue #8](https://github.com/OneTesseractInMultiverse/darkhorse-identity/issues/8)
 retains failure, coverage and operational qualification. No OIDC conformance or
@@ -82,7 +83,7 @@ proxy must forward the canonical Host header and restrict direct backend access.
   schemas separate: ID tokens bind nonce/authentication context, while Logout
   Tokens require the logout event and session/subject targeting and prohibit nonce.
   This milestone issues ID tokens; Logout Token issuance/delivery remains later
-  work. Access credentials are opaque; refresh credentials are not issued yet.
+  work. Access credentials are opaque; refresh credentials use the separate [rotation contract](refresh-tokens.md).
 
 Key operations and their audit write commit together; failed audit writes roll back
 all lifecycle changes. The initial implementation uses non-FIPS AWS-LC and does not
@@ -155,7 +156,7 @@ writes an audit event before redirecting. `POST /token` accepts a bounded
 `code_verifier`. An optional `resource` must exactly match the resource bound to
 the code; omission uses that stored resource. Client authentication is a single HTTP Basic header containing
 form-encoded client ID and secret. Duplicate fields/authentication headers, body
-client authentication, other grants, query credentials, Origin and Cookie headers
+client authentication, unsupported grants, query credentials, Origin and Cookie headers
 are rejected. This is a confidential backend endpoint with no browser CORS support.
 
 Codes and access tokens each contain 256 random bits from the OS, encoded as
@@ -164,7 +165,8 @@ purpose-bound SHA-256 verifiers. An access token has a five-minute maximum lifet
 and exactly one audience. Identity credentials target `<issuer>/userinfo`, with
 immutable approved identity scopes, a matching claim ceiling and no resource
 capabilities. Resource credentials target their registered audience, with an
-immutable capability ceiling and no UserInfo claims. No refresh token is returned.
+immutable capability ceiling and no UserInfo claims. Refresh tokens are returned only to clients that explicitly enable the
+[refresh profile](refresh-tokens.md).
 
 ID tokens use RS256, `typ=JWT` and the active public `kid`. Claims are canonical
 `iss`, client UUID `aud`, principal UUID `sub`, `iat`, `exp`, original session
@@ -224,8 +226,8 @@ only their request after the shared authority lock. These conservative limits bo
 memory and work but are not a throughput guarantee or abuse-rate limiter. Ingress
 flood protection, production sizing and contention/load benchmarks remain release
 work. Sustained quotas can deny new requests. Code, access-token, consent and audit retention also need
-an operational policy; expiry cleanup does not erase those records. Code and token
-records currently accumulate; retention and sustained-load qualification are release
+an operational policy; expiry cleanup does not erase those records. Expired refresh families have [bounded cleanup](refresh-tokens.md#migration-and-maintenance).
+Other code and token records currently accumulate; retention and sustained-load qualification are release
 requirements. Token HTTP admission is capped at 16 concurrent requests per replica
 with a 4096-byte body limit and the shared transport deadline. These are bounds,
 not a distributed token-endpoint abuse limiter or a measured throughput guarantee.

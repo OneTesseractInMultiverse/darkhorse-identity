@@ -1,6 +1,31 @@
 use super::*;
 use darkhorse_domain::identity::{ClientId, PrincipalId};
 #[test]
+fn refresh_responses_omit_id_tokens_and_disabled_clients_receive_no_refresh() {
+    let fields = token_fields(Tokens {
+        access: "access".into(),
+        refresh: Some("refresh".into()),
+        id_token: None,
+        expires_in: 300,
+        scope: "openid".into(),
+    });
+    assert!(fields.get("id_token").is_none());
+    assert_eq!(fields["refresh_token"], "refresh");
+    let fields = token_fields(Tokens {
+        access: "access".into(),
+        refresh: None,
+        id_token: Some("signed".into()),
+        expires_in: 300,
+        scope: "openid".into(),
+    });
+    assert!(fields.get("refresh_token").is_none());
+    assert_eq!(fields["id_token"], "signed");
+    assert_eq!(
+        metadata("https://issuer.example")["grant_types_supported"],
+        serde_json::json!(["authorization_code", "refresh_token"])
+    );
+}
+#[test]
 fn profile_projection_omits_unapproved_fields_and_never_claims_email_verification() {
     let profile = UserInfo {
         subject: PrincipalId::from_u128(1).unwrap(),

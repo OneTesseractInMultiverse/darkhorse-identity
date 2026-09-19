@@ -83,6 +83,14 @@ async fn identity_policy(
     })
 }
 pub(super) async fn current(tx: &mut Tx<'_>, code: &CodeRecord) -> Result<(), Error> {
+    current_scopes(tx, code, &code.scopes).await
+}
+pub(super) async fn current_scopes(
+    tx: &mut Tx<'_>,
+    code: &CodeRecord,
+    scopes: &[String],
+) -> Result<(), Error> {
+    tokens::consent(scopes, Some(&code.scopes))?;
     let policy = identity_policy(tx, code).await?;
     let session = authority::session(tx, Some(code.session))
         .await
@@ -102,7 +110,7 @@ pub(super) async fn current(tx: &mut Tx<'_>, code: &CodeRecord) -> Result<(), Er
         .bind(Uuid::from_u128(code.principal.as_u128())).bind(Uuid::from_u128(code.client.as_u128()))
         .bind(code.client_revision as i64).bind(code.application_revision as i64).bind(code.audience().unwrap_or_default())
         .fetch_optional(&mut **tx).await.map_err(storage)?;
-    tokens::consent(&code.scopes, approved.as_deref())
+    tokens::consent(scopes, approved.as_deref())
 }
 
 pub(super) async fn key(tx: &mut Tx<'_>, issuer: &str) -> Result<WrappedKey, Error> {

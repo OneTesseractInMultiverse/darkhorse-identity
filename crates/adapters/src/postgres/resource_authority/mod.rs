@@ -69,7 +69,7 @@ pub(super) async fn plan(
     scopes: &[String],
     limit: Option<&CapabilitySet>,
 ) -> Result<IssuancePlan, Error> {
-    let policy = load(tx, principal, client, audience, scopes, None).await?;
+    let policy = load(tx, principal, client, audience, scopes, limit).await?;
     plan_oauth(
         &policy.catalog,
         &policy.principal,

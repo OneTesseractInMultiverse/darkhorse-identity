@@ -73,7 +73,7 @@ fn assemble_client(
     scopes: Vec<Uuid>,
     secrets: Vec<PgRow>,
 ) -> Result<ClientRecord, Error> {
-    let spec = ClientSpec::new(
+    let mut spec = ClientSpec::new(
         Label::new(&row.try_get::<String, _>("name").map_err(storage)?)?,
         row.try_get("active").map_err(storage)?,
         crate::registration::redirects(redirects)?,
@@ -88,6 +88,7 @@ fn assemble_client(
         &row.try_get::<String, _>("authentication_method")
             .map_err(storage)?,
     )?;
+    spec.refresh_tokens = row.try_get("refresh_tokens").map_err(storage)?;
     Ok(ClientRecord {
         id,
         application,

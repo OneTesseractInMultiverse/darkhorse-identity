@@ -12,6 +12,7 @@ use uuid::Uuid;
 mod access;
 mod management;
 mod reads;
+mod refresh;
 type Tx<'a> = Transaction<'a, Postgres>;
 pub(super) struct CodeRecord {
     client: ClientId,
@@ -41,7 +42,7 @@ impl TokenStore for PostgresStore {
     async fn redeem<S: IdSigner>(
         &self,
         input: Redemption,
-        access: Opaque,
+        material: Material,
         issuer: &str,
         signer: &S,
     ) -> Result<Tokens, Error> {
@@ -49,6 +50,7 @@ impl TokenStore for PostgresStore {
         authority::lock(&mut tx).await.map_err(storage)?;
         reads::client(&mut tx, input.client, input.secret).await?;
         let code = reads::code(&mut tx, input.code).await?;
+        reads::client(&mut tx, input.client, input.secret).await?;
         let now = authority::now(&mut tx).await.map_err(storage)?;
         tokens::binding(&facts(&code), &proof(&input))?;
         tokens::resource_binding(code.audience().as_deref(), input.resource.as_deref())?;
@@ -64,15 +66,37 @@ impl TokenStore for PostgresStore {
         let now = authority::now(&mut tx).await.map_err(storage)?;
         tokens::exchange(&facts(&code), &proof(&input), now)?;
         let id_token = signer.sign(key, claims(&code, issuer, now)).await?;
-        persist(&mut tx, input.code, access.digest, now, &grant).await?;
+        reads::client(&mut tx, input.client, input.secret).await?;
+        reads::current(&mut tx, &code).await?;
+        let now = authority::now(&mut tx).await.map_err(storage)?;
+        tokens::exchange(&facts(&code), &proof(&input), now)?;
+        consume(&mut tx, input.code).await?;
+        let refresh = refresh::issue(
+            &mut tx,
+            input.code,
+            &code,
+            &grant,
+            &material.refresh,
+            issuer,
+            now,
+        )
+        .await?;
+        let expires = access_expiry(refresh, now)?;
+        persist(
+            &mut tx,
+            input.code,
+            material.access.digest,
+            now,
+            expires,
+            refresh.map(|w| w.generation),
+            &grant,
+        )
+        .await?;
         audit(&mut tx, code.principal, code.client, "code_redeemed", now).await?;
         tx.commit().await.map_err(storage)?;
-        Ok(Tokens {
-            access: access.value,
-            id_token,
-            expires_in: tokens::ACCESS_MS / 1000,
-            scope: grant.scope,
-        })
+        Ok(issued_response(
+            material, grant, refresh, id_token, expires, now,
+        ))
     }
     async fn userinfo(&self, digest: [u8; 32], issuer: &str) -> Result<UserInfo, Error> {
         let mut tx = self.pool.begin().await.map_err(storage)?;
@@ -81,6 +105,32 @@ impl TokenStore for PostgresStore {
         let profile = access::profile(&mut tx, &access).await?;
         tx.commit().await.map_err(storage)?;
         Ok(profile)
+    }
+}
+
+fn access_expiry(
+    refresh: Option<darkhorse_domain::refresh::Window>,
+    now: u64,
+) -> Result<u64, Error> {
+    match refresh {
+        Some(window) => Ok(window.access_expires),
+        None => tokens::deadline(now, tokens::ACCESS_MS),
+    }
+}
+fn issued_response(
+    material: Material,
+    grant: IssuedGrant,
+    refresh: Option<darkhorse_domain::refresh::Window>,
+    id_token: String,
+    expires: u64,
+    now: u64,
+) -> Tokens {
+    Tokens {
+        access: material.access.value,
+        refresh: refresh.map(|_| material.refresh.value),
+        id_token: Some(id_token),
+        expires_in: (expires - now) / 1000,
+        scope: grant.scope,
     }
 }
 
@@ -118,26 +168,32 @@ struct IssuedGrant {
     capabilities: Vec<Uuid>,
     resource: Option<Uuid>,
 }
-async fn persist(
-    tx: &mut Tx<'_>,
-    digest: [u8; 32],
-    access: [u8; 32],
-    now: u64,
-    grant: &IssuedGrant,
-) -> Result<(), Error> {
+async fn consume(tx: &mut Tx<'_>, digest: [u8; 32]) -> Result<(), Error> {
     sqlx::query("UPDATE authorization_codes SET consumed=true WHERE digest=$1")
         .bind(digest.as_slice())
         .execute(&mut **tx)
         .await
         .map_err(storage)?;
-    sqlx::query("INSERT INTO access_tokens(digest,code_digest,audience,scope,claim_ceiling,capability_ceiling,created_ms,expires_ms,resource_id) VALUES($1,$2,$3,$4,$5,$6,$7,$8,$9)")
+    Ok(())
+}
+async fn persist(
+    tx: &mut Tx<'_>,
+    digest: [u8; 32],
+    access: [u8; 32],
+    now: u64,
+    expires: u64,
+    generation: Option<u16>,
+    grant: &IssuedGrant,
+) -> Result<(), Error> {
+    sqlx::query("INSERT INTO access_tokens(digest,code_digest,audience,scope,claim_ceiling,capability_ceiling,created_ms,expires_ms,resource_id,refresh_generation) VALUES($1,$2,$3,$4,$5,$6,$7,$8,$9,$10)")
         .bind(access.as_slice()).bind(digest.as_slice()).bind(&grant.audience).bind(&grant.scope)
         .bind(&grant.claims).bind(&grant.capabilities).bind(now as i64)
-        .bind(tokens::deadline(now,tokens::ACCESS_MS)? as i64).bind(grant.resource)
+        .bind(expires as i64).bind(grant.resource).bind(generation.map(|n| n as i16))
         .execute(&mut **tx).await.map_err(storage)?;
     Ok(())
 }
 async fn revoke(tx: &mut Tx<'_>, code: [u8; 32]) -> Result<(), Error> {
+    refresh::revoke_code(tx, code).await?;
     sqlx::query("UPDATE access_tokens SET revoked=true WHERE code_digest=$1")
         .bind(code.as_slice())
         .execute(&mut **tx)

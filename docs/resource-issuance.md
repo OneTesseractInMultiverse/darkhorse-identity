@@ -36,7 +36,8 @@ them. The issuing client can revoke them. See [identity checks](token-checks.md)
   resource parameters are rejected.
 - A resource access credential has a five-minute lifetime, one audience, immutable
   scopes and capabilities, and no UserInfo claim ceiling. The signed ID token still
-  describes the authentication event for the client. No refresh token is issued.
+  describes the authentication event for the client. Opted-in clients can also receive [session-bound refresh tokens](refresh-tokens.md);
+  each rotation can only retain or narrow the previous grant.
 
 Scope text identifies the selected delegation limits; it is not proof that a user
 holds every capability named by a scope. Resource introspection returns

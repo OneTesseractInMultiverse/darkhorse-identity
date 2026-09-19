@@ -93,6 +93,7 @@ pub struct ApplicationSpec {
 pub struct ClientSpec {
     pub name: Label,
     pub active: bool,
+    pub refresh_tokens: bool,
     pub redirects: Redirects,
     pub resources: Vec<ResourceId>,
     pub scopes: Vec<ScopeId>,
@@ -114,6 +115,7 @@ impl ClientSpec {
         Ok(Self {
             name,
             active,
+            refresh_tokens: false,
             redirects,
             resources,
             scopes,

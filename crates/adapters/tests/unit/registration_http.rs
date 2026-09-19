@@ -80,6 +80,23 @@ fn create() -> Value {
 fn client() -> Value {
     json!({"name":"Web","active":true,"redirect_uris":["https://app.example/cb"],"resource_ids":[id(3)],"scope_ids":[id(4)],"token_endpoint_auth_method":"client_secret_basic"})
 }
+#[test]
+fn refresh_issuance_requires_explicit_client_opt_in() {
+    for (setting, expected) in [(None, false), (Some(false), false), (Some(true), true)] {
+        let mut value = client();
+        if let Some(setting) = setting {
+            value["refresh_tokens"] = setting.into();
+        }
+        let input: input::Input = serde_json::from_value(
+            json!({"operation":"create_client", "application_id":id(1), "client":value}),
+        )
+        .unwrap();
+        let Command::CreateClient { spec, .. } = input.command().unwrap() else {
+            panic!("client command")
+        };
+        assert_eq!(spec.refresh_tokens, expected);
+    }
+}
 async fn post(app: Router, value: Value) -> axum::response::Response {
     app.oneshot(
         request("POST", "/api/admin/registration")

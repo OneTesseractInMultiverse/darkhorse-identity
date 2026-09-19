@@ -63,6 +63,8 @@ impl ApplicationInput {
 pub(super) struct ClientInput {
     name: String,
     active: bool,
+    #[serde(default)]
+    refresh_tokens: bool,
     redirect_uris: Vec<String>,
     resource_ids: Vec<String>,
     scope_ids: Vec<String>,
@@ -70,7 +72,7 @@ pub(super) struct ClientInput {
 }
 impl ClientInput {
     fn spec(self) -> Result<ClientSpec, RegistrationError> {
-        ClientSpec::new(
+        let mut spec = ClientSpec::new(
             Label::new(&self.name)?,
             self.active,
             crate::registration::redirects(self.redirect_uris)?,
@@ -83,7 +85,9 @@ impl ClientInput {
                 .map(|s| id(s, ScopeId::from_u128))
                 .collect::<Result<_, _>>()?,
             &self.token_endpoint_auth_method,
-        )
+        )?;
+        spec.refresh_tokens = self.refresh_tokens;
+        Ok(spec)
     }
 }
 impl Input {

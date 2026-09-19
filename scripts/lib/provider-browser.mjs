@@ -12,6 +12,7 @@ import {
   validateCallback,
 } from "./reference-client.mjs";
 import { verifyResourceChecks } from "./resource-checks-browser.mjs";
+import { verifyRefresh } from "./refresh-browser.mjs";
 import { verifyIdentityChecks } from "./identity-checks-browser.mjs";
 export async function call(page, path, body) {
   return page.evaluate(
@@ -136,6 +137,7 @@ export async function verifyProvider(
     },
   });
   assert.equal(registered.status, 200);
+  assert.equal(registered.body.record.refresh_tokens, false);
   const verifier = randomBytes(32).toString("base64url");
   const query = new URLSearchParams({
     client_id: registered.body.record.id,
@@ -317,6 +319,14 @@ export async function verifyProvider(
     call,
     keys: jwks.body.keys,
     runSql,
+  });
+  await verifyRefresh({
+    page,
+    origin,
+    ca,
+    principal,
+    call,
+    keys: jwks.body.keys,
   });
   let returned;
   query.set("prompt", "consent");

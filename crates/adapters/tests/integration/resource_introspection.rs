@@ -47,12 +47,7 @@ async fn only_the_resource_credential_sees_current_capabilities_within_the_token
         .unwrap();
     let token = db
         .store
-        .redeem(
-            input(&code),
-            material::generate(Purpose::Access).unwrap(),
-            ISSUER,
-            &signer,
-        )
+        .redeem(input(&code), material::pair().unwrap(), ISSUER, &signer)
         .await
         .unwrap();
     let digest = material::digest(&token.access, Purpose::Access).unwrap();
@@ -129,12 +124,7 @@ async fn fixture() -> (Database, String, [u8; 32]) {
         .unwrap();
     let token = db
         .store
-        .redeem(
-            input(&code),
-            material::generate(Purpose::Access).unwrap(),
-            ISSUER,
-            &signer,
-        )
+        .redeem(input(&code), material::pair().unwrap(), ISSUER, &signer)
         .await
         .unwrap();
     (

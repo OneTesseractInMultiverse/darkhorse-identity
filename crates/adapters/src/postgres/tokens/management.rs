@@ -26,7 +26,7 @@ async fn inspect(
     input: Management,
     issuer: &str,
 ) -> Result<Option<ActiveToken>, Error> {
-    let Some(token) = input.token else {
+    let Some(ManagedToken::Access(token)) = input.token else {
         return Ok(None);
     };
     match access::load(tx, token, issuer, Some(input.client)).await {
@@ -38,6 +38,12 @@ async fn inspect(
 async fn revoke(tx: &mut Tx<'_>, input: Management, issuer: &str) -> Result<(), Error> {
     let Some(token) = input.token else {
         return Ok(());
+    };
+    let token = match token {
+        ManagedToken::Access(token) => token,
+        ManagedToken::Refresh(token) => {
+            return refresh::revoke_token(tx, token, input.client, input.secret, issuer).await;
+        }
     };
     let code_digest = match owned(tx, token, issuer, input.client).await {
         Ok(code) => code,

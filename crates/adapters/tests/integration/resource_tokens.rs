@@ -3,7 +3,7 @@ use super::*;
 use darkhorse_adapters::tokens::material::{self, Purpose};
 use darkhorse_application::{
     oidc::{AuthorizationStore, Decision},
-    tokens::{CodeStore, Management, TokenManagementStore, TokenStore},
+    tokens::{CodeStore, ManagedToken, Management, TokenManagementStore, TokenStore},
 };
 use darkhorse_domain::{oidc::Request, tokens::Error};
 
@@ -63,12 +63,7 @@ async fn resource_ceiling_only_shrinks_from_consent_to_code_to_token() {
     sqlx::query("INSERT INTO role_capabilities VALUES('00000000-0000-0000-0000-000000000080','00000000-0000-0000-0000-000000000071')").execute(&db.pool).await.unwrap();
     let token = db
         .store
-        .redeem(
-            input(&code),
-            material::generate(Purpose::Access).unwrap(),
-            ISSUER,
-            &signer,
-        )
+        .redeem(input(&code), material::pair().unwrap(), ISSUER, &signer)
         .await
         .unwrap();
     let (audience, ceiling): (String, Vec<Uuid>) =
@@ -87,7 +82,7 @@ async fn resource_ceiling_only_shrinks_from_consent_to_code_to_token() {
     let management = || Management {
         client: request().client,
         secret: [9; 32],
-        token: Some(digest),
+        token: Some(ManagedToken::Access(digest)),
     };
     assert!(
         db.store
@@ -178,12 +173,7 @@ async fn policy_changes_before_consent_and_empty_grants_after_consent_deny() {
         .unwrap();
     assert!(matches!(
         db.store
-            .redeem(
-                input(&code),
-                material::generate(Purpose::Access).unwrap(),
-                ISSUER,
-                &signer
-            )
+            .redeem(input(&code), material::pair().unwrap(), ISSUER, &signer)
             .await,
         Err(Error::InvalidGrant)
     ));
@@ -221,12 +211,7 @@ async fn new_permissions_after_approval_never_expand_the_consent_ceiling() {
     wrong.resource = Some("urn:other".into());
     assert!(matches!(
         db.store
-            .redeem(
-                wrong,
-                material::generate(Purpose::Access).unwrap(),
-                ISSUER,
-                &signer
-            )
+            .redeem(wrong, material::pair().unwrap(), ISSUER, &signer)
             .await,
         Err(Error::InvalidTarget)
     ));
@@ -239,12 +224,7 @@ async fn new_permissions_after_approval_never_expand_the_consent_ceiling() {
     let mut matched = input(&code);
     matched.resource = Some(AUDIENCE.into());
     db.store
-        .redeem(
-            matched,
-            material::generate(Purpose::Access).unwrap(),
-            ISSUER,
-            &signer,
-        )
+        .redeem(matched, material::pair().unwrap(), ISSUER, &signer)
         .await
         .unwrap();
     let ceiling: Vec<Uuid> = sqlx::query_scalar("SELECT capability_ceiling FROM access_tokens")
@@ -263,12 +243,7 @@ async fn new_permissions_after_approval_never_expand_the_consent_ceiling() {
     }
     assert!(matches!(
         db.store
-            .redeem(
-                input(&code),
-                material::generate(Purpose::Access).unwrap(),
-                ISSUER,
-                &signer
-            )
+            .redeem(input(&code), material::pair().unwrap(), ISSUER, &signer)
             .await,
         Err(Error::InvalidGrant)
     ));
@@ -343,12 +318,9 @@ async fn a_committing_permission_reduction_is_seen_by_waiting_redemption() {
         .execute(&mut *change)
         .await
         .unwrap();
-    let operation = db.store.redeem(
-        input(&code),
-        material::generate(Purpose::Access).unwrap(),
-        ISSUER,
-        &signer,
-    );
+    let operation = db
+        .store
+        .redeem(input(&code), material::pair().unwrap(), ISSUER, &signer);
     tokio::pin!(operation);
     assert!(
         tokio::time::timeout(std::time::Duration::from_millis(50), &mut operation)
@@ -442,12 +414,7 @@ async fn retirement_scope_changes_and_consent_withdrawal_deny_redemption() {
         sqlx::query(statement).execute(&db.pool).await.unwrap();
         assert!(matches!(
             db.store
-                .redeem(
-                    input(&code),
-                    material::generate(Purpose::Access).unwrap(),
-                    ISSUER,
-                    &signer
-                )
+                .redeem(input(&code), material::pair().unwrap(), ISSUER, &signer)
                 .await,
             Err(Error::InvalidGrant)
         ));
@@ -721,12 +688,7 @@ async fn a_scope_reduction_at_redemption_narrows_the_token_without_rewriting_the
     .unwrap();
     let issued = db
         .store
-        .redeem(
-            input(&code),
-            material::generate(Purpose::Access).unwrap(),
-            ISSUER,
-            &signer,
-        )
+        .redeem(input(&code), material::pair().unwrap(), ISSUER, &signer)
         .await
         .unwrap();
     let code_ceiling: Vec<Uuid> =
@@ -750,7 +712,7 @@ async fn a_scope_reduction_at_redemption_narrows_the_token_without_rewriting_the
             Management {
                 client: request().client,
                 secret: [9; 32],
-                token: Some(token),
+                token: Some(ManagedToken::Access(token)),
             },
             "https://other.example",
         )
@@ -845,12 +807,7 @@ async fn failed_resource_storage_and_post_consent_permission_loss_never_partiall
         .unwrap();
     assert!(matches!(
         db.store
-            .redeem(
-                input(&code),
-                material::generate(Purpose::Access).unwrap(),
-                ISSUER,
-                &signer
-            )
+            .redeem(input(&code), material::pair().unwrap(), ISSUER, &signer)
             .await,
         Err(Error::Unavailable)
     ));
@@ -872,12 +829,7 @@ async fn failed_resource_storage_and_post_consent_permission_loss_never_partiall
         .await
         .unwrap();
     db.store
-        .redeem(
-            input(&code),
-            material::generate(Purpose::Access).unwrap(),
-            ISSUER,
-            &signer,
-        )
+        .redeem(input(&code), material::pair().unwrap(), ISSUER, &signer)
         .await
         .unwrap();
     db.store.close().await;
@@ -956,7 +908,7 @@ async fn database_rejects_access_grants_that_exceed_or_change_the_code_profile()
     db.store
         .redeem(
             input(&resource_code),
-            material::generate(Purpose::Access).unwrap(),
+            material::pair().unwrap(),
             ISSUER,
             &signer,
         )

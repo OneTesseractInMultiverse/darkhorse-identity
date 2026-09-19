@@ -9,6 +9,10 @@ pub struct Opaque {
     pub value: String,
     pub digest: [u8; 32],
 }
+pub struct Material {
+    pub access: Opaque,
+    pub refresh: Opaque,
+}
 pub struct Code {
     pub target: ReturnTo,
     pub value: String,
@@ -32,7 +36,8 @@ pub struct IdClaims {
 }
 pub struct Tokens {
     pub access: String,
-    pub id_token: String,
+    pub refresh: Option<String>,
+    pub id_token: Option<String>,
     pub expires_in: u64,
     pub scope: String,
 }
@@ -55,7 +60,7 @@ pub trait TokenStore: Send + Sync {
     fn redeem<S: IdSigner>(
         &self,
         input: Redemption,
-        access: Opaque,
+        material: Material,
         issuer: &str,
         signer: &S,
     ) -> impl Future<Output = Result<Tokens, Error>> + Send;
@@ -79,7 +84,11 @@ pub struct Names {
 pub struct Management {
     pub client: ClientId,
     pub secret: [u8; 32],
-    pub token: Option<[u8; 32]>,
+    pub token: Option<ManagedToken>,
+}
+pub enum ManagedToken {
+    Access([u8; 32]),
+    Refresh([u8; 32]),
 }
 pub struct ActiveToken {
     pub subject: PrincipalId,

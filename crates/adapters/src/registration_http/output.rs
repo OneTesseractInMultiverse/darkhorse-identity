@@ -22,7 +22,7 @@ pub(super) fn record(record: Record) -> Value {
 }
 fn client(r: ClientRecord) -> Value {
     json!({"kind":"client","id":id(r.id.as_u128()),"application_id":id(r.application.as_u128()),"name":r.spec.name.as_str(),"active":r.spec.active,"revision":r.revision,
-        "token_endpoint_auth_method":"client_secret_basic","redirect_uris":r.spec.redirects.values(),
+        "token_endpoint_auth_method":"client_secret_basic","refresh_tokens":r.spec.refresh_tokens,"redirect_uris":r.spec.redirects.values(),
         "resource_ids":r.spec.resources.iter().map(|r|id(r.as_u128())).collect::<Vec<_>>(),
         "scope_ids":r.spec.scopes.iter().map(|s|id(s.as_u128())).collect::<Vec<_>>(),
         "secrets":r.secrets.into_iter().map(|s|json!({"id":id(s.id.as_u128()),"created_ms":s.created_ms,"expires_ms":s.expires_ms})).collect::<Vec<_>>()})

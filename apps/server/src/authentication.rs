@@ -7,9 +7,14 @@ use darkhorse_adapters::{
 use darkhorse_adapters::{provider_http, signing::configuration as provider_configuration};
 use darkhorse_application::{authentication::Service, signing::SigningStore};
 
-pub async fn router(
+pub struct Runtime {
+    pub router: axum::Router,
+    pub maintenance: Option<PostgresStore>,
+}
+
+pub async fn runtime(
     settings: &darkhorse_adapters::configuration::HttpSettings,
-) -> Result<axum::Router, &'static str> {
+) -> Result<Runtime, &'static str> {
     let authentication = authentication_configuration::load(envbind::ProcessEnvironment)
         .map_err(|_| "Invalid login configuration.")?;
     let provider = provider_configuration::load(envbind::ProcessEnvironment)
@@ -18,7 +23,10 @@ pub async fn router(
         if provider.is_some() {
             return Err("Provider requires enabled password authentication.");
         }
-        return Ok(authentication_http::disabled_router());
+        return Ok(Runtime {
+            router: authentication_http::disabled_router(),
+            maintenance: None,
+        });
     };
     let database = database_configuration::load(envbind::ProcessEnvironment)
         .map_err(|_| "Invalid database configuration.")?;
@@ -41,6 +49,7 @@ pub async fn router(
         passwords: PasswordPreparation::default(),
         entropy: OsSessionEntropy,
     };
+    let maintenance = provider.as_ref().map(|_| store.clone());
     let provider = if let Some(wrap) = provider {
         store
             .bind_provider(
@@ -67,8 +76,9 @@ pub async fn router(
         store,
         entropy: OsRegistrationEntropy,
     };
-    Ok(
-        authentication_http::router(service, settings.public_origin.clone())
+    Ok(Runtime {
+        maintenance,
+        router: authentication_http::router(service, settings.public_origin.clone())
             .merge(provider)
             .merge(darkhorse_adapters::resource_servers_http::router(
                 resource_registration,
@@ -78,5 +88,5 @@ pub async fn router(
                 registration,
                 settings.public_origin.clone(),
             )),
-    )
+    })
 }

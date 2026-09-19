@@ -7,6 +7,7 @@ use darkhorse_adapters::{
 };
 use std::process::ExitCode;
 mod authentication;
+mod maintenance;
 
 #[tokio::main]
 async fn main() -> ExitCode {
@@ -33,17 +34,19 @@ async fn serve() -> Result<(), &'static str> {
         .map_err(|_| "Cannot install benchmark profiling signal handler.")?;
     let settings = configuration::load(envbind::ProcessEnvironment)
         .map_err(|_| "Invalid server configuration; check DARKHORSE_* settings.")?;
-    let authentication = authentication::router(&settings).await?;
+    let authentication = authentication::runtime(&settings).await?;
     let listener = tokio::net::TcpListener::bind(settings.listen)
         .await
         .map_err(|_| "Cannot bind HTTP listener; check host and port availability.")?;
-    axum::serve(
+    let server = axum::serve(
         listener,
-        http::with_authentication(settings.static_dir, authentication),
+        http::with_authentication(settings.static_dir, authentication.router),
     )
-    .with_graceful_shutdown(shutdown())
-    .await
-    .map_err(|_| "HTTP server stopped unexpectedly.")
+    .with_graceful_shutdown(shutdown());
+    tokio::select! {
+        result = std::future::IntoFuture::into_future(server) => result.map_err(|_| "HTTP server stopped unexpectedly."),
+        _ = maintenance::run(authentication.maintenance) => Err("Credential maintenance stopped unexpectedly."),
+    }
 }
 
 async fn shutdown() {

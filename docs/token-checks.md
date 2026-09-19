@@ -34,8 +34,9 @@ The mapping follows [OIDC scope claims](https://openid.net/specs/openid-connect-
 
 A broader remembered consent does not broaden old token ceilings. Replacing that
 consent with narrower scopes invalidates tokens needing a removed scope. Those
-credentials must complete a new authorization flow; the server does not silently
-rewrite their immutable grant. Removing a consent record likewise invalidates its
+access tokens stay invalid; the server does not silently rewrite their immutable
+grant. Opted-in clients may explicitly request narrower scopes through the
+[refresh flow](refresh-tokens.md), or complete a new authorization flow. Removing a consent record likewise invalidates its
 tokens. Consent reduction is rechecked at redemption, UserInfo and introspection.
 
 ## Protocol endpoints
@@ -43,9 +44,11 @@ tokens. Consent reduction is rechecked at redemption, UserInfo and introspection
 Both `POST /introspect` and `POST /revoke` require HTTPS,
 `client_secret_basic`, and an `application/x-www-form-urlencoded` body containing
 one nonempty `token`. The optional `token_type_hint` is accepted as a hint and
-ignored when identifying the supported opaque access-token format. It cannot
+ignored when identifying the actual opaque credential format. It cannot
 convert an ID token, Logout Token, code or session handle into an access token.
-Refresh credentials are not issued or managed yet.
+Opted-in clients receive [refresh credentials](refresh-tokens.md). Introspection
+returns inactive for them; authenticated revocation terminates the owning family
+and invalidates all of its access tokens.
 
 The body is capped at 4096 bytes and 16 pairs; token text is capped at 2048 bytes.
 Duplicate parameters/authentication headers, body client authentication, query

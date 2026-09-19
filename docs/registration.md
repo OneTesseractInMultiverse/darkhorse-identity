@@ -43,8 +43,10 @@ Structured before/after diffs and an audit browsing UI are later work.
 ## Client profile
 
 - Only confidential web clients using `client_secret_basic` are accepted.
-  Registration does not implement a token endpoint yet. At that endpoint, Basic
-  authentication must follow OAuth's encoding rules and TLS requirement.
+  The token endpoint applies OAuth Basic encoding rules and requires TLS.
+- `refresh_tokens` defaults to `false`; explicit `true` enables the
+  [session-bound refresh profile](refresh-tokens.md). Omitting the field from a
+  complete client update sets it to `false`.
 - Callback URLs must be canonical ASCII absolute HTTPS URLs, including a path
   (`https://app.example/` is valid). Credentials, fragments, wildcards,
   whitespace, backslashes and malformed percent escapes are rejected. URLs a
@@ -125,7 +127,7 @@ admission. Error bodies never echo supplied values.
 ### Command shapes
 
 IDs below are placeholders for returned canonical UUIDs. `application` contains
-`name`, `owner_id` and `active`. `client` contains `name`, `active`,
+`name`, `owner_id` and `active`. `client` contains `name`, `active`, optional `refresh_tokens`,
 `redirect_uris`, `resource_ids`, `scope_ids` and
 `token_endpoint_auth_method: "client_secret_basic"`.
 

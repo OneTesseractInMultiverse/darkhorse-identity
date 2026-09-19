@@ -78,10 +78,10 @@ async fn inspect(
     let digest:Vec<u8>=sqlx::query_scalar("SELECT t.code_digest FROM access_tokens t WHERE t.digest=$1 AND t.resource_id=$2 AND t.audience='urn:darkhorse:resource:'||$2::uuid::text AND EXISTS(SELECT 1 FROM provider_state WHERE issuer=$3)")
         .bind(token.as_slice()).bind(Uuid::from_u128(input.resource.as_u128())).bind(issuer).fetch_optional(&mut **tx).await.map_err(storage)?.ok_or(Error::InvalidToken)?;
     let code = reads::code_shared(tx, digest.try_into().map_err(storage)?).await?;
-    let row=sqlx::query("SELECT credential_id,resource_id,capability_ceiling,scope,created_ms,expires_ms FROM access_tokens WHERE digest=$1 AND NOT revoked FOR SHARE")
+    let row=sqlx::query("SELECT credential_id,resource_id,capability_ceiling,scope,created_ms,expires_ms FROM access_tokens t WHERE digest=$1 AND NOT revoked AND (t.refresh_generation IS NULL OR EXISTS(SELECT 1 FROM refresh_families f WHERE f.code_digest=t.code_digest AND NOT f.revoked)) FOR SHARE")
         .bind(token.as_slice()).fetch_optional(&mut **tx).await.map_err(storage)?.ok_or(Error::InvalidToken)?;
-    reads::current(tx, &code).await?;
     let stored = decode(&row, &code)?;
+    reads::current_scopes(tx, &code, &stored.scopes).await?;
     let policy = profiling::measure(
         Stage::PolicyLoad,
         resource_authority::load(
