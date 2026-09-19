@@ -1,4 +1,4 @@
-use super::PostgresStore;
+use super::{PostgresStore, sessions};
 use darkhorse_application::authentication::{
     AuthError, AuthenticationStore, Candidate, SessionView,
 };
@@ -36,20 +36,28 @@ impl AuthenticationStore for PostgresStore {
         previous: Option<[u8; 32]>,
     ) -> Result<SessionView, AuthError> {
         let mut tx = self.pool.begin().await.map_err(unavailable)?;
+        sessions::lock(&mut tx, true).await.map_err(session_error)?;
         let view = recheck(&mut tx, verified).await?;
         replace(&mut tx, previous).await?;
         insert(&mut tx, verified, digest).await?;
+        sessions::created(&mut tx, digest)
+            .await
+            .map_err(session_error)?;
         tx.commit().await.map_err(unavailable)?;
         Ok(view)
     }
     async fn session(&self, digest: [u8; 32]) -> Result<SessionView, AuthError> {
         let mut tx = self.pool.begin().await.map_err(unavailable)?;
-        let row = sqlx::query("SELECT s.*, p.id, p.first_name, p.active, p.credential_epoch AS current_epoch, NOT c.revoked AS credential_live, floor(extract(epoch FROM clock_timestamp())*1000)::bigint AS now_ms FROM browser_sessions s JOIN principals p ON p.id=s.principal_id JOIN credentials c ON c.id=s.credential_id AND c.principal_id=p.id WHERE s.digest=$1 AND NOT pg_is_in_recovery() FOR UPDATE OF s")
+        sessions::lock(&mut tx, false)
+            .await
+            .map_err(session_error)?;
+        let row = sqlx::query("SELECT s.*, p.id, p.first_name, p.active, p.credential_epoch AS current_epoch, NOT c.revoked AS credential_live FROM browser_sessions s JOIN principals p ON p.id=s.principal_id JOIN credentials c ON c.id=s.credential_id AND c.principal_id=p.id WHERE s.digest=$1 AND NOT pg_is_in_recovery() FOR UPDATE OF s")
             .bind(digest.as_slice()).fetch_optional(&mut *tx).await.map_err(unavailable)?.ok_or(AuthError::Denied)?;
-        let view = checked_session(&row)?;
+        let now = sessions::now(&mut tx).await.map_err(session_error)?;
+        let view = checked_session(&row, now)?;
         sqlx::query("UPDATE browser_sessions SET seen_ms=$2 WHERE digest=$1")
             .bind(digest.as_slice())
-            .bind(row.try_get::<i64, _>("now_ms").map_err(unavailable)?)
+            .bind(now as i64)
             .execute(&mut *tx)
             .await
             .map_err(unavailable)?;
@@ -57,11 +65,12 @@ impl AuthenticationStore for PostgresStore {
         Ok(view)
     }
     async fn logout(&self, digest: [u8; 32]) -> Result<(), AuthError> {
-        sqlx::query("UPDATE browser_sessions SET revoked=true WHERE digest=$1")
-            .bind(digest.as_slice())
-            .execute(&self.pool)
+        let mut tx = self.pool.begin().await.map_err(unavailable)?;
+        sessions::lock(&mut tx, true).await.map_err(session_error)?;
+        sessions::end_by_handle(&mut tx, digest, false)
             .await
-            .map_err(unavailable)?;
+            .map_err(session_error)?;
+        tx.commit().await.map_err(unavailable)?;
         Ok(())
     }
 }
@@ -97,22 +106,9 @@ async fn replace(
     let Some(previous) = previous else {
         return Ok(());
     };
-    let row = sqlx::query("SELECT revoked FROM browser_sessions WHERE digest=$1 FOR UPDATE")
-        .bind(previous.as_slice())
-        .fetch_optional(&mut **tx)
+    sessions::end_by_handle(tx, previous, true)
         .await
-        .map_err(unavailable)?;
-    if row
-        .as_ref()
-        .is_some_and(|row| row.get::<bool, _>("revoked"))
-    {
-        return Err(AuthError::Denied);
-    }
-    sqlx::query("UPDATE browser_sessions SET revoked=true WHERE digest=$1")
-        .bind(previous.as_slice())
-        .execute(&mut **tx)
-        .await
-        .map_err(unavailable)?;
+        .map_err(session_error)?;
     Ok(())
 }
 async fn insert(
@@ -125,7 +121,7 @@ async fn insert(
         .bind(i64::try_from(c.epoch).map_err(unavailable)?).bind(ABSOLUTE_MS as i64).execute(&mut **tx).await.map_err(unavailable)?;
     Ok(())
 }
-fn checked_session(row: &PgRow) -> Result<SessionView, AuthError> {
+fn checked_session(row: &PgRow, now: u64) -> Result<SessionView, AuthError> {
     let facts = SessionFacts {
         active: row.try_get("active").map_err(unavailable)?,
         credential_live: row.try_get("credential_live").map_err(unavailable)?,
@@ -136,7 +132,7 @@ fn checked_session(row: &PgRow) -> Result<SessionView, AuthError> {
         seen_ms: number(row, "seen_ms")?,
         expires_ms: number(row, "expires_ms")?,
     };
-    if !session_live(facts, number(row, "now_ms")?) {
+    if !session_live(facts, now) {
         return Err(AuthError::Denied);
     }
     view(row)
@@ -159,4 +155,11 @@ fn number(row: &PgRow, key: &str) -> Result<u64, AuthError> {
 }
 fn unavailable<T>(_: T) -> AuthError {
     AuthError::Unavailable
+}
+
+fn session_error(error: darkhorse_domain::sessions::Error) -> AuthError {
+    match error {
+        darkhorse_domain::sessions::Error::Unauthorized => AuthError::Denied,
+        _ => AuthError::Unavailable,
+    }
 }

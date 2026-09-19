@@ -43,7 +43,8 @@ A client must serialize refresh requests for each family and replace its stored
 refresh token atomically with a successful response. Reusing a consumed token
 while its family is live revokes that family, including every access token issued
 from it. Concurrent requests have one committed winner; the losing replay then
-invalidates the winner's credentials. Other families remain independent.
+invalidates the winner's credentials. Other families remain independent. [Ending the original browser session](sessions.md)
+also denies all families bound to it; other browser sessions remain independent.
 
 There is no replay grace period or response recovery cache. If a response is lost
 and the outcome is uncertain, start a new authorization flow. Retrying a token

@@ -26,7 +26,7 @@
 		<span class="edition">IDENTITY CONSOLE <span class="version">/ 0.1</span></span>
 	</header>
 	<main id="main">
-		<LoginPanel {signIn} {checkSession} {signOut} />
+		<LoginPanel {signIn} {checkSession} {signOut} showSecurityLink />
 		<p class="caption">A CLEAR VIEW. A CONTROLLED PATH.</p>
 	</main>
 	<footer><span>DARKHORSE / IDENTITY SYSTEMS</span><span>DEVELOPMENT PREVIEW</span></footer>

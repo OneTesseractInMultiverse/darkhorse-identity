@@ -20,3 +20,5 @@ identifier_contract!(capability_identifier_contract, CapabilityId);
 identifier_contract!(scope_identifier_contract, ScopeId);
 identifier_contract!(client_identifier_contract, ClientId);
 identifier_contract!(credential_identifier_contract, CredentialId);
+
+identifier_contract!(session_identifier_contract, SessionId);

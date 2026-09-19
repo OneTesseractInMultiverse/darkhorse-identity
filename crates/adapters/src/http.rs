@@ -35,6 +35,10 @@ pub fn with_authentication(static_dir: PathBuf, authentication: Router) -> Route
             "/authorization",
             ServeFile::new(static_dir.join("authorization.html")),
         )
+        .route_service(
+            "/security/sessions",
+            ServeFile::new(static_dir.join("security/sessions.html")),
+        )
         .nest_service("/_app", ServeDir::new(static_dir.join("_app")))
         .fallback(not_found)
         .layer(SetResponseHeaderLayer::overriding(

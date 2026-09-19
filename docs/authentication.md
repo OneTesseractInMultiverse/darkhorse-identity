@@ -28,7 +28,8 @@ Only SHA-256 of the random session handle is persisted. Encrypting this opaque
 handle would add no confidentiality for a payload: there is no payload in it.
 
 Sessions have a 15-minute idle limit and an eight-hour absolute limit, checked
-using primary database time. Checks update the idle timestamp transactionally.
+using primary database time. The current-session endpoint updates the idle timestamp transactionally; session
+directory reads do not.
 Clock regression fails closed. Login replaces a known prior handle atomically;
 concurrent replacements have one winner. Independent initial sign-ins can create
 independent sessions. A losing simultaneous login can clear the browser cookie;
@@ -40,7 +41,9 @@ Deactivation and revoke-all invalidate earlier epochs; reactivation cannot reviv
 them. Issuance rechecks the exact verified credential/hash and epoch under database
 locks after password work. Future password-change and privilege-change workflows
 must advance the epoch/re-authenticate, and enqueue required logout delivery.
-This endpoint currently performs local session logout only.
+This endpoint performs local session logout. The [session security page](sessions.md)
+also lets a live owner view and end individual sessions, invalidating their
+associated code/access/refresh checks. Logout notification delivery is unfinished.
 
 Credential failures return the same `401` body for unknown users, wrong passwords
 and inactive accounts. Both unknown and inactive accounts perform a policy-matched
@@ -88,7 +91,7 @@ Login defaults to disabled (`503` at authentication endpoints). Enable it with
 `DARKHORSE_LOGIN_LIMIT_KEY`, and the existing database/Redis settings. Migrate
 explicitly before starting the server. Runtime needs SELECT/INSERT on
 `login_budget_policy`, SELECT/INSERT/UPDATE on `browser_sessions`, and existing
-read/limiter permissions; migration ownership is separate. Private deployment
+read/limiter permissions, plus the [session audit and security fence permissions](sessions.md#upgrade-and-operations); migration ownership is separate. Private deployment
 secret distribution must give all replicas the same key.
 
 Local setup, preserving existing credentials:
@@ -120,8 +123,9 @@ script CSP; Rust adds frame restrictions, nosniff, no-referrer and no-store head
 The HMR server is a local development tool, never a production session server.
 
 Expiry is enforced without a cleanup job. Operators must plan bounded deletion of
-expired session rows (using the expiry index), monitoring, backup/restore, session
-retention and pool sizing before a long-running deployment. Session checks make
+expired session rows, monitoring, backup/restore, session
+retention and pool sizing before a long-running deployment. Session audit and token/code foreign keys must be included in that retention design.
+Session checks make
 primary database round trips and serialize concurrent checks for the same handle;
 load qualification is still required. No high-throughput SLO is claimed yet.
 

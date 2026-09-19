@@ -170,7 +170,16 @@ async fn expired_sessions_clock_rollback_and_changed_verifiers_deny() {
         ),
     ] {
         db.store.establish(&candidate, digest, None).await.unwrap();
+        // Controlled time fixture in this disposable database only.
+        sqlx::query("ALTER TABLE browser_sessions DISABLE TRIGGER browser_session_transition")
+            .execute(&db.pool)
+            .await
+            .unwrap();
         sqlx::query(query).execute(&db.pool).await.unwrap();
+        sqlx::query("ALTER TABLE browser_sessions ENABLE TRIGGER browser_session_transition")
+            .execute(&db.pool)
+            .await
+            .unwrap();
         assert_eq!(db.store.session(digest).await, Err(AuthError::Denied));
     }
     candidate.verifier.push('a');

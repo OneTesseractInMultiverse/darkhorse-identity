@@ -1,15 +1,18 @@
 <script lang="ts">
 	import { onMount, tick } from 'svelte';
+	import { resolve } from '$app/paths';
 	import { Button } from '$lib/components/ui/button';
 	import type { AuthState } from '$lib/authentication';
 	let {
 		signIn,
 		checkSession,
-		signOut
+		signOut,
+		showSecurityLink
 	}: {
 		signIn: (email: string, password: string) => Promise<AuthState>;
 		checkSession: () => Promise<AuthState>;
 		signOut?: () => Promise<boolean>;
+		showSecurityLink?: boolean;
 	} = $props();
 	let email = $state('');
 	let password = $state('');
@@ -63,6 +66,10 @@
 		{#if account.kind === 'signed-in'}
 			<h1 id="login-title">Welcome, {account.name}.</h1>
 			<p class="intro">You're signed in to Darkhorse.</p>
+			{#if showSecurityLink}<a
+					href={resolve('/security/sessions')}
+					class="text-primary underline underline-offset-4">Manage sessions</a
+				>{/if}
 			{#if signOut}<Button onclick={logout} disabled={pending} class="mt-6 h-11 w-full font-mono"
 					>{pending ? 'Signing out…' : 'Sign out'}</Button
 				>{/if}

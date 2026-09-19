@@ -30,3 +30,5 @@ mod signing_fixture;
 
 pub mod resource_servers;
 pub mod resource_servers_http;
+
+pub mod sessions_http;

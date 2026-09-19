@@ -613,7 +613,16 @@ async fn resource_registration_rechecks_live_administrator_session_and_target() 
     .execute(&db.pool)
     .await
     .unwrap();
+    // Controlled authentication-age fixture in a disposable database.
+    sqlx::query("ALTER TABLE browser_sessions DISABLE TRIGGER browser_session_transition")
+        .execute(&db.pool)
+        .await
+        .unwrap();
     sqlx::query("UPDATE browser_sessions SET created_ms=created_ms-300000,expires_ms=expires_ms-300000 WHERE digest=$1").bind([1u8;32].as_slice()).execute(&db.pool).await.unwrap();
+    sqlx::query("ALTER TABLE browser_sessions ENABLE TRIGGER browser_session_transition")
+        .execute(&db.pool)
+        .await
+        .unwrap();
     assert!(matches!(
         registry(&db).write([1; 32], command).await,
         Err(E::RecentAuthenticationRequired)

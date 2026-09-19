@@ -23,3 +23,5 @@ pub mod refresh;
 pub mod resource_servers;
 pub mod shared_limiting;
 pub mod tokens;
+
+pub mod sessions;

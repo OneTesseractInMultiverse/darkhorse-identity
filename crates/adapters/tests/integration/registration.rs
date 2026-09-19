@@ -823,7 +823,16 @@ async fn ownership_does_not_grant_administration_and_old_authentication_cannot_m
             .await,
         Err(RegistrationError::Unauthorized)
     ));
+    // Controlled authentication-age fixture in a disposable database.
+    sqlx::query("ALTER TABLE browser_sessions DISABLE TRIGGER browser_session_transition")
+        .execute(&f.db.pool)
+        .await
+        .unwrap();
     sqlx::query("UPDATE browser_sessions SET created_ms=created_ms-300000,expires_ms=expires_ms-300000 WHERE digest=$1").bind([1u8;32].as_slice()).execute(&f.db.pool).await.unwrap();
+    sqlx::query("ALTER TABLE browser_sessions ENABLE TRIGGER browser_session_transition")
+        .execute(&f.db.pool)
+        .await
+        .unwrap();
     assert!(
         f.registry
             .read([1; 32], ReadTarget::Application(app.id))

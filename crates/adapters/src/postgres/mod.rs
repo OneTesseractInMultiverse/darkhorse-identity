@@ -19,6 +19,7 @@ mod bootstrap;
 mod directory;
 mod limiting;
 mod registration;
+mod sessions;
 mod signing;
 
 #[derive(Clone)]

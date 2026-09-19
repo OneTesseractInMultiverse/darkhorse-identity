@@ -72,6 +72,8 @@ pub async fn runtime(
         store: store.clone(),
         entropy: darkhorse_adapters::resource_servers::OsResourceEntropy,
     };
+    let session_management =
+        darkhorse_adapters::sessions_http::router(store.clone(), settings.public_origin.clone());
     let registration = darkhorse_application::registration::Service {
         store,
         entropy: OsRegistrationEntropy,
@@ -80,6 +82,7 @@ pub async fn runtime(
         maintenance,
         router: authentication_http::router(service, settings.public_origin.clone())
             .merge(provider)
+            .merge(session_management)
             .merge(darkhorse_adapters::resource_servers_http::router(
                 resource_registration,
                 settings.public_origin.clone(),

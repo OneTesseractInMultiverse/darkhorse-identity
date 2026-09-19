@@ -12,6 +12,7 @@ import { profileChannel } from "./lib/benchmark-profile-channel.mjs";
 import { startProcess } from "./lib/process.mjs";
 import { seedSigning, verifyProvider } from "./lib/provider-browser.mjs";
 import { verifyRegistration } from "./lib/registration-browser.mjs";
+import { verifySessionManagement } from "./lib/sessions-browser.mjs";
 
 async function freePort() {
   const server = createServer();
@@ -268,6 +269,7 @@ async function exerciseBrowser({
   await verifyRotation(page, context, origin, ca, password, initial);
   await verifyRegistration(page, principal);
   await verifyProvider(page, context, origin, principal, ca, runSql);
+  await verifySessionManagement(browser, page, origin, password, invoke, ca);
   await verifyLogoutAndRevocation(page, context, password, principal, invoke);
   assert.deepEqual(errors, []);
   assert.deepEqual(await page.evaluate(() => window.securityViolations), []);

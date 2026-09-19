@@ -231,7 +231,7 @@ async fn logout<S: BrowserAuthentication>(
 fn profile(view: SessionView) -> Response {
     Json(ProfileBody { name: view.name }).into_response()
 }
-fn clear_cookie(response: &mut Response) {
+pub(crate) fn clear_cookie(response: &mut Response) {
     response.headers_mut().insert(
         header::SET_COOKIE,
         HeaderValue::from_static(

@@ -13,6 +13,7 @@ use uuid::Uuid;
 mod authentication;
 mod refresh;
 mod registration;
+mod sessions;
 mod signing;
 
 struct Database {
@@ -21,6 +22,9 @@ struct Database {
 }
 impl Database {
     async fn new() -> Self {
+        Self::at_version(i64::MAX).await
+    }
+    async fn at_version(version: i64) -> Self {
         let url = std::env::var("DARKHORSE_TEST_DATABASE_URL")
             .expect("use make test-postgres for disposable infrastructure");
         let admin = PgPool::connect(&url).await.unwrap();
@@ -39,7 +43,14 @@ impl Database {
             .unwrap();
         admin.close().await;
         let store = PostgresStore::from_pool(pool.clone());
-        store.migrate().await.unwrap();
+        let mut migrations = sqlx::migrate!("./migrations");
+        migrations.migrations = migrations
+            .iter()
+            .filter(|m| m.version <= version)
+            .cloned()
+            .collect::<Vec<_>>()
+            .into();
+        migrations.run(&pool).await.unwrap();
         Self { pool, store }
     }
 }
