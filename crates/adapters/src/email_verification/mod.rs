@@ -25,12 +25,18 @@ impl Secrets {
             .into()
     }
     pub fn token(&self, seed: [u8; 32]) -> Zeroizing<String> {
+        self.purpose_token(seed, b"darkhorse:email-verification:v1\0", "ev1_")
+    }
+    pub fn invitation_token(&self, seed: [u8; 32]) -> Zeroizing<String> {
+        self.purpose_token(seed, b"darkhorse:invitation:v1\0", "iv1_")
+    }
+    fn purpose_token(&self, seed: [u8; 32], label: &[u8], prefix: &str) -> Zeroizing<String> {
         let mut mac =
             Hmac::<Sha256>::new_from_slice(self.0.as_slice()).expect("HMAC accepts a 32-byte key");
-        mac.update(b"darkhorse:email-verification:v1\0");
+        mac.update(label);
         mac.update(&seed);
         Zeroizing::new(format!(
-            "ev1_{}",
+            "{prefix}{}",
             crate::session_secret::hex(&mac.finalize().into_bytes())
         ))
     }
@@ -53,3 +59,24 @@ pub fn token_digest(value: &str) -> Result<[u8; 32], Error> {
 #[cfg(test)]
 #[path = "../../tests/unit/email_verification/mod.rs"]
 mod tests;
+
+impl darkhorse_application::invitations::InvitationSecrets for Secrets {
+    fn issue_invitation(
+        &self,
+    ) -> Result<darkhorse_application::invitations::Material, darkhorse_domain::invitations::Error>
+    {
+        use darkhorse_domain::{identity::InvitationId, invitations::Error};
+        let mut seed = [0; 32];
+        getrandom::fill(&mut seed).map_err(|_| Error::Unavailable)?;
+        let id = InvitationId::from_u128(uuid::Uuid::new_v4().as_u128())
+            .map_err(|_| Error::Unavailable)?;
+        let digest = invitation_digest(&self.invitation_token(seed))?;
+        Ok(darkhorse_application::invitations::Material { id, seed, digest })
+    }
+}
+pub fn invitation_digest(value: &str) -> Result<[u8; 32], darkhorse_domain::invitations::Error> {
+    use darkhorse_domain::invitations::Error;
+    let token = value.strip_prefix("iv1_").ok_or(Error::Invalid)?;
+    crate::session_secret::decode(token).map_err(|_| Error::Invalid)?;
+    Ok(Sha256::digest(value.as_bytes()).into())
+}

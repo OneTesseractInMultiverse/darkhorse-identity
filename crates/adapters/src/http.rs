@@ -40,6 +40,10 @@ pub fn with_authentication(static_dir: PathBuf, authentication: Router) -> Route
             ServeFile::new(static_dir.join("security/sessions.html")),
         )
         .route_service(
+            "/invitation",
+            ServeFile::new(static_dir.join("invitation.html")),
+        )
+        .route_service(
             "/security/email",
             ServeFile::new(static_dir.join("security/email.html")),
         )

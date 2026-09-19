@@ -115,7 +115,7 @@ fn check(row: &PgRow, actor: &Actor, now: u64) -> Result<(), Error> {
 }
 async fn enqueue(tx: &mut Tx<'_>, actor: &Actor, material: &Material) -> Result<(), Error> {
     let now = now(tx).await?;
-    let counts=sqlx::query("SELECT (SELECT max(occurred_ms) FROM email_verification_audit WHERE principal_id=$1 AND event='requested') AS last_ms,(SELECT count(*) FROM email_verification_audit WHERE principal_id=$1 AND event='requested' AND occurred_ms>$2) AS daily,(SELECT count(*) FROM email_verifications WHERE delivery_state='queued' AND expires_ms>$3) AS queued")
+    let counts=sqlx::query("SELECT (SELECT max(occurred_ms) FROM email_verification_audit WHERE principal_id=$1 AND event='requested') AS last_ms,(SELECT count(*) FROM email_verification_audit WHERE principal_id=$1 AND event='requested' AND occurred_ms>$2) AS daily,((SELECT count(*) FROM email_verifications WHERE delivery_state='queued' AND expires_ms>$3)+(SELECT count(*) FROM invitations WHERE delivery_state='queued' AND expires_ms>$3)) AS queued")
         .bind(Uuid::from_u128(actor.principal.as_u128())).bind(now.saturating_sub(policy::DAY_MS) as i64).bind(now as i64).fetch_one(&mut **tx).await.map_err(storage)?;
     let expires = request_expiry(&counts, now)?;
     sqlx::query("INSERT INTO email_verifications(principal_id,id,actor_session_id,email,credential_epoch,digest,seed,created_ms,expires_ms,next_ms) VALUES($1,$2,$3,$4,$5,$6,$7,$8,$9,$8) ON CONFLICT(principal_id) DO UPDATE SET id=excluded.id,actor_session_id=excluded.actor_session_id,email=excluded.email,credential_epoch=excluded.credential_epoch,digest=excluded.digest,seed=excluded.seed,created_ms=excluded.created_ms,expires_ms=excluded.expires_ms,next_ms=excluded.next_ms,consumed=false,attempts=0,delivery_state='queued'")

@@ -31,10 +31,11 @@ pub async fn email(
     };
     loop {
         let result = darkhorse_application::email_verification::deliver_next(&store, &sender).await;
-        if result.is_err() {
+        let invitation = darkhorse_application::invitations::deliver_next(&store, &sender).await;
+        if result.is_err() || invitation.is_err() {
             eprintln!("Email queue unavailable; retrying after a delay.");
         }
-        if !matches!(result, Ok(true)) {
+        if !matches!(result, Ok(true)) && !matches!(invitation, Ok(true)) {
             tokio::time::sleep(Duration::from_secs(2)).await;
         }
     }

@@ -57,6 +57,11 @@ impl EmailDelivery for Smtp {
             Ok(message) => message,
             Err(_) => return DeliveryResult::Rejected,
         };
+        self.send(message).await
+    }
+}
+impl Smtp {
+    async fn send(&self, message: Message) -> DeliveryResult {
         match tokio::time::timeout(Duration::from_secs(10), self.transport.send(message)).await {
             Ok(Ok(_)) => DeliveryResult::Accepted,
             Ok(Err(error)) if error.is_permanent() => DeliveryResult::Rejected,
@@ -64,6 +69,35 @@ impl EmailDelivery for Smtp {
         }
     }
 }
+impl darkhorse_application::invitations::InvitationDelivery for Smtp {
+    async fn deliver_invitation(
+        &self,
+        delivery: &darkhorse_application::invitations::Delivery,
+    ) -> DeliveryResult {
+        let message = match invitation_message(&self.from, &self.origin, &self.secrets, delivery) {
+            Ok(message) => message,
+            Err(_) => return DeliveryResult::Rejected,
+        };
+        self.send(message).await
+    }
+}
+fn invitation_message(
+    from: &Address,
+    origin: &str,
+    secrets: &Secrets,
+    delivery: &darkhorse_application::invitations::Delivery,
+) -> Result<Message, Error> {
+    let secret = secrets.invitation_token(delivery.seed);
+    let token = secret.as_str();
+    Message::builder()
+        .date(std::time::SystemTime::UNIX_EPOCH+Duration::from_millis(delivery.created_ms))
+        .from(from.clone().into()).to(delivery.email.parse::<Address>().map_err(|_|Error::Invalid)?.into())
+        .message_id(Some(format!("<invitation-{}@darkhorse.invalid>",uuid::Uuid::from_u128(delivery.id.as_u128()))))
+        .subject("Your Darkhorse invitation")
+        .body(format!("You have been invited to create a Darkhorse account using this email address. Choose your own password using the link below. It expires 24 hours after issuance and can be used once. Application access is assigned separately.\r\n\r\n{origin}/invitation#token={token}\r\n\r\nIf you did not expect this invitation, you can ignore it.\r\n"))
+        .map_err(|_|Error::Invalid)
+}
+
 fn message(
     from: &Address,
     origin: &str,

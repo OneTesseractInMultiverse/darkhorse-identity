@@ -94,3 +94,12 @@ it('allows signing in while retaining a link in memory', async () => {
 	await screen.findByRole('button', { name: 'Confirm email' });
 	expect(p.confirm).not.toHaveBeenCalled();
 });
+it('does not read a proof or account after immediate unmount', async () => {
+	const p = props();
+	const rendered = render(EmailVerificationPanel, p);
+	rendered.unmount();
+	await Promise.resolve();
+	await Promise.resolve();
+	expect(p.takeToken).not.toHaveBeenCalled();
+	expect(p.read).not.toHaveBeenCalled();
+});

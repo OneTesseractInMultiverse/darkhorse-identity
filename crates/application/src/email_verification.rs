@@ -36,19 +36,8 @@ pub async fn request(
     let material = secrets.issue()?;
     store.request_verification(actor, material).await
 }
-pub struct Delivery {
-    pub created_ms: u64,
-    pub id: EmailVerificationId,
-    pub attempt: u16,
-    pub email: String,
-    pub seed: [u8; 32],
-}
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
-pub enum DeliveryResult {
-    Accepted,
-    Retry,
-    Rejected,
-}
+pub type Delivery = crate::email_delivery::Delivery<EmailVerificationId>;
+pub use crate::email_delivery::DeliveryResult;
 pub trait EmailDelivery: Send + Sync {
     fn deliver(&self, delivery: &Delivery) -> impl Future<Output = DeliveryResult> + Send;
 }

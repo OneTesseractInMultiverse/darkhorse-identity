@@ -1,3 +1,4 @@
+use super::super::email_queue::outcome;
 use super::*;
 use darkhorse_application::email_verification::{Delivery, DeliveryQueue, DeliveryResult};
 impl PostgresStore {
@@ -88,19 +89,4 @@ async fn finish(
     sqlx::query("UPDATE email_verifications SET delivery_state=$2,seed=CASE WHEN $2='queued' THEN seed ELSE NULL END,next_ms=COALESCE($3,next_ms) WHERE id=$1")
         .bind(Uuid::from_u128(id(row)?.as_u128())).bind(state).bind(next.map(|n|n as i64)).execute(&mut **tx).await.map_err(storage)?;
     audit(tx, principal(row)?, id(row)?, None, event, attempt, now).await
-}
-fn outcome(
-    result: DeliveryResult,
-    attempt: u16,
-    now: u64,
-    expires: u64,
-) -> (&'static str, &'static str, Option<u64>) {
-    match result {
-        DeliveryResult::Accepted => ("accepted", "accepted", None),
-        DeliveryResult::Retry => match policy::retry(attempt, now, expires) {
-            Some(next) => ("queued", "retry", Some(next)),
-            None => ("failed", "failed", None),
-        },
-        DeliveryResult::Rejected => ("failed", "failed", None),
-    }
 }

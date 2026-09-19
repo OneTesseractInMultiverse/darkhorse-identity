@@ -10,6 +10,7 @@ use std::sync::Arc;
 use tokio::sync::Semaphore;
 use zeroize::Zeroizing;
 
+#[derive(Clone)]
 pub struct PasswordPreparation {
     slots: Arc<Semaphore>,
 }
@@ -134,3 +135,14 @@ async fn bounded_work<T: Send + 'static>(
 #[cfg(test)]
 #[path = "../tests/unit/password.rs"]
 mod tests;
+
+impl darkhorse_application::invitations::PasswordPreparation for PasswordPreparation {
+    async fn prepare_password(
+        &self,
+        password: &str,
+    ) -> Result<PreparedCredential, darkhorse_domain::invitations::Error> {
+        self.prepare(password)
+            .await
+            .map_err(|_| darkhorse_domain::invitations::Error::Unavailable)
+    }
+}

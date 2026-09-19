@@ -51,10 +51,11 @@ pub async fn runtime(
         )?;
     let limiter =
         RedisLimiter::new(store.clone(), redis).map_err(|_| "Cannot initialize login limiter.")?;
+    let passwords = PasswordPreparation::default();
     let service = Service {
         store: store.clone(),
         admission: SharedLoginAdmission::new(limiter, authentication.key),
-        passwords: PasswordPreparation::default(),
+        passwords: passwords.clone(),
         entropy: OsSessionEntropy,
     };
     let maintenance = provider.as_ref().map(|_| store.clone());
@@ -82,7 +83,7 @@ pub async fn runtime(
     };
     let session_management =
         darkhorse_adapters::sessions_http::router(store.clone(), settings.public_origin.clone());
-    let (email_router, email) = email_runtime(email, &store, settings).await?;
+    let (email_router, email) = email_runtime(email, &store, settings, passwords).await?;
     let registration = darkhorse_application::registration::Service {
         store,
         entropy: OsRegistrationEntropy,
@@ -109,6 +110,7 @@ async fn email_runtime(
     email: Option<darkhorse_adapters::email_verification::configuration::Settings>,
     store: &PostgresStore,
     settings: &darkhorse_adapters::configuration::HttpSettings,
+    passwords: PasswordPreparation,
 ) -> Result<
     (
         axum::Router,
@@ -134,8 +136,14 @@ async fn email_runtime(
         )?;
     let router = darkhorse_adapters::email_verification_http::router(
         store.clone(),
-        secrets,
+        secrets.clone(),
         settings.public_origin.clone(),
-    );
+    )
+    .merge(darkhorse_adapters::invitations_http::router(
+        store.clone(),
+        secrets,
+        passwords,
+        settings.public_origin.clone(),
+    ));
     Ok((router, Some((store.clone(), sender))))
 }

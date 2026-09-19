@@ -64,3 +64,5 @@ Contributions follow an issue → feature branch → reviewed pull request workf
 Remaining work is tracked in [GitHub issues](https://github.com/OneTesseractInMultiverse/darkhorse-identity/issues). Persistence and bootstrap are tracked in [issue #3](https://github.com/OneTesseractInMultiverse/darkhorse-identity/issues/3). Application and confidential client registration is tracked in [issue #6](https://github.com/OneTesseractInMultiverse/darkhorse-identity/issues/6). See the [registration API and security contract](docs/registration.md), including exact callbacks, explicit resource/scope allowances and one-time client-secret issuance.
 
 The project license has not been selected. Third-party component licenses remain applicable; see [third-party notices](docs/third-party-notices.md).
+
+Invitation-only ordinary-account onboarding and its API are described in [the invitation contract](docs/invitations.md).

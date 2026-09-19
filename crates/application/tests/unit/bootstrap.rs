@@ -1,4 +1,5 @@
 use super::*;
+use darkhorse_domain::identity::CredentialId;
 use std::{
     sync::Mutex,
     task::{Context, Poll, Waker},

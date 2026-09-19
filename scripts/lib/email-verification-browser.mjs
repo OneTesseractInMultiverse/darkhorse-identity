@@ -26,6 +26,19 @@ export async function verifyEmail(page, origin, mailbox) {
   );
   assert.ok(match, "message must contain the canonical verification link");
   const token = match[1];
+  // A first document load also exercises hydration before router history replacement.
+  const fresh = await page.context().newPage();
+  const freshErrors = [];
+  fresh.on("pageerror", () => freshErrors.push("page error"));
+  try {
+    await fresh.goto(`${origin}/security/email#token=${token}`);
+    await fresh.getByRole("button", { name: "Confirm email" }).waitFor();
+    assert.equal(fresh.url(), `${origin}/security/email`);
+    assert.deepEqual(freshErrors, []);
+  } finally {
+    await fresh.close();
+  }
+
   assert.equal((await call(page, "/api/security/email")).body.verified, false);
   const urls = [];
   const listener = (request) => urls.push(request.url());

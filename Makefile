@@ -317,3 +317,9 @@ dev-email: ## Email: HTTPS login and email verification using configured implici
 test-email: ## Test: isolated email proof, queue orchestration, HTTP and UI contracts
 	cargo test --workspace --lib --locked --offline email_verification
 	$(WEB) test:unit email
+
+.PHONY: test-invitations
+test-invitations: ## Test: isolated invitation policy, transport and acceptance UI
+	cargo test --workspace --lib --locked --offline invitation
+	$(WEB) test:unit invitation
+	$(WEB) test:unit InvitationPanel

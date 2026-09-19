@@ -42,3 +42,33 @@ fn tls_builder_rejects_invalid_private_ca_without_network_or_environment() {
         .is_err()
     );
 }
+#[test]
+fn invitation_mail_has_a_distinct_stable_message_and_one_recipient() {
+    let secrets = Secrets::from_hex(&"ab".repeat(32)).unwrap();
+    let mut delivery = darkhorse_application::invitations::Delivery {
+        created_ms: 100,
+        id: darkhorse_domain::identity::InvitationId::from_u128(1).unwrap(),
+        attempt: 1,
+        email: "new@example.com".into(),
+        seed: [3; 32],
+    };
+    let from = "identity@example.com".parse().unwrap();
+    let first =
+        invitation_message(&from, "https://identity.example.com", &secrets, &delivery).unwrap();
+    assert_eq!(first.envelope().to().len(), 1);
+    delivery.attempt = 2;
+    assert_eq!(
+        first.formatted(),
+        invitation_message(&from, "https://identity.example.com", &secrets, &delivery)
+            .unwrap()
+            .formatted()
+    );
+    let formatted = String::from_utf8(first.formatted()).unwrap();
+    assert!(formatted.contains("Subject: Your Darkhorse invitation"));
+    assert!(formatted.contains("<invitation-"));
+    assert!(!formatted.contains("ev1_"));
+    delivery.email = "new@example.com\r\nBcc: other@example.com".into();
+    assert!(
+        invitation_message(&from, "https://identity.example.com", &secrets, &delivery).is_err()
+    );
+}

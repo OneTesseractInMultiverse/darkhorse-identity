@@ -1,7 +1,7 @@
 //! Operator bootstrap contracts. The store owns one atomic database operation.
 use darkhorse_domain::{
     directory::{DirectoryError, Profile, validate_password},
-    identity::{CredentialId, PrincipalId},
+    identity::PrincipalId,
 };
 use std::future::Future;
 
@@ -20,12 +20,7 @@ pub struct BootstrapRequest<'a> {
     pub password: &'a str,
 }
 
-// Deliberately lacks Debug: password verifiers must not enter diagnostics.
-pub struct PreparedCredential {
-    pub principal_id: PrincipalId,
-    pub credential_id: CredentialId,
-    pub verifier: String,
-}
+pub use crate::credentials::PreparedCredential;
 pub struct NewAdministrator {
     pub profile: Profile,
     pub credential: PreparedCredential,

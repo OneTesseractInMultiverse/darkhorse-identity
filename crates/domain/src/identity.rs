@@ -31,7 +31,8 @@ identifier!(
     CredentialId,
     ClientSecretId,
     SessionId,
-    EmailVerificationId
+    EmailVerificationId,
+    InvitationId
 );
 
 #[cfg(test)]

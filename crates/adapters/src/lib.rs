@@ -34,3 +34,5 @@ pub mod resource_servers_http;
 pub mod email_verification;
 pub mod email_verification_http;
 pub mod sessions_http;
+
+pub mod invitations_http;

@@ -2,8 +2,7 @@
 pub const LIFETIME_MS: u64 = 15 * 60 * 1000;
 pub const DAY_MS: u64 = 24 * 60 * 60 * 1000;
 pub const MAX_QUEUED: u64 = 10_000;
-pub const LEASE_MS: u64 = 60_000;
-pub const MAX_ATTEMPTS: u16 = 5;
+pub use crate::email_delivery::{LEASE_MS, MAX_ATTEMPTS, lease, retry};
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum Error {
     Invalid,
@@ -39,16 +38,6 @@ pub fn redeem(proof: &Proof<'_>, email: &str, epoch: u64, now: u64) -> Result<()
         return Err(Error::Invalid);
     }
     Ok(())
-}
-pub fn lease(now: u64, expires: u64) -> u64 {
-    now.saturating_add(LEASE_MS).min(expires)
-}
-pub fn retry(attempt: u16, now: u64, expires: u64) -> Option<u64> {
-    if !(1..MAX_ATTEMPTS).contains(&attempt) {
-        return None;
-    }
-    now.checked_add(60_000 << (attempt - 1))
-        .filter(|next| *next < expires)
 }
 #[cfg(test)]
 #[path = "../tests/unit/email_verification.rs"]

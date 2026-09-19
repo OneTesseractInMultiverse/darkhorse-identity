@@ -52,6 +52,10 @@ Invitation/onboarding, password recovery, email changes, security notifications,
 
 ### Validation snapshot (2026-09-19)
 
-`make ci` and the Linux image build/smoke checks pass. The isolated suites contain 200 Rust, 50 frontend and 45 tooling tests. Combined execution passes 101 PostgreSQL cases, five Redis infrastructure cases, 14 limiter cases plus the separate-process helper, the SMTP trust/authentication scenario, operator smoke and the full HTTPS browser flow. The local email-key setup also passes disposable creation, preservation and unsafe-permission rejection checks.
+Validation snapshot for the original verification increment (`c08cb1d`): `make ci` and the Linux image build/smoke checks pass. The isolated suites contain 200 Rust, 50 frontend and 45 tooling tests. Combined execution passes 101 PostgreSQL cases, five Redis infrastructure cases, 14 limiter cases plus the separate-process helper, the SMTP trust/authentication scenario, operator smoke and the full HTTPS browser flow. The local email-key setup also passes disposable creation, preservation and unsafe-permission rejection checks.
 
 Core coverage is 100% lines/functions and 99.85% regions. Frontend coverage is 100% lines/functions, 99.30% statements and 96.11% branches. Combined Rust coverage is **98.19% lines (159 of 8,762 lines uncovered)**, 99.48% functions and 92.27% regions. The unchanged 100% line gate fails at reporting after the functional suites pass. Remaining paths include configuration failures, some certificate-input boundaries, a verification race/error projection and existing runtime/adapter paths. Tooling process entrypoints are not included in those percentages. This is partial qualification, not a production-readiness or capacity claim.
+
+## Related onboarding
+
+[Invitation-only onboarding](invitations.md) shares the configured email key and TLS transport with a separate proof purpose and distinct authority rules. Both request paths count against the same queued-message ceiling.

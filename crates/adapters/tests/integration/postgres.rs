@@ -485,3 +485,5 @@ mod resource_tokens;
 mod resource_introspection;
 
 mod email_verification;
+
+mod invitations;

@@ -1,5 +1,5 @@
 <script lang="ts">
-	import { onMount } from 'svelte';
+	import { onMount, tick } from 'svelte';
 	import { Button } from '$lib/components/ui/button';
 	import LoginPanel from './LoginPanel.svelte';
 	import type { AuthState } from '$lib/authentication';
@@ -29,13 +29,21 @@
 	let message = $state('');
 	let uncertain = $state(false);
 	onMount(() => {
+		let mounted = true;
+		// Initial hydration must finish before the router can replace history.
+		void tick().then(() => {
+			if (mounted) receive();
+		});
+		const stop = watchToken?.(receive);
+		return () => {
+			mounted = false;
+			stop?.();
+		};
+	});
+	function receive() {
 		token = takeToken();
 		void refresh();
-		return watchToken?.(() => {
-			token = takeToken();
-			void refresh();
-		});
-	});
+	}
 	async function refresh() {
 		pending = true;
 		account = await read();

@@ -26,3 +26,7 @@ pub mod tokens;
 
 pub mod email_verification;
 pub mod sessions;
+
+pub mod credentials;
+pub mod email_delivery;
+pub mod invitations;

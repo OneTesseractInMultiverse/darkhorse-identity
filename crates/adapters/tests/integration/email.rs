@@ -37,6 +37,18 @@ async fn smtp_requires_trusted_chain_correct_hostname_and_valid_credentials() {
         trusted.deliver(&bad_recipient).await,
         DeliveryResult::Rejected
     );
+    use darkhorse_application::invitations::InvitationDelivery;
+    let bad_invitation = darkhorse_application::invitations::Delivery {
+        id: darkhorse_domain::identity::InvitationId::from_u128(1).unwrap(),
+        created_ms: 1,
+        attempt: 1,
+        email: "fixture@example.com\r\nBcc: bad@example.com".into(),
+        seed: [1; 32],
+    };
+    assert_eq!(
+        trusted.deliver_invitation(&bad_invitation).await,
+        DeliveryResult::Rejected
+    );
     let mut missing_ca = load();
     missing_ca.ca_file = Some("/nonexistent/email-test-ca.pem".into());
     assert!(Smtp::prepare(missing_ca, "https://identity.example.com".into()).is_err());
