@@ -2,7 +2,7 @@
 //! A reachable limiter is not evidence that shared admission enforcement is ready.
 use crate::redis_configuration::{Endpoint, RedisSettings};
 use redis::{AsyncConnectionConfig, Client, aio::MultiplexedConnection};
-use std::time::Duration;
+use std::time::{Duration, Instant};
 use tokio::sync::Mutex;
 pub(crate) mod identity;
 
@@ -68,9 +68,17 @@ fn separate_roles(
     }
 }
 
+struct CachedConnection {
+    value: MultiplexedConnection,
+    last_used: Instant,
+}
+// Retire before the supplied Redis configuration's 60-second idle timeout.
+fn reusable(idle: Duration) -> bool {
+    idle < Duration::from_secs(30)
+}
 pub(crate) struct Pool {
     client: Client,
-    slots: Vec<Mutex<Option<MultiplexedConnection>>>,
+    slots: Vec<Mutex<Option<CachedConnection>>>,
     deadline: Duration,
 }
 impl Pool {
@@ -107,31 +115,45 @@ impl Pool {
             .ok_or(ProbeFailure::Unavailable)?;
         let result = tokio::time::timeout(self.deadline, async {
             self.connect_slot(&mut slot).await?;
-            operation(slot.as_ref().ok_or(ProbeFailure::Unavailable)?.clone()).await
+            operation(
+                slot.as_ref()
+                    .ok_or(ProbeFailure::Unavailable)?
+                    .value
+                    .clone(),
+            )
+            .await
         })
         .await
         .unwrap_or(Err(ProbeFailure::Unavailable));
         if result.is_err() {
             slot.take();
+        } else if let Some(cached) = slot.as_mut() {
+            cached.last_used = Instant::now();
         }
         result
     }
-    async fn connect_slot(
-        &self,
-        slot: &mut Option<MultiplexedConnection>,
-    ) -> Result<(), ProbeFailure> {
+    async fn connect_slot(&self, slot: &mut Option<CachedConnection>) -> Result<(), ProbeFailure> {
+        if slot
+            .as_ref()
+            .is_some_and(|cached| !reusable(cached.last_used.elapsed()))
+        {
+            slot.take();
+        }
         if slot.is_none() {
             let config = AsyncConnectionConfig::new()
                 .set_pipeline_buffer_size(1)
                 .set_concurrency_limit(1)
                 .set_connection_timeout(Some(self.deadline))
                 .set_response_timeout(Some(self.deadline));
-            *slot = Some(
-                self.client
-                    .get_multiplexed_async_connection_with_config(&config)
-                    .await
-                    .map_err(|_| ProbeFailure::Unavailable)?,
-            );
+            let value = self
+                .client
+                .get_multiplexed_async_connection_with_config(&config)
+                .await
+                .map_err(|_| ProbeFailure::Unavailable)?;
+            *slot = Some(CachedConnection {
+                value,
+                last_used: Instant::now(),
+            });
         }
         Ok(())
     }

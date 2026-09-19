@@ -33,3 +33,11 @@ async fn saturated_pool_rejects_immediately_without_opening_another_connection()
         Err(ProbeFailure::Unavailable)
     );
 }
+
+#[test]
+fn idle_connections_are_retired_before_the_deployment_idle_timeout() {
+    assert!(reusable(Duration::ZERO));
+    assert!(reusable(Duration::from_millis(29_999)));
+    assert!(!reusable(Duration::from_secs(30)));
+    assert!(!reusable(Duration::from_secs(60)));
+}
