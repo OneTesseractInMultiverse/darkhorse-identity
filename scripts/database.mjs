@@ -2,6 +2,7 @@ import { createHash, randomBytes } from "node:crypto";
 import { mkdir, open, readFile, lstat, unlink } from "node:fs/promises";
 import { resolve } from "node:path";
 import { run } from "./lib/command.mjs";
+import { checkDatabaseVolumes } from "./lib/database-stack.mjs";
 
 const root = resolve(import.meta.dirname, "..");
 process.chdir(root);
@@ -92,6 +93,12 @@ async function main() {
     );
   } else if (operation === "up") {
     await setup();
+    const volumes = await run(
+      "docker",
+      ["volume", "ls", "--format", "{{.Name}}"],
+      { capture: true },
+    );
+    checkDatabaseVolumes(volumes.stdout.trim().split("\n"), project);
     await run("docker", [...compose, "up", "--detach", "--wait"], {
       env: await environment(),
     });

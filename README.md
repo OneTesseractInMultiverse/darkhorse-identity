@@ -31,7 +31,7 @@ make dev
 
 Open **https://localhost:8443**. Stop the foreground stack with Ctrl-C. Run `make https-check` in another terminal to validate the project CA and Rust route. See [development](docs/development.md) for trust, ports, and troubleshooting.
 
-For the optional database/bootstrap and Docker workflows, see [persistence](docs/persistence.md). `make test-postgres` and `make docker-smoke` use disposable infrastructure; ordinary unit tests remain service-free. Full coverage qualification remains open in [issue #2](https://github.com/OneTesseractInMultiverse/darkhorse-identity/issues/2).
+For the optional database/bootstrap and Docker workflows, see [persistence](docs/persistence.md). Local Compose and integration tests use [Percona Distribution for PostgreSQL](docs/percona.md); that guide also covers existing-volume migration. `make test-postgres` and `make docker-smoke` use disposable infrastructure; ordinary unit tests remain service-free. Full coverage qualification remains open in [issue #2](https://github.com/OneTesseractInMultiverse/darkhorse-identity/issues/2).
 
 Redis infrastructure, atomic shared attempt budgets and durable recovery are implemented in [issue #4](https://github.com/OneTesseractInMultiverse/darkhorse-identity/issues/4). See [Redis setup, enforcement and recovery](docs/redis.md). For the enabled password portal, follow the [login setup and security contract](docs/authentication.md), then run `make dev-login`. The default preview keeps login disabled. `make browser-install` and `make test-browser` provide disposable HTTPS browser integration tests.
 

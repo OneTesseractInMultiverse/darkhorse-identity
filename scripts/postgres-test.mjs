@@ -6,7 +6,7 @@ import { run } from "./lib/command.mjs";
 
 process.chdir(resolve(import.meta.dirname, ".."));
 const image =
-  "postgres:18.6@sha256:4ef4dbc939d61acea57712655ddb4b4ab27419c913f94cca0cd57cb3ea3c2280";
+  "percona/percona-distribution-postgresql:18.6@sha256:dae47360e8137cafc1e8d66f9a1be348f1405e3cf51daa383b94e6c277e6b256";
 const suffix = randomBytes(8).toString("hex");
 const database = `darkhorse-test-${suffix}`;
 const network = `darkhorse-net-${suffix}`;
@@ -24,7 +24,7 @@ const owned = [];
 async function ready() {
   for (let attempt = 0; attempt < 60; attempt++) {
     const result = await docker(
-      ["exec", database, "pg_isready", "-U", "postgres"],
+      ["exec", database, "pg_isready", "-h", "127.0.0.1", "-U", "postgres"],
       { acceptFailure: true },
     );
     if (result.code === 0) return;

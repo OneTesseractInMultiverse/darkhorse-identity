@@ -101,7 +101,7 @@ async function database(network) {
       "127.0.0.1::5432",
       "--env",
       "POSTGRES_PASSWORD",
-      "postgres:18.6@sha256:4ef4dbc939d61acea57712655ddb4b4ab27419c913f94cca0cd57cb3ea3c2280",
+      "percona/percona-distribution-postgresql:18.6@sha256:dae47360e8137cafc1e8d66f9a1be348f1405e3cf51daa383b94e6c277e6b256",
     ],
     { env: { ...process.env, POSTGRES_PASSWORD: secret } },
   );
@@ -109,9 +109,12 @@ async function database(network) {
   for (let i = 0; i < 60; i++) {
     if (
       (
-        await docker(["exec", name, "pg_isready", "-U", "postgres"], {
-          acceptFailure: true,
-        })
+        await docker(
+          ["exec", name, "pg_isready", "-h", "127.0.0.1", "-U", "postgres"],
+          {
+            acceptFailure: true,
+          },
+        )
       ).code === 0
     ) {
       available = true;
