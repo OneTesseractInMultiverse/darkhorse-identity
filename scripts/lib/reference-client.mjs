@@ -127,6 +127,7 @@ export function manage(
   token,
   hint = "access_token",
   extraHeaders = {},
+  agent,
 ) {
   requireValid(["introspect", "revoke"].includes(endpoint));
   const authorization = Buffer.from(
@@ -137,6 +138,7 @@ export function manage(
     ca,
     `/${endpoint}`,
     {
+      agent,
       method: "POST",
       headers: {
         authorization: `Basic ${authorization}`,
@@ -146,6 +148,9 @@ export function manage(
     },
     new URLSearchParams({ token, token_type_hint: hint }).toString(),
   );
+}
+export function health(origin, ca, agent) {
+  return send(origin, ca, "/health/live", { agent });
 }
 function send(origin, ca, path, options, body, discardResponse = false) {
   return new Promise((resolve, reject) => {

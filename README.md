@@ -37,6 +37,8 @@ Redis infrastructure, atomic shared attempt budgets and durable recovery are imp
 
 For opt-in code authorization and signing-key commands, see the [provider contract](docs/provider.md). `make provider-setup` and `make dev-provider` extend the prepared login environment; two-application SSO and [identity token checks](docs/token-checks.md) are exercised by `make test-browser`.
 
+For a reproducible release-build HTTPS workload, run `make benchmark` or `make benchmark-baseline`. See the [performance baseline](docs/performance.md) for raw reports, revocation checks, topology and measurement limits.
+
 ## Structure
 
 | Directory            | Responsibility                                                      |

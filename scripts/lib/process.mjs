@@ -11,7 +11,7 @@ export function startProcess({ command, args, env = process.env }) {
   });
   // Attach a handler immediately; supervisors still receive the original rejection.
   void done.catch(() => {});
-  return { done, stop: () => stopProcess(child, done) };
+  return { pid: child.pid, done, stop: () => stopProcess(child, done) };
 }
 
 async function stopProcess(child, done) {

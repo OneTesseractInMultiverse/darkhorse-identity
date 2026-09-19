@@ -260,3 +260,12 @@ test-provider: ## Test: isolated authorization, signing, code exchange and ident
 test-resource-introspection: ## Test: isolated resource credential lifecycle, transport and projections
 	cargo test --workspace --lib --locked --offline resource_servers
 	cargo test --workspace --lib --locked --offline token_http
+
+BENCH_PROFILE ?= smoke
+.PHONY: benchmark benchmark-baseline
+
+benchmark: build-web ## Performance: release HTTPS SSO/introspection baseline; disposable Docker services
+	BENCH_PROFILE="$(BENCH_PROFILE)" $(NODE) scripts/redis-test.mjs --benchmark
+
+benchmark-baseline: ## Performance: larger bounded baseline with eight resource clients
+	$(MAKE) benchmark BENCH_PROFILE=baseline

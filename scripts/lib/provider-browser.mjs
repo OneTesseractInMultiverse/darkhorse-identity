@@ -13,7 +13,7 @@ import {
 } from "./reference-client.mjs";
 import { verifyResourceChecks } from "./resource-checks-browser.mjs";
 import { verifyIdentityChecks } from "./identity-checks-browser.mjs";
-async function call(page, path, body) {
+export async function call(page, path, body) {
   return page.evaluate(
     async ({ path, body }) => {
       const response = await fetch(path, {

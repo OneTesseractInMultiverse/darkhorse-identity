@@ -49,7 +49,14 @@ async function ready(origin, ca) {
   }
   throw new Error("Browser test server did not start.");
 }
-export async function verifyBrowser(env, db, directory, command, docker) {
+export async function verifyBrowser(
+  env,
+  db,
+  directory,
+  command,
+  docker,
+  { profile = "debug", exercise = exerciseBrowser } = {},
+) {
   const port = await freePort();
   const tls = await tlsProxy(port, directory, command);
   const origin = `https://localhost:${tls.port}`;
@@ -58,6 +65,7 @@ export async function verifyBrowser(env, db, directory, command, docker) {
   const runtime = {
     ...runtimeEnvironment(env),
     DARKHORSE_DATABASE_URL: url.href,
+    DARKHORSE_DATABASE_POOL_SIZE: "5",
     DARKHORSE_HTTP_PORT: String(port),
     DARKHORSE_PUBLIC_ORIGIN: origin,
     DARKHORSE_LOGIN_ENABLED: "true",
@@ -67,7 +75,7 @@ export async function verifyBrowser(env, db, directory, command, docker) {
   };
   const executable = resolve(
     process.env.CARGO_TARGET_DIR ?? "target",
-    "debug/darkhorse-server",
+    `${profile}/darkhorse-server`,
   );
   const invoke = async (args, input, operator = false) => {
     const result = await command(executable, args, {
@@ -112,18 +120,21 @@ export async function verifyBrowser(env, db, directory, command, docker) {
         "-c",
         statement,
       ]);
-    await exerciseBrowser(
+    await exercise({
       browser,
       origin,
-      tls.ca,
+      ca: tls.ca,
       password,
       principal,
       invoke,
       runSql,
-    );
-    console.log(
-      "HTTPS Chromium login, rotation, reload, cookies, CSRF, logout, revocation and limiter failure checks passed.",
-    );
+      serverPid: server.pid,
+      db,
+      command,
+      docker,
+      env,
+      executable,
+    });
   } finally {
     await browser?.close();
     await server?.stop();
@@ -217,7 +228,7 @@ async function launchBrowser(directory) {
   });
 }
 
-async function exerciseBrowser(
+async function exerciseBrowser({
   browser,
   origin,
   ca,
@@ -225,7 +236,7 @@ async function exerciseBrowser(
   principal,
   invoke,
   runSql,
-) {
+}) {
   const context = await browser.newContext();
   const page = await context.newPage();
   const errors = [];
@@ -243,6 +254,9 @@ async function exerciseBrowser(
   await verifyLogoutAndRevocation(page, context, password, principal, invoke);
   assert.deepEqual(errors, []);
   assert.deepEqual(await page.evaluate(() => window.securityViolations), []);
+  console.log(
+    "HTTPS Chromium login, rotation, reload, cookies, CSRF, logout, revocation and limiter failure checks passed.",
+  );
   assert.equal(page.url(), `${origin}/`);
   await page.screenshot({
     path: resolve(".local/login-browser.png"),

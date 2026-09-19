@@ -132,41 +132,44 @@ async function database(network) {
     url: `postgres://postgres:${secret}@127.0.0.1:${port}/postgres`,
   };
 }
-async function hostChecks(env, db, directory) {
-  await command(
-    "cargo",
-    [
-      "test",
-      "-p",
-      "darkhorse-adapters",
-      "--features",
-      "redis-tests",
-      "--test",
-      "redis",
-      "--locked",
-      "--offline",
-    ],
-    { env },
-  );
-  await command(
-    "cargo",
-    [
-      "test",
-      "-p",
-      "darkhorse-adapters",
-      "--features",
-      "redis-tests",
-      "--test",
-      "limiter",
-      "--locked",
-      "--offline",
-      "--",
-      "--nocapture",
-    ],
-    { env },
-  );
+async function hostChecks(env, db, directory, benchmark = false) {
+  if (!benchmark) {
+    await command(
+      "cargo",
+      [
+        "test",
+        "-p",
+        "darkhorse-adapters",
+        "--features",
+        "redis-tests",
+        "--test",
+        "redis",
+        "--locked",
+        "--offline",
+      ],
+      { env },
+    );
+    await command(
+      "cargo",
+      [
+        "test",
+        "-p",
+        "darkhorse-adapters",
+        "--features",
+        "redis-tests",
+        "--test",
+        "limiter",
+        "--locked",
+        "--offline",
+        "--",
+        "--nocapture",
+      ],
+      { env },
+    );
+  }
   await command("cargo", [
     "build",
+    ...(benchmark ? ["--release"] : []),
     "-p",
     "darkhorse-server",
     "--locked",
@@ -174,7 +177,7 @@ async function hostChecks(env, db, directory) {
   ]);
   const executable = resolve(
     process.env.CARGO_TARGET_DIR ?? "target",
-    "debug/darkhorse-server",
+    `${benchmark ? "release" : "debug"}/darkhorse-server`,
   );
   const invoke = (operation, operator = false, acceptFailure = false) =>
     command(executable, [operation], {
@@ -191,9 +194,16 @@ async function hostChecks(env, db, directory) {
       acceptFailure,
     });
   await verifyLimiter(invoke, db);
-  if (process.env.DARKHORSE_TEST_BROWSER === "true") {
+  if (benchmark || process.env.DARKHORSE_TEST_BROWSER === "true") {
     const { verifyBrowser } = await import("./browser-test.mjs");
-    await verifyBrowser(env, db, directory, command, docker);
+    const options = benchmark
+      ? {
+          profile: "release",
+          exercise: (await import("./lib/benchmark-browser.mjs"))
+            .benchmarkBrowser,
+        }
+      : undefined;
+    await verifyBrowser(env, db, directory, command, docker, options);
   }
   return invoke("redis-status");
 }
@@ -304,8 +314,14 @@ async function imageChecks(tag, env, cache, limiter, db) {
 }
 
 async function main(args) {
+  const benchmark = args.length === 1 && args[0] === "--benchmark";
+  if (benchmark) {
+    const { benchmarkProfile } = await import("./lib/benchmark-model.mjs");
+    benchmarkProfile(process.env.BENCH_PROFILE ?? "smoke");
+  }
   if (
     args.length &&
+    !benchmark &&
     !(
       args.length === 2 &&
       args[0] === "--image" &&
@@ -313,7 +329,7 @@ async function main(args) {
       !args[1].startsWith("-")
     )
   )
-    throw new Error("Usage: redis-test.mjs [--image IMAGE]");
+    throw new Error("Usage: redis-test.mjs [--image IMAGE | --benchmark]");
   await mkdir(".local", { recursive: true, mode: 0o700 });
   const directory = await mkdtemp(resolve(".local/redis-test-"));
   try {
@@ -361,9 +377,10 @@ async function main(args) {
       DARKHORSE_TEST_REDIS_CACHE_CONTAINER: cache.name,
       DARKHORSE_TEST_REDIS_LIMITER_CONTAINER: limiter.name,
     };
-    const result = args.length
-      ? await imageChecks(args[1], env, cache, limiter, db)
-      : await hostChecks(env, db, directory);
+    const result =
+      args.length && !benchmark
+        ? await imageChecks(args[1], env, cache, limiter, db)
+        : await hostChecks(env, db, directory, benchmark);
     const status = JSON.parse(result.stdout);
     assert.equal(status.cache.connection, "reachable");
     assert.equal(status.limiter.connection, "reachable");
@@ -371,9 +388,11 @@ async function main(args) {
     for (const secret of secrets)
       assert.ok(!`${result.stdout}${result.stderr}`.includes(secret));
     console.log(
-      args.length
-        ? "Packaged Redis diagnostics passed; login integration remains separate."
-        : "Redis infrastructure, shared enforcement and password login integration passed.",
+      benchmark
+        ? "Release benchmark completed; reports saved under .local/benchmarks."
+        : args.length
+          ? "Packaged Redis diagnostics passed; login integration remains separate."
+          : "Redis infrastructure, shared enforcement and password login integration passed.",
     );
   } finally {
     for (const proxy of proxies.reverse()) await proxy.close();
