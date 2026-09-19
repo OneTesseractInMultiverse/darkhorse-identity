@@ -1,6 +1,6 @@
 import { classify, validateLoad } from "./benchmark-model.mjs";
 
-async function attempt(index, selection, perform, clock) {
+export async function attempt(index, selection, perform, clock) {
   const startMs = clock();
   let response;
   try {

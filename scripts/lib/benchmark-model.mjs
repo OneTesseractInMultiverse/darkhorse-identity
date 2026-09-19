@@ -4,7 +4,23 @@ export function benchmarkProfile(name) {
     return { name, requests: 128, clients: 4, concurrency: [1, 8, 32] };
   if (name === "baseline")
     return { name, requests: 2048, clients: 8, concurrency: [1, 8, 32, 64] };
-  throw new Error("Unknown benchmark profile; use smoke or baseline.");
+  if (["arrival-smoke", "arrival-baseline"].includes(name))
+    return {
+      name,
+      requests: 128,
+      clients: name === "arrival-smoke" ? 4 : 8,
+      arrivals: {
+        durationMs: name === "arrival-smoke" ? 2000 : 10000,
+        rates: name === "arrival-smoke" ? [200, 1200] : [200, 800, 1600],
+        noiseRate: 1200,
+        changeRate: 200,
+        maxInFlight: 128,
+        maxLatenessMs: 5,
+      },
+    };
+  throw new Error(
+    "Unknown benchmark profile; use smoke, baseline, arrival-smoke or arrival-baseline.",
+  );
 }
 export function classify(response, expected) {
   if (response.status === 0) return "transport_error";
@@ -34,7 +50,7 @@ export function classify(response, expected) {
     ? "authorized"
     : "violation";
 }
-function percentiles(values) {
+export function percentiles(values) {
   if (values.length === 0) return null;
   const sorted = [...values].sort((a, b) => a - b);
   const at = (p) => sorted[Math.ceil(p * sorted.length) - 1];
@@ -87,6 +103,7 @@ export function validateLoad(count, concurrency) {
 export function phaseSummary(name, concurrency, rows, wallMs, change) {
   return {
     name,
+    mode: "closed-loop",
     concurrency,
     ...summarize(rows, wallMs),
     change,

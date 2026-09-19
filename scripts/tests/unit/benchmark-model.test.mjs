@@ -12,6 +12,8 @@ test("benchmark profiles bound load and reject accidental unbounded settings", (
   assert.equal(benchmarkProfile("smoke").requests, 128);
   assert.equal(benchmarkProfile("baseline").requests, 2048);
   assert.throws(() => benchmarkProfile("production"), /profile/);
+  assert.equal(benchmarkProfile("arrival-smoke").arrivals.durationMs, 2000);
+  assert.equal(benchmarkProfile("arrival-baseline").clients, 8);
 });
 const expected = {
   active: true,

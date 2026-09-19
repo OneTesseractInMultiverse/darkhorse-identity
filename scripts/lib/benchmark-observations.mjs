@@ -110,7 +110,7 @@ export async function metadata({ command, docker, db, env, executable }) {
       "pool acquire waits",
       "SQL round trips and plans",
       "limiter incremental overhead",
-      "open-loop arrival saturation",
+      "multi-hour endurance and production arrival distributions",
       "sustained CPU/RSS peaks",
     ],
   };

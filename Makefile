@@ -269,3 +269,11 @@ benchmark: build-web ## Performance: release HTTPS SSO/introspection baseline; d
 
 benchmark-baseline: ## Performance: larger bounded baseline with eight resource clients
 	$(MAKE) benchmark BENCH_PROFILE=baseline
+
+.PHONY: benchmark-arrivals benchmark-arrivals-baseline
+
+benchmark-arrivals: ## Performance: short paced arrivals with bounded concurrency and missed-arrival reporting
+	$(MAKE) benchmark BENCH_PROFILE=arrival-smoke
+
+benchmark-arrivals-baseline: ## Performance: sustained paced arrivals and concurrent security changes
+	$(MAKE) benchmark BENCH_PROFILE=arrival-baseline

@@ -1,5 +1,7 @@
 import assert from "node:assert/strict";
 import { Agent } from "node:https";
+import { setTimeout as delay } from "node:timers/promises";
+import { measureArrivals } from "./benchmark-arrival-phase.mjs";
 import { mkdir, mkdtemp, writeFile, appendFile } from "node:fs/promises";
 import { resolve, join } from "node:path";
 import { call } from "./provider-browser.mjs";
@@ -119,7 +121,7 @@ async function recordPhase(state, name, rows, summary) {
   );
   await save(state);
   console.log(
-    `${name}: ${summary.attempts} attempts, authorized=${summary.outcomes.authorized}, unavailable=${summary.outcomes.unavailable}, violations=${summary.outcomes.violation}, p95=${summary.allLatencyMs.p95.toFixed(2)}ms`,
+    `${name}: ${summary.attempts} attempts, authorized=${summary.outcomes.authorized}, unavailable=${summary.outcomes.unavailable}, violations=${summary.outcomes.violation}, p95=${summary.allLatencyMs?.p95.toFixed(2) ?? "n/a"}ms`,
   );
   assert.equal(
     summary.outcomes.violation,
@@ -163,14 +165,7 @@ async function steady(state, agent) {
       agent,
     );
   }
-  const noise = (index) => {
-    if (index % 8 === 0)
-      return { client: "health", epoch: "steady", expected: { status: 200 } };
-    const selected = choose(index);
-    return index % 4 === 0
-      ? selected
-      : { ...selected, invalidSecret: true, expected: { status: 401 } };
-  };
+  const noise = noisySelection(choose);
   await phase(
     state,
     "noisy-invalid-client",
@@ -180,7 +175,17 @@ async function steady(state, agent) {
     agent,
   );
 }
-async function permissionReduction(state, agent) {
+function noisySelection(choose) {
+  return (index) => {
+    if (index % 8 === 0)
+      return { client: "health", epoch: "steady", expected: { status: 200 } };
+    const selected = choose(index);
+    return index % 4 === 0
+      ? selected
+      : { ...selected, invalidSecret: true, expected: { status: 401 } };
+  };
+}
+async function permissionReduction(state, agent, measure) {
   const { options, fixtures, profile } = state;
   let epoch = "overlapping";
   const choose = () => ({
@@ -193,7 +198,7 @@ async function permissionReduction(state, agent) {
         : {}),
     },
   });
-  await phase(
+  await measure(
     state,
     "permission-reduction-concurrent",
     profile.requests,
@@ -220,7 +225,7 @@ async function permissionReduction(state, agent) {
     "No successful post-commit permission checks.",
   );
 }
-async function revocation(state, agent) {
+async function revocation(state, agent, measure) {
   const { options, fixtures, profile } = state;
   const second = fixtures[1];
   let epoch = "overlapping";
@@ -232,7 +237,7 @@ async function revocation(state, agent) {
         ? { active: false }
         : { ...expectation(options, second), allowInactive: true },
   });
-  await phase(
+  await measure(
     state,
     "revocation-concurrent",
     profile.requests,
@@ -268,9 +273,9 @@ async function revocation(state, agent) {
     "No successful post-commit revocation checks.",
   );
 }
-async function changes(state, agent) {
-  await permissionReduction(state, agent);
-  await revocation(state, agent);
+async function changes(state, agent, measure = phase) {
+  await permissionReduction(state, agent, measure);
+  await revocation(state, agent, measure);
   await phase(
     state,
     "unaffected-resource",
@@ -279,6 +284,48 @@ async function changes(state, agent) {
     () => selection(state.options, state.fixtures, 2),
     agent,
   );
+}
+async function pacedPhase(state, name, select, agent, rate, change) {
+  const settings = { ...state.profile.arrivals, rate };
+  const { rows, summary } = await measureArrivals({
+    name,
+    settings,
+    change,
+    clock: () => performance.now() - state.started,
+    sleep: delay,
+    select,
+    perform: (selected) =>
+      request(state.options, state.fixtures, agent, selected),
+  });
+  await recordPhase(state, name, rows, summary);
+  console.log(
+    `  scheduled=${summary.scheduled}, driver-late=${summary.generatorDrops.late}, driver-full=${summary.generatorDrops.full}, authorized scheduled p95=${summary.authorizedScheduledLatencyMs?.p95.toFixed(2) ?? "n/a"}ms`,
+  );
+  return summary;
+}
+async function arrivalWorkloads(state, agent) {
+  const { options, fixtures, profile } = state;
+  const choose = (index) => selection(options, fixtures, index);
+  await phase(state, "warmup", 64, 8, choose, agent);
+  for (const rate of profile.arrivals.rates)
+    await pacedPhase(state, `arrival-diverse-r${rate}`, choose, agent, rate);
+  await pacedPhase(
+    state,
+    "arrival-noisy-invalid-client",
+    noisySelection(choose),
+    agent,
+    profile.arrivals.noiseRate,
+  );
+  const measure = (state, name, _count, _concurrency, select, agent, change) =>
+    pacedPhase(
+      state,
+      `arrival-${name}`,
+      select,
+      agent,
+      profile.arrivals.changeRate,
+      change,
+    );
+  await changes(state, agent, measure);
 }
 async function save(state) {
   await writeFile(
@@ -292,7 +339,7 @@ export async function benchmarkBrowser(options) {
   await mkdir(resolve(".local/benchmarks"), { recursive: true, mode: 0o700 });
   const directory = await mkdtemp(resolve(".local/benchmarks/run-"));
   const report = {
-    schema: 1,
+    schema: 2,
     status: "incomplete",
     timestamp: new Date().toISOString(),
     profile,
@@ -325,8 +372,11 @@ export async function benchmarkBrowser(options) {
     state.fixtures = provisioned.fixtures;
     report.sso = provisioned.sso;
     report.before = await snapshot(options);
-    await steady(state, agent);
-    await changes(state, agent);
+    if (profile.arrivals) await arrivalWorkloads(state, agent);
+    else {
+      await steady(state, agent);
+      await changes(state, agent);
+    }
     report.after = await snapshot(options);
     report.status = "passed";
   } finally {
