@@ -773,3 +773,58 @@ async fn expired_and_not_yet_valid_resource_tokens_never_authorize() {
         db.store.close().await;
     }
 }
+
+#[tokio::test]
+async fn bounded_projection_decodes_sparse_roles_at_capacity_without_expanding_the_ceiling() {
+    let (db, secret, token) = fixture().await;
+    sqlx::raw_sql("INSERT INTO capabilities(id,permission_key,meaning) SELECT lpad(to_hex(i),32,'0')::uuid,'bounded-'||i,'test' FROM generate_series(1000,1253) AS i;
+        INSERT INTO capability_applications SELECT '00000000-0000-0000-0000-000000000010',id FROM capabilities WHERE permission_key LIKE 'bounded-%';
+        INSERT INTO resource_capabilities SELECT '00000000-0000-0000-0000-000000000010','00000000-0000-0000-0000-000000000030',id FROM capabilities WHERE permission_key LIKE 'bounded-%';
+        INSERT INTO roles(id,name) SELECT lpad(to_hex(i),32,'0')::uuid,'sparse' FROM generate_series(2000,2062) AS i;
+        INSERT INTO role_applications SELECT '00000000-0000-0000-0000-000000000010',id FROM roles WHERE name='sparse';
+        INSERT INTO principal_roles SELECT '00000000-0000-0000-0000-000000000001','00000000-0000-0000-0000-000000000010',id FROM roles WHERE name='sparse';
+        INSERT INTO role_capabilities SELECT '00000000-0000-0000-0000-000000000080',id FROM capabilities WHERE permission_key LIKE 'bounded-%';")
+        .execute(&db.pool).await.unwrap();
+    // 256 live capabilities and 64 roles, including empty and unequal bindings.
+    let result = db
+        .store
+        .introspect_resource(probe(&secret, Some(token)), ISSUER)
+        .await
+        .unwrap()
+        .unwrap();
+    assert_eq!(
+        result.capabilities,
+        std::collections::BTreeSet::from([
+            CapabilityId::from_u128(0x70).unwrap(),
+            CapabilityId::from_u128(0x71).unwrap()
+        ])
+    );
+    sqlx::query(
+        "UPDATE capabilities SET retired=true WHERE id='00000000-0000-0000-0000-000000000071'",
+    )
+    .execute(&db.pool)
+    .await
+    .unwrap();
+    let result = db
+        .store
+        .introspect_resource(probe(&secret, Some(token)), ISSUER)
+        .await
+        .unwrap()
+        .unwrap();
+    assert_eq!(
+        result.capabilities,
+        std::collections::BTreeSet::from([CapabilityId::from_u128(0x70).unwrap()])
+    );
+    sqlx::query("DELETE FROM principal_roles")
+        .execute(&db.pool)
+        .await
+        .unwrap();
+    assert!(
+        db.store
+            .introspect_resource(probe(&secret, Some(token)), ISSUER)
+            .await
+            .unwrap()
+            .is_none()
+    );
+    db.store.close().await;
+}
