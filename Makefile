@@ -323,3 +323,8 @@ test-invitations: ## Test: isolated invitation policy, transport and acceptance 
 	cargo test --workspace --lib --locked --offline invitation
 	$(WEB) test:unit invitation
 	$(WEB) test:unit InvitationPanel
+
+.PHONY: test-directory
+test-directory: ## Test: isolated administrator directory policy, HTTP and component contracts
+	cargo test --workspace --lib --locked --offline admin_directory
+	$(WEB) test:unit admin

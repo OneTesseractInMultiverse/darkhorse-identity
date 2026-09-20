@@ -2,6 +2,15 @@ use super::*;
 use darkhorse_domain::AccountStatus;
 
 #[test]
+fn admin_directory_translates_bounded_filters_and_literal_prefixes() {
+    let query = parse_admin("status=active&limit=25&search=Ada%20Lovelace").unwrap();
+    assert_eq!(query.status, Some(AccountStatus::Active));
+    assert_eq!(query.search, "Ada Lovelace");
+    assert_eq!(query.limit, 25);
+    assert!(query.after.is_none());
+}
+
+#[test]
 fn defaults_are_bounded() {
     assert_eq!(
         parse("").unwrap(),

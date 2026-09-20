@@ -85,13 +85,17 @@ pub async fn runtime(
         darkhorse_adapters::sessions_http::router(store.clone(), settings.public_origin.clone());
     let (email_router, email) = email_runtime(email, &store, settings, passwords).await?;
     let registration = darkhorse_application::registration::Service {
-        store,
+        store: store.clone(),
         entropy: OsRegistrationEntropy,
     };
     Ok(Runtime {
         maintenance,
         email,
         router: authentication_http::router(service, settings.public_origin.clone())
+            .merge(darkhorse_adapters::admin_directory_http::router(
+                store,
+                settings.public_origin.clone(),
+            ))
             .merge(provider)
             .merge(session_management)
             .merge(email_router)

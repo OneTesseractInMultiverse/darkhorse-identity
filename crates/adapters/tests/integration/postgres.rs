@@ -10,6 +10,7 @@ use darkhorse_domain::{
 };
 use sqlx::{PgPool, postgres::PgPoolOptions};
 use uuid::Uuid;
+mod admin_directory;
 mod authentication;
 mod refresh;
 mod registration;

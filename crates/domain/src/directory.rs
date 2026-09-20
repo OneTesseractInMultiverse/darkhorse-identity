@@ -76,7 +76,7 @@ fn valid_domain_label(label: &str) -> bool {
             .all(|c| c.is_ascii_alphanumeric() || c == b'-')
 }
 
-fn validate_name(value: &str) -> Result<String, DirectoryError> {
+pub(crate) fn validate_name(value: &str) -> Result<String, DirectoryError> {
     let value = value.trim();
     if value.is_empty() || value.chars().count() > 100 || value.chars().any(char::is_control) {
         return Err(DirectoryError::Name);

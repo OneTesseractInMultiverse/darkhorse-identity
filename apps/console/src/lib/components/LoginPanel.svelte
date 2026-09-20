@@ -67,8 +67,10 @@
 			<h1 id="login-title">Welcome, {account.name}.</h1>
 			<p class="intro">You're signed in to Darkhorse.</p>
 			{#if showSecurityLink}<a
-					href={resolve('/security/sessions')}
-					class="text-primary underline underline-offset-4">Manage sessions</a
+					href={resolve('/console/users')}
+					class="mb-4 block text-primary underline underline-offset-4">Open console</a
+				><a href={resolve('/security/sessions')} class="text-primary underline underline-offset-4"
+					>Manage sessions</a
 				>
 				<a href={resolve('/security/email')} class="ml-4 text-primary underline underline-offset-4"
 					>Verify email</a

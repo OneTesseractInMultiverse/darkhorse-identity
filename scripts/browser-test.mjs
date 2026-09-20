@@ -15,6 +15,7 @@ import { verifyRegistration } from "./lib/registration-browser.mjs";
 import { verificationMailbox } from "./lib/email-test-smtp.mjs";
 import { verifyEmail } from "./lib/email-verification-browser.mjs";
 import { verifyInvitations } from "./lib/invitations-browser.mjs";
+import { verifyDirectory } from "./lib/admin-directory-browser.mjs";
 import { verifySessionManagement } from "./lib/sessions-browser.mjs";
 
 async function freePort() {
@@ -300,6 +301,7 @@ async function exerciseBrowser({
   await verifyRotation(page, context, origin, ca, password, initial);
   await verifyRegistration(page, principal);
   await verifyProvider(page, context, origin, principal, ca, runSql);
+  await verifyDirectory(page, origin, principal, runSql);
   await verifyEmail(page, origin, mailbox);
   await verifyInvitations(browser, page, origin, mailbox);
   await verifySessionManagement(browser, page, origin, password, invoke, ca);

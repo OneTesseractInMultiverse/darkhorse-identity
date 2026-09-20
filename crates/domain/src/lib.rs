@@ -1,5 +1,6 @@
 //! Infrastructure-independent identity types and computations.
 
+pub mod admin_directory;
 pub mod authentication;
 pub mod authorization;
 pub mod directory;

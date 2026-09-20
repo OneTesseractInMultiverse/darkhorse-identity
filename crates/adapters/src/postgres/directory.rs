@@ -33,26 +33,35 @@ pub(super) async fn change(
         .fetch_one(&mut *tx)
         .await
         .map_err(unavailable)?;
-    let current = locked_account(&mut tx, id).await?;
+    let result = change_locked(&mut tx, id, expected_revision, action).await?;
+    tx.commit().await.map_err(unavailable)?;
+    Ok(result)
+}
+
+/// The caller owns the transaction and holds the exclusive security fence.
+pub(super) async fn change_locked(
+    tx: &mut Transaction<'_, Postgres>,
+    id: PrincipalId,
+    expected_revision: u64,
+    action: AccountAction,
+) -> Result<Option<AccountChange>, DirectoryFailure> {
+    let current = locked_account(tx, id).await?;
     if current.revision != expected_revision {
         return Err(DirectoryFailure::Conflict);
     }
     let administrators: i64 = sqlx::query_scalar("SELECT count(*) FROM eligible_administrators")
-        .fetch_one(&mut *tx)
+        .fetch_one(&mut **tx)
         .await
         .map_err(unavailable)?;
     let snapshot = snapshot(&current, administrators);
     let change = plan_change(snapshot, action).map_err(DirectoryFailure::Policy)?;
     if let Some(change) = change {
-        persist(&mut tx, id, change, action)
-            .await
-            .map_err(unavailable)?;
+        persist(tx, id, change, action).await.map_err(unavailable)?;
     }
-    tx.commit().await.map_err(unavailable)?;
     Ok(change)
 }
 
-async fn locked_account(
+pub(super) async fn locked_account(
     tx: &mut Transaction<'_, Postgres>,
     id: PrincipalId,
 ) -> Result<AccountRecord, DirectoryFailure> {

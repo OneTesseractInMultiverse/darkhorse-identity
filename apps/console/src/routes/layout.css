@@ -255,3 +255,429 @@ footer {
 	line-height: 1.6;
 	margin-top: 20px;
 }
+
+/* Shared administration surfaces use the same semantic palette as the portal. */
+:root {
+	--console-surface: #101813e8;
+	--console-raised: #19251ddd;
+	--console-line: #96b8a126;
+	--console-shadow: 0 24px 80px #0005;
+}
+.console-shell {
+	min-height: 100svh;
+	display: grid;
+	grid-template-columns: 224px minmax(0, 1fr);
+	grid-template-rows: 82px 1fr;
+	background:
+		radial-gradient(ellipse at 90% 0%, #28413345, transparent 65%), var(--color-background);
+}
+.console-topbar {
+	grid-column: 1 / -1;
+	display: flex;
+	align-items: center;
+	gap: 32px;
+	padding: 20px 32px;
+	border-bottom: 1px solid var(--console-line);
+	background: var(--console-surface);
+	backdrop-filter: blur(24px);
+}
+.console-topbar img {
+	width: 196px;
+	height: auto;
+	display: block;
+}
+.console-edition {
+	flex: 1;
+	font:
+		10px ui-monospace,
+		monospace;
+	letter-spacing: 0.14em;
+	color: var(--color-muted-foreground);
+}
+.console-sidebar {
+	padding: 36px 20px 24px;
+	border-right: 1px solid var(--console-line);
+	display: flex;
+	flex-direction: column;
+	gap: 12px;
+	background: #0d1511aa;
+}
+.console-sidebar .eyebrow {
+	margin: 0 12px;
+	font-size: 10px;
+}
+.console-sidebar nav {
+	display: grid;
+	gap: 6px;
+}
+.console-sidebar nav a {
+	padding: 12px;
+	border: 1px solid transparent;
+	border-radius: 10px;
+	color: var(--color-muted-foreground);
+	font-size: 13px;
+	text-decoration: none;
+}
+.console-sidebar nav a:hover {
+	background: var(--color-muted);
+	color: var(--color-foreground);
+}
+.console-sidebar nav a[aria-current] {
+	color: var(--color-primary);
+	border-color: #91e4b42e;
+	background: #91e4b40b;
+}
+.console-sidebar nav a span {
+	margin-right: 10px;
+	font:
+		10px ui-monospace,
+		monospace;
+}
+.console-sidebar .sidebar-section {
+	margin-top: 32px;
+}
+.sidebar-signature {
+	margin: auto 12px 0;
+	padding-top: 48px;
+	color: var(--color-muted-foreground);
+	font:
+		10px/1.8 ui-monospace,
+		monospace;
+	letter-spacing: 0.07em;
+}
+.sidebar-signature span {
+	font-size: 8px;
+	color: #647b6d;
+}
+main.console-content {
+	display: flex;
+	flex-direction: column;
+	align-items: stretch;
+	justify-content: flex-start;
+	align-content: start;
+	min-width: 0;
+	max-width: 1440px;
+	justify-self: center;
+	padding: 44px 40px;
+}
+.console-content h1 {
+	font-size: clamp(30px, 4vw, 44px);
+	letter-spacing: -0.04em;
+	margin: 12px 0;
+}
+.directory-heading {
+	display: flex;
+	justify-content: space-between;
+	align-items: center;
+	flex-wrap: wrap;
+	gap: 16px;
+	margin-bottom: 32px;
+}
+.muted {
+	color: var(--color-muted-foreground);
+	line-height: 1.65;
+	font-size: 14px;
+}
+.admin-link {
+	color: var(--color-primary);
+	font-size: 13px;
+	text-decoration: underline;
+	text-underline-offset: 4px;
+}
+.directory-toolbar {
+	display: flex;
+	gap: 16px;
+	align-items: end;
+	margin: 24px 0;
+}
+.directory-toolbar > div {
+	display: grid;
+	gap: 8px;
+}
+.directory-toolbar .search-field {
+	flex: 1;
+}
+.directory-toolbar label,
+.admin-form label {
+	font-size: 12px;
+	color: var(--color-muted-foreground);
+}
+.directory-toolbar input,
+.directory-toolbar select,
+.admin-form input:not([type='checkbox']),
+.admin-form select {
+	width: 100%;
+	min-height: 42px;
+	padding: 10px 12px;
+	border-radius: 9px;
+	border: 1px solid var(--color-border);
+	background: #0a120e;
+	color: var(--color-foreground);
+	font: inherit;
+	font-size: 14px;
+}
+.directory-toolbar button {
+	min-height: 42px;
+	padding-inline: 24px;
+}
+.console-shell input:focus-visible,
+.console-shell select:focus-visible,
+.admin-modal input:focus-visible,
+.admin-modal select:focus-visible,
+.directory-table:focus-visible {
+	outline: 2px solid var(--color-ring);
+	outline-offset: 3px;
+}
+.directory-table {
+	overflow-x: auto;
+	border: 1px solid var(--console-line);
+	border-radius: 16px;
+	background: linear-gradient(135deg, #19251dc4, #101813ef);
+	box-shadow: var(--console-shadow);
+}
+.directory-table table {
+	width: 100%;
+	min-width: 760px;
+	border-collapse: collapse;
+	text-align: left;
+}
+.directory-table th {
+	font:
+		10px ui-monospace,
+		monospace;
+	letter-spacing: 0.06em;
+	text-transform: uppercase;
+	color: var(--color-muted-foreground);
+	padding: 18px 20px;
+	background: #07110a40;
+}
+.directory-table td {
+	padding: 20px;
+	border-top: 1px solid var(--console-line);
+	font-size: 13px;
+	vertical-align: middle;
+}
+.directory-table strong {
+	font-size: 14px;
+	font-weight: 500;
+}
+.directory-table tr:hover td {
+	background: #91e4b403;
+}
+.user-email {
+	display: block;
+	margin-top: 5px;
+	color: var(--color-muted-foreground);
+	overflow-wrap: anywhere;
+	max-width: 320px;
+}
+.status-badge {
+	display: inline-block;
+	border: 1px solid #91e4b426;
+	border-radius: 20px;
+	padding: 5px 9px;
+	color: var(--color-primary);
+	background: #91e4b408;
+	font-size: 11px;
+}
+.status-badge.inactive {
+	color: var(--color-muted-foreground);
+	border-color: var(--color-border);
+	background: #ffffff04;
+}
+.row-actions {
+	display: flex;
+	gap: 6px;
+}
+.directory-pagination {
+	display: flex;
+	align-items: center;
+	justify-content: space-between;
+	flex-wrap: wrap;
+	gap: 12px;
+	padding: 20px 0;
+	color: var(--color-muted-foreground);
+	font-size: 12px;
+}
+.directory-pagination > div {
+	display: flex;
+	gap: 8px;
+}
+.directory-empty {
+	padding: 32px;
+	text-align: center;
+	color: var(--color-muted-foreground);
+	font-size: 14px;
+}
+.admin-error,
+.admin-success {
+	padding: 14px 18px;
+	border: 1px solid #ff969633;
+	border-radius: 10px;
+	background: #ff969608;
+	color: var(--color-destructive);
+	font-size: 14px;
+	line-height: 1.6;
+}
+.admin-success {
+	border-color: #91e4b426;
+	color: var(--color-primary);
+	background: #91e4b408;
+}
+.admin-modal {
+	position: fixed;
+	inset: 0;
+	margin: auto;
+	width: min(560px, calc(100% - 32px));
+	max-height: calc(100svh - 48px);
+	overflow-y: auto;
+	padding: 28px;
+	border: 1px solid #96b8a14a;
+	border-radius: 20px;
+	background: var(--console-surface);
+	color: var(--color-foreground);
+	box-shadow: var(--console-shadow);
+	backdrop-filter: blur(32px);
+}
+.admin-modal::backdrop {
+	background: #020705b8;
+	backdrop-filter: blur(6px);
+}
+.modal-header {
+	margin-bottom: 24px;
+}
+.modal-header h2 {
+	font-size: 26px;
+	font-weight: 500;
+	letter-spacing: -0.025em;
+	margin: 12px 0;
+}
+.modal-actions {
+	display: flex;
+	justify-content: flex-end;
+	gap: 10px;
+	margin-top: 28px;
+}
+.modal-actions button {
+	min-height: 40px;
+	padding-inline: 16px;
+}
+.profile-fields {
+	margin: 0;
+}
+.profile-fields > div {
+	padding: 14px 0;
+	border-bottom: 1px solid var(--console-line);
+}
+.profile-fields dt {
+	font-size: 11px;
+	color: var(--color-muted-foreground);
+	margin-bottom: 6px;
+}
+.profile-fields dd {
+	margin: 0;
+	font-size: 15px;
+	overflow-wrap: anywhere;
+}
+.admin-form {
+	display: grid;
+	gap: 10px;
+}
+.admin-form .checkbox-field {
+	display: flex;
+	gap: 10px;
+	align-items: center;
+	margin-top: 16px;
+	font-size: 14px;
+	color: var(--color-foreground);
+}
+.admin-form input[type='checkbox'] {
+	width: 18px;
+	height: 18px;
+	accent-color: var(--color-primary);
+}
+.skip-link {
+	position: fixed;
+	top: -100px;
+	left: 24px;
+	z-index: 100;
+	padding: 12px;
+	background: var(--color-primary);
+	color: var(--color-primary-foreground);
+	border-radius: 6px;
+}
+.skip-link:focus {
+	top: 12px;
+}
+@media (max-width: 1000px) {
+	main.console-content {
+		padding: 32px 24px;
+	}
+	.console-shell {
+		grid-template-columns: 190px minmax(0, 1fr);
+	}
+	.console-sidebar {
+		padding-inline: 12px;
+	}
+}
+@media (max-width: 720px) {
+	.console-shell {
+		display: block;
+	}
+	.console-topbar {
+		padding: 20px;
+		gap: 16px;
+		justify-content: space-between;
+	}
+	.console-topbar img {
+		width: 158px;
+	}
+	.console-edition {
+		display: none;
+	}
+	.console-sidebar {
+		padding: 14px 20px;
+		border-right: none;
+		border-bottom: 1px solid var(--console-line);
+	}
+	.console-sidebar .eyebrow,
+	.sidebar-signature {
+		display: none;
+	}
+	.console-sidebar nav {
+		display: flex;
+		flex-wrap: wrap;
+	}
+	.console-sidebar nav a {
+		padding: 8px;
+	}
+	main.console-content {
+		padding: 28px 20px;
+	}
+	.directory-toolbar {
+		flex-wrap: wrap;
+		gap: 12px;
+	}
+	.directory-toolbar .search-field {
+		flex-basis: 100%;
+	}
+	.directory-toolbar > div:not(.search-field) {
+		flex: 1;
+	}
+	.directory-pagination > div {
+		margin-left: auto;
+	}
+	.admin-modal {
+		padding: 22px;
+	}
+}
+@media (prefers-reduced-transparency: reduce) {
+	.console-topbar,
+	.admin-modal {
+		background: #101813;
+		backdrop-filter: none;
+	}
+	.admin-modal::backdrop {
+		backdrop-filter: none;
+	}
+}

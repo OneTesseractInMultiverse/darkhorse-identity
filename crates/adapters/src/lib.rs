@@ -1,5 +1,6 @@
 //! Infrastructure adapters for configuration, HTTP, and directory query syntax.
 
+pub mod admin_directory_http;
 pub mod authentication_configuration;
 pub mod authentication_http;
 pub mod configuration;

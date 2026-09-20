@@ -32,11 +32,11 @@ The setup commands preserve existing secrets. Do not delete a bound login key to
 reset login limits.
 
 Open **https://localhost:8443**. The portal currently provides password sign-in and
-self-service session management. Email verification and invitation acceptance
-require the separate [email configuration](email-verification.md). The full
-management console with user/application directory pages is tracked in
-[issue #15](https://github.com/OneTesseractInMultiverse/darkhorse-identity/issues/15)
-and is not available yet.
+self-service session management. Choose **Open console** after administrator
+sign-in to open the [user directory](console.md) at `/console/users`. Email
+verification and invitation acceptance require the separate
+[email configuration](email-verification.md). Application catalog management
+remains tracked in [issue #16](https://github.com/OneTesseractInMultiverse/darkhorse-identity/issues/16).
 
 For subsequent starts, run `make db-up redis-up`, inspect `make limiter-status`,
 then run `make dev-login` while the limiter is active. A changed Redis generation
