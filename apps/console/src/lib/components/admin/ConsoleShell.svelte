@@ -47,6 +47,7 @@
 		</nav>
 		<p class="eyebrow sidebar-section">MY SECURITY</p>
 		<nav aria-label="Account security">
+			<a href={resolve('/security/keys')}>Personal API keys</a>
 			<a href={resolve('/security/sessions')}>Sessions</a><a href={resolve('/security/email')}
 				>Email verification</a
 			>

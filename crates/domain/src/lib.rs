@@ -28,3 +28,4 @@ pub mod sessions;
 
 pub mod email_delivery;
 pub mod invitations;
+pub mod personal_keys;

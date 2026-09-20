@@ -12,6 +12,7 @@ use sqlx::{PgPool, postgres::PgPoolOptions};
 use uuid::Uuid;
 mod admin_directory;
 mod authentication;
+mod personal_keys;
 mod refresh;
 mod registration;
 mod relying_party_sessions;

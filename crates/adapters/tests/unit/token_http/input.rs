@@ -268,6 +268,15 @@ fn introspection_credentials_have_an_explicit_purpose_and_cannot_authenticate_to
         _ => panic!("expected resource credential"),
     }
     assert!(basic(&headers).is_err());
+    for value in [format!("dk_{}", "cd".repeat(32)), "dk_invalid".into()] {
+        let Inquiry::PersonalKey(probe) =
+            introspection(&headers, format!("token={value}").as_bytes()).unwrap()
+        else {
+            panic!("personal key")
+        };
+        assert_eq!(probe.key, crate::personal_keys::digest(&value).ok());
+        assert_eq!(probe.resource.as_u128(), 0x30);
+    }
     assert!(management(&headers, b"token=unknown").is_err());
     assert!(introspection(&headers, b"token=unknown&token=duplicate").is_err());
     assert_ne!(

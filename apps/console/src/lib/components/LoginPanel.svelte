@@ -74,6 +74,9 @@
 				>
 				<a href={resolve('/security/email')} class="ml-4 text-primary underline underline-offset-4"
 					>Verify email</a
+				><a
+					href={resolve('/security/keys')}
+					class="mt-4 block text-primary underline underline-offset-4">Manage API keys</a
 				>{/if}
 			{#if signOut}<Button onclick={logout} disabled={pending} class="mt-6 h-11 w-full font-mono"
 					>{pending ? 'Signing out…' : 'Sign out'}</Button

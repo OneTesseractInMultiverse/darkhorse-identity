@@ -38,3 +38,5 @@ pub mod email_verification_http;
 pub mod sessions_http;
 
 pub mod invitations_http;
+pub mod personal_keys;
+pub mod personal_keys_http;

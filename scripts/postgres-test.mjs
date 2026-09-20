@@ -193,15 +193,16 @@ async function imageChecks(tag) {
   assert.ok(healthy, "image must become healthy");
   const page = await fetch(`http://127.0.0.1:${port}/`);
   assert.match(await page.text(), /Darkhorse/);
-  for (const catalog of [
-    "applications",
-    "clients",
-    "resources",
-    "scopes",
-    "roles",
-    "capabilities",
+  for (const route of [
+    "console/applications",
+    "console/clients",
+    "console/resources",
+    "console/scopes",
+    "console/roles",
+    "console/capabilities",
+    "security/keys",
   ]) {
-    const response = await fetch(`http://127.0.0.1:${port}/console/${catalog}`);
+    const response = await fetch(`http://127.0.0.1:${port}/${route}`);
     assert.equal(response.status, 200);
     assert.match(response.headers.get("content-type"), /text\/html/);
     assert.match(await response.text(), /Darkhorse/);

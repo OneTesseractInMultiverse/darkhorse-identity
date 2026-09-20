@@ -4,7 +4,7 @@ use super::*;
 use darkhorse_application::resource_servers::{ActiveResourceToken, Probe, ResourceTokenStore};
 use darkhorse_domain::registration::secret_live;
 use sqlx::Acquire;
-struct Authentication {
+pub(in crate::postgres) struct Authentication {
     created: u64,
     expires: Option<u64>,
 }
@@ -48,13 +48,19 @@ async fn introspect(
     Ok(active)
 }
 
-fn valid_authentication(authentication: &Authentication, now: u64) -> Result<(), Error> {
+pub(in crate::postgres) fn valid_authentication(
+    authentication: &Authentication,
+    now: u64,
+) -> Result<(), Error> {
     if !secret_live(authentication.created, authentication.expires, false, now) {
         return Err(Error::InvalidClient);
     }
     Ok(())
 }
-async fn authenticate(tx: &mut Tx<'_>, input: &Probe) -> Result<Authentication, Error> {
+pub(in crate::postgres) async fn authenticate(
+    tx: &mut Tx<'_>,
+    input: &Probe,
+) -> Result<Authentication, Error> {
     let row=sqlx::query("SELECT s.created_ms,s.expires_ms FROM resource_introspection r JOIN applications a ON a.id=r.application_id JOIN resource_introspection_secrets s ON s.resource_id=r.resource_id WHERE r.resource_id=$1 AND s.verifier=$2 AND r.active AND a.active AND NOT s.retired")
         .bind(Uuid::from_u128(input.resource.as_u128())).bind(input.secret.as_slice()).fetch_optional(&mut **tx).await.map_err(storage)?.ok_or(Error::InvalidClient)?;
     let auth = Authentication {

@@ -1,6 +1,43 @@
 use super::*;
 use darkhorse_domain::identity::{ClientId, PrincipalId};
 #[test]
+fn personal_keys_disclose_resource_authority_without_oauth_identity_or_fake_expiration() {
+    use darkhorse_domain::identity::{CapabilityId, CredentialId, ResourceId};
+    assert_eq!(
+        key_response(None, "https://issuer.example"),
+        serde_json::json!({"active":false})
+    );
+    for expires in [None, Some(1300)] {
+        let response = key_response(
+            Some(darkhorse_application::personal_keys::Active {
+                credential: CredentialId::from_u128(4).unwrap(),
+                subject: PrincipalId::from_u128(1).unwrap(),
+                resource: ResourceId::from_u128(2).unwrap(),
+                capabilities: [CapabilityId::from_u128(3).unwrap()].into(),
+                issued: 1000,
+                expires,
+            }),
+            "https://issuer.example",
+        );
+        assert_eq!(
+            response.get("exp").and_then(serde_json::Value::as_u64),
+            expires
+        );
+        for omitted in [
+            "client_id",
+            "scope",
+            "email",
+            "name",
+            "secret",
+            "credential_id",
+        ] {
+            assert!(response.get(omitted).is_none());
+        }
+        assert_eq!(response["credential_type"], "personal_key");
+        assert_eq!(response["capabilities"].as_array().unwrap().len(), 1);
+    }
+}
+#[test]
 fn refresh_responses_omit_id_tokens_and_disabled_clients_receive_no_refresh() {
     let fields = token_fields(Tokens {
         access: "access".into(),

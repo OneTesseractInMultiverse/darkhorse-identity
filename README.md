@@ -55,7 +55,7 @@ For a reproducible release-build HTTPS workload, run `make benchmark` or `make b
 
 Tests mirror source paths under `tests/unit`. Rust includes private unit modules from that parallel tree. Framework and serialization types remain outside domain/application contracts. See [engineering](docs/engineering.md) for the implementation rules and [dependencies](docs/dependencies.md) for library boundaries.
 
-The [resource issuance contract](docs/resource-issuance.md) describes persisted role assignments and bounded policy loading. The [resource introspection contract](docs/resource-introspection.md) covers dedicated resource credentials and live capability checks. The [authorization contract](docs/authorization.md) explains application isolation, roles, scopes, credential ceilings, and the authoritative-state requirements for future adapters. Run `make test-authorization` for its self-contained tests.
+The [resource issuance contract](docs/resource-issuance.md) describes persisted role assignments and bounded policy loading. The [resource introspection contract](docs/resource-introspection.md) covers dedicated resource credentials and live capability checks. [Personal API keys](docs/personal-api-keys.md) add owner-managed, application-bound credentials with immutable resource ceilings, optional expiration, and single-reveal delivery at `/security/keys`. The [authorization contract](docs/authorization.md) explains application isolation, roles, scopes, credential ceilings, and authoritative-state requirements. Run `make test-authorization` and `make test-personal-keys` for their self-contained tests.
 
 ## Work tracking
 

@@ -149,6 +149,7 @@ fn token_value(body: &[u8]) -> Result<Zeroizing<String>, Error> {
 pub(super) enum Inquiry {
     Client(Management),
     Resource(darkhorse_application::resource_servers::Probe),
+    PersonalKey(darkhorse_application::personal_keys::Probe),
 }
 pub(super) fn introspection(headers: &HeaderMap, body: &[u8]) -> Result<Inquiry, Error> {
     content_type(headers)?;
@@ -158,6 +159,18 @@ pub(super) fn introspection(headers: &HeaderMap, body: &[u8]) -> Result<Inquiry,
             let uuid = uuid::Uuid::parse_str(id).map_err(|_| Error::InvalidClient)?;
             if uuid.to_string() != id {
                 return Err(Error::InvalidClient);
+            }
+            let value = token_value(body)?;
+            if value.starts_with("dk_") {
+                return Ok(Inquiry::PersonalKey(
+                    darkhorse_application::personal_keys::Probe {
+                        resource: darkhorse_domain::identity::ResourceId::from_u128(uuid.as_u128())
+                            .map_err(|_| Error::InvalidClient)?,
+                        secret: crate::resource_servers::secret_digest(&secret)
+                            .map_err(|_| Error::InvalidClient)?,
+                        key: crate::personal_keys::digest(&value).ok(),
+                    },
+                ));
             }
             Ok(Inquiry::Resource(
                 darkhorse_application::resource_servers::Probe {

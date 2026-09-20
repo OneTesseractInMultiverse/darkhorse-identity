@@ -18,7 +18,11 @@ WEB := $(PNPM) --filter @darkhorse/console
 .PHONY: redis-acl-update limiter-fence limiter-activate limiter-status
 .PHONY: test-limiting test-mutation-limiting test-mutation-recovery coverage-core coverage-integration
 .PHONY: login-setup dev-login browser-install test-browser
-.PHONY: test-registration test-refresh test-sessions test-catalog
+.PHONY: test-registration test-refresh test-sessions test-catalog test-personal-keys
+
+test-personal-keys: ## Test: isolated personal-key policy, transport, and console behavior
+	cargo test --workspace --lib --locked --offline personal_keys
+	$(WEB) test:unit personal-keys KeysPanel KeyEditor
 
 test-sessions: ## Test: isolated self-service session policy, transport and UI contracts
 	cargo test --workspace --lib --locked --offline sessions

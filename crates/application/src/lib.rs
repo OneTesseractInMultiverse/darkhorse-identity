@@ -32,3 +32,4 @@ pub mod sessions;
 pub mod credentials;
 pub mod email_delivery;
 pub mod invitations;
+pub mod personal_keys;

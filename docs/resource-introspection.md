@@ -1,5 +1,7 @@
 # Resource-server introspection
 
+[Personal API keys](personal-api-keys.md) also use this authenticated endpoint, with their own application/resource ceilings and lifetime policy. Their active response omits OAuth client and scope fields; expiring keys include `exp` and nonexpiring keys omit it.
+
 A protected API can now authenticate to `POST /introspect` with a dedicated
 resource credential. Darkhorse returns the intersection of current role grants,
 resource exposure, delegated scopes and the token's immutable capability ceiling.

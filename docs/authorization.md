@@ -57,7 +57,7 @@ Time boundaries are inclusive for `valid_from` and exclusive for `expires_at`. A
 
 Persistence must advance the principal's credential epoch atomically on deactivation/revoke-all and preserve that advanced value on reactivation. It must prevent epoch wraparound and never reset an individual credential's revocation flag. The pure evaluator rejects mismatched epochs; it cannot reconstruct lifecycle history from an active-status flag.
 
-A future application-bound API key spanning multiple resources can hold several explicit per-resource grants. Each plan must be independently checked, and the key lifecycle must enforce the application boundary and atomic issuance/revocation. No plan implies permission for other or future resources.
+An application-bound [personal API key](personal-api-keys.md) can hold several explicit per-resource grants. Each plan is independently checked; the key lifecycle enforces the application boundary and atomic issuance/revocation. No plan implies permission for other or future resources.
 
 ## Freshness, caching, and performance
 

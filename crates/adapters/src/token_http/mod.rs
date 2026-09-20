@@ -22,7 +22,13 @@ struct Endpoint<S, K> {
     issuer: String,
 }
 pub fn router<
-    S: TokenStore + TokenManagementStore + ResourceTokenStore + RefreshStore + SigningStore + 'static,
+    S: TokenStore
+        + TokenManagementStore
+        + ResourceTokenStore
+        + RefreshStore
+        + SigningStore
+        + darkhorse_application::personal_keys::Introspection
+        + 'static,
     K: IdSigner + 'static,
 >(
     store: S,
@@ -118,7 +124,10 @@ fn profile_response(profile: UserInfo) -> serde_json::Value {
     }
     response
 }
-async fn introspect<S: TokenManagementStore + ResourceTokenStore, K>(
+async fn introspect<
+    S: TokenManagementStore + ResourceTokenStore + darkhorse_application::personal_keys::Introspection,
+    K,
+>(
     State(e): State<Arc<Endpoint<S, K>>>,
     headers: HeaderMap,
     body: Bytes,
@@ -128,6 +137,12 @@ async fn introspect<S: TokenManagementStore + ResourceTokenStore, K>(
         Err(error) => return failure(error),
     };
     match input {
+        input::Inquiry::PersonalKey(input) => {
+            match e.store.introspect_key(input, &e.issuer).await {
+                Ok(key) => Json(key_response(key, &e.issuer)).into_response(),
+                Err(error) => failure(error),
+            }
+        }
         input::Inquiry::Client(input) => match e.store.introspect(input, &e.issuer).await {
             Ok(token) => Json(introspection_response(token, &e.issuer)).into_response(),
             Err(error) => failure(error),
@@ -139,6 +154,21 @@ async fn introspect<S: TokenManagementStore + ResourceTokenStore, K>(
             }
         }
     }
+}
+fn key_response(
+    active: Option<darkhorse_application::personal_keys::Active>,
+    issuer: &str,
+) -> serde_json::Value {
+    let Some(key) = active else {
+        return serde_json::json!({"active":false});
+    };
+    let mut value = serde_json::json!({"active":true,"token_type":"Bearer","credential_type":"personal_key","iss":issuer,
+        "sub":uuid::Uuid::from_u128(key.subject.as_u128()).to_string(),"aud":format!("urn:darkhorse:resource:{}",uuid::Uuid::from_u128(key.resource.as_u128())),
+        "iat":key.issued,"capabilities":key.capabilities.iter().map(|id|uuid::Uuid::from_u128(id.as_u128()).to_string()).collect::<Vec<_>>()});
+    if let Some(expires) = key.expires {
+        value["exp"] = expires.into();
+    }
+    value
 }
 fn resource_response(active: Option<ActiveResourceToken>, issuer: &str) -> serde_json::Value {
     match active {
