@@ -88,6 +88,17 @@ pub async fn runtime(
         store: store.clone(),
         entropy: OsRegistrationEntropy,
     };
+    let catalog_router = darkhorse_adapters::admin_catalog_http::router(
+        darkhorse_application::admin_catalog::Service {
+            store: store.clone(),
+            entropy: OsRegistrationEntropy,
+        },
+        darkhorse_application::registration::Service {
+            store: store.clone(),
+            entropy: OsRegistrationEntropy,
+        },
+        settings.public_origin.clone(),
+    );
     Ok(Runtime {
         maintenance,
         email,
@@ -96,6 +107,7 @@ pub async fn runtime(
                 store,
                 settings.public_origin.clone(),
             ))
+            .merge(catalog_router)
             .merge(provider)
             .merge(session_management)
             .merge(email_router)

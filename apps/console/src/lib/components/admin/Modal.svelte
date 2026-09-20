@@ -25,7 +25,7 @@
 	}}
 >
 	<div class="modal-header">
-		<p class="eyebrow">USER DIRECTORY</p>
+		<p class="eyebrow">MANAGEMENT CONSOLE</p>
 		<h2 id="admin-modal-title">{title}</h2>
 	</div>
 	{@render children()}

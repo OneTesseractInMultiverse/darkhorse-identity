@@ -2,7 +2,7 @@
 
 The private administrator API creates separate applications, protected resources,
 resource scopes, and confidential web clients. It is available with the enabled
-[password portal](authentication.md#configuration-and-development), after migration 0005. The application-management UI belongs to a later milestone. This API is not
+[password portal](authentication.md#configuration-and-development), after migration 0005. The [application-management console](catalog-administration.md) is available after migration 0018. This API is not
 OpenID Connect Dynamic Client Registration. Signing keys/JWKS and pending authorization are described in the [provider contract](provider.md). Code/token issuance is described there as well. [Resource introspection credentials](resource-introspection.md) use a separate administrator lifecycle; logout delivery remains future work.
 
 ## Authority and consistency

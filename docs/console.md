@@ -21,7 +21,8 @@ green accents, and translucent dialogs. The user table contains focused actions:
   role at a time. Removing a role from an inactive application is allowed.
 
 Email, credentials, and platform administrator membership are read-only here.
-Application/role creation and editing belong to the application-directory slice.
+Application, client, resource, scope, role, and capability workflows are available
+from the sidebar; see [catalog administration](catalog-administration.md).
 Extended profile fields and picture uploads belong to the profile slice. This
 console does not imply those workflows are available.
 

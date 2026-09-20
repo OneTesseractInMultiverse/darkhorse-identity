@@ -193,6 +193,19 @@ async function imageChecks(tag) {
   assert.ok(healthy, "image must become healthy");
   const page = await fetch(`http://127.0.0.1:${port}/`);
   assert.match(await page.text(), /Darkhorse/);
+  for (const catalog of [
+    "applications",
+    "clients",
+    "resources",
+    "scopes",
+    "roles",
+    "capabilities",
+  ]) {
+    const response = await fetch(`http://127.0.0.1:${port}/console/${catalog}`);
+    assert.equal(response.status, 200);
+    assert.match(response.headers.get("content-type"), /text\/html/);
+    assert.match(await response.text(), /Darkhorse/);
+  }
   assert.equal(
     (await docker(["exec", server, "id", "-u"])).stdout.trim(),
     "10001",
@@ -203,7 +216,7 @@ async function imageChecks(tag) {
       server,
       "sh",
       "-c",
-      "test ! -e /app/context && test ! -e /app/.local && test ! -e /build && test ! -e /root/.cargo",
+      "test ! -e /app/.context && test ! -e /app/context && test ! -e /app/.local && test ! -e /build && test ! -e /root/.cargo",
     ],
     { acceptFailure: true },
   );

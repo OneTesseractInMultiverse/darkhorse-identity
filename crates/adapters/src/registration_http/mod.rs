@@ -13,7 +13,7 @@ use serde::Deserialize;
 use serde_json::{Value, json};
 use std::sync::Arc;
 pub(crate) mod input;
-mod output;
+pub(crate) mod output;
 pub fn router<S: Registration + 'static>(service: S, origin: url::Url) -> Router {
     let router = Router::new()
         .route("/api/admin/registration", post(write::<S>))

@@ -14,6 +14,7 @@ use sqlx::{
 use std::{str::FromStr, time::Duration};
 
 static MIGRATOR: sqlx::migrate::Migrator = sqlx::migrate!("./migrations");
+mod admin_catalog;
 mod admin_directory;
 mod authentication;
 mod bootstrap;

@@ -36,6 +36,30 @@ pub fn with_authentication(static_dir: PathBuf, authentication: Router) -> Route
             ServeFile::new(static_dir.join("console/users.html")),
         )
         .route_service(
+            "/console/applications",
+            ServeFile::new(static_dir.join("console/applications.html")),
+        )
+        .route_service(
+            "/console/clients",
+            ServeFile::new(static_dir.join("console/clients.html")),
+        )
+        .route_service(
+            "/console/resources",
+            ServeFile::new(static_dir.join("console/resources.html")),
+        )
+        .route_service(
+            "/console/scopes",
+            ServeFile::new(static_dir.join("console/scopes.html")),
+        )
+        .route_service(
+            "/console/roles",
+            ServeFile::new(static_dir.join("console/roles.html")),
+        )
+        .route_service(
+            "/console/capabilities",
+            ServeFile::new(static_dir.join("console/capabilities.html")),
+        )
+        .route_service(
             "/authorization",
             ServeFile::new(static_dir.join("authorization.html")),
         )

@@ -20,7 +20,7 @@ it('connects the static shell to the protected Rust directory with accessible na
 		'href',
 		'/console/users'
 	);
-	expect(screen.getByRole('link', { name: 'Skip to directory' })).toHaveAttribute(
+	expect(screen.getByRole('link', { name: 'Skip to console' })).toHaveAttribute(
 		'href',
 		'#directory-content'
 	);

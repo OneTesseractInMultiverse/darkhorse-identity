@@ -1,12 +1,12 @@
 use super::*;
-pub(super) fn written(written: Written) -> Value {
+pub(crate) fn written(written: Written) -> Value {
     let mut response = json!({"record":record(written.record)});
     if let Some(secret) = written.secret {
         response["client_secret"] = Value::String(secret);
     }
     response
 }
-pub(super) fn record(record: Record) -> Value {
+pub(crate) fn record(record: Record) -> Value {
     match record {
         Record::Application(r) => {
             json!({"kind":"application","id":id(r.id.as_u128()),"name":r.name,"owner_id":id(r.owner.as_u128()),"owner_email":r.owner_email,"active":r.active,"revision":r.revision})

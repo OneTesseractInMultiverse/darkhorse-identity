@@ -25,8 +25,9 @@ impl RegistrationStore for PostgresStore {
     ) -> Result<Record, Error> {
         let mut tx = self.pool.begin().await.map_err(storage)?;
         authority::lock(&mut tx).await?;
-        let (principal, now) = authority::actor(&mut tx, actor, true).await?;
+        let (_, now) = authority::actor(&mut tx, actor, true).await?;
         authority::command(&mut tx, command, now).await?;
+        let (principal, now) = authority::actor(&mut tx, actor, true).await?;
         let record = writes::apply(&mut tx, command, prepared, now).await?;
         audit(&mut tx, principal, command, &record, now).await?;
         tx.commit().await.map_err(storage)?;
@@ -39,6 +40,7 @@ impl RegistrationStore for PostgresStore {
             .fetch_one(&mut *tx).await.map_err(storage)?;
         authority::actor(&mut tx, actor, false).await?;
         let record = records::read(&mut tx, target).await?;
+        authority::actor(&mut tx, actor, false).await?;
         tx.commit().await.map_err(storage)?;
         Ok(record)
     }

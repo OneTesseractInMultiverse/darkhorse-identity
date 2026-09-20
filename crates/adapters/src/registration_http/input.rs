@@ -1,12 +1,13 @@
 use super::*;
 #[derive(Deserialize)]
 #[serde(tag = "operation", rename_all = "snake_case", deny_unknown_fields)]
-pub(super) enum Input {
+pub(crate) enum Input {
     CreateApplication {
         application: ApplicationInput,
     },
     UpdateApplication {
         application_id: String,
+        #[serde(deserialize_with = "revision")]
         revision: u64,
         application: ApplicationInput,
     },
@@ -26,12 +27,14 @@ pub(super) enum Input {
     UpdateClient {
         application_id: String,
         client_id: String,
+        #[serde(deserialize_with = "revision")]
         revision: u64,
         client: ClientInput,
     },
     RotateSecret {
         application_id: String,
         client_id: String,
+        #[serde(deserialize_with = "revision")]
         revision: u64,
         overlap_seconds: u16,
     },
@@ -39,12 +42,13 @@ pub(super) enum Input {
         application_id: String,
         client_id: String,
         secret_id: String,
+        #[serde(deserialize_with = "revision")]
         revision: u64,
     },
 }
 #[derive(Deserialize)]
 #[serde(deny_unknown_fields)]
-pub(super) struct ApplicationInput {
+pub(crate) struct ApplicationInput {
     name: String,
     owner_id: String,
     active: bool,
@@ -60,7 +64,7 @@ impl ApplicationInput {
 }
 #[derive(Deserialize)]
 #[serde(deny_unknown_fields)]
-pub(super) struct ClientInput {
+pub(crate) struct ClientInput {
     name: String,
     active: bool,
     #[serde(default)]
@@ -91,7 +95,7 @@ impl ClientInput {
     }
 }
 impl Input {
-    pub(super) fn command(self) -> Result<Command, RegistrationError> {
+    pub(crate) fn command(self) -> Result<Command, RegistrationError> {
         Ok(match self {
             Self::CreateApplication { application } => {
                 Command::CreateApplication(application.spec()?)
@@ -173,4 +177,30 @@ pub(crate) fn id<T, E>(
         return Err(RegistrationError::Invalid);
     }
     constructor(uuid.as_u128()).map_err(|_| RegistrationError::Invalid)
+}
+
+/// Decimal strings preserve the full counter range in browser callers; legacy integers remain accepted.
+pub(crate) fn revision<'de, D: serde::Deserializer<'de>>(deserializer: D) -> Result<u64, D::Error> {
+    #[derive(Deserialize)]
+    #[serde(untagged)]
+    enum Counter {
+        Number(u64),
+        Text(String),
+    }
+    let value = match Counter::deserialize(deserializer)? {
+        Counter::Number(n) => n,
+        Counter::Text(text) => {
+            let n = text
+                .parse::<u64>()
+                .map_err(|_| serde::de::Error::custom("invalid revision"))?;
+            if text != n.to_string() {
+                return Err(serde::de::Error::custom("invalid revision"));
+            }
+            n
+        }
+    };
+    if value > i64::MAX as u64 {
+        return Err(serde::de::Error::custom("invalid revision"));
+    }
+    Ok(value)
 }

@@ -18,7 +18,7 @@ WEB := $(PNPM) --filter @darkhorse/console
 .PHONY: redis-acl-update limiter-fence limiter-activate limiter-status
 .PHONY: test-limiting test-mutation-limiting test-mutation-recovery coverage-core coverage-integration
 .PHONY: login-setup dev-login browser-install test-browser
-.PHONY: test-registration test-refresh test-sessions
+.PHONY: test-registration test-refresh test-sessions test-catalog
 
 test-sessions: ## Test: isolated self-service session policy, transport and UI contracts
 	cargo test --workspace --lib --locked --offline sessions
@@ -27,6 +27,10 @@ test-sessions: ## Test: isolated self-service session policy, transport and UI c
 
 test-refresh: ## Test: isolated refresh policy, credential material and HTTP contracts
 	cargo test --workspace --lib --locked --offline refresh
+
+test-catalog: ## Test: isolated catalog policy, service, transport and console contracts
+	cargo test --workspace --lib --locked --offline admin_catalog
+	$(WEB) test:unit catalog CatalogPanel
 
 test-registration: ## Test: isolated application/client registration policies and transport
 	cargo test --workspace --lib --locked --offline registration
