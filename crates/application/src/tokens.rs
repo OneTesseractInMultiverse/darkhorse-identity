@@ -1,6 +1,6 @@
 use crate::{oidc::ReturnTo, signing::WrappedKey};
 use darkhorse_domain::{
-    identity::{ClientId, PrincipalId},
+    identity::{ClientId, PrincipalId, RelyingPartySessionId},
     tokens::Error,
 };
 use std::future::Future;
@@ -29,6 +29,7 @@ pub struct IdClaims {
     pub issuer: String,
     pub client: ClientId,
     pub subject: PrincipalId,
+    pub session: RelyingPartySessionId,
     pub nonce: Option<String>,
     pub authenticated: u64,
     pub issued: u64,

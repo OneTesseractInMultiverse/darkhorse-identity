@@ -13,6 +13,7 @@ use uuid::Uuid;
 mod authentication;
 mod refresh;
 mod registration;
+mod relying_party_sessions;
 mod sessions;
 mod signing;
 

@@ -24,3 +24,7 @@ identifier_contract!(credential_identifier_contract, CredentialId);
 identifier_contract!(session_identifier_contract, SessionId);
 identifier_contract!(email_verification_identifier_contract, EmailVerificationId);
 identifier_contract!(invitation_identifier_contract, InvitationId);
+identifier_contract!(
+    relying_party_session_identifier_contract,
+    RelyingPartySessionId
+);

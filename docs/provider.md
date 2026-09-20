@@ -14,6 +14,8 @@ recomputes live capabilities within those ceilings. Opted-in clients support
 [session-bound refresh rotation](refresh-tokens.md). Catalog management,
 extended profiles and back-channel logout remain
 unfinished. Registration allowances never grant user capabilities.
+New ID tokens carry [application-specific session references](backchannel-logout.md)
+as the prerequisite for targeted logout; notification delivery is still pending.
 [Issue #8](https://github.com/OneTesseractInMultiverse/darkhorse-identity/issues/8)
 retains failure, coverage and operational qualification. No OIDC conformance or
 production-readiness claim is made.

@@ -219,7 +219,7 @@ fn metadata(issuer: &str) -> serde_json::Value {
         "token_endpoint_auth_methods_supported": ["client_secret_basic"],
         "code_challenge_methods_supported": ["S256"],
         "scopes_supported": ["openid", "profile", "email"],
-        "claims_supported": ["iss", "sub", "aud", "exp", "iat", "auth_time", "nonce", "name", "given_name", "family_name", "email", "email_verified"],
+        "claims_supported": ["iss", "sub", "aud", "exp", "iat", "auth_time", "nonce", "sid", "name", "given_name", "family_name", "email", "email_verified"],
         "claims_parameter_supported": false,
         "request_parameter_supported": false,
         "request_uri_parameter_supported": false,

@@ -1,11 +1,12 @@
 use super::*;
 use crate::signing_fixture as fixture;
-use darkhorse_domain::identity::{ClientId, PrincipalId};
+use darkhorse_domain::identity::{ClientId, PrincipalId, RelyingPartySessionId};
 fn claims() -> IdClaims {
     IdClaims {
         issuer: "https://issuer.example".into(),
         client: ClientId::from_u128(1).unwrap(),
         subject: PrincipalId::from_u128(2).unwrap(),
+        session: RelyingPartySessionId::from_u128(3).unwrap(),
         nonce: Some("test-nonce".into()),
         authenticated: 1000,
         issued: 1001,
@@ -23,6 +24,11 @@ fn claim_schema_binds_nonce_subject_and_authentication_event_without_logout_clai
     assert_eq!(parts[1]["nonce"], "test-nonce");
     assert_eq!(parts[1]["auth_time"], 1000);
     assert_eq!(parts[1]["sub"], "00000000-0000-0000-0000-000000000002");
+    assert!(
+        parts[1]["sid"].is_string(),
+        "ID tokens identify the RP session"
+    );
+    assert_eq!(parts[1]["sid"], "00000000-0000-0000-0000-000000000003");
     assert!(parts[1].get("events").is_none());
     let mut input = claims();
     input.nonce = None;

@@ -54,6 +54,13 @@ export function validateIdToken(token, keys, expected) {
       claims.auth_time <= claims.iat,
   );
   requireValid(!Object.hasOwn(claims, "events"));
+  // This reference client selects Darkhorse's session-aware issuance profile.
+  requireValid(
+    typeof claims.sid === "string" &&
+      /^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/.test(
+        claims.sid,
+      ),
+  );
   return claims;
 }
 export function validateCallback(returned, expected) {

@@ -57,7 +57,7 @@ fn message(kid: &str, c: &IdClaims) -> Result<String, Error> {
         return Err(Error::Unavailable);
     }
     let header = serde_json::json!({"alg":"RS256","typ":Purpose::IdToken.header_type(),"kid":kid});
-    let mut claims = serde_json::json!({"iss":c.issuer,"aud":uuid::Uuid::from_u128(c.client.as_u128()).to_string(),"sub":uuid::Uuid::from_u128(c.subject.as_u128()).to_string(),"iat":c.issued,"exp":c.expires,"auth_time":c.authenticated});
+    let mut claims = serde_json::json!({"iss":c.issuer,"aud":uuid::Uuid::from_u128(c.client.as_u128()).to_string(),"sub":uuid::Uuid::from_u128(c.subject.as_u128()).to_string(),"sid":uuid::Uuid::from_u128(c.session.as_u128()).to_string(),"iat":c.issued,"exp":c.expires,"auth_time":c.authenticated});
     if let Some(nonce) = &c.nonce {
         claims["nonce"] = nonce.clone().into();
     }

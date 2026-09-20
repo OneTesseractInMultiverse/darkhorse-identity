@@ -32,7 +32,8 @@ identifier!(
     ClientSecretId,
     SessionId,
     EmailVerificationId,
-    InvitationId
+    InvitationId,
+    RelyingPartySessionId
 );
 
 #[cfg(test)]

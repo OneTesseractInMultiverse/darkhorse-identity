@@ -89,6 +89,9 @@ export async function verifyProvider(
   assert.equal(metadata.body.issuer, origin);
   assert.equal(metadata.body.token_endpoint, `${origin}/token`);
   assert.equal(metadata.body.userinfo_endpoint, `${origin}/userinfo`);
+  assert.ok(metadata.body.claims_supported.includes("sid"));
+  assert.equal(metadata.body.backchannel_logout_supported, undefined);
+  assert.equal(metadata.body.backchannel_logout_session_supported, undefined);
   assert.deepEqual(metadata.body.token_endpoint_auth_methods_supported, [
     "client_secret_basic",
   ]);
@@ -248,7 +251,11 @@ export async function verifyProvider(
   assert.equal(issued.body.token_type, "Bearer");
   assert.equal(issued.body.expires_in, 300);
   const validation = { ...expected, now: Math.floor(Date.now() / 1000) };
-  validateIdToken(issued.body.id_token, jwks.body.keys, validation);
+  const initialSession = validateIdToken(
+    issued.body.id_token,
+    jwks.body.keys,
+    validation,
+  ).sid;
   for (const changed of [
     { issuer: "https://other.example" },
     { client: principal },
@@ -284,6 +291,13 @@ export async function verifyProvider(
   assert.ok(silentCode !== code);
   const live = await redeem(silentCode);
   assert.equal(live.status, 200);
+  assert.equal(
+    validateIdToken(live.body.id_token, jwks.body.keys, {
+      ...validation,
+      now: Math.floor(Date.now() / 1000),
+    }).sid,
+    initialSession,
+  );
   await page.goto(`${origin}/authorize?${query}`);
   const lostCode = validateCallback(page.url(), expected);
   const discarded = await exchange(

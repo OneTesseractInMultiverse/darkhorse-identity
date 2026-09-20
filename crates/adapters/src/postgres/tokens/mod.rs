@@ -4,7 +4,7 @@ use darkhorse_application::{
     tokens::*,
 };
 use darkhorse_domain::{
-    identity::{ClientId, PrincipalId, ResourceId},
+    identity::{ClientId, PrincipalId, RelyingPartySessionId, ResourceId},
     tokens::{self, CodeFacts, Error, Proof},
 };
 use sqlx::{Postgres, Row, Transaction, postgres::PgRow};
@@ -13,6 +13,7 @@ mod access;
 mod management;
 mod reads;
 mod refresh;
+mod relying_party;
 type Tx<'a> = Transaction<'a, Postgres>;
 pub(super) struct CodeRecord {
     client: ClientId,
@@ -65,7 +66,10 @@ impl TokenStore for PostgresStore {
         let key = reads::key(&mut tx, issuer).await?;
         let now = authority::now(&mut tx).await.map_err(storage)?;
         tokens::exchange(&facts(&code), &proof(&input), now)?;
-        let id_token = signer.sign(key, claims(&code, issuer, now)).await?;
+        let session = relying_party::bind(&mut tx, &code, issuer, now).await?;
+        let id_token = signer
+            .sign(key, claims(&code, session, issuer, now))
+            .await?;
         reads::client(&mut tx, input.client, input.secret).await?;
         reads::current(&mut tx, &code).await?;
         let now = authority::now(&mut tx).await.map_err(storage)?;
@@ -92,7 +96,7 @@ impl TokenStore for PostgresStore {
             &grant,
         )
         .await?;
-        audit(&mut tx, code.principal, code.client, "code_redeemed", now).await?;
+        relying_party::audit(&mut tx, &code, session, now).await?;
         tx.commit().await.map_err(storage)?;
         Ok(issued_response(
             material, grant, refresh, id_token, expires, now,
@@ -150,11 +154,12 @@ fn proof(input: &Redemption) -> Proof<'_> {
         challenge: input.challenge,
     }
 }
-fn claims(code: &CodeRecord, issuer: &str, now: u64) -> IdClaims {
+fn claims(code: &CodeRecord, session: RelyingPartySessionId, issuer: &str, now: u64) -> IdClaims {
     IdClaims {
         issuer: issuer.into(),
         client: code.client,
         subject: code.principal,
+        session,
         nonce: code.nonce.clone(),
         authenticated: code.authenticated / 1000,
         issued: now / 1000,
