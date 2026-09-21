@@ -32,7 +32,7 @@ Follow the toolchain and setup instructions in the [README](README.md#quick-star
 make ci
 ```
 
-This runs formatting, lint, type and architecture checks, self-contained unit tests, and release/static builds. The target name does not imply that GitHub Actions is configured: this repository currently has no versioned CI workflow. Record local validation in the pull request until hosted checks are established.
+This runs formatting, lint, type and architecture checks, self-contained unit tests, and release/static builds. The versioned [CI workflow](.github/workflows/ci.yaml) also runs source-package and release-tooling checks. A separate dependency qualification job runs strict live advisory scans. Record local validation and all hosted results in the pull request; a passing source check does not clear a blocked dependency gate. See [release qualification](docs/release-readiness.md) for commands, scope and outstanding requirements.
 
 Start behavior changes with a meaningful failing test, then implement and refactor. Verify failures and security boundaries as well as successful results. Add checks at the affected boundary:
 
@@ -77,7 +77,7 @@ Prefer squash merge for one coherent increment. Before merging, inspect the fina
 
 Maintainers track hosted checks and repository enforcement in [issue #2](https://github.com/OneTesseractInMultiverse/darkhorse-identity/issues/2) or a linked follow-up:
 
-- Establish hosted PR checks for `make ci` and the agreed integration suites, including fork contributions. Run untrusted changes without repository secrets or write credentials. Select stable, actually passing check names before making them required.
+- Verify the hosted source/dependency checks for fork contributions and extend them with the agreed integration suites. Run untrusted changes without repository secrets or write credentials. Resolve qualification blockers and select stable, actually passing check names before making them required.
 - Configure [`main` protection](https://docs.github.com/en/repositories/configuring-branches-and-merges-in-your-repository/managing-protected-branches/about-protected-branches) to require pull requests, at least one approval from another maintainer, review of subsequent changes, resolved conversations, and required checks against the current base. Appoint sufficient reviewers before requiring independent approval for maintainer changes.
 - Block force pushes and deletion of `main` and apply the merge requirements to maintainers. Confirm the rules with a test pull request.
 - Keep the contribution guide and open issue instructions aligned with the configured checks. Preserve issue and commit references throughout the workflow.

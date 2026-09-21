@@ -8,6 +8,7 @@ CADDY ?= caddy
 TEST_FILTER ?=
 MUTATION_JOBS ?= 2
 IMAGE ?= darkhorse:local
+SOURCE_REF ?= HEAD
 WEB := $(PNPM) --filter @darkhorse/console
 
 .PHONY: help doctor deps-install deps-check fmt fmt-check lint typecheck architecture-check check ci test test-unit test-unit-rust test-unit-web test-tooling test-component test-unit-watch build build-api build-web dev-setup dev dev-api dev-web proxy-up https-setup https-check https-trust https-untrust clean
@@ -70,11 +71,11 @@ deps-check: ## Check: verify lockfiles using installed dependencies
 
 fmt: ## Style: format Rust, frontend, scripts, and public documentation
 	cargo fmt --all
-	$(WEB) exec prettier --write . ../../scripts ../../docs ../../deploy/*.yaml ../../deploy/kubernetes/*.json ../../.github ../../README.md ../../CONTRIBUTING.md ../../package.json ../../pnpm-workspace.yaml
+	$(WEB) exec prettier --write . ../../scripts ../../docs ../../deploy/*.yaml ../../deploy/kubernetes/*.json ../../.github ../../README.md ../../CONTRIBUTING.md ../../SECURITY.md ../../package.json ../../pnpm-workspace.yaml
 
 fmt-check: ## Style: verify formatting without edits
 	cargo fmt --all -- --check
-	$(WEB) exec prettier --check . ../../scripts ../../docs ../../deploy/*.yaml ../../deploy/kubernetes/*.json ../../.github ../../README.md ../../CONTRIBUTING.md ../../package.json ../../pnpm-workspace.yaml
+	$(WEB) exec prettier --check . ../../scripts ../../docs ../../deploy/*.yaml ../../deploy/kubernetes/*.json ../../.github ../../README.md ../../CONTRIBUTING.md ../../SECURITY.md ../../package.json ../../pnpm-workspace.yaml
 
 lint: ## Check: Rust Clippy and frontend ESLint
 	cargo clippy --workspace --all-targets --all-features --locked --offline -- -D warnings
@@ -121,6 +122,19 @@ test-unit-web: ## Test: frontend computations and component interactions in memo
 
 test-tooling: ## Test: architecture and process-supervision contracts with fakes
 	$(NODE) --test scripts/tests/unit/*.test.mjs
+
+.PHONY: audit-tools audit-dependencies source-package-check test-release-tools
+audit-tools: ## Security: explicitly install pinned cargo-audit (network required)
+	cargo install cargo-audit --version 0.22.2 --locked
+
+audit-dependencies: ## Security: strict Rust/JavaScript advisory checks and dated evidence (network required)
+	$(NODE) scripts/security-audit.mjs
+
+source-package-check: ## Release: inspect SOURCE_REF Git tree/archive for excluded state and missing source
+	$(NODE) scripts/source-package.mjs "$(SOURCE_REF)"
+
+test-release-tools: ## Test: real Git exports and subprocess failures in a disposable fixture
+	$(NODE) scripts/release-tools-test.mjs
 
 test-component: test-unit-web ## Test: self-contained UI component suite
 

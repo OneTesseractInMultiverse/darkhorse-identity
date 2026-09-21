@@ -75,3 +75,41 @@ complete transitive advisory or license audit. [Lettre advisories](https://rusts
 ## Local Kubernetes verifier
 
 [kind 0.33.0](https://github.com/kubernetes-sigs/kind/releases/tag/v0.33.0) is an optional host-only integration-test dependency. Verify its official release checksum before installation. The harness pins `kindest/node:v1.36.4@sha256:099e049362a1526b2db71494e1947aae99bd16290d7c895f2b7ea312e3cbfaed` and uses explicit private kubeconfig/context arguments. The [pinned kindnet source](https://github.com/kubernetes-sigs/kind/blob/v0.33.0/images/kindnetd/cmd/kindnetd/main.go) enables a network-policy controller with fail-open evaluation errors. Normal-path enforcement in this local fixture does not qualify production CNI failure behavior. Kubernetes API validation was exercised with kubectl 1.36.1. See [Kubernetes qualification](kubernetes.md) for topology and limits.
+
+## Release advisory review
+
+The first complete-lockfile scan on **2026-09-21** found `cookie 0.6.0` through
+SvelteKit 2.70.3. The scoped workspace override `@sveltejs/kit>cookie: 0.7.2`
+retains the parse/serialize API and fixes
+[GHSA-pxg6-pf52-xh8x](https://github.com/advisories/GHSA-pxg6-pf52-xh8x).
+Rust owns Darkhorse's production sessions/cookies; this JavaScript dependency
+belongs to build/development tooling. It still receives security maintenance.
+Review removal of the override when SvelteKit declares a patched dependency.
+The post-update pnpm 11.19.0 scan reported no JavaScript advisories; this is dated
+evidence, not a permanent claim. [Upstream release](https://github.com/jshttp/cookie/releases/tag/v0.7.2).
+
+cargo-audit **0.22.2** reported no Rust vulnerability advisories and one
+unmaintained-package warning:
+[RUSTSEC-2023-0089](https://rustsec.org/advisories/RUSTSEC-2023-0089.html),
+`atomic-polyfill 1.0.3`, pulled into the lockfile by
+`phonenumber → postcard → heapless`. The `cargo tree --target all --invert
+atomic-polyfill` graph exposes that chain. Inverse graphs for
+`x86_64-unknown-linux-gnu`, `aarch64-unknown-linux-gnu`, and
+`aarch64-apple-darwin` contain no active dependency; heapless selects it for
+embedded targets. This limits the observed runtime exposure but does not turn a
+full-lockfile warning into a passing release check. The strict gate remains
+blocked, with no ignore or target filter. [Issue #28](https://github.com/OneTesseractInMultiverse/darkhorse-identity/issues/28)
+tracks removing the obsolete dependency before claiming complete dependency qualification.
+
+Run `make audit-tools` explicitly to install the pinned auditor, and
+`make audit-dependencies` for fresh evidence. The committed `.cargo/audit.toml`
+keeps all informational warnings, rejects stale database use and sets no ignores.
+The wrapper validates report shape/counts, captures scanner exit status and
+projects only public dependency findings into the report. See
+[release qualification](release-readiness.md) for report scope and remaining
+image/license/provenance checks. [cargo-audit source](https://github.com/rustsec/rustsec/tree/cargo-audit/v0.22.2/cargo-audit).
+
+Hosted checks pin `actions/checkout` 7.0.1, `actions/setup-node` 7.0.0 and
+`actions/upload-artifact` 7.0.1 to verified upstream commit references. Updates
+require reviewing upstream provenance and permissions; a tag comment is not a
+substitute for the immutable reference.

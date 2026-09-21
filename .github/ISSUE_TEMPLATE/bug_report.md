@@ -8,6 +8,8 @@ assignees: ""
 
 <!-- Search existing issues first. Remove credentials, tokens, personal data, and private settings from examples and logs. -->
 
+For a suspected vulnerability, use the [private reporting channel](https://github.com/OneTesseractInMultiverse/darkhorse-identity/security/advisories/new) described in [the security policy](https://github.com/OneTesseractInMultiverse/darkhorse-identity/blob/main/SECURITY.md). Do not include vulnerability details in this public issue.
+
 ## Problem
 
 Describe the observed behavior and who or what it affects.

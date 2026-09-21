@@ -3,3 +3,7 @@ packages:
 minimumReleaseAge: 1440
 onlyBuiltDependencies:
   - esbuild
+
+# GHSA-pxg6-pf52-xh8x; retain the compatible parse/serialize API.
+overrides:
+  "@sveltejs/kit>cookie": 0.7.2
