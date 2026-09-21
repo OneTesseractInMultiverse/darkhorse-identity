@@ -3,6 +3,7 @@ import { setTimeout as delay } from "node:timers/promises";
 import { resolve } from "node:path";
 import assert from "node:assert/strict";
 import { run } from "./lib/command.mjs";
+import { verifySecretFiles } from "./lib/configuration-file-test.mjs";
 
 process.chdir(resolve(import.meta.dirname, ".."));
 const image =
@@ -107,6 +108,7 @@ async function hostChecks(url) {
     process.env.CARGO_TARGET_DIR ?? "target",
     "debug/darkhorse-server",
   );
+  await verifySecretFiles(executable, env, command);
   const secure = await command(executable, ["migrate"], {
     env: { ...env, DARKHORSE_DATABASE_INSECURE: "false" },
     input: "",

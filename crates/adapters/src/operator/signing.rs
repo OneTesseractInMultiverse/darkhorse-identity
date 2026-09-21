@@ -23,9 +23,9 @@ pub(super) fn identifier(value: &str) -> Result<[u8; 32], &'static str> {
         .ok_or("Invalid signing key identifier.")
 }
 pub async fn run(operation: Operation) -> Result<(), &'static str> {
-    let http =
-        configuration::load(envbind::ProcessEnvironment).map_err(|_| "Invalid provider origin.")?;
-    let wrap = settings::load(envbind::ProcessEnvironment)
+    let http = configuration::load(crate::deployment_environment::DeploymentEnvironment)
+        .map_err(|_| "Invalid provider origin.")?;
+    let wrap = settings::load(crate::deployment_environment::DeploymentEnvironment)
         .map_err(message)?
         .ok_or("Provider must be explicitly enabled.")?;
     let issuer = http.public_origin.origin().ascii_serialization();

@@ -12,11 +12,13 @@ const FAILURE: &str = "Limiter operation failed or enforcement is untrusted; ins
 struct RecoveryEnvironment;
 impl envbind::Environment for RecoveryEnvironment {
     fn get(&self, name: &str) -> Result<Option<String>, envbind::EnvironmentError> {
-        envbind::ProcessEnvironment.get(if name == "DARKHORSE_REDIS_LIMITER_URL" {
-            "DARKHORSE_REDIS_LIMITER_ADMIN_URL"
-        } else {
-            name
-        })
+        crate::deployment_environment::DeploymentEnvironment.get(
+            if name == "DARKHORSE_REDIS_LIMITER_URL" {
+                "DARKHORSE_REDIS_LIMITER_ADMIN_URL"
+            } else {
+                name
+            },
+        )
     }
 }
 pub(super) async fn run(command: Operation) -> Result<(), &'static str> {
@@ -62,7 +64,8 @@ async fn status(store: &crate::postgres::PostgresStore) -> Result<(), &'static s
     let state = store.read().await.map_err(|_| FAILURE)?;
     let count = if state.active {
         let counters = RedisCounters::new(
-            redis_configuration::load(envbind::ProcessEnvironment).map_err(|_| FAILURE)?,
+            redis_configuration::load(crate::deployment_environment::DeploymentEnvironment)
+                .map_err(|_| FAILURE)?,
         )
         .map_err(|_| FAILURE)?;
         Some(counters.status(state).await.map_err(|_| FAILURE)?)

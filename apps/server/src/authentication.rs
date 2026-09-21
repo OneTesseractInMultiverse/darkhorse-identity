@@ -26,13 +26,18 @@ pub struct Runtime {
 pub async fn runtime(
     settings: &darkhorse_adapters::configuration::HttpSettings,
 ) -> Result<Runtime, &'static str> {
-    let authentication = authentication_configuration::load(envbind::ProcessEnvironment)
-        .map_err(|_| "Invalid login configuration.")?;
-    let provider = provider_configuration::load(envbind::ProcessEnvironment)
-        .map_err(|_| "Invalid provider configuration.")?;
-    let email =
-        darkhorse_adapters::email_verification::configuration::load(envbind::ProcessEnvironment)
-            .map_err(|_| "Invalid email delivery configuration.")?;
+    let authentication = authentication_configuration::load(
+        darkhorse_adapters::deployment_environment::DeploymentEnvironment,
+    )
+    .map_err(|_| "Invalid login configuration.")?;
+    let provider = provider_configuration::load(
+        darkhorse_adapters::deployment_environment::DeploymentEnvironment,
+    )
+    .map_err(|_| "Invalid provider configuration.")?;
+    let email = darkhorse_adapters::email_verification::configuration::load(
+        darkhorse_adapters::deployment_environment::DeploymentEnvironment,
+    )
+    .map_err(|_| "Invalid email delivery configuration.")?;
     let Some(authentication) = authentication else {
         if provider.is_some() || email.is_some() {
             return Err("Provider and email verification require enabled password authentication.");
@@ -44,10 +49,14 @@ pub async fn runtime(
             email: None,
         });
     };
-    let database = database_configuration::load(envbind::ProcessEnvironment)
-        .map_err(|_| "Invalid database configuration.")?;
-    let redis = redis_configuration::load(envbind::ProcessEnvironment)
-        .map_err(|_| "Invalid Redis configuration.")?;
+    let database = database_configuration::load(
+        darkhorse_adapters::deployment_environment::DeploymentEnvironment,
+    )
+    .map_err(|_| "Invalid database configuration.")?;
+    let redis = redis_configuration::load(
+        darkhorse_adapters::deployment_environment::DeploymentEnvironment,
+    )
+    .map_err(|_| "Invalid Redis configuration.")?;
     let store = PostgresStore::connect(database)
         .await
         .map_err(|_| "Authentication database unavailable.")?;
@@ -191,8 +200,10 @@ async fn media_runtime(
     store: &PostgresStore,
     settings: &darkhorse_adapters::configuration::HttpSettings,
 ) -> Result<(axum::Router, Option<Media>), &'static str> {
-    let config = darkhorse_adapters::media::configuration::load(envbind::ProcessEnvironment)
-        .map_err(|_| "Invalid object storage configuration.")?;
+    let config = darkhorse_adapters::media::configuration::load(
+        darkhorse_adapters::deployment_environment::DeploymentEnvironment,
+    )
+    .map_err(|_| "Invalid object storage configuration.")?;
     let objects = match config {
         Some(config) => object_storage(store, config).await?,
         None => Default::default(),

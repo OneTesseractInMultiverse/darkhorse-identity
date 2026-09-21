@@ -48,6 +48,7 @@ test-browser: build-web ## Test: disposable PostgreSQL/Redis and verified HTTPS 
 help: ## Help: list implemented targets; no setup required
 	@awk 'BEGIN { FS = ":.*## " } /^[a-zA-Z_-]+:.*## / { printf "  %-23s %s\n", $$1, $$2 }' $(MAKEFILE_LIST)
 	@printf '\nVariables: PNPM=pnpm NODE=node CADDY=caddy IMAGE=darkhorse:local TEST_FILTER=<test-name> MUTATION_JOBS=2\n'
+	@printf 'Compose: STACK=local STACK_ORIGIN=https://darkhorse.localhost:9443; see docs/compose.md\n'
 	@printf 'Examples: make deps-install; make check; make https-setup; make dev\n'
 	@printf 'Tests need Rust + Node + pnpm. HTTPS development also needs Caddy 2.11.4.\n'
 
@@ -69,11 +70,11 @@ deps-check: ## Check: verify lockfiles using installed dependencies
 
 fmt: ## Style: format Rust, frontend, scripts, and public documentation
 	cargo fmt --all
-	$(WEB) exec prettier --write . ../../scripts ../../docs ../../.github ../../README.md ../../CONTRIBUTING.md ../../package.json ../../pnpm-workspace.yaml
+	$(WEB) exec prettier --write . ../../scripts ../../docs ../../deploy/*.yaml ../../.github ../../README.md ../../CONTRIBUTING.md ../../package.json ../../pnpm-workspace.yaml
 
 fmt-check: ## Style: verify formatting without edits
 	cargo fmt --all -- --check
-	$(WEB) exec prettier --check . ../../scripts ../../docs ../../.github ../../README.md ../../CONTRIBUTING.md ../../package.json ../../pnpm-workspace.yaml
+	$(WEB) exec prettier --check . ../../scripts ../../docs ../../deploy/*.yaml ../../.github ../../README.md ../../CONTRIBUTING.md ../../package.json ../../pnpm-workspace.yaml
 
 lint: ## Check: Rust Clippy and frontend ESLint
 	cargo clippy --workspace --all-targets --all-features --locked --offline -- -D warnings
@@ -356,3 +357,47 @@ objects-down: ## Images: stop this workspace's object service; preserve its data
 
 dev-media: ## Develop: HTTPS password portal with prepared local S3 image storage
 	CADDY="$(CADDY)" $(NODE) scripts/objects.mjs dev
+
+STACK ?= local
+STACK_ORIGIN ?= https://darkhorse.localhost:9443
+.PHONY: stack-setup stack-infra stack-migrate stack-bootstrap stack-up stack-stop stack-down stack-status stack-check stack-backup stack-signing-status stack-signing-generate stack-signing-activate stack-limiter-status stack-limiter-fence stack-limiter-activate test-compose
+stack-setup: stack-edge-build ## Compose: prepare an isolated stack and short-lived local TLS certificates
+	$(NODE) scripts/deployment.mjs setup "$(STACK)" "$(STACK_ORIGIN)" "$(IMAGE)"
+stack-infra: ## Compose: start owned PostgreSQL and separate TLS Redis services
+	$(NODE) scripts/deployment.mjs infra "$(STACK)"
+stack-migrate: ## Compose: apply schema and runtime grants while the application is stopped
+	$(NODE) scripts/deployment.mjs migrate "$(STACK)"
+stack-bootstrap: ## Compose: interactively create the one-time administrator in an operator container
+	$(NODE) scripts/deployment.mjs operator "$(STACK)" bootstrap
+stack-up: ## Compose: start the packaged HTTPS identity service without migrating or recovering state
+	$(NODE) scripts/deployment.mjs up "$(STACK)"
+stack-stop: ## Compose: stop HTTP serving while preserving infrastructure and data
+	$(NODE) scripts/deployment.mjs stop "$(STACK)"
+stack-down: ## Compose: stop/remove this stack's containers and networks; preserve volumes/secrets
+	$(NODE) scripts/deployment.mjs down "$(STACK)"
+stack-status: ## Compose: list owned service state
+	$(NODE) scripts/deployment.mjs status "$(STACK)"
+stack-check: ## Compose: verify canonical HTTPS, signing and current shared attempt enforcement
+	$(NODE) scripts/deployment.mjs check "$(STACK)"
+stack-backup: ## Compose: back up a stopped stack's database and identity material; no automatic restore
+	$(NODE) scripts/deployment.mjs backup "$(STACK)"
+stack-signing-status: ## Compose: inspect signing inventory using an explicit operator container
+	$(NODE) scripts/deployment.mjs operator "$(STACK)" signing-status
+stack-signing-generate: ## Compose: stage a signing key; requires REVISION, preserves publication wait
+	$(NODE) scripts/deployment.mjs operator "$(STACK)" signing-generate "$(REVISION)"
+stack-signing-activate: ## Compose: activate a prepublished signing key; requires KID and REVISION
+	$(NODE) scripts/deployment.mjs operator "$(STACK)" signing-activate "$(KID)" "$(REVISION)"
+stack-signing-retire: ## Compose: retire an eligible signing key; requires KID and REVISION
+	$(NODE) scripts/deployment.mjs operator "$(STACK)" signing-retire "$(KID)" "$(REVISION)"
+stack-limiter-status: ## Compose: inspect durable limiter state
+	$(NODE) scripts/deployment.mjs operator "$(STACK)" limiter-status
+stack-limiter-fence: ## Compose: begin explicit limiter recovery and its mandatory wait
+	$(NODE) scripts/deployment.mjs operator "$(STACK)" limiter-fence
+stack-limiter-activate: ## Compose: activate a waited generation with protected recovery credentials
+	$(NODE) scripts/deployment.mjs operator "$(STACK)" limiter-activate
+test-compose: stack-edge-build ## Test: isolated packaged HTTPS stack, SSO, roles, outages and quarantined restore
+	DARKHORSE_TEST_IMAGE="$(IMAGE)" $(NODE) scripts/deployment-test.mjs
+
+.PHONY: stack-edge-build stack-signing-retire
+stack-edge-build: ## Compose: build the pinned proxy image without privileged port capabilities
+	docker build --provenance=false --file deploy/edge.Dockerfile --tag darkhorse-edge:local deploy

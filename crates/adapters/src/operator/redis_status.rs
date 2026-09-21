@@ -4,7 +4,7 @@ use crate::{
 };
 
 pub(super) async fn run() -> Result<(), &'static str> {
-    let settings = redis_configuration::load(envbind::ProcessEnvironment)
+    let settings = redis_configuration::load(crate::deployment_environment::DeploymentEnvironment)
         .map_err(|_| "Invalid Redis configuration; check DARKHORSE_REDIS_* settings.")?;
     let infrastructure =
         RedisInfrastructure::new(settings).map_err(|_| "Cannot prepare Redis connections.")?;

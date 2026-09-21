@@ -32,8 +32,9 @@ async fn serve() -> Result<(), &'static str> {
     #[cfg(feature = "benchmark-profiling")]
     let _profiler = darkhorse_adapters::postgres::profiling::install_signal_reporter()
         .map_err(|_| "Cannot install benchmark profiling signal handler.")?;
-    let settings = configuration::load(envbind::ProcessEnvironment)
-        .map_err(|_| "Invalid server configuration; check DARKHORSE_* settings.")?;
+    let settings =
+        configuration::load(darkhorse_adapters::deployment_environment::DeploymentEnvironment)
+            .map_err(|_| "Invalid server configuration; check DARKHORSE_* settings.")?;
     let authentication = authentication::runtime(&settings).await?;
     let listener = tokio::net::TcpListener::bind(settings.listen)
         .await

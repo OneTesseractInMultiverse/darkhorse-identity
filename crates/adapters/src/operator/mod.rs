@@ -35,8 +35,9 @@ pub async fn run(command: Command) -> Result<(), &'static str> {
 }
 
 async fn connect() -> Result<PostgresStore, &'static str> {
-    let settings = database_configuration::load(envbind::ProcessEnvironment)
-        .map_err(|_| "Invalid database configuration; check DARKHORSE_DATABASE_* settings.")?;
+    let settings =
+        database_configuration::load(crate::deployment_environment::DeploymentEnvironment)
+            .map_err(|_| "Invalid database configuration; check DARKHORSE_DATABASE_* settings.")?;
     PostgresStore::connect(settings)
         .await
         .map_err(directory_message)

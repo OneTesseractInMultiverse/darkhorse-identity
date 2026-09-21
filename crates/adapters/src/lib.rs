@@ -48,3 +48,5 @@ pub mod profiles_http;
 pub mod media;
 
 pub mod media_http;
+
+pub mod deployment_environment;

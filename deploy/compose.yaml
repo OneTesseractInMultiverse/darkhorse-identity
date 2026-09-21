@@ -1,0 +1,203 @@
+x-server: &server
+  image: ${DARKHORSE_STACK_IMAGE:?select an immutable application image}
+  pull_policy: never
+  user: "10001:10001"
+  read_only: true
+  cap_drop: [ALL]
+  security_opt: [no-new-privileges:true]
+  tmpfs: ["/tmp:size=16m,mode=1777"]
+  mem_limit: 512m
+  cpus: 2
+  pids_limit: 128
+  stop_grace_period: 20s
+x-environment: &environment
+  DARKHORSE_PUBLIC_ORIGIN: ${DARKHORSE_STACK_ORIGIN:?set the canonical HTTPS issuer}
+  DARKHORSE_LOGIN_ENABLED: "true"
+  DARKHORSE_LOGIN_LIMIT_KEY_FILE: /run/secrets/login_key
+  DARKHORSE_PROVIDER_ENABLED: "true"
+  DARKHORSE_SIGNING_WRAP_KEY_FILE: /run/secrets/wrap_key
+  DARKHORSE_DATABASE_POOL_SIZE: "5"
+  PGSSLROOTCERT: /run/secrets/ca
+  DARKHORSE_REDIS_CACHE_URL_FILE: /run/secrets/cache_url
+  DARKHORSE_REDIS_LIMITER_URL_FILE: /run/secrets/limiter_url
+  DARKHORSE_REDIS_CACHE_CA_PEM_FILE: /run/secrets/ca
+  DARKHORSE_REDIS_LIMITER_CA_PEM_FILE: /run/secrets/ca
+services:
+  api:
+    <<: *server
+    environment:
+      <<: *environment
+      DARKHORSE_DATABASE_URL_FILE: /run/secrets/runtime_db
+    secrets: [runtime_db, login_key, wrap_key, cache_url, limiter_url, ca]
+    networks: [edge, database, cache, limiter]
+    restart: unless-stopped
+    depends_on:
+      postgres: { condition: service_healthy }
+    # Liveness only. stack-check separately checks issuer, signing and enforcement.
+    healthcheck:
+      test:
+        [
+          CMD,
+          /bin/bash,
+          -c,
+          "exec 3<>/dev/tcp/127.0.0.1/3001; printf 'GET /health/live HTTP/1.0\r\nHost: localhost\r\n\r\n' >&3; read -r line <&3; [[ $$line == *' 200 '* ]]",
+        ]
+      interval: 10s
+      timeout: 3s
+      retries: 3
+  edge:
+    image: ${DARKHORSE_STACK_EDGE_IMAGE:?build and select the restricted proxy image}
+    pull_policy: never
+    user: "10001:10001"
+    read_only: true
+    cap_drop: [ALL]
+    security_opt: [no-new-privileges:true]
+    tmpfs:
+      [
+        "/data:size=8m,mode=1777",
+        "/config:size=8m,mode=1777",
+        "/tmp:size=8m,mode=1777",
+      ]
+    environment:
+      DARKHORSE_STACK_ORIGIN: ${DARKHORSE_STACK_ORIGIN}
+      DARKHORSE_STACK_HOST: ${DARKHORSE_STACK_HOST}
+      DARKHORSE_STACK_PORT: ${DARKHORSE_STACK_PORT}
+    secrets: [edge_cert, edge_key, ca]
+    volumes: [./Caddyfile:/etc/caddy/Caddyfile:ro]
+    ports: ["127.0.0.1:${DARKHORSE_STACK_PORT}:${DARKHORSE_STACK_PORT}"]
+    networks:
+      edge:
+        aliases: ["${DARKHORSE_STACK_HOST}"]
+    depends_on:
+      api: { condition: service_healthy }
+    healthcheck:
+      test:
+        [
+          CMD-SHELL,
+          'curl --fail --silent --show-error --max-time 2 --cacert /run/secrets/ca "$${DARKHORSE_STACK_ORIGIN}/health/live" >/dev/null',
+        ]
+      interval: 2s
+      timeout: 3s
+      retries: 30
+    restart: unless-stopped
+    mem_limit: 128m
+    cpus: 1
+    pids_limit: 64
+    stop_grace_period: 20s
+  postgres:
+    image: percona/percona-distribution-postgresql:18.6@sha256:dae47360e8137cafc1e8d66f9a1be348f1405e3cf51daa383b94e6c277e6b256
+    user: "0:0"
+    entrypoint: [sh, /opt/darkhorse/postgres-entrypoint.sh]
+    environment:
+      PGDATA: /data/db
+      POSTGRES_INITDB_ARGS: --encoding=UTF8
+      POSTGRES_USER: postgres
+      POSTGRES_DB: postgres
+      POSTGRES_PASSWORD_FILE: /run/secrets/postgres_password
+    secrets:
+      [
+        postgres_password,
+        owner_password,
+        runtime_password,
+        database_cert,
+        database_key,
+      ]
+    volumes:
+      - postgres-data:/data/db
+      - ./postgres-entrypoint.sh:/opt/darkhorse/postgres-entrypoint.sh:ro
+      - ./pg_hba.conf:/etc/darkhorse/pg_hba.conf:ro
+      - ./initialize.sql:/docker-entrypoint-initdb.d/01-darkhorse.sql:ro
+    tmpfs: [/run/darkhorse]
+    networks: [database]
+    healthcheck:
+      test:
+        [CMD-SHELL, "psql -U postgres -d darkhorse -tAc 'SELECT 1' >/dev/null"]
+      interval: 2s
+      timeout: 3s
+      retries: 30
+    restart: unless-stopped
+    mem_limit: 512m
+    cpus: 2
+    pids_limit: 128
+    stop_grace_period: 30s
+  cache:
+    image: redis:8.10.1@sha256:298e5b3bc566bade82f46ad5511777a4a07a294097ce16ada2f6a42be5239df5
+    user: "999:999"
+    read_only: true
+    cap_drop: [ALL]
+    security_opt: [no-new-privileges:true]
+    command: [redis-server, /etc/redis/cache.conf]
+    secrets: [cache_acl, cache_cert, cache_key, ca]
+    volumes: [./cache.conf:/etc/redis/cache.conf:ro]
+    tmpfs: ["/data:size=80m,uid=999,gid=999"]
+    networks: [cache]
+    restart: unless-stopped
+    mem_limit: 128m
+    cpus: 1
+    pids_limit: 64
+  limiter:
+    image: redis:8.10.1@sha256:298e5b3bc566bade82f46ad5511777a4a07a294097ce16ada2f6a42be5239df5
+    # The vendor entrypoint initializes volume ownership then drops to redis.
+    read_only: true
+    security_opt: [no-new-privileges:true]
+    command: [redis-server, /etc/redis/limiter.conf]
+    secrets: [limiter_acl, limiter_cert, limiter_key, ca]
+    volumes: [./limiter.conf:/etc/redis/limiter.conf:ro, limiter-data:/data]
+    networks: [limiter]
+    restart: unless-stopped
+    mem_limit: 128m
+    cpus: 1
+    pids_limit: 64
+    stop_grace_period: 20s
+  operator:
+    <<: *server
+    profiles: [operations]
+    environment:
+      <<: *environment
+      DARKHORSE_DATABASE_URL_FILE: /run/secrets/owner_db
+      DARKHORSE_DATABASE_POOL_SIZE: "2"
+      DARKHORSE_REDIS_LIMITER_ADMIN_URL_FILE: /run/secrets/limiter_admin_url
+    secrets:
+      [
+        owner_db,
+        login_key,
+        wrap_key,
+        cache_url,
+        limiter_url,
+        limiter_admin_url,
+        ca,
+      ]
+    networks: [database, cache, limiter]
+    restart: "no"
+networks:
+  edge: {}
+  database: { internal: true }
+  cache: { internal: true }
+  limiter: { internal: true }
+volumes:
+  postgres-data: {}
+  limiter-data: {}
+secrets:
+  runtime_db: { file: "${DARKHORSE_STACK_DIR}/secrets/runtime-db" }
+  owner_db: { file: "${DARKHORSE_STACK_DIR}/secrets/owner-db" }
+  postgres_password:
+    { file: "${DARKHORSE_STACK_DIR}/secrets/postgres-password" }
+  owner_password: { file: "${DARKHORSE_STACK_DIR}/secrets/owner-password" }
+  runtime_password: { file: "${DARKHORSE_STACK_DIR}/secrets/runtime-password" }
+  login_key: { file: "${DARKHORSE_STACK_DIR}/secrets/login-key" }
+  wrap_key: { file: "${DARKHORSE_STACK_DIR}/secrets/wrap-key" }
+  cache_url: { file: "${DARKHORSE_STACK_DIR}/secrets/cache-url" }
+  limiter_url: { file: "${DARKHORSE_STACK_DIR}/secrets/limiter-url" }
+  limiter_admin_url:
+    { file: "${DARKHORSE_STACK_DIR}/secrets/limiter-admin-url" }
+  cache_acl: { file: "${DARKHORSE_STACK_DIR}/secrets/cache-acl" }
+  limiter_acl: { file: "${DARKHORSE_STACK_DIR}/secrets/limiter-acl" }
+  ca: { file: "${DARKHORSE_STACK_DIR}/secrets/ca.pem" }
+  edge_cert: { file: "${DARKHORSE_STACK_DIR}/secrets/edge.pem" }
+  edge_key: { file: "${DARKHORSE_STACK_DIR}/secrets/edge.key" }
+  database_cert: { file: "${DARKHORSE_STACK_DIR}/secrets/postgres.pem" }
+  database_key: { file: "${DARKHORSE_STACK_DIR}/secrets/postgres.key" }
+  cache_cert: { file: "${DARKHORSE_STACK_DIR}/secrets/cache.pem" }
+  cache_key: { file: "${DARKHORSE_STACK_DIR}/secrets/cache.key" }
+  limiter_cert: { file: "${DARKHORSE_STACK_DIR}/secrets/limiter.pem" }
+  limiter_key: { file: "${DARKHORSE_STACK_DIR}/secrets/limiter.key" }

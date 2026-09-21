@@ -1,0 +1,24 @@
+{
+ admin off
+ auto_https off
+ persist_config off
+}
+https://:{$DARKHORSE_STACK_PORT} {
+ tls /run/secrets/edge_cert /run/secrets/edge_key
+ @canonical host {$DARKHORSE_STACK_HOST}
+ handle @canonical {
+  request_body {
+   max_size 5MB
+  }
+  reverse_proxy api:3001 {
+   header_up Host {http.request.hostport}
+   header_up -Forwarded
+   header_up -X-Forwarded-For
+   header_up -X-Forwarded-Host
+   header_up -X-Forwarded-Proto
+  }
+ }
+ handle {
+  respond "Misdirected request" 421
+ }
+}
