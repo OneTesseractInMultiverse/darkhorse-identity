@@ -1,0 +1,8 @@
+{
+  "namespace": "darkhorse-app",
+  "origin": "https://identity.example.com",
+  "image": "registry.example.com/darkhorse@sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+  "edgeImage": "registry.example.com/edge@sha256:bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+  "backendNamespace": "darkhorse-state",
+  "ingressNamespace": "darkhorse-ingress"
+}

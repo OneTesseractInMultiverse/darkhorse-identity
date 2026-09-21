@@ -3,7 +3,7 @@ export function httpsCall(
   origin,
   ca,
   path = "/",
-  { method = "GET", headers = {}, body, servername } = {},
+  { method = "GET", headers = {}, body, servername, connectPort } = {},
 ) {
   const url = new URL(path, origin);
   if (url.origin !== origin) throw new Error("Cross-origin probe rejected.");
@@ -16,7 +16,8 @@ export function httpsCall(
         lookup: (_host, _options, done) =>
           done(null, [{ address: "127.0.0.1", family: 4 }]),
         method,
-        headers,
+        headers: { host: url.host, ...headers },
+        ...(connectPort === undefined ? {} : { port: connectPort }),
         timeout: 15000,
       },
       (res) => {

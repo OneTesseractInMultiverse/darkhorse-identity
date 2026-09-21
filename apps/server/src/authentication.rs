@@ -43,7 +43,9 @@ pub async fn runtime(
             return Err("Provider and email verification require enabled password authentication.");
         }
         return Ok(Runtime {
-            router: authentication_http::disabled_router(),
+            router: authentication_http::disabled_router().merge(
+                darkhorse_adapters::readiness::router(darkhorse_adapters::readiness::Disabled),
+            ),
             maintenance: None,
             media: None,
             email: None,
@@ -129,6 +131,7 @@ pub async fn runtime(
         maintenance,
         email,
         router: authentication_http::router(service, settings.public_origin.clone())
+            .merge(darkhorse_adapters::readiness::router(store.clone()))
             .merge(darkhorse_adapters::profiles_http::router(
                 store.clone(),
                 settings.public_origin.clone(),

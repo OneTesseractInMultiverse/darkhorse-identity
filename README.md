@@ -35,6 +35,8 @@ For the optional database/bootstrap and Docker workflows, see [persistence](docs
 
 The [integrated Compose qualification stack](docs/compose.md) packages HTTPS, the Rust/static console image, PostgreSQL and separate TLS Redis services. It includes explicit setup, migration, bootstrap, health and backup commands, with mounted secrets and separate runtime/operator credentials. This initial topology is loopback-only and uses short-lived test certificates; production deployment qualification remains open.
 
+The [Kubernetes application qualification](docs/kubernetes.md) adds explicit-context manifests, two restricted replicas, primary readiness, separate operator Jobs and an isolated local cluster test. Production failover, upgrades, restore and capacity qualification remain open.
+
 Redis infrastructure, atomic shared attempt budgets and durable recovery are implemented in [issue #4](https://github.com/OneTesseractInMultiverse/darkhorse-identity/issues/4). See [Redis setup, enforcement and recovery](docs/redis.md). For the enabled password portal, follow the [login setup and security contract](docs/authentication.md), then run `make dev-login`. The default preview keeps login disabled. `make browser-install` and `make test-browser` provide disposable HTTPS browser integration tests.
 
 For opt-in code authorization and signing-key commands, see the [provider contract](docs/provider.md). `make provider-setup` and `make dev-provider` extend the prepared login environment; two-application SSO and [identity token checks](docs/token-checks.md) are exercised by `make test-browser`.
@@ -54,7 +56,7 @@ For a reproducible release-build HTTPS workload, run `make benchmark` or `make b
 | `apps/console`       | Static SvelteKit frontend; TypeScript and shadcn-svelte             |
 | `scripts`            | Development and repository verification tools                       |
 | `config`             | Local HTTPS proxy and PostgreSQL Compose configuration              |
-| `deploy`             | Integrated HTTPS Compose topology and reviewed runtime grants       |
+| `deploy`             | Compose/Kubernetes packaging and reviewed runtime grants            |
 
 Tests mirror source paths under `tests/unit`. Rust includes private unit modules from that parallel tree. Framework and serialization types remain outside domain/application contracts. See [engineering](docs/engineering.md) for the implementation rules and [dependencies](docs/dependencies.md) for library boundaries.
 

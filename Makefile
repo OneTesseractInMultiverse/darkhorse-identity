@@ -70,11 +70,11 @@ deps-check: ## Check: verify lockfiles using installed dependencies
 
 fmt: ## Style: format Rust, frontend, scripts, and public documentation
 	cargo fmt --all
-	$(WEB) exec prettier --write . ../../scripts ../../docs ../../deploy/*.yaml ../../.github ../../README.md ../../CONTRIBUTING.md ../../package.json ../../pnpm-workspace.yaml
+	$(WEB) exec prettier --write . ../../scripts ../../docs ../../deploy/*.yaml ../../deploy/kubernetes/*.json ../../.github ../../README.md ../../CONTRIBUTING.md ../../package.json ../../pnpm-workspace.yaml
 
 fmt-check: ## Style: verify formatting without edits
 	cargo fmt --all -- --check
-	$(WEB) exec prettier --check . ../../scripts ../../docs ../../deploy/*.yaml ../../.github ../../README.md ../../CONTRIBUTING.md ../../package.json ../../pnpm-workspace.yaml
+	$(WEB) exec prettier --check . ../../scripts ../../docs ../../deploy/*.yaml ../../deploy/kubernetes/*.json ../../.github ../../README.md ../../CONTRIBUTING.md ../../package.json ../../pnpm-workspace.yaml
 
 lint: ## Check: Rust Clippy and frontend ESLint
 	cargo clippy --workspace --all-targets --all-features --locked --offline -- -D warnings
@@ -401,3 +401,27 @@ test-compose: stack-edge-build ## Test: isolated packaged HTTPS stack, SSO, role
 .PHONY: stack-edge-build stack-signing-retire
 stack-edge-build: ## Compose: build the pinned proxy image without privileged port capabilities
 	docker build --provenance=false --file deploy/edge.Dockerfile --tag darkhorse-edge:local deploy
+
+KUBE_CONFIG ?=
+KUBE_ACCESS ?=
+KUBE_CONTEXT ?=
+KIND ?= kind
+JOB_COMMAND ?=
+JOB_NAME ?=
+.PHONY: kube-render kube-budgets kube-prepare kube-validate kube-apply kube-status kube-job-render test-kubernetes
+kube-render: ## Kubernetes: render nonsecret manifests from an explicit KUBE_CONFIG
+	@$(NODE) scripts/kubernetes.mjs render "$(KUBE_CONFIG)"
+kube-budgets: ## Kubernetes: report conservative namespace connection budgets
+	@$(NODE) scripts/kubernetes.mjs budgets "$(KUBE_CONFIG)"
+kube-prepare: ## Kubernetes: prepare namespace/policies; requires KUBE_ACCESS and KUBE_CONTEXT
+	$(NODE) scripts/kubernetes.mjs prepare "$(KUBE_CONFIG)" "$(KUBE_ACCESS)" "$(KUBE_CONTEXT)"
+kube-validate: ## Kubernetes: server-side dry-run in an explicitly prepared namespace/context
+	$(NODE) scripts/kubernetes.mjs validate "$(KUBE_CONFIG)" "$(KUBE_ACCESS)" "$(KUBE_CONTEXT)"
+kube-apply: ## Kubernetes: validate/apply the selected workload; never initializes identity state
+	$(NODE) scripts/kubernetes.mjs apply "$(KUBE_CONFIG)" "$(KUBE_ACCESS)" "$(KUBE_CONTEXT)"
+kube-status: ## Kubernetes: inspect the explicitly selected namespace
+	$(NODE) scripts/kubernetes.mjs status "$(KUBE_CONFIG)" "$(KUBE_ACCESS)" "$(KUBE_CONTEXT)"
+kube-job-render: ## Kubernetes: render one supported operator Job; requires JOB_COMMAND and JOB_NAME
+	@$(NODE) scripts/kubernetes.mjs job "$(KUBE_CONFIG)" "$(JOB_COMMAND)" "$(JOB_NAME)"
+test-kubernetes: stack-edge-build ## Test: owned local kind cluster, two replicas, TLS, isolation and failure behavior
+	KIND="$(KIND)" DARKHORSE_TEST_IMAGE="$(IMAGE)" $(NODE) scripts/kubernetes-test.mjs

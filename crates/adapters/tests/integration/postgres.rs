@@ -496,3 +496,5 @@ mod admin_catalog;
 mod profiles;
 
 mod media;
+
+mod readiness;
