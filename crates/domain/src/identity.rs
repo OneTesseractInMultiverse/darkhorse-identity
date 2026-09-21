@@ -21,6 +21,7 @@ macro_rules! identifier {
 }
 
 identifier!(
+    AssetId,
     PrincipalId,
     ApplicationId,
     ResourceId,

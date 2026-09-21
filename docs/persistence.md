@@ -32,7 +32,7 @@ Supply exactly `email`, `first_name`, `last_name`, and `password` as JSON string
 Initial validation policy:
 
 - Email: strip surrounding whitespace, accept ASCII dot-atom local parts and DNS-style domains containing a dot, and bound the whole address to 254 bytes, local part to 64, and domain labels to 63. Preserve display spelling. Compare the entire ASCII address case-insensitively using a unique generated database key. Quoted addresses and internationalized addresses are not accepted. The address is not considered verified merely because it passes syntax validation.
-- Names: first and last names are required, trimmed, control-free Unicode strings of 1–100 characters each. Extended profile attributes arrive with profile management.
+- Names: first and last names are required, trimmed, control-free Unicode strings of 1–100 characters each. Extended attributes and image references follow the [profile contract](profiles-and-media.md).
 - Passwords: 15–128 Unicode characters, no control characters. Passwords are neither trimmed nor normalized. The login/recovery work must add its password blocklist and verification/recovery rules.
 - Password verifiers: RustCrypto Argon2id v19, 64 MiB, three iterations, one lane, 32-byte output and an independent 16-byte operating-system random salt. The PHC string retains its algorithm parameters. One hashing worker per operator process is admitted before scheduling; this is not the future distributed login limiter. Plaintext working buffers are zeroized where owned, without claiming that every runtime/OS copy can be erased.
 

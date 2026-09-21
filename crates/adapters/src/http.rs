@@ -32,6 +32,18 @@ pub fn with_authentication(static_dir: PathBuf, authentication: Router) -> Route
         .route("/health/live", get(liveness))
         .route_service("/", ServeFile::new(static_dir.join("index.html")))
         .route_service(
+            "/console/settings",
+            ServeFile::new(static_dir.join("console/settings.html")),
+        )
+        .route_service(
+            "/account/profile",
+            ServeFile::new(static_dir.join("account/profile.html")),
+        )
+        .route_service(
+            "/console/profile",
+            ServeFile::new(static_dir.join("console/profile.html")),
+        )
+        .route_service(
             "/console/users",
             ServeFile::new(static_dir.join("console/users.html")),
         )
@@ -85,7 +97,7 @@ pub fn with_authentication(static_dir: PathBuf, authentication: Router) -> Route
             header::X_FRAME_OPTIONS,
             HeaderValue::from_static("DENY"),
         ))
-        .layer(SetResponseHeaderLayer::overriding(
+        .layer(SetResponseHeaderLayer::if_not_present(
             header::CONTENT_SECURITY_POLICY,
             HeaderValue::from_static("frame-ancestors 'none'; base-uri 'none'; form-action 'self'"),
         ))

@@ -308,3 +308,54 @@ async fn verified_current_email_is_live_scope_limited_and_never_changes_subject_
     assert_eq!(changed.subject, id(1));
     db.store.close().await;
 }
+
+#[tokio::test]
+async fn extended_profile_edits_preserve_subject_and_existing_claim_ceilings() {
+    use darkhorse_application::profiles::Store;
+    use darkhorse_domain::profiles::{Input, Phone};
+    let (db, signer) = setup().await;
+    let minimal = issue(&db, &signer, &["openid"], [3; 32]).await;
+    let full = issue(&db, &signer, &["openid", "profile", "email"], [4; 32]).await;
+    let minimal = material::digest(&minimal.access, Purpose::Access).unwrap();
+    let full = material::digest(&full.access, Purpose::Access).unwrap();
+    let original = db.store.profile([1; 32], None).await.unwrap();
+    let fields = darkhorse_adapters::profiles::prepare(Input {
+        first_name: "María".into(),
+        second_name: "José".into(),
+        last_name: "Guzmán".into(),
+        second_last_name: "Benavides".into(),
+        country: "CR".into(),
+        bio: "Private contact profile".into(),
+        phone: Some(Phone::new("506", "88887777").unwrap()),
+    })
+    .unwrap();
+    db.store
+        .update_profile([1; 32], None, original.revision, fields)
+        .await
+        .unwrap();
+    let minimal = db.store.userinfo(minimal, ISSUER).await.unwrap();
+    assert_eq!(minimal.subject, original.id);
+    assert!(minimal.profile.is_none() && minimal.email.is_none());
+    let full = db.store.userinfo(full, ISSUER).await.unwrap();
+    assert_eq!(full.subject, original.id);
+    assert_eq!(full.profile.unwrap().given, "María");
+    assert_eq!(full.email.as_deref(), Some(original.email.as_str()));
+    let ceiling: Vec<String> = sqlx::query_scalar(
+        "SELECT claim_ceiling FROM access_tokens WHERE scope='openid profile email'",
+    )
+    .fetch_one(&db.pool)
+    .await
+    .unwrap();
+    assert_eq!(
+        ceiling,
+        vec![
+            "sub",
+            "name",
+            "given_name",
+            "family_name",
+            "email",
+            "email_verified"
+        ]
+    );
+    db.store.close().await;
+}

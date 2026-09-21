@@ -7,7 +7,14 @@ use darkhorse_adapters::{
 use darkhorse_adapters::{provider_http, signing::configuration as provider_configuration};
 use darkhorse_application::{authentication::Service, signing::SigningStore};
 
+pub type Media = darkhorse_application::media::Service<
+    PostgresStore,
+    darkhorse_adapters::media::objects::Storage,
+    darkhorse_adapters::media::images::Decoder,
+>;
+
 pub struct Runtime {
+    pub media: Option<Media>,
     pub router: axum::Router,
     pub maintenance: Option<PostgresStore>,
     pub email: Option<(
@@ -33,6 +40,7 @@ pub async fn runtime(
         return Ok(Runtime {
             router: authentication_http::disabled_router(),
             maintenance: None,
+            media: None,
             email: None,
         });
     };
@@ -49,6 +57,7 @@ pub async fn runtime(
         .map_err(
             |_| "Login limiter key does not match the deployment or storage is unavailable.",
         )?;
+    let (media_router, media) = media_runtime(&store, settings).await?;
     let limiter =
         RedisLimiter::new(store.clone(), redis).map_err(|_| "Cannot initialize login limiter.")?;
     let passwords = PasswordPreparation::default();
@@ -107,13 +116,19 @@ pub async fn runtime(
         settings.public_origin.clone(),
     );
     Ok(Runtime {
+        media,
         maintenance,
         email,
         router: authentication_http::router(service, settings.public_origin.clone())
+            .merge(darkhorse_adapters::profiles_http::router(
+                store.clone(),
+                settings.public_origin.clone(),
+            ))
             .merge(darkhorse_adapters::admin_directory_http::router(
                 store,
                 settings.public_origin.clone(),
             ))
+            .merge(media_router)
             .merge(catalog_router)
             .merge(provider)
             .merge(session_management)
@@ -170,4 +185,37 @@ async fn email_runtime(
         settings.public_origin.clone(),
     ));
     Ok((router, Some((store.clone(), sender))))
+}
+
+async fn media_runtime(
+    store: &PostgresStore,
+    settings: &darkhorse_adapters::configuration::HttpSettings,
+) -> Result<(axum::Router, Option<Media>), &'static str> {
+    let config = darkhorse_adapters::media::configuration::load(envbind::ProcessEnvironment)
+        .map_err(|_| "Invalid object storage configuration.")?;
+    let objects = match config {
+        Some(config) => object_storage(store, config).await?,
+        None => Default::default(),
+    };
+    let service = Media {
+        store: store.clone(),
+        objects,
+        images: Default::default(),
+    };
+    let router =
+        darkhorse_adapters::media_http::router(service.clone(), settings.public_origin.clone());
+    Ok((router, service.objects.enabled().then_some(service)))
+}
+async fn object_storage(
+    store: &PostgresStore,
+    settings: darkhorse_adapters::media::configuration::Settings,
+) -> Result<darkhorse_adapters::media::objects::Storage, &'static str> {
+    store
+        .bind_object_storage(darkhorse_adapters::media::objects::fingerprint(&settings))
+        .await
+        .map_err(
+            |_| "Object storage identity conflicts with persisted state or storage is unavailable.",
+        )?;
+    darkhorse_adapters::media::objects::Storage::new(settings)
+        .map_err(|_| "Invalid object storage configuration.")
 }

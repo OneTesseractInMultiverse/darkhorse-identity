@@ -17,6 +17,8 @@ import { verifyEmail } from "./lib/email-verification-browser.mjs";
 import { verifyInvitations } from "./lib/invitations-browser.mjs";
 import { verifyCatalog } from "./lib/admin-catalog-browser.mjs";
 import { verifyPersonalKeys } from "./lib/personal-keys-browser.mjs";
+import { objectService } from "./lib/objects-test-service.mjs";
+import { verifyProfiles } from "./lib/profiles-browser.mjs";
 import { verifyDirectory } from "./lib/admin-directory-browser.mjs";
 import { verifySessionManagement } from "./lib/sessions-browser.mjs";
 
@@ -111,9 +113,26 @@ export async function verifyBrowser(
       );
     return result;
   };
-  let server, browser, mailbox;
+  let server, browser, mailbox, objects;
   try {
     if (!profiling && exercise === exerciseBrowser) {
+      objects = await objectService(command, docker);
+      Object.assign(runtime, objects.settings);
+      await command(
+        "cargo",
+        [
+          "test",
+          "-p",
+          "darkhorse-adapters",
+          "--features",
+          "object-tests",
+          "--test",
+          "objects",
+          "--locked",
+          "--offline",
+        ],
+        { env: { ...process.env, ...objects.settings } },
+      );
       mailbox = await verificationMailbox(directory);
       Object.assign(runtime, mailbox.settings);
       await command(
@@ -189,6 +208,7 @@ export async function verifyBrowser(
     await browser?.close();
     await server?.stop();
     await mailbox?.close();
+    await objects?.close();
     await tls.close();
   }
 }
@@ -306,6 +326,7 @@ async function exerciseBrowser({
   await verifyDirectory(page, origin, principal, runSql);
   await verifyCatalog(page, origin, ca);
   await verifyPersonalKeys(page, origin, ca, principal, runSql);
+  await verifyProfiles(page, origin, principal, runSql);
   await verifyEmail(page, origin, mailbox);
   await verifyInvitations(browser, page, origin, mailbox);
   await verifySessionManagement(browser, page, origin, password, invoke, ca);

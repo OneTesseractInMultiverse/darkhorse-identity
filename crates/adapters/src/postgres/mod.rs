@@ -110,3 +110,7 @@ mod email_verification;
 
 mod email_queue;
 mod invitations;
+
+mod profiles;
+
+mod media;

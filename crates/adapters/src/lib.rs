@@ -40,3 +40,11 @@ pub mod sessions_http;
 pub mod invitations_http;
 pub mod personal_keys;
 pub mod personal_keys_http;
+
+pub mod profiles;
+
+pub mod profiles_http;
+
+pub mod media;
+
+pub mod media_http;

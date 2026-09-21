@@ -44,9 +44,15 @@
 				aria-current={active === 'capabilities' ? 'page' : undefined}
 				><span aria-hidden="true">07</span> Capabilities</a
 			>
+			<a
+				href={resolve('/console/settings')}
+				aria-current={active === 'settings' ? 'page' : undefined}
+				><span aria-hidden="true">08</span> System settings</a
+			>
 		</nav>
 		<p class="eyebrow sidebar-section">MY SECURITY</p>
 		<nav aria-label="Account security">
+			<a href={resolve('/account/profile')}>My profile</a>
 			<a href={resolve('/security/keys')}>Personal API keys</a>
 			<a href={resolve('/security/sessions')}>Sessions</a><a href={resolve('/security/email')}
 				>Email verification</a

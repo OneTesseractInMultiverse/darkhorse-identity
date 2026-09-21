@@ -40,3 +40,18 @@ pub async fn email(
         }
     }
 }
+
+/// Tombstones outlive network attempts and are revisited for delayed remote writes.
+pub async fn media(runtime: Option<crate::authentication::Media>) {
+    let Some(service) = runtime else {
+        return std::future::pending().await;
+    };
+    let mut interval = tokio::time::interval(Duration::from_secs(60));
+    interval.set_missed_tick_behavior(tokio::time::MissedTickBehavior::Skip);
+    loop {
+        interval.tick().await;
+        if service.sweep().await.is_err() {
+            eprintln!("Media cleanup unavailable; retrying next interval.");
+        }
+    }
+}

@@ -1,6 +1,6 @@
 <script lang="ts">
 	import { resolve } from '$app/paths';
-	import logo from '$lib/assets/brand/logo.svg';
+	import LoginBrand from '$lib/components/LoginBrand.svelte';
 	import LoginPanel from '$lib/components/LoginPanel.svelte';
 	import { authenticate, currentSession, endSession } from '$lib/authentication';
 	async function signIn(email: string, password: string) {
@@ -21,7 +21,7 @@
 <div class="portal">
 	<header class="topbar">
 		<a href={resolve('/')} class="wordmark" aria-label="Darkhorse home"
-			><img src={logo} alt="DarkHorse" width="336" height="64" /></a
+			><LoginBrand fetcher={(input, init) => fetch(input, init)} /></a
 		>
 		<span class="edition">IDENTITY CONSOLE <span class="version">/ 0.1</span></span>
 	</header>
@@ -31,3 +31,9 @@
 	</main>
 	<footer><span>DARKHORSE / IDENTITY SYSTEMS</span><span>DEVELOPMENT PREVIEW</span></footer>
 </div>
+
+<style>
+	.portal {
+		isolation: isolate;
+	}
+</style>

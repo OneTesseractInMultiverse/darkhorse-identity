@@ -101,6 +101,8 @@ async function database(network, profiling) {
       "127.0.0.1::5432",
       "--env",
       "POSTGRES_PASSWORD",
+      "--env",
+      "POSTGRES_INITDB_ARGS=--encoding=UTF8",
       "percona/percona-distribution-postgresql:18.6@sha256:dae47360e8137cafc1e8d66f9a1be348f1405e3cf51daa383b94e6c277e6b256",
       ...(profiling
         ? [

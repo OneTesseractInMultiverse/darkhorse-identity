@@ -45,6 +45,7 @@ async fn serve() -> Result<(), &'static str> {
     .with_graceful_shutdown(shutdown());
     tokio::select! {
         result = std::future::IntoFuture::into_future(server) => result.map_err(|_| "HTTP server stopped unexpectedly."),
+        _ = maintenance::media(authentication.media) => Err("Media maintenance stopped unexpectedly."),
         _ = maintenance::email(authentication.email) => Err("Email maintenance stopped unexpectedly."),
         _ = maintenance::run(authentication.maintenance) => Err("Credential maintenance stopped unexpectedly."),
     }

@@ -23,7 +23,7 @@ green accents, and translucent dialogs. The user table contains focused actions:
 Email, credentials, and platform administrator membership are read-only here.
 Application, client, resource, scope, role, and capability workflows are available
 from the sidebar; see [catalog administration](catalog-administration.md).
-Extended profile fields and picture uploads belong to the profile slice. This
+The full profile page now supports [extended attributes and private picture uploads](profiles-and-media.md). This
 console does not imply those workflows are available.
 
 Search matches literal, case-insensitive prefixes of email, full name, or last

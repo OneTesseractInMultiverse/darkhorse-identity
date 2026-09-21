@@ -66,3 +66,5 @@ Remaining work is tracked in [GitHub issues](https://github.com/OneTesseractInMu
 The project license has not been selected. Third-party component licenses remain applicable; see [third-party notices](docs/third-party-notices.md).
 
 Invitation-only ordinary-account onboarding and its API are described in [the invitation contract](docs/invitations.md).
+
+See [profiles, private images, and login branding](docs/profiles-and-media.md) for the account/settings screens and local object-storage commands.

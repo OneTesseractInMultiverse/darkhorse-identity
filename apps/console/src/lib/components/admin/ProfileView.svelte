@@ -1,4 +1,5 @@
 <script lang="ts">
+	import { resolve } from '$app/paths';
 	import { Button } from '$lib/components/ui/button';
 	import type { User } from '$lib/admin/directory';
 	let { user, edit, close }: { user: User; edit: () => void; close: () => void } = $props();
@@ -26,6 +27,7 @@
 		<dd>{user.administrator ? 'Yes' : 'No'}</dd>
 	</div>
 </dl>
+<p><a href={resolve(`/console/profile?user=${user.id}`)}>View and edit full profile</a></p>
 <div class="modal-actions">
 	<Button variant="outline" onclick={close}>Close</Button><Button onclick={edit}>Edit name</Button>
 </div>

@@ -136,7 +136,7 @@ enum InputChange {
         policy_revision: String,
     },
 }
-fn counter(value: &str) -> Result<u64, Error> {
+pub(crate) fn counter(value: &str) -> Result<u64, Error> {
     let n = value.parse::<u64>().map_err(|_| Error::Invalid)?;
     if n.to_string() != value || n > i64::MAX as u64 {
         return Err(Error::Invalid);

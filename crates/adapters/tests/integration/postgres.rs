@@ -492,3 +492,7 @@ mod email_verification;
 mod invitations;
 
 mod admin_catalog;
+
+mod profiles;
+
+mod media;

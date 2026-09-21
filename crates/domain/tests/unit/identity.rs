@@ -28,3 +28,5 @@ identifier_contract!(
     relying_party_session_identifier_contract,
     RelyingPartySessionId
 );
+
+identifier_contract!(asset_identifier_contract, AssetId);

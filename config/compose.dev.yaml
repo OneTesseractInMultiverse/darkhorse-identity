@@ -6,6 +6,7 @@ services:
     user: "0:0"
     environment:
       PGDATA: /data/db
+      POSTGRES_INITDB_ARGS: "--encoding=UTF8"
       POSTGRES_USER: darkhorse
       POSTGRES_DB: darkhorse
       POSTGRES_PASSWORD_FILE: /run/secrets/database_password

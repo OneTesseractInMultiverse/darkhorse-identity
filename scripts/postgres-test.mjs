@@ -201,6 +201,9 @@ async function imageChecks(tag) {
     "console/roles",
     "console/capabilities",
     "security/keys",
+    "account/profile",
+    "console/profile",
+    "console/settings",
   ]) {
     const response = await fetch(`http://127.0.0.1:${port}/${route}`);
     assert.equal(response.status, 200);
@@ -246,6 +249,8 @@ async function main() {
         "127.0.0.1::5432",
         "--env",
         "POSTGRES_PASSWORD",
+        "--env",
+        "POSTGRES_INITDB_ARGS=--encoding=UTF8",
         image,
       ],
       { env: { ...process.env, POSTGRES_PASSWORD: password } },

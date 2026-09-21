@@ -336,3 +336,23 @@ test-invitations: ## Test: isolated invitation policy, transport and acceptance 
 test-directory: ## Test: isolated administrator directory policy, HTTP and component contracts
 	cargo test --workspace --lib --locked --offline admin_directory
 	$(WEB) test:unit admin
+
+.PHONY: test-profiles test-media
+test-profiles: ## Test: isolated profile policy, metadata, transport and forms
+	cargo test --workspace --lib --locked --offline profiles
+	$(WEB) test:unit profiles ProfilePanel
+
+test-media: test-browser ## Test: real S3 image adapter and HTTPS profile/branding workflows
+
+.PHONY: objects-setup objects-up objects-down dev-media
+objects-setup: ## Images: create owner-only local storage credentials; preserve existing files
+	$(NODE) scripts/objects.mjs setup
+
+objects-up: ## Images: start private local S3 storage and provision its bucket
+	$(NODE) scripts/objects.mjs up
+
+objects-down: ## Images: stop this workspace's object service; preserve its data
+	$(NODE) scripts/objects.mjs down
+
+dev-media: ## Develop: HTTPS password portal with prepared local S3 image storage
+	CADDY="$(CADDY)" $(NODE) scripts/objects.mjs dev

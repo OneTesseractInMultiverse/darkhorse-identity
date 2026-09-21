@@ -63,3 +63,10 @@ sendmail-injection issues were fixed before 0.11. This targeted review is not a
 complete transitive advisory or license audit. [Lettre advisories](https://rustsec.org/packages/lettre.html).
 
 **rustls-pki-types 1.15.1** (MIT/Apache-2.0; already present transitively) is now an explicit adapter dependency for strict single-certificate PEM parsing. Empty or multi-certificate custom trust inputs are rejected before TLS configuration.
+
+## Profile and image dependencies
+
+- `isocountry` 0.3.2 (MIT) supplies the compiled ISO country list; `phonenumber` 0.3.10 (Apache-2.0, libphonenumber 9.0.33 metadata) validates canonical international contact numbers. [Country API](https://docs.rs/isocountry/0.3.2/isocountry/), [phone API](https://docs.rs/phonenumber/0.3.10+9.0.33/phonenumber/).
+- `image` 0.25.10 (MIT/Apache-2.0), default features disabled, enables only PNG and JPEG decoding/encoding. Width/height limits are strict; allocation limits are best effort. [Decoder limits](https://docs.rs/image/0.25.10/image/struct.Limits.html).
+- Apache `object_store` 0.14.2 (MIT/Apache-2.0), default features disabled with S3/TLS support, supplies signed object requests; `futures-util` provides bounded stream consumption. Exact transitive dependencies are locked. [Object store API](https://docs.rs/object_store/0.14.2/object_store/).
+- RustFS 1.0.0 (Apache-2.0) is the pinned local/disposable S3-compatible service; it is not the required production provider. [Upstream release](https://github.com/rustfs/rustfs/releases/tag/1.0.0).
