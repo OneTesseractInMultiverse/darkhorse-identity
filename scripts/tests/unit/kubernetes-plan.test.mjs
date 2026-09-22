@@ -83,7 +83,10 @@ test("operator jobs disable configured retries and reject arbitrary command text
   assert.equal(job.spec.completions, 1);
   assert.equal(job.spec.template.spec.restartPolicy, "Never");
   assert.equal(job.spec.activeDeadlineSeconds, 120);
-  assert.deepEqual(job.spec.template.spec.containers[0].args, ["migrate"]);
+  assert.deepEqual(job.spec.template.spec.containers[0].args, [
+    "migrate",
+    "--yes",
+  ]);
   assert.ok(JSON.stringify(job).includes("operator-secrets"));
   for (const command of ["serve", "bootstrap", "sh", "migrate; echo secret"])
     assert.throws(() => operatorJob(c, command, "job-1"));

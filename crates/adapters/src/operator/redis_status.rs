@@ -1,19 +1,20 @@
+use super::output::{Failure, Output};
 use crate::{
     redis_configuration,
     redis_infrastructure::{Identity, ProbeFailure, RedisInfrastructure},
 };
 
-pub(super) async fn run() -> Result<(), &'static str> {
+pub(super) async fn run() -> Result<Output, Failure> {
     let settings = redis_configuration::load(crate::deployment_environment::DeploymentEnvironment)
         .map_err(|_| "Invalid Redis configuration; check DARKHORSE_REDIS_* settings.")?;
     let infrastructure =
         RedisInfrastructure::new(settings).map_err(|_| "Cannot prepare Redis connections.")?;
     let status = infrastructure.inspect().await;
-    println!(
-        "{}",
-        serde_json::json!({"cache":project(&status.cache),"limiter":project(&status.limiter),"shared_enforcement":"not_checked"})
-    );
-    result(&status.cache, &status.limiter)
+    let value = serde_json::json!({"cache":project(&status.cache),"limiter":project(&status.limiter),"shared_enforcement":"not_checked"});
+    match result(&status.cache, &status.limiter) {
+        Ok(()) => Ok(Output::record(value)),
+        Err(message) => Err(Failure::from(message).with_data(value)),
+    }
 }
 fn result(
     cache: &Result<Identity, ProbeFailure>,

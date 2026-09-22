@@ -22,7 +22,7 @@ pub(super) fn identifier(value: &str) -> Result<[u8; 32], &'static str> {
         .and_then(|bytes| bytes.try_into().ok())
         .ok_or("Invalid signing key identifier.")
 }
-pub async fn run(operation: Operation) -> Result<(), &'static str> {
+pub async fn run(operation: Operation) -> Result<super::output::Output, super::output::Failure> {
     let http = configuration::load(crate::deployment_environment::DeploymentEnvironment)
         .map_err(|_| "Invalid provider origin.")?;
     let wrap = settings::load(crate::deployment_environment::DeploymentEnvironment)
@@ -37,8 +37,7 @@ pub async fn run(operation: Operation) -> Result<(), &'static str> {
     let result = execute(&store, &issuer, &wrap, operation).await;
     store.close().await;
     let value = result.map_err(message)?;
-    println!("{value}");
-    Ok(())
+    Ok(super::output::Output::record(value))
 }
 async fn execute(
     store: &impl SigningStore,

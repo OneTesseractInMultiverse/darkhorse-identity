@@ -9,6 +9,7 @@ TEST_FILTER ?=
 MUTATION_JOBS ?= 2
 IMAGE ?= darkhorse:local
 SOURCE_REF ?= HEAD
+PYTHON ?= python3
 WEB := $(PNPM) --filter @darkhorse/console
 
 .PHONY: help doctor deps-install deps-check fmt fmt-check lint typecheck architecture-check check ci test test-unit test-unit-rust test-unit-web test-tooling test-component test-unit-watch build build-api build-web dev-setup dev dev-api dev-web proxy-up https-setup https-check https-trust https-untrust clean
@@ -135,6 +136,18 @@ source-package-check: ## Release: inspect SOURCE_REF Git tree/archive for exclud
 
 test-release-tools: ## Test: real Git exports and subprocess failures in a disposable fixture
 	$(NODE) scripts/release-tools-test.mjs
+
+.PHONY: cli-help cli-version test-cli
+cli-help: ## Operator: discover the local command groups without loading settings
+	cargo run --locked --offline -p darkhorse-server -- operator --help
+
+cli-version: ## Operator: print the binary version without loading settings
+	cargo run --locked --offline -p darkhorse-server -- --version
+
+test-cli: ## Test: real CLI processes and POSIX terminal/pipe boundaries; requires Python 3
+	cargo build --locked --offline -p darkhorse-server
+	$(NODE) scripts/cli-test.mjs
+	$(PYTHON) scripts/cli-terminal-test.py
 
 test-component: test-unit-web ## Test: self-contained UI component suite
 

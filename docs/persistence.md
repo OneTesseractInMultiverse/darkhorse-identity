@@ -40,7 +40,7 @@ The operator prepares identifiers and the verifier before beginning the database
 
 ## Authority, lifecycle and revisions
 
-These commands require trusted operator database access. They are not user-facing authenticated APIs and do not perform application RBAC checks. The future HTTP adapters must establish caller authority before invoking the application ports. Platform administrator membership is separate from application ownership and does not bypass the pure authorization evaluator.
+These commands require trusted operator database access. They are not user-facing authenticated APIs and do not perform application RBAC checks. HTTP adapters establish caller authority before invoking their application ports. Platform administrator membership is separate from application ownership and does not bypass the pure authorization evaluator.
 
 After building the binary, use `account ID` to read the current record. `deactivate ID REVISION`, `reactivate ID REVISION`, and `revoke-all ID REVISION` require its current revision. The local wrapper can supply development database settings:
 
@@ -93,3 +93,7 @@ The integration runner allocates random names, credentials and loopback ports, a
 The pinned multi-stage image builds Rust and static SvelteKit assets and runs as UID 10001. It contains the binary, static assets and runtime certificate store, with no Node server or private inputs. `make docker-smoke` checks HTTP/static serving under a read-only filesystem with capabilities dropped. Override `IMAGE` for another local image tag. The first build needs access to image registries and dependency registries. Development database Compose remains separate from the [integrated HTTPS qualification stack](compose.md), which adds file-backed secrets and runtime/operator role separation. Production deployment and Kubernetes qualification remain open.
 
 `make coverage-postgres` combines Rust unit, PostgreSQL and host operator execution, writes an HTML report under `target/postgres-coverage/llvm-cov/html`, and enforces the unchanged 100% line target. `make coverage-unit` remains service-free. Interactive terminal paths and some process/error paths still need measured execution; the unit-only report correctly leaves database effects uncovered. These commands do not yet pass the full Rust coverage target. Track the remaining combined authored-code qualification in [issue #2](https://github.com/OneTesseractInMultiverse/darkhorse-identity/issues/2); passing functional checks is not a full-coverage or production-readiness claim.
+
+## CLI interface transition
+
+See [the CLI guide](cli.md) and [current operator authority matrix](operator-authority.md) for the canonical command groups, confirmation and output contracts. Direct noninteractive mutations require `--yes`; explicit existing Make/deployment operator targets supply it as their named action. Legacy command spellings retain the same business invariants. The parser and confirmation flag do not establish caller identity or add an authority bypass.

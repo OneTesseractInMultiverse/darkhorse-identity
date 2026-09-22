@@ -25,6 +25,7 @@ export function operator(stack, command, args = [], options = {}) {
       "--no-deps",
       ...(tty ? [] : ["-T"]),
       "operator",
+      "--yes",
       ...operatorArgs(command, args),
     ],
     options,

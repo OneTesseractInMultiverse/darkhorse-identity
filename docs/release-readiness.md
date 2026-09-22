@@ -54,6 +54,7 @@ compiler provenance, deployment configuration, or independent protocol security.
 
 [CI](../.github/workflows/ci.yaml) runs on pushes to `main`, pull requests targeting
 `main`, and manual dispatch. **Source verification** runs the source checks above
+plus POSIX CLI subprocess/terminal tests (Python 3 on the hosted runner),
 without advisory installation/scanning. **Dependency qualification** runs the
 strict live advisory gate independently and retains its summary for 14 days.
 A known advisory warning remains a failed qualification check until resolved;

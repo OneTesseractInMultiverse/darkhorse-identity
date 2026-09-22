@@ -1,0 +1,144 @@
+# Rust command-line interface
+
+The same `darkhorse-server` binary serves HTTP and runs local operator commands.
+Clap handles syntax in the adapter layer. Existing application use cases retain
+their transaction ownership and domain invariants. Read the
+[authority matrix](operator-authority.md) before granting access: this interface
+currently uses trusted deployment credentials, not authenticated administrator
+sessions. Future `admin` user/application groups are tracked in #25/#26 and are
+not exposed as placeholder commands.
+
+## Discover commands
+
+```sh
+make cli-help
+make cli-version
+cargo run --locked --offline -p darkhorse-server -- operator account --help
+```
+
+No arguments and `serve` both start the normal HTTP server. Help, version and
+invalid syntax are processed before constructing the async runtime, reading
+settings, prompting or connecting to services. Operator dispatch starts no HTTP
+listener or unrelated server worker. Output is always uncolored; `--no-color`
+is also accepted. Neither `NO_COLOR` nor any terminal setting enables color.
+
+| Canonical command                          | Compatibility spelling                                |
+| ------------------------------------------ | ----------------------------------------------------- |
+| `operator migrate`                         | `migrate`                                             |
+| `operator bootstrap [--stdin]`             | `bootstrap [--stdin]`                                 |
+| `operator account show ID`                 | `account ID`                                          |
+| `operator account deactivate ID REVISION`  | `deactivate ID REVISION`                              |
+| `operator account reactivate ID REVISION`  | `reactivate ID REVISION`                              |
+| `operator account revoke-all ID REVISION`  | `revoke-all ID REVISION`                              |
+| `operator signing status`                  | `signing-status`                                      |
+| `operator signing generate REVISION`       | `signing-generate REVISION`                           |
+| `operator signing import --stdin REVISION` | `signing-import --stdin REVISION`                     |
+| `operator signing activate KID REVISION`   | `signing-activate KID REVISION`                       |
+| `operator signing retire KID REVISION`     | `signing-retire KID REVISION`                         |
+| `operator limiter status/fence/activate`   | `limiter-status`, `limiter-fence`, `limiter-activate` |
+| `operator redis status`                    | `redis-status`                                        |
+
+`ID` is a nonzero principal UUID, `KID` a public URL-safe unpadded 32-byte key ID,
+and `REVISION` a nonnegative integer no larger than PostgreSQL's signed bigint.
+Service/domain checks still validate current state. Legacy spellings are hidden
+from top-level help and use the same typed conversion and dispatch.
+
+## Confirmations and compatibility
+
+Mutations require `--yes` for automation, or an interactive `yes` response on a
+terminal. Refusal/EOF cancels before settings or service access. Protected-stdin
+operations always require `--yes`, so a confirmation cannot consume secret input.
+Signing status also requires confirmation because the existing implementation
+can initialize the provider binding before reading its inventory.
+
+JSON mode never prompts: mutations require `--yes`, and bootstrap additionally
+requires `--stdin`. This keeps its stdout/stderr records machine-readable even
+when launched from a terminal.
+
+```sh
+darkhorse-server operator migrate --yes
+darkhorse-server --output json operator account show <principal-id>
+darkhorse-server operator account revoke-all <principal-id> <revision> --yes
+darkhorse-server operator bootstrap --stdin --yes < protected-input.json
+darkhorse-server operator signing import --stdin <revision> --yes < private-key.der
+```
+
+Create/protect input files through your secret-management process; the names above
+are examples. Do not commit them. `--yes` confirms the requested operation and
+never grants authority or bypasses bootstrap single use, expected revisions,
+last-administrator protection, signing retention or limiter recovery waits.
+
+**Transition for automation:** direct noninteractive invocations using the old
+spellings must also add `--yes` for these operations. The existing explicit
+database/signing/limiter Make operations, Compose operator wrappers, and rendered
+Kubernetes Jobs supply that flag as part of their named operation. Invoking such
+a target or applying the reviewed Job is the caller's confirmation; inspect its
+target, credentials and revisions first. Server startup still uses `serve`
+without that flag. Raw aliases do not bypass confirmation.
+
+## Output and exit contract
+
+Default `--output human` preserves existing concise success messages and compact
+JSON records for account, signing and diagnostic results. Names/data are treated
+as untrusted: JSON escaping also neutralizes C1 controls, line separators and
+bidirectional overrides, retaining valid JSON and Unicode values for consumers.
+Prompts/diagnostics use stderr. No command prints password, verifier, wrapping
+key, private key or database URL values.
+
+`--output json` emits one success envelope on stdout:
+
+```json
+{ "schema_version": 1, "ok": true, "data": { "migrated": true } }
+```
+
+Execution/confirmation failures emit one error envelope on stderr, with a stable
+`error.code`, a redacted message, and optional public diagnostic `data`. Stdout is
+empty on such JSON failures. In human mode, a failed Redis diagnostic preserves
+its per-role JSON observation on stdout and a failure message on stderr; inspect
+the exit code. Help/version always remain readable text. Syntax failures use a
+fixed human diagnostic because parsing did not establish a valid output mode.
+
+| Exit | Meaning                                                                                                                                                                      |
+| ---- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `0`  | Successful command or help/version output                                                                                                                                    |
+| `1`  | Execution failure: invalid configuration/input, unavailable service, conflict, domain rejection or unknown commit outcome; inspect the redacted diagnostic and current state |
+| `2`  | Invalid, oversized, conflicting or malformed command arguments                                                                                                               |
+| `3`  | Required confirmation absent or declined                                                                                                                                     |
+| `74` | Bounded rendering or output write/flush failed; the operation may already have committed                                                                                     |
+
+The OS also reports signal termination (shells commonly report `130` for SIGINT).
+An interrupted process or lost response is not proof of rollback. Do not
+automatically retry mutations after execution/output failures; inspect revisions,
+bootstrap state, key inventory or limiter state first. A closed stdout/stderr pipe
+produces a failing status without a printing panic. Consumers must require a
+complete valid record and successful exit status.
+
+## Input boundaries and remaining qualification
+
+- At most 32 arguments, 1,024 UTF-8 bytes per argument and 4,096 bytes in total.
+  Non-UTF-8/control-bearing arguments are rejected. Input is never executed as a
+  shell string. Raw Clap errors, suggestions and user-supplied program names are
+  never printed; invalid values cannot be reflected into diagnostics.
+- Bootstrap JSON remains bounded to 16,384 bytes, rejects unknown/duplicate fields
+  and malformed/deeply nested data, and preserves password bytes. Signing import
+  remains bounded to 8,192 DER bytes through protected stdin. No secret-valued
+  command options are accepted.
+- Rendered operator records/errors are bounded to 65,536 bytes. A failed write
+  can expose a partial record but cannot return success. Help is generated from
+  the fixed bounded command tree. Human prompts are fixed text on stderr.
+- Interactive bootstrap keeps hidden password/confirmation prompts and bounds
+  profile input. Accepted terminal input is limited to 1,024 bytes; the shared
+  password policy still requires 15–128 characters without control characters.
+  The current rpassword reader allocates while collecting terminal input before this length
+  check; it does not provide a strict collection-time allocation bound. Signal
+  termination also needs a terminal-restoration guarantee. Those terminal
+  hardening items remain open in #24; use bounded protected stdin when an explicit
+  input-memory bound is required. Signal termination is not graceful cancellation.
+
+`make test-cli` builds the real binary and runs subprocess plus POSIX
+pseudo-terminal/pipe tests (Node, Python 3 and Linux/macOS; no database or Redis).
+These integration tests are separate from service-free source-defined unit tests.
+`make test-postgres`, `make test-redis`, browser and image smoke suites verify the
+actual operator business effects and wrapper compatibility. Hosted source CI also
+runs `test-cli`. Complete authored-code coverage and #23 authority qualification
+remain separate gates; these tests do not establish production readiness.

@@ -1,3 +1,4 @@
+use super::output::{Failure, Output};
 #[derive(Clone, Copy)]
 pub(super) enum Operation {
     Fence,
@@ -21,7 +22,7 @@ impl envbind::Environment for RecoveryEnvironment {
         )
     }
 }
-pub(super) async fn run(command: Operation) -> Result<(), &'static str> {
+pub(super) async fn run(command: Operation) -> Result<Output, Failure> {
     let store = super::connect().await?;
     let result = execute(&store, command).await;
     store.close().await;
@@ -30,21 +31,20 @@ pub(super) async fn run(command: Operation) -> Result<(), &'static str> {
 async fn execute(
     store: &crate::postgres::PostgresStore,
     command: Operation,
-) -> Result<(), &'static str> {
+) -> Result<Output, Failure> {
     match command {
         Operation::Fence => fence(store).await,
         Operation::Activate => activate(store).await,
         Operation::Status => status(store).await,
     }
 }
-async fn fence(store: &crate::postgres::PostgresStore) -> Result<(), &'static str> {
+async fn fence(store: &crate::postgres::PostgresStore) -> Result<Output, Failure> {
     let mut nonce = [0; 16];
     getrandom::fill(&mut nonce).map_err(|_| FAILURE)?;
     let state = store.fence(nonce).await.map_err(|_| FAILURE)?;
-    println!("{}", project(state, None));
-    Ok(())
+    Ok(Output::record(project(state, None)))
 }
-async fn activate(store: &crate::postgres::PostgresStore) -> Result<(), &'static str> {
+async fn activate(store: &crate::postgres::PostgresStore) -> Result<Output, Failure> {
     let state = store.read().await.map_err(|_| FAILURE)?;
     activation_ready(state).map_err(
         |_| "Limiter recovery wait has not elapsed, or the generation is already active.",
@@ -57,10 +57,12 @@ async fn activate(store: &crate::postgres::PostgresStore) -> Result<(), &'static
         .activate(state.generation, identity)
         .await
         .map_err(|_| FAILURE)?;
-    println!("Limiter generation activated. Use limiter-status to inspect enforcement.");
-    Ok(())
+    Ok(Output::message(
+        "Limiter generation activated. Use limiter-status to inspect enforcement.",
+        serde_json::json!({"activated":true}),
+    ))
 }
-async fn status(store: &crate::postgres::PostgresStore) -> Result<(), &'static str> {
+async fn status(store: &crate::postgres::PostgresStore) -> Result<Output, Failure> {
     let state = store.read().await.map_err(|_| FAILURE)?;
     let count = if state.active {
         let counters = RedisCounters::new(
@@ -72,8 +74,7 @@ async fn status(store: &crate::postgres::PostgresStore) -> Result<(), &'static s
     } else {
         None
     };
-    println!("{}", project(state, count));
-    Ok(())
+    Ok(Output::record(project(state, count)))
 }
 
 fn project(state: Enforcement, count: Option<u64>) -> serde_json::Value {

@@ -1,0 +1,86 @@
+use super::{Command, Failure, Format, Invocation, tree::*};
+use crate::operator::signing::Operation;
+use darkhorse_domain::{AccountStatus, directory::AccountAction};
+pub(super) fn invocation(options: Options) -> Result<Invocation, Failure> {
+    let command = match options.command {
+        None | Some(Root::Serve) => Command::Serve,
+        Some(Root::Operator(value)) => operator(value),
+        Some(Root::Legacy(value)) => legacy(value),
+    };
+    if command == Command::Serve && (options.output != Format::Human || options.yes) {
+        return Err(Failure::usage());
+    }
+    if options.output == Format::Json && matches!(command, Command::Bootstrap { stdin: false }) {
+        return Err(Failure::usage());
+    }
+    Ok(Invocation {
+        command,
+        format: options.output,
+        confirmed: options.yes,
+    })
+}
+fn operator(value: Operator) -> Command {
+    match value {
+        Operator::Migrate => Command::Migrate,
+        Operator::Bootstrap(value) => Command::Bootstrap { stdin: value.stdin },
+        Operator::Account(value) => account(value),
+        Operator::Signing(value) => Command::Signing(signing(value)),
+        Operator::Limiter(Limiter::Status) => Command::LimiterStatus,
+        Operator::Limiter(Limiter::Fence) => Command::LimiterFence,
+        Operator::Limiter(Limiter::Activate) => Command::LimiterActivate,
+        Operator::Redis(Redis::Status) => Command::RedisStatus,
+    }
+}
+fn account(value: Account) -> Command {
+    match value {
+        Account::Show(value) => Command::Account(value.id),
+        Account::Deactivate(value) => {
+            change(value, AccountAction::SetStatus(AccountStatus::Inactive))
+        }
+        Account::Reactivate(value) => {
+            change(value, AccountAction::SetStatus(AccountStatus::Active))
+        }
+        Account::RevokeAll(value) => change(value, AccountAction::RevokeAll),
+    }
+}
+fn change(value: Change, action: AccountAction) -> Command {
+    Command::Change {
+        id: value.id,
+        revision: value.revision,
+        action,
+    }
+}
+fn signing(value: Signing) -> Operation {
+    match value {
+        Signing::Status => Operation::Status,
+        Signing::Generate(value) => Operation::Generate(value.revision),
+        Signing::Import(value) => Operation::Import(value.revision),
+        Signing::Activate(value) => Operation::Activate {
+            kid: value.kid,
+            revision: value.revision,
+        },
+        Signing::Retire(value) => Operation::Retire {
+            kid: value.kid,
+            revision: value.revision,
+        },
+    }
+}
+fn legacy(value: Legacy) -> Command {
+    operator(match value {
+        Legacy::Migrate => Operator::Migrate,
+        Legacy::Bootstrap(v) => Operator::Bootstrap(v),
+        Legacy::Account(v) => Operator::Account(Account::Show(v)),
+        Legacy::Deactivate(v) => Operator::Account(Account::Deactivate(v)),
+        Legacy::Reactivate(v) => Operator::Account(Account::Reactivate(v)),
+        Legacy::RevokeAll(v) => Operator::Account(Account::RevokeAll(v)),
+        Legacy::SigningStatus => Operator::Signing(Signing::Status),
+        Legacy::SigningGenerate(v) => Operator::Signing(Signing::Generate(v)),
+        Legacy::SigningImport(v) => Operator::Signing(Signing::Import(v)),
+        Legacy::SigningActivate(v) => Operator::Signing(Signing::Activate(v)),
+        Legacy::SigningRetire(v) => Operator::Signing(Signing::Retire(v)),
+        Legacy::LimiterStatus => Operator::Limiter(Limiter::Status),
+        Legacy::LimiterFence => Operator::Limiter(Limiter::Fence),
+        Legacy::LimiterActivate => Operator::Limiter(Limiter::Activate),
+        Legacy::RedisStatus => Operator::Redis(Redis::Status),
+    })
+}

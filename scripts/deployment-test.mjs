@@ -196,7 +196,7 @@ async function transport(origin, ca) {
       (
         await compose(
           stack,
-          ["exec", "-T", "api", "darkhorse-server", ...args],
+          ["exec", "-T", "api", "darkhorse-server", "--yes", ...args],
           { ...captured, acceptFailure: true },
         )
       ).code,

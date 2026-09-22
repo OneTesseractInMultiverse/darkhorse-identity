@@ -197,7 +197,7 @@ async function hostChecks(env, db, directory, benchmark) {
     `${benchmark ? "release" : "debug"}/darkhorse-server`,
   );
   const invoke = (operation, operator = false, acceptFailure = false) =>
-    command(executable, [operation], {
+    command(executable, [operation, "--yes"], {
       env: {
         ...runtimeEnvironment(env),
         ...(operator
@@ -324,6 +324,7 @@ async function imageChecks(tag, env, cache, limiter, db) {
         cache.network,
         ...names.flatMap((n) => ["--env", n]),
         tag,
+        "--yes",
         operation,
       ],
       { env: runtime },

@@ -113,6 +113,7 @@ async function main() {
         "-p",
         "darkhorse-server",
         "--",
+        "--yes",
         operation,
       ],
       { env: runtime },

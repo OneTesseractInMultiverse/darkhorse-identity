@@ -81,6 +81,7 @@ const operator = (args, options = {}) =>
       "operator",
       "--",
       "darkhorse-server",
+      "--yes",
       ...args,
     ],
     options,

@@ -92,6 +92,7 @@ export async function isolation({ c, kube, apply }, pods, ca) {
             "--",
             "darkhorse-server",
             "migrate",
+            "--yes",
           ],
           { acceptFailure: true },
         )

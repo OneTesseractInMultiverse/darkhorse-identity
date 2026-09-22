@@ -93,7 +93,7 @@ export async function verifyBrowser(
     `${profile}/darkhorse-server`,
   );
   const invoke = async (args, input, operator = false) => {
-    const result = await command(executable, args, {
+    const result = await command(executable, ["--yes", ...args], {
       env: {
         ...runtime,
         ...(operator

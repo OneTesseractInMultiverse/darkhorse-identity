@@ -38,7 +38,7 @@ jobs:
       - name: Install locked dependencies
         run: make deps-install
       - name: Verify source, tests and builds
-        run: make ci test-release-tools source-package-check
+        run: make ci test-release-tools source-package-check test-cli
 
   dependencies:
     name: Dependency qualification

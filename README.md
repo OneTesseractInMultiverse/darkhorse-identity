@@ -70,6 +70,8 @@ Remaining work is tracked in [GitHub issues](https://github.com/OneTesseractInMu
 
 The project license has not been selected. Third-party component licenses remain applicable; see [third-party notices](docs/third-party-notices.md).
 
+The [Rust CLI guide](docs/cli.md) documents command groups, protected input, confirmations, JSON output and exit codes. Use `make cli-help` to discover existing operations and read their [current authority boundaries](docs/operator-authority.md).
+
 See [release qualification](docs/release-readiness.md) for hosted checks, advisory scans and remaining production gates. Report suspected vulnerabilities through the private channel in [SECURITY.md](SECURITY.md).
 
 Invitation-only ordinary-account onboarding and its API are described in [the invitation contract](docs/invitations.md).

@@ -35,7 +35,7 @@ async function ready() {
 }
 
 async function verifyOperator(invoke) {
-  assert.match((await invoke(["--help"])).stdout, /bootstrap/);
+  assert.match((await invoke(["--help"])).stdout, /operator/);
   const invalid = await invoke(["bootstrap", "--stdin"], "{}", true);
   assert.notEqual(invalid.code, 0);
   assert.match(invalid.stderr, /Invalid bootstrap input/);
@@ -63,6 +63,27 @@ async function verifyOperator(invoke) {
   const updated = JSON.parse((await invoke(["account", match[1]])).stdout);
   assert.equal(updated.credential_epoch, 1);
   assert.equal(updated.revision, 1);
+  const structured = await invoke([
+    "--output",
+    "json",
+    "operator",
+    "account",
+    "show",
+    match[1],
+  ]);
+  assert.equal(structured.stderr, "");
+  const envelope = JSON.parse(structured.stdout);
+  assert.equal(envelope.schema_version, 1);
+  assert.equal(envelope.ok, true);
+  assert.deepEqual(envelope.data, updated);
+  const rejected = await invoke(
+    ["--output", "json", "operator", "account", "revoke-all", match[1], "0"],
+    undefined,
+    true,
+  );
+  assert.equal(rejected.code, 1);
+  assert.equal(rejected.stdout, "");
+  assert.equal(JSON.parse(rejected.stderr).error.code, "operation_failed");
   const conflict = await invoke(["revoke-all", match[1], "0"], undefined, true);
   assert.notEqual(conflict.code, 0);
   assert.match(conflict.stderr, /changed/);
@@ -109,7 +130,7 @@ async function hostChecks(url) {
     "debug/darkhorse-server",
   );
   await verifySecretFiles(executable, env, command);
-  const secure = await command(executable, ["migrate"], {
+  const secure = await command(executable, ["migrate", "--yes"], {
     env: { ...env, DARKHORSE_DATABASE_INSECURE: "false" },
     input: "",
     capture: true,
@@ -125,7 +146,7 @@ async function hostChecks(url) {
     "connection errors must not expose credentials",
   );
   await verifyOperator((args, input, acceptFailure = false) =>
-    command(executable, args, {
+    command(executable, ["--yes", ...args], {
       env,
       input,
       acceptFailure,
@@ -153,6 +174,7 @@ async function imageChecks(tag) {
         "--env",
         "DARKHORSE_DATABASE_INSECURE",
         tag,
+        "--yes",
         ...args,
       ],
       { env, input, acceptFailure },

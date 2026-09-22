@@ -1,30 +1,60 @@
 use darkhorse_adapters::{
     configuration, http,
-    operator::{
-        self,
-        command::{self, Command},
-    },
+    operator::{self, command::Command},
 };
 use std::process::ExitCode;
 mod authentication;
 mod maintenance;
 
-#[tokio::main]
-async fn main() -> ExitCode {
-    match run().await {
-        Ok(()) => ExitCode::SUCCESS,
-        Err(message) => {
-            eprintln!("{message}");
-            ExitCode::FAILURE
-        }
+fn main() -> ExitCode {
+    use operator::{
+        cli,
+        output::{self, Format},
+    };
+    let args = std::env::args_os()
+        .skip(1)
+        .take(cli::ARGUMENT_LIMIT + 1)
+        .collect::<Vec<_>>();
+    match cli::invocation(&args) {
+        Err(error) => finish(Err(error), Format::Human),
+        Ok(cli::Plan::Display(text)) => finish(output::display(&text), Format::Human),
+        Ok(cli::Plan::Run(invocation)) => finish(
+            execute(invocation.command, invocation.confirmed, invocation.format),
+            invocation.format,
+        ),
     }
 }
-
-async fn run() -> Result<(), &'static str> {
-    let command = command::parse(&std::env::args().skip(1).collect::<Vec<_>>())?;
+fn finish(
+    result: Result<(), operator::output::Failure>,
+    format: operator::output::Format,
+) -> ExitCode {
+    match result {
+        Ok(()) => ExitCode::SUCCESS,
+        Err(error) => match operator::output::diagnose(&error, format) {
+            Ok(()) => ExitCode::from(error.exit_code()),
+            Err(write) => ExitCode::from(write.exit_code()),
+        },
+    }
+}
+fn execute(
+    command: Command,
+    confirmed: bool,
+    format: operator::output::Format,
+) -> Result<(), operator::output::Failure> {
+    operator::confirmation::confirm(command, confirmed, format)?;
+    let runtime = tokio::runtime::Builder::new_multi_thread()
+        .enable_all()
+        .build()
+        .map_err(|_| "Cannot initialize runtime.")?;
+    runtime.block_on(dispatch(command, format))
+}
+async fn dispatch(
+    command: Command,
+    format: operator::output::Format,
+) -> Result<(), operator::output::Failure> {
     match command {
-        Command::Serve => serve().await,
-        command => operator::run(command).await,
+        Command::Serve => serve().await.map_err(Into::into),
+        command => operator::output::emit(&operator::run(command).await?, format),
     }
 }
 

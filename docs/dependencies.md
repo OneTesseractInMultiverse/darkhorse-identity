@@ -76,6 +76,23 @@ complete transitive advisory or license audit. [Lettre advisories](https://rusts
 
 [kind 0.33.0](https://github.com/kubernetes-sigs/kind/releases/tag/v0.33.0) is an optional host-only integration-test dependency. Verify its official release checksum before installation. The harness pins `kindest/node:v1.36.4@sha256:099e049362a1526b2db71494e1947aae99bd16290d7c895f2b7ea312e3cbfaed` and uses explicit private kubeconfig/context arguments. The [pinned kindnet source](https://github.com/kubernetes-sigs/kind/blob/v0.33.0/images/kindnetd/cmd/kindnetd/main.go) enables a network-policy controller with fail-open evaluation errors. Normal-path enforcement in this local fixture does not qualify production CNI failure behavior. Kubernetes API validation was exercised with kubectl 1.36.1. See [Kubernetes qualification](kubernetes.md) for topology and limits.
 
+## CLI interface dependency
+
+Clap **4.6.7** (MIT OR Apache-2.0) is pinned in the adapter layer with defaults
+disabled and only `derive`, `std`, `help` and `usage` enabled. Color, suggestions,
+environment-backed arguments and rich error context are disabled. The CLI drops
+raw parser errors and emits fixed diagnostics. The new locked packages are
+`clap`, `clap_builder` and `clap_derive` 4.6.7, `clap_lex` 1.1.1, and `anstyle`
+1.0.14; all use MIT OR Apache-2.0. Their declared Rust minimums (1.85 for Clap and
+1.66 for anstyle) are below the pinned 1.97.1 toolchain. This review uses package
+metadata and the [maintained upstream API](https://docs.rs/clap/4.6.7/clap/).
+
+The 2026-09-21 full-lockfile cargo-audit 0.22.2 check introduced no new findings;
+the existing `atomic-polyfill` warning in #28 still blocks overall qualification.
+This is maintenance/feature/license/advisory evidence, not an independent audit.
+Existing rpassword 7.5.4 still owns hidden terminal reading; its collection-time
+allocation and signal-restoration limits are explicit in [the CLI guide](cli.md).
+
 ## Release advisory review
 
 The first complete-lockfile scan on **2026-09-21** found `cookie 0.6.0` through

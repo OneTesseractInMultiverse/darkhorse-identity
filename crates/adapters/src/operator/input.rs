@@ -43,12 +43,8 @@ pub fn interactive() -> Result<BootstrapInput, &'static str> {
     let email = prompt("Email: ")?;
     let first_name = prompt("First name: ")?;
     let last_name = prompt("Last name: ")?;
-    let password = Zeroizing::new(
-        rpassword::prompt_password("Password: ").map_err(|_| "Cannot read password.")?,
-    );
-    let confirmation = Zeroizing::new(
-        rpassword::prompt_password("Confirm password: ").map_err(|_| "Cannot read password.")?,
-    );
+    let password = hidden_password("Password: ")?;
+    let confirmation = hidden_password("Confirm password: ")?;
     if *password != *confirmation {
         return Err("Password confirmation does not match.");
     }
@@ -60,16 +56,35 @@ pub fn interactive() -> Result<BootstrapInput, &'static str> {
     })
 }
 
+fn hidden_password(prompt: &'static str) -> Result<Zeroizing<String>, &'static str> {
+    let config = rpassword::ConfigBuilder::new()
+        .output_writer(io::stderr())
+        .build();
+    let value = Zeroizing::new(
+        rpassword::prompt_password_with_config(prompt, config)
+            .map_err(|_| "Cannot read password.")?,
+    );
+    if value.is_empty() || value.len() > 1024 {
+        return Err("Invalid password input length.");
+    }
+    Ok(value)
+}
+
 fn prompt(message: &str) -> Result<String, &'static str> {
     use std::io::BufRead;
-    print!("{message}");
-    io::stdout().flush().map_err(|_| "Cannot write prompt.")?;
+    io::stderr()
+        .write_all(message.as_bytes())
+        .and_then(|()| io::stderr().flush())
+        .map_err(|_| "Cannot write prompt.")?;
     let mut value = String::new();
     io::stdin()
         .lock()
         .take(1025)
         .read_line(&mut value)
         .map_err(|_| "Cannot read profile input.")?;
+    if value.is_empty() {
+        return Err("Profile input cancelled.");
+    }
     if value.len() > 1024 {
         return Err("Profile input is too long.");
     }

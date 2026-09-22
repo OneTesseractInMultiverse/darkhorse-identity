@@ -169,7 +169,7 @@ export function operatorJob(input, command, name) {
   const spec = pod(c, true);
   spec.restartPolicy = "Never";
   spec.containers[0].name = "operator";
-  spec.containers[0].args = [command];
+  spec.containers[0].args = [command, "--yes"];
   return {
     apiVersion: "batch/v1",
     kind: "Job",

@@ -1,5 +1,7 @@
+pub mod cli;
 pub mod command;
 pub mod input;
+pub mod output;
 pub mod signing;
 
 use crate::{database_configuration, password::PasswordPreparation, postgres::PostgresStore};
@@ -10,20 +12,17 @@ use darkhorse_application::{
 };
 use darkhorse_domain::AccountStatus;
 
-pub const HELP: &str = "darkhorse-server [serve | migrate | redis-status | limiter-status | limiter-fence | limiter-activate | bootstrap [--stdin] | account ID | deactivate ID REVISION | reactivate ID REVISION | revoke-all ID REVISION]\nDatabase operations require explicit DARKHORSE_DATABASE_URL. Bootstrap reads a hidden password from a terminal, or bounded JSON from standard input with --stdin. Signing operations: signing-status | signing-generate REVISION | signing-import --stdin REVISION (PKCS#8 DER) | signing-activate KID REVISION | signing-retire KID REVISION. Provider operations require DARKHORSE_PROVIDER_ENABLED=true and DARKHORSE_SIGNING_WRAP_KEY. No secret command arguments are accepted.";
+use output::{Failure, Output};
+pub mod confirmation;
 
-pub async fn run(command: Command) -> Result<(), &'static str> {
+pub async fn run(command: Command) -> Result<Output, Failure> {
     match command {
-        Command::Help => {
-            println!("{HELP}");
-            Ok(())
-        }
         Command::RedisStatus => redis_status::run().await,
         Command::LimiterFence => limiter::run(limiter::Operation::Fence).await,
         Command::LimiterActivate => limiter::run(limiter::Operation::Activate).await,
         Command::LimiterStatus => limiter::run(limiter::Operation::Status).await,
         Command::Signing(operation) => signing::run(operation).await,
-        Command::Serve => Err("Use the HTTP composition root for serve."),
+        Command::Serve => Err("Use the HTTP composition root for serve.".into()),
         Command::Bootstrap { stdin } => run_bootstrap(stdin).await,
         command => {
             let store = connect().await?;
@@ -43,7 +42,7 @@ async fn connect() -> Result<PostgresStore, &'static str> {
         .map_err(directory_message)
 }
 
-async fn run_bootstrap(stdin: bool) -> Result<(), &'static str> {
+async fn run_bootstrap(stdin: bool) -> Result<Output, Failure> {
     let input = if stdin {
         input::read_json(std::io::stdin().lock())?
     } else {
@@ -64,22 +63,25 @@ async fn run_bootstrap(stdin: bool) -> Result<(), &'static str> {
     .await;
     store.close().await;
     let principal = result.map_err(bootstrap_message)?;
-    println!(
-        "Administrator initialized: {}",
-        uuid::Uuid::from_u128(principal.as_u128())
-    );
-    Ok(())
+    let id = uuid::Uuid::from_u128(principal.as_u128());
+    Ok(Output::message(
+        format!("Administrator initialized: {id}"),
+        serde_json::json!({"principal_id":id.to_string()}),
+    ))
 }
 
-async fn run_database_command(store: &PostgresStore, command: Command) -> Result<(), &'static str> {
+async fn run_database_command(store: &PostgresStore, command: Command) -> Result<Output, Failure> {
     match command {
         Command::Migrate => {
             store.migrate().await.map_err(directory_message)?;
-            println!("Database migrations applied.");
+            Ok(Output::message(
+                "Database migrations applied.",
+                serde_json::json!({"migrated":true}),
+            ))
         }
         Command::Account(id) => {
             let record = store.account(id).await.map_err(directory_message)?;
-            println!("{}", project_account(&record));
+            Ok(Output::record(project_account(&record)))
         }
         Command::Change {
             id,
@@ -90,11 +92,13 @@ async fn run_database_command(store: &PostgresStore, command: Command) -> Result
                 .change(id, revision, action)
                 .await
                 .map_err(directory_message)?;
-            println!("Account operation completed.");
+            Ok(Output::message(
+                "Account operation completed.",
+                serde_json::json!({"completed":true}),
+            ))
         }
-        _ => return Err("Invalid database operation."),
+        _ => Err("Invalid database operation.".into()),
     }
-    Ok(())
 }
 
 fn project_account(record: &AccountRecord) -> serde_json::Value {

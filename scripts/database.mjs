@@ -107,7 +107,16 @@ async function main() {
   else if (operation === "run")
     await run(
       "cargo",
-      ["run", "--locked", "--offline", "-p", "darkhorse-server", "--", ...args],
+      [
+        "run",
+        "--locked",
+        "--offline",
+        "-p",
+        "darkhorse-server",
+        "--",
+        "--yes",
+        ...args,
+      ],
       { env: await environment() },
     );
   else

@@ -8,7 +8,7 @@ export async function verifySecretFiles(executable, environment, command) {
   const env = { ...environment, DARKHORSE_DATABASE_URL_FILE: path };
   delete env.DARKHORSE_DATABASE_URL;
   const invoke = (values) =>
-    command(executable, ["migrate"], {
+    command(executable, ["migrate", "--yes"], {
       env: values,
       input: "",
       capture: true,

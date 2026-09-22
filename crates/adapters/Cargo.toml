@@ -7,6 +7,7 @@ publish.workspace = true
 autotests = false
 
 [dependencies]
+clap.workspace = true
 futures-util.workspace = true
 reqwest.workspace = true
 rustls.workspace = true
