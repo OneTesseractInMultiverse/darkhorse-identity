@@ -4,6 +4,7 @@ import { resolve } from "node:path";
 import assert from "node:assert/strict";
 import { run } from "./lib/command.mjs";
 import { verifySecretFiles } from "./lib/configuration-file-test.mjs";
+import { verifyDatabaseAuthority } from "./lib/database-authority-test.mjs";
 
 process.chdir(resolve(import.meta.dirname, ".."));
 const image =
@@ -274,7 +275,7 @@ async function main() {
         "--env",
         "POSTGRES_PASSWORD",
         "--env",
-        "POSTGRES_INITDB_ARGS=--encoding=UTF8",
+        "POSTGRES_INITDB_ARGS=--encoding=UTF8 --auth-host=scram-sha-256",
         image,
       ],
       { env: { ...process.env, POSTGRES_PASSWORD: password } },
@@ -282,15 +283,26 @@ async function main() {
     await ready();
     const [mode, tag] = process.argv.slice(2);
     if (mode === "--image" && tag) await imageChecks(tag);
-    else if (mode === undefined) {
+    else if (mode === undefined || mode === "--authority-only") {
       const port = (await docker(["port", database, "5432/tcp"])).stdout
         .trim()
         .split(":")
         .at(-1);
-      await hostChecks(
-        `postgres://postgres:${password}@127.0.0.1:${port}/postgres`,
-      );
-    } else throw new Error("Use no arguments, or --image IMAGE.");
+      if (mode === undefined)
+        await hostChecks(
+          `postgres://postgres:${password}@127.0.0.1:${port}/postgres`,
+        );
+      else
+        await command("cargo", [
+          "build",
+          "-p",
+          "darkhorse-server",
+          "--locked",
+          "--offline",
+        ]);
+      await verifyDatabaseAuthority(docker, database, command, port);
+    } else
+      throw new Error("Use no arguments, --authority-only, or --image IMAGE.");
   } finally {
     for (const name of owned.reverse())
       await run("docker", ["rm", "--force", name], {

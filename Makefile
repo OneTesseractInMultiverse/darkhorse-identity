@@ -197,6 +197,10 @@ bootstrap: ## Database: interactively create the one-time local administrator
 test-postgres: ## Test: disposable PostgreSQL transactions and operator CLI; requires Docker
 	$(NODE) scripts/postgres-test.mjs
 
+.PHONY: test-db-authority
+test-db-authority: ## Test: real restricted database roles, reviewed grants and audit boundaries
+	$(NODE) scripts/postgres-test.mjs --authority-only
+
 docker-build: ## Build: pinned multi-stage Rust/static image; requires network on first build
 	docker build --tag "$(IMAGE)" .
 

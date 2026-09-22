@@ -19,6 +19,12 @@ Infrastructure images are pinned by digest. Setup resolves the locally built app
 
 Application and operator share the same binary, but only the operator receives owner and recovery secret mounts. Runtime cannot create schema, inspect migration history, insert administrator membership, change signing keys, or update limiter authority. The runtime grant script is reapplied explicitly after reviewed migrations. Runtime still has broad DML access required by existing application workflows; this is **partial privilege separation**, not containment of every action a compromised runtime could take. The complete authenticated/operator authority contract remains in [#23](https://github.com/OneTesseractInMultiverse/darkhorse-identity/issues/23) and [#27](https://github.com/OneTesseractInMultiverse/darkhorse-identity/issues/27). Host/Docker administrators remain trusted.
 
+The [database authority policy](database-authority.md) uses named runtime grants,
+append/read audit privileges, and default denial for new objects. Unsafe runtime
+role memberships, elevated attributes or ownership abort grant application.
+Reapply the reviewed script to existing stacks while serving is stopped;
+rebuilding the application image alone does not update database permissions.
+
 ## Prepare and initialize
 
 Choose a unique stack name (lowercase letters, digits and hyphens, starting with a letter, at most 32 characters) and a canonical HTTPS DNS origin. Use a high, unused port for local qualification. All subsequent commands must use that same `STACK`.

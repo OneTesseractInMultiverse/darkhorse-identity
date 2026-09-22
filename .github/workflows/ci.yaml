@@ -39,6 +39,8 @@ jobs:
         run: make deps-install
       - name: Verify source, tests and builds
         run: make ci test-release-tools source-package-check test-cli
+      - name: Verify runtime database authority
+        run: make test-db-authority
 
   dependencies:
     name: Dependency qualification

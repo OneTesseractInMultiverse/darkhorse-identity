@@ -10,6 +10,11 @@ The namespace enforces the Kubernetes [Restricted Pod Security Standard](https:/
 
 The runtime receives nonowner database and restricted Redis credentials. A separate operator service account, secret and one-shot Job receive schema-owner and limiter-recovery credentials. This is the same **partial database privilege separation** described in [Compose](compose.md#topology-and-authority). Runtime still has broad application DML privileges. Full authenticated CLI authority, temporary credentials and restricted exec remain in [#23](https://github.com/OneTesseractInMultiverse/darkhorse-identity/issues/23) and [#27](https://github.com/OneTesseractInMultiverse/darkhorse-identity/issues/27).
 
+Apply the [explicit database grant policy](database-authority.md) after reviewed
+migrations while serving is stopped. New relations/routines receive no implicit
+runtime access, and application audit tables allow append/read only. A rolling
+image update does not apply this permission policy.
+
 | Bound                                      | Configured value                        |
 | ------------------------------------------ | --------------------------------------- |
 | Serving replicas                           | 2                                       |

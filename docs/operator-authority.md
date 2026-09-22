@@ -38,8 +38,12 @@ deployments must restrict who receives their database credential.
 The [Compose](compose.md#topology-and-authority) and [Kubernetes](kubernetes.md)
 fixtures give the runtime a nonowner database login and separate operator
 workloads the schema-owner/recovery credentials. The runtime cannot migrate or
-write selected administrator/signing/limiter records. It still has broad DML
-access, including sensitive credential and audit tables; this is **partial
+write selected administrator/signing/limiter records. The explicit
+[database grant policy](database-authority.md) denies access to unlisted objects,
+rejects unsafe runtime role topology, and permits application audit append/read
+without edit or deletion privileges. Runtime still has broad DML
+access to sensitive credential/session tables and can append misleading audit
+records; this is **partial
 separation**, not containment of a compromised runtime. A shared owner credential
 does not identify an individual or provide operation-specific authorization.
 
