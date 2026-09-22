@@ -6,7 +6,7 @@ Application lockfiles are committed. Update dependencies in a reviewed change, r
 - **envbind 0.1.0** is pinned at the configuration adapter. Tests use `MapEnvironment`; complete settings, including library defaults, are validated before listener binding. Process environment access is restricted to the server/operator boundary; core logic receives explicit inputs. [API documentation](https://docs.rs/envbind/0.1.0/envbind/)
 - **restqs 0.1.0** is pinned at the query adapter. The foundation example permits only a status filter and bounded pagination, rejects duplicate/unknown parameters, and maps into `DirectoryCriteria`. It is not a public directory endpoint or an authorization filter. Future SQL adapters must combine caller restrictions with independently established mandatory access predicates. [API documentation](https://docs.rs/restqs/0.1.0/restqs/)
 - **SQLx 0.9.0** is confined to the PostgreSQL adapter (MIT/Apache-2.0). Enabled functionality is PostgreSQL, Tokio, rustls with ring, migrations/macros and UUIDs. Runtime parameterized queries avoid a compile-time database requirement. Only embedded migration macros are used; no query schema is fetched during unit compilation. SQL/client errors map to project-owned redacted failures. [SQLx documentation](https://docs.rs/sqlx/0.9.0/sqlx/)
-- **RustCrypto argon2 0.6.0** (MIT/Apache-2.0), **getrandom 0.4**, **zeroize 1**, **uuid 1.26.1** and **rpassword 7.5.4** implement the password/entropy/terminal boundary. Argon2 uses allocation, PHC formatting and zeroization features. Hashing parameters and bounded worker admission are explicit; no custom cryptographic primitive is implemented. Exact transitive versions are locked. The selected memory/work profile exceeds the OWASP minimum but still needs workload-specific measurement for future login capacity. [Argon2 API](https://docs.rs/argon2/0.6.0/argon2/), [password storage guidance](https://cheatsheetseries.owasp.org/cheatsheets/Password_Storage_Cheat_Sheet.html)
+- **RustCrypto argon2 0.6.0** (MIT/Apache-2.0), **getrandom 0.4**, **zeroize 1**, and **uuid 1.26.1** implement the password/entropy boundary. Argon2 uses allocation, PHC formatting and zeroization features. Hashing parameters and bounded worker admission are explicit; no custom cryptographic primitive is implemented. Exact transitive versions are locked. The selected memory/work profile exceeds the OWASP minimum but still needs workload-specific measurement for future login capacity. [Argon2 API](https://docs.rs/argon2/0.6.0/argon2/), [password storage guidance](https://cheatsheetseries.owasp.org/cheatsheets/Password_Storage_Cheat_Sheet.html)
 - **Percona Distribution for PostgreSQL**, using Percona Server **18.6.1** based on PostgreSQL **18.6**, supplies the local Compose and integration database image, pinned by multi-platform digest. It uses the PostgreSQL License plus the licenses of bundled components. Preserve their notices; the container includes more than the database server. Rust, Node and Debian image stages are also pinned. Image updates require a reviewed digest change and compatibility/smoke checks. See the [container and migration contract](percona.md), [release notes](https://docs.percona.com/postgresql/18/release-notes/release-notes-v18.6.1.html), and [licensing information](https://docs.percona.com/postgresql/18/licensing.html).
 - **Caddy 2.11.4** supplies the pinned Alpine proxy image for [Compose qualification](compose.md). The derived image removes the executable's privileged-port capability; TLS keys and trust material arrive through explicit secret mounts. Its [host matcher](https://caddyserver.com/docs/caddyfile/matchers#host) and [fallback handler](https://caddyserver.com/docs/caddyfile/directives/handle) reject requests for other hostnames. The proxy contains no identity policy or application session logic.
 - **SvelteKit**, **Svelte**, **Tailwind CSS**, and **shadcn-svelte** provide the static TypeScript UI. Exact resolved versions are in `pnpm-lock.yaml`. The button and utility source were installed using shadcn-svelte CLI 1.6.1. Styling uses local system fonts, with no remote font requirement.
@@ -90,8 +90,22 @@ metadata and the [maintained upstream API](https://docs.rs/clap/4.6.7/clap/).
 The 2026-09-21 full-lockfile cargo-audit 0.22.2 check introduced no new findings;
 the existing `atomic-polyfill` warning in #28 still blocks overall qualification.
 This is maintenance/feature/license/advisory evidence, not an independent audit.
-Existing rpassword 7.5.4 still owns hidden terminal reading; its collection-time
-allocation and signal-restoration limits are explicit in [the CLI guide](cli.md).
+The terminal adapter replaces rpassword/rtoolbox with **nix 0.31.3** (MIT,
+Rust minimum 1.69), using only `term`, `process`, `signal` and `fs` with defaults
+disabled. Its added build dependency is `cfg_aliases` 0.2.2 (MIT); `libc`, `bitflags`
+and `cfg-if` retain their existing locked versions. Safe APIs provide terminal
+settings, descriptor metadata and foreground-group checks; the project adds no
+unsafe code. See the [nix terminal API](https://docs.rs/nix/0.31.3/nix/sys/termios/).
+
+Existing Tokio 1.53.1 supplies nonblocking descriptor readiness and catchable
+signal streams. Its signal handlers persist for the process, so they are installed
+only for interactive bootstrap and kept through that entire operation. No signal
+registration is added to help, parsing, protected-stdin operations or ordinary
+server startup. See [descriptor readiness](https://docs.rs/tokio/1.53.1/tokio/io/unix/struct.AsyncFd.html)
+and [signal lifetime](https://docs.rs/tokio/1.53.1/tokio/signal/unix/struct.Signal.html).
+The 2026-09-22 full-lockfile scan covers 327 Rust dependencies and adds no new
+finding; RUSTSEC-2023-0089 in #28 remains. Terminal guarantees and unavoidable
+abort/device-loss limitations are explicit in [the CLI guide](cli.md).
 
 ## Release advisory review
 

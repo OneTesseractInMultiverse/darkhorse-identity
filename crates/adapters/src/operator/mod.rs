@@ -1,8 +1,10 @@
+mod cancellation;
 pub mod cli;
 pub mod command;
 pub mod input;
 pub mod output;
 pub mod signing;
+mod terminal;
 
 use crate::{database_configuration, password::PasswordPreparation, postgres::PostgresStore};
 use command::Command;
@@ -23,7 +25,8 @@ pub async fn run(command: Command) -> Result<Output, Failure> {
         Command::LimiterStatus => limiter::run(limiter::Operation::Status).await,
         Command::Signing(operation) => signing::run(operation).await,
         Command::Serve => Err("Use the HTTP composition root for serve.".into()),
-        Command::Bootstrap { stdin } => run_bootstrap(stdin).await,
+        Command::Bootstrap { stdin: false } => cancellation::run(run_bootstrap(false)).await,
+        Command::Bootstrap { stdin: true } => run_bootstrap(true).await,
         command => {
             let store = connect().await?;
             let result = run_database_command(&store, command).await;
@@ -46,7 +49,7 @@ async fn run_bootstrap(stdin: bool) -> Result<Output, Failure> {
     let input = if stdin {
         input::read_json(std::io::stdin().lock())?
     } else {
-        input::interactive()?
+        input::interactive().await?
     };
     let store = connect().await?;
     let preparation = PasswordPreparation::default();

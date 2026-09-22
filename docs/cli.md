@@ -106,8 +106,11 @@ fixed human diagnostic because parsing did not establish a valid output mode.
 | `3`  | Required confirmation absent or declined                                                                                                                                     |
 | `74` | Bounded rendering or output write/flush failed; the operation may already have committed                                                                                     |
 
-The OS also reports signal termination (shells commonly report `130` for SIGINT).
-An interrupted process or lost response is not proof of rollback. Do not
+Interactive bootstrap catches `SIGINT`, `SIGTERM`, `SIGHUP`, `SIGQUIT`, `SIGTSTP`,
+`SIGTTIN` and `SIGTTOU` during input collection and application execution, returning exit `1` with
+`operation_interrupted`. Ctrl-Z cancels this operation instead of suspending it.
+Other invocations retain their ordinary OS signal behavior (shells commonly report
+`130` for SIGINT). An interrupted process or lost response is not proof of rollback. Do not
 automatically retry mutations after execution/output failures; inspect revisions,
 bootstrap state, key inventory or limiter state first. A closed stdout/stderr pipe
 produces a failing status without a printing panic. Consumers must require a
@@ -126,17 +129,37 @@ complete valid record and successful exit status.
 - Rendered operator records/errors are bounded to 65,536 bytes. A failed write
   can expose a partial record but cannot return success. Help is generated from
   the fixed bounded command tree. Human prompts are fixed text on stderr.
-- Interactive bootstrap keeps hidden password/confirmation prompts and bounds
-  profile input. Accepted terminal input is limited to 1,024 bytes; the shared
+- Interactive bootstrap requires a foreground terminal. It reopens the concrete
+  stdin terminal with independent nonblocking flags and verifies its device
+  identity and foreground process group. No stdin flags are changed in the
+  calling shell. Prompts remain fixed text on stderr.
+- Each terminal field uses a fixed 1,024-byte input buffer. Password collection
+  rejects the first excess byte without waiting for Enter. Editing cannot grow
+  that buffer. Completed strings are bounded too; owned secret buffers are
+  zeroized, without claiming erasure of every compiler or OS copy. The shared
   password policy still requires 15–128 characters without control characters.
-  The current rpassword reader allocates while collecting terminal input before this length
-  check; it does not provide a strict collection-time allocation bound. Signal
-  termination also needs a terminal-restoration guarantee. Those terminal
-  hardening items remain open in #24; use bounded protected stdin when an explicit
-  input-memory bound is required. Signal termination is not graceful cancellation.
+- Password echo is disabled and verified before displaying the password prompt,
+  and stays disabled through confirmation. Enter completes a line; Backspace/Delete
+  removes a Unicode character, Ctrl-U clears the line, and Ctrl-W removes the last
+  space-delimited word. Ctrl-D cancels even after partial password input. Escape
+  sequences (including arrow keys and bracketed paste) and malformed UTF-8 are
+  rejected. Password bytes are not trimmed or normalized.
+- Completion, input failure, mismatched confirmation and supported cancellation
+  flush pending input and restore the original terminal settings. Successful
+  cleanup is read back and checked before bootstrap can access the database.
+  A drop guard also attempts cleanup when the input future is cancelled. Cleanup
+  failures return a failing status and a fixed diagnostic. Input readiness yields
+  during continuous editing so it cannot starve cancellation.
+- `SIGKILL`, `SIGSTOP`, fatal process aborts, loss of the terminal device and host
+  failure cannot offer this cleanup guarantee. After abnormal termination, verify
+  or restore terminal settings before entering more input. Cancellation after
+  database work begins still has the uncertain-commit rules above.
 
 `make test-cli` builds the real binary and runs subprocess plus POSIX
 pseudo-terminal/pipe tests (Node, Python 3 and Linux/macOS; no database or Redis).
+They verify oversized input before Enter, exact mode restoration at both password
+prompts, the seven catchable signals, EOF, background refusal, Unicode editing,
+malformed input, output failures and redacted failure after terminal loss.
 These integration tests are separate from service-free source-defined unit tests.
 `make test-postgres`, `make test-redis`, browser and image smoke suites verify the
 actual operator business effects and wrapper compatibility. Hosted source CI also

@@ -36,6 +36,14 @@ pub struct Failure {
     pub data: Option<Value>,
 }
 impl Failure {
+    pub fn interrupted() -> Self {
+        Self {
+            code: "operation_interrupted",
+            message: "Operator command interrupted. The operation may have committed; inspect current state before retrying.",
+            exit: 1,
+            data: None,
+        }
+    }
     pub fn usage() -> Self {
         Self {
             code: "invalid_arguments",

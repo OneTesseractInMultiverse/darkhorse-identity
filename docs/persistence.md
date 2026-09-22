@@ -21,7 +21,7 @@ Migrations are versioned SQL embedded in the Rust binary. Apply them explicitly 
 
 ## Bootstrap input and password storage
 
-Interactive bootstrap requests email, first name, last name, and a hidden password with confirmation. Nothing is supplied as a command argument. It requires a terminal. Automated operators can instead pipe protected JSON to:
+Interactive bootstrap requests email, first name, last name, and a hidden password with confirmation. Nothing is supplied as a command argument. It requires a foreground terminal. The [CLI input contract](cli.md#input-boundaries-and-remaining-qualification) defines fixed input bounds, supported editing and cancellation, and terminal restoration. Automated operators can instead pipe protected JSON to:
 
 ```sh
 ./target/release/darkhorse-server operator bootstrap --stdin --yes

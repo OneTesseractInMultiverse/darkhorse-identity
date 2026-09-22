@@ -37,7 +37,7 @@ uuid = { version = "=1.26.1", default-features = false, features = ["std", "v4"]
 argon2 = { version = "=0.6.0", default-features = false, features = ["alloc", "password-hash", "zeroize"] }
 getrandom = "0.4"
 zeroize = "1"
-rpassword = "=7.5.4"
+nix = { version = "=0.31.3", default-features = false, features = ["term", "process", "signal", "fs"] }
 redis = { version = "=1.7.0", default-features = false, features = ["tokio-rustls-comp", "tls-rustls-webpki-roots", "script"] }
 percent-encoding = "2"
 sha2 = "=0.11.0"

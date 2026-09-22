@@ -19,3 +19,17 @@ impl std::io::Read for BrokenReader {
         Err(std::io::Error::other("test-only read failure"))
     }
 }
+
+#[test]
+fn interactive_assembly_trims_profiles_but_preserves_secret_bytes() {
+    let secret = " synthetic-only passphrase ";
+    let input = assemble(" admin@example.com ", " Ada ", " Lovelace ", secret, secret).unwrap();
+    assert_eq!(input.email, "admin@example.com");
+    assert_eq!(input.first_name, "Ada");
+    assert_eq!(input.last_name, "Lovelace");
+    assert_eq!(input.password, secret);
+    assert!(matches!(
+        assemble("a", "b", "c", secret, "different"),
+        Err("Password confirmation does not match.")
+    ));
+}
