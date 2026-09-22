@@ -24,7 +24,7 @@ Migrations are versioned SQL embedded in the Rust binary. Apply them explicitly 
 Interactive bootstrap requests email, first name, last name, and a hidden password with confirmation. Nothing is supplied as a command argument. It requires a terminal. Automated operators can instead pipe protected JSON to:
 
 ```sh
-./target/release/darkhorse-server bootstrap --stdin
+./target/release/darkhorse-server operator bootstrap --stdin --yes
 ```
 
 Supply exactly `email`, `first_name`, `last_name`, and `password` as JSON strings. Input is limited to 16 KiB and unknown fields are rejected. Use a secret manager or protected input stream; shell command literals and trace logs can retain secrets. The process needs the database settings described below. An explicit password in the database URL also prevents implicit password-file lookup. Errors do not include supplied values, SQL parameters, password verifiers, or connection strings. Success reports only the new principal identifier.
