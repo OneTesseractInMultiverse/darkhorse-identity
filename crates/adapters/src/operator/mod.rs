@@ -28,8 +28,11 @@ pub async fn run(command: Command, auth_stdin: bool) -> Result<Output, Failure> 
         Command::Serve => Err("Use the HTTP composition root for serve.".into()),
         Command::Bootstrap { stdin: false } => cancellation::run(run_bootstrap(false)).await,
         Command::Bootstrap { stdin: true } => run_bootstrap(true).await,
+        Command::Account(_) | Command::Change { .. } if auth_stdin => {
+            accounts::run(command, true).await
+        }
         Command::Account(_) | Command::Change { .. } => {
-            cancellation::run(accounts::run(command, auth_stdin)).await
+            cancellation::run(accounts::run(command, false)).await
         }
         command => {
             let store = connect().await?;

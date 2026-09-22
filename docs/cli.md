@@ -106,10 +106,10 @@ fixed human diagnostic because parsing did not establish a valid output mode.
 | `3`  | Required confirmation absent or declined                                                                                                                                     |
 | `74` | Bounded rendering or output write/flush failed; the operation may already have committed                                                                                     |
 
-Interactive bootstrap and account operations catch `SIGINT`, `SIGTERM`, `SIGHUP`, `SIGQUIT`, `SIGTSTP`,
+Interactive bootstrap and interactive account operations catch `SIGINT`, `SIGTERM`, `SIGHUP`, `SIGQUIT`, `SIGTSTP`,
 `SIGTTIN` and `SIGTTOU` during input collection and application execution, returning exit `1` with
 `operation_interrupted`. Ctrl-Z cancels this operation instead of suspending it.
-Other command groups retain their ordinary OS signal behavior (shells commonly report
+Protected-stdin calls and other command groups retain their ordinary OS signal behavior (shells commonly report
 `130` for SIGINT). An interrupted process or lost response is not proof of rollback. Do not
 automatically retry mutations after execution/output failures; inspect revisions,
 bootstrap state, key inventory or limiter state first. A closed stdout/stderr pipe

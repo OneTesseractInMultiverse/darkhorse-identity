@@ -272,6 +272,30 @@ def account_authentication():
         finally:
             terminal.close()
 
+def incomplete_account_pipe_can_be_terminated():
+    # Keep a pipe open after writing partial JSON. Unlike a terminal prompt,
+    # protected stdin retains the OS signal disposition so shutdown cannot hang.
+    child = subprocess.Popen([BINARY, "--auth-stdin", "account", "00000000-0000-0000-0000-000000000001"], env=ENV, stdin=subprocess.PIPE, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+    try:
+        child.stdin.write(b'{"password":"' + SECRET)
+        child.stdin.flush()
+        # An incomplete input must keep the process alive before interruption.
+        try:
+            child.wait(timeout=0.5)
+            raise AssertionError("incomplete protected input returned before EOF")
+        except subprocess.TimeoutExpired:
+            pass
+        child.terminate()
+        assert child.wait(timeout=3) == -signal.SIGTERM
+        assert SECRET not in child.stdout.read() + child.stderr.read()
+    finally:
+        if child.poll() is None:
+            child.kill()
+        child.communicate()
+
+incomplete_account_pipe_can_be_terminated()
+
+
 account_authentication()
 protected = Terminal(["--auth-stdin", "operator", "account", "revoke-all", "00000000-0000-0000-0000-000000000001", "0"])
 try:

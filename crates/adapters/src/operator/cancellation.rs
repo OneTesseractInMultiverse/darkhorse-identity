@@ -3,7 +3,7 @@ use nix::sys::signal::Signal;
 use std::future::Future;
 use tokio::signal::unix::{SignalKind, signal};
 
-// Installed only for interactive bootstrap. Keep listeners through its entire
+// Installed only for interactive bootstrap and account commands. Keep listeners through its entire
 // command because Tokio does not restore default dispositions when they drop.
 pub(super) async fn run<T>(work: impl Future<Output = Result<T, Failure>>) -> Result<T, Failure> {
     let mut signals = [
