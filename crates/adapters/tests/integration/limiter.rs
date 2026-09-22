@@ -16,6 +16,7 @@ use sqlx::PgPool;
 use std::{sync::Arc, time::Duration};
 static SERIAL: tokio::sync::Mutex<()> = tokio::sync::Mutex::const_new(());
 mod login;
+mod operator_process;
 fn variable(name: &str) -> String {
     std::env::var(name).expect("use make test-redis for disposable infrastructure")
 }

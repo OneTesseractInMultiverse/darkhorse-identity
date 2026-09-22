@@ -19,7 +19,12 @@ fn main() -> ExitCode {
         Err(error) => finish(Err(error), Format::Human),
         Ok(cli::Plan::Display(text)) => finish(output::display(&text), Format::Human),
         Ok(cli::Plan::Run(invocation)) => finish(
-            execute(invocation.command, invocation.confirmed, invocation.format),
+            execute(
+                invocation.command,
+                invocation.confirmed,
+                invocation.format,
+                invocation.auth_stdin,
+            ),
             invocation.format,
         ),
     }
@@ -40,21 +45,23 @@ fn execute(
     command: Command,
     confirmed: bool,
     format: operator::output::Format,
+    auth_stdin: bool,
 ) -> Result<(), operator::output::Failure> {
-    operator::confirmation::confirm(command, confirmed, format)?;
+    operator::confirmation::confirm(command, confirmed, format, auth_stdin)?;
     let runtime = tokio::runtime::Builder::new_multi_thread()
         .enable_all()
         .build()
         .map_err(|_| "Cannot initialize runtime.")?;
-    runtime.block_on(dispatch(command, format))
+    runtime.block_on(dispatch(command, format, auth_stdin))
 }
 async fn dispatch(
     command: Command,
     format: operator::output::Format,
+    auth_stdin: bool,
 ) -> Result<(), operator::output::Failure> {
     match command {
         Command::Serve => serve().await.map_err(Into::into),
-        command => operator::output::emit(&operator::run(command).await?, format),
+        command => operator::output::emit(&operator::run(command, auth_stdin).await?, format),
     }
 }
 

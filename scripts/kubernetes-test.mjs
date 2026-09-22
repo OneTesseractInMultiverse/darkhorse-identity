@@ -413,7 +413,13 @@ async function main() {
   await rolling(requests, ca, protocol);
   await limiterContinuity(requests, protocol);
   await sharedBudgets(c.origin, requests);
-  await operator(["revoke-all", user.principal, "0"]);
+  await operator(["--auth-stdin", "revoke-all", user.principal, "0"], {
+    input: JSON.stringify({
+      email: "replicas@example.com",
+      password: user.password,
+      reason: "Verify replica revocation",
+    }),
+  });
   await protocol.check(false);
   console.log(
     "Cross-replica shared limiting and strict post-commit account revocation passed.",

@@ -17,6 +17,7 @@ pub struct Invocation {
     pub command: Command,
     pub format: Format,
     pub confirmed: bool,
+    pub auth_stdin: bool,
 }
 
 pub fn invocation(args: &[OsString]) -> Result<Plan, Failure> {

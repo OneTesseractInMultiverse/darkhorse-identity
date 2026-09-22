@@ -455,8 +455,21 @@ async function verifyLogoutAndRevocation(
   await page.getByLabel("Password", { exact: true }).fill(password);
   await page.getByRole("button", { name: "Sign in", exact: true }).click();
   await page.getByRole("heading", { name: "Welcome, Browser." }).waitFor();
-  const account = JSON.parse((await invoke(["account", principal])).stdout);
-  await invoke(["revoke-all", principal, String(account.revision)]);
+  // CLI authentication shares the browser account budget; allow its natural expiry.
+  await delay(60_000);
+  const authentication = JSON.stringify({
+    email: "browser@example.com",
+    password,
+    reason: "Verify session revocation",
+  });
+  const account = JSON.parse(
+    (await invoke(["--auth-stdin", "account", principal], authentication))
+      .stdout,
+  );
+  await invoke(
+    ["--auth-stdin", "revoke-all", principal, String(account.revision)],
+    authentication,
+  );
   await page.reload();
   await page.getByRole("button", { name: "Sign in", exact: true }).waitFor();
   await invoke(["limiter-fence"]);

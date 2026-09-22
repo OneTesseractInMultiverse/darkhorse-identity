@@ -13,7 +13,7 @@ schema migration or an individually authenticated CLI authorization mechanism.
 | ------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------- |
 | Named application tables                                                              | Existing SELECT, INSERT, UPDATE and DELETE privileges needed by application workflows; application checks and database triggers still apply |
 | Application audit tables                                                              | SELECT and INSERT; no UPDATE, DELETE, TRUNCATE, trigger changes, direct sequence access or grant option                                     |
-| Administrator membership, signing keys, limiter authority and operator audit          | SELECT only                                                                                                                                 |
+| Administrator membership, signing keys, limiter authority and provider/limiter audit  | SELECT only                                                                                                                                 |
 | Personal-key lifetime policy                                                          | SELECT only; changes require trusted deployment authority                                                                                   |
 | Security fence                                                                        | SELECT and UPDATE of `policy_revision`; cannot change the bootstrap flag                                                                    |
 | Authorization capacity fence                                                          | SELECT and UPDATE of `singleton`, sufficient for PostgreSQL row locks                                                                       |
@@ -63,10 +63,11 @@ misleading records and alter the application tables it can write. A stored
 database role identifies a credential boundary, not an authenticated human, and
 caller-supplied fields are not independent provenance.
 
-This remains partial separation. Runtime credentials still permit existing
-trusted account CLI operations and broad credential/session writes. Operator and
-migration workloads still share the schema-owner credential. Individual CLI
-authentication, narrower operation-specific authority, protected emergency
+This remains partial separation. Runtime credentials still permit broad credential/session writes.
+Account CLI operations additionally require a fresh administrator password and
+transactional actor audit, described in [the account contract](operator-accounts.md).
+Operator and migration workloads still share the schema-owner credential.
+Narrower database authority, protected emergency
 credentials, independent audit evidence and cross-system recovery recording
 remain in [#23](https://github.com/OneTesseractInMultiverse/darkhorse-identity/issues/23).
 No audit-bypass or emergency-access mechanism is introduced here.
@@ -77,7 +78,9 @@ No audit-bypass or emergency-access mechanism is introduced here.
 password-authenticated owner/runtime connections. It rejects a wrong password,
 checks SQLSTATE permission failures independently of row triggers, denies new
 objects and role escalation, verifies grant reapplication/rollback, and exercises
-the actual account command with allowed and denied audit insertion. It also runs
+direct SQL transactions with allowed and denied audit insertion, plus account CLI
+refusal without authentication. Actual authenticated account operations and
+transactional audit failures are covered by `make test-operator-accounts`. It also runs
 inside `make test-postgres` and hosted source verification. These are integration
 tests; `make test-unit` remains service-free.
 

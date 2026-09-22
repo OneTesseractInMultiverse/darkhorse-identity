@@ -55,45 +55,26 @@ async function verifyOperator(invoke) {
   const second = await invoke(["bootstrap", "--stdin"], input, true);
   assert.notEqual(second.code, 0);
   assert.match(second.stderr, /already complete/);
-  const record = JSON.parse((await invoke(["account", match[1]])).stdout);
-  assert.equal(record.email, "smoke@example.com");
-  assert.equal(record.platform_administrator, true);
-  const denied = await invoke(["deactivate", match[1], "0"], undefined, true);
-  assert.notEqual(denied.code, 0);
-  await invoke(["revoke-all", match[1], "0"]);
-  const updated = JSON.parse((await invoke(["account", match[1]])).stdout);
-  assert.equal(updated.credential_epoch, 1);
-  assert.equal(updated.revision, 1);
-  const structured = await invoke([
-    "--output",
-    "json",
-    "operator",
-    "account",
-    "show",
-    match[1],
-  ]);
-  assert.equal(structured.stderr, "");
-  const envelope = JSON.parse(structured.stdout);
-  assert.equal(envelope.schema_version, 1);
-  assert.equal(envelope.ok, true);
-  assert.deepEqual(envelope.data, updated);
-  const rejected = await invoke(
-    ["--output", "json", "operator", "account", "revoke-all", match[1], "0"],
-    undefined,
-    true,
-  );
-  assert.equal(rejected.code, 1);
-  assert.equal(rejected.stdout, "");
-  assert.equal(JSON.parse(rejected.stderr).error.code, "operation_failed");
-  const conflict = await invoke(["revoke-all", match[1], "0"], undefined, true);
-  assert.notEqual(conflict.code, 0);
-  assert.match(conflict.stderr, /changed/);
-  for (const result of [first, second, invalid, denied, conflict])
-    assert.ok(
-      !`${result.stdout}${result.stderr}`.includes(JSON.parse(input).password),
+  for (const args of [
+    ["account", match[1]],
+    ["operator", "account", "show", match[1]],
+    ["revoke-all", match[1], "0"],
+  ]) {
+    const denied = await invoke(
+      ["--auth-stdin", ...args],
+      JSON.stringify({
+        email: "smoke@example.com",
+        password: JSON.parse(input).password,
+        reason: "Disposable fixture operation",
+      }),
+      true,
     );
+    assert.notEqual(denied.code, 0);
+    assert.match(denied.stderr, /unavailable/);
+    assert.ok(!denied.stderr.includes(JSON.parse(input).password));
+  }
   console.log(
-    "Operator migration/bootstrap/duplicate/last-administrator/revocation checks passed.",
+    "Operator migration/bootstrap checks and fail-closed account authentication configuration passed.",
   );
 }
 

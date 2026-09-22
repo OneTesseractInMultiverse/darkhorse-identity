@@ -175,44 +175,39 @@ async function verifyAudit({ sql, invoke }, grants) {
     `INSERT INTO principals(id,email,first_name,last_name) VALUES('${principal}','audit@example.com','Audit','Fixture');
 REVOKE INSERT ON security_audit FROM darkhorse_runtime;`,
   );
-  const failed = await invoke(
-    "darkhorse_runtime",
-    ["operator", "account", "revoke-all", principal, "0"],
-    true,
-  );
-  assert.notEqual(
-    failed.code,
-    0,
-    "audit permission failure must fail the actual account operation",
-  );
-  assert.equal(
-    (
-      await sql(
-        "darkhorse_owner",
-        `SELECT revision,credential_epoch,(SELECT count(*) FROM security_audit WHERE principal_id='${principal}') FROM principals WHERE id='${principal}';`,
-      )
-    ).stdout.trim(),
-    "0|0|0",
-  );
-  await sql("darkhorse_owner", grants);
-  // Current CLI still trusts database credentials; this positive test deliberately
-  // documents that limitation rather than claiming authenticated human authority.
-  await invoke("darkhorse_runtime", [
-    "operator",
-    "account",
-    "revoke-all",
-    principal,
-    "0",
-  ]);
-  assert.equal(
+  // Direct SQL checks the database privilege boundary independently of CLI login.
+  const mutation = `BEGIN;
+SELECT singleton FROM security_state FOR UPDATE;
+UPDATE principals SET revision=revision+1,credential_epoch=credential_epoch+1 WHERE id='${principal}';
+INSERT INTO security_audit(event,principal_id,principal_revision,credential_epoch)
+ VALUES('account.revoked','${principal}',1,1);
+COMMIT;`;
+  const failed = await sql("darkhorse_runtime", mutation, true);
+  assert.notEqual(failed.code, 0);
+  assert.match(failed.stderr, /permission denied/);
+  const state = async () =>
     (
       await sql(
         "darkhorse_owner",
         `SELECT revision,credential_epoch,(SELECT count(*) FROM security_audit WHERE principal_id='${principal}' AND database_role='darkhorse_runtime') FROM principals WHERE id='${principal}';`,
       )
-    ).stdout.trim(),
-    "1|1|1",
-  );
+    ).stdout.trim();
+  assert.equal(await state(), "0|0|0");
+  await sql("darkhorse_owner", grants);
+  for (const role of ["darkhorse_owner", "darkhorse_runtime"]) {
+    const denied = await invoke(
+      role,
+      ["--output", "json", "operator", "account", "revoke-all", principal, "0"],
+      true,
+    );
+    assert.equal(
+      denied.code,
+      2,
+      "database credentials alone must not invoke an account command",
+    );
+  }
+  await sql("darkhorse_runtime", mutation);
+  assert.equal(await state(), "1|1|1");
 }
 
 async function verifyTopology({ admin, sql }, grants) {

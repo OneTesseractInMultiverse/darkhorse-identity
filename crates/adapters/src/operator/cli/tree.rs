@@ -19,6 +19,9 @@ pub(super) struct Options {
     /// Output is always uncolored.
     #[arg(long, global = true)]
     pub no_color: bool,
+    /// Read account administrator email/password and mutation reason as protected JSON.
+    #[arg(long, global = true)]
+    pub auth_stdin: bool,
     #[command(subcommand)]
     pub command: Option<Root>,
 }

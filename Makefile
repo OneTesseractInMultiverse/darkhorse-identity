@@ -197,7 +197,10 @@ bootstrap: ## Database: interactively create the one-time local administrator
 test-postgres: ## Test: disposable PostgreSQL transactions and operator CLI; requires Docker
 	$(NODE) scripts/postgres-test.mjs
 
-.PHONY: test-db-authority
+.PHONY: test-db-authority test-operator-accounts
+
+test-operator-accounts: test-postgres test-redis test-cli ## Test: authenticated account CLI, concurrent revocation, audit and shared login budgets
+
 test-db-authority: ## Test: real restricted database roles, reviewed grants and audit boundaries
 	$(NODE) scripts/postgres-test.mjs --authority-only
 

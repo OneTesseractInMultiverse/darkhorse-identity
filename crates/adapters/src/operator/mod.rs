@@ -1,3 +1,4 @@
+mod accounts;
 mod cancellation;
 pub mod cli;
 pub mod command;
@@ -10,14 +11,14 @@ use crate::{database_configuration, password::PasswordPreparation, postgres::Pos
 use command::Command;
 use darkhorse_application::{
     bootstrap::{self, BootstrapError, BootstrapRequest},
-    directory::{AccountRecord, DirectoryFailure, DirectoryStore},
+    directory::{AccountRecord, DirectoryFailure},
 };
 use darkhorse_domain::AccountStatus;
 
 use output::{Failure, Output};
 pub mod confirmation;
 
-pub async fn run(command: Command) -> Result<Output, Failure> {
+pub async fn run(command: Command, auth_stdin: bool) -> Result<Output, Failure> {
     match command {
         Command::RedisStatus => redis_status::run().await,
         Command::LimiterFence => limiter::run(limiter::Operation::Fence).await,
@@ -27,6 +28,9 @@ pub async fn run(command: Command) -> Result<Output, Failure> {
         Command::Serve => Err("Use the HTTP composition root for serve.".into()),
         Command::Bootstrap { stdin: false } => cancellation::run(run_bootstrap(false)).await,
         Command::Bootstrap { stdin: true } => run_bootstrap(true).await,
+        Command::Account(_) | Command::Change { .. } => {
+            cancellation::run(accounts::run(command, auth_stdin)).await
+        }
         command => {
             let store = connect().await?;
             let result = run_database_command(&store, command).await;
@@ -80,24 +84,6 @@ async fn run_database_command(store: &PostgresStore, command: Command) -> Result
             Ok(Output::message(
                 "Database migrations applied.",
                 serde_json::json!({"migrated":true}),
-            ))
-        }
-        Command::Account(id) => {
-            let record = store.account(id).await.map_err(directory_message)?;
-            Ok(Output::record(project_account(&record)))
-        }
-        Command::Change {
-            id,
-            revision,
-            action,
-        } => {
-            store
-                .change(id, revision, action)
-                .await
-                .map_err(directory_message)?;
-            Ok(Output::message(
-                "Account operation completed.",
-                serde_json::json!({"completed":true}),
             ))
         }
         _ => Err("Invalid database operation.".into()),

@@ -255,6 +255,34 @@ def broken_output():
     assert result.returncode == 2 and result.stdout == b""
 
 
+def account_authentication():
+    for scenario in ["complete", "eof", signal.SIGTERM]:
+        terminal = Terminal(["operator", "account", "revoke-all", "00000000-0000-0000-0000-000000000001", "0", "--yes"])
+        try:
+            terminal.expect(b"Administrator email: ")
+            terminal.send(b"terminal@example.com\n")
+            terminal.expect(b"Reason (no secrets): ")
+            terminal.send(b"Terminal fixture\n")
+            terminal.hidden(b"Administrator password: ", SECRET + (b"\n" if scenario == "complete" else b"\x04" if scenario == "eof" else b""))
+            if isinstance(scenario, int):
+                os.kill(terminal.pid, scenario)
+            assert terminal.finish() == 1
+            assert (b"Account operation unavailable" in terminal.data) == (scenario == "complete")
+            assert termios.tcgetattr(terminal.fd) == terminal.original
+        finally:
+            terminal.close()
+
+account_authentication()
+protected = Terminal(["--auth-stdin", "operator", "account", "revoke-all", "00000000-0000-0000-0000-000000000001", "0"])
+try:
+    assert protected.finish() == 3
+    assert b"typing yes" not in protected.data
+    assert b"Administrator email" not in protected.data
+finally:
+    protected.close()
+
+
+
 confirmation()
 automated = Terminal(["--output", "json", "operator", "migrate"])
 try:

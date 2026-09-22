@@ -1,0 +1,265 @@
+use super::{Fixture, SERIAL, variable};
+use darkhorse_adapters::{login_admission::SharedLoginAdmission, password::PasswordPreparation};
+use darkhorse_application::{
+    authentication::{AuthError, LoginAdmission},
+    bootstrap::CredentialPreparation,
+};
+use serde_json::{Value, json};
+use std::{
+    io::Write,
+    process::{Command, Stdio},
+};
+use uuid::Uuid;
+const PASSWORD: &str = "source-only operator passphrase";
+async fn restrict_database(f: &Fixture) {
+    sqlx::raw_sql("DO $$ BEGIN IF NOT EXISTS(SELECT 1 FROM pg_roles WHERE rolname='darkhorse_runtime') THEN CREATE ROLE darkhorse_runtime LOGIN PASSWORD 'source-only-runtime-fixture'; CREATE ROLE darkhorse_owner NOLOGIN; END IF; END $$;").execute(&f.pool).await.unwrap();
+    let grants = include_str!("../../../../deploy/grant-runtime.sql")
+        .lines()
+        .filter(|line| !line.starts_with('\\'))
+        .collect::<Vec<_>>()
+        .join("\n");
+    // Embedded repository SQL only; no caller input is interpolated.
+    sqlx::raw_sql(sqlx::AssertSqlSafe(grants))
+        .execute(&f.pool)
+        .await
+        .unwrap();
+}
+async fn actor(f: &Fixture) -> (Uuid, String) {
+    let prepared = PasswordPreparation::default()
+        .prepare(PASSWORD)
+        .await
+        .unwrap();
+    let id = Uuid::from_u128(prepared.principal_id.as_u128());
+    let credential = Uuid::from_u128(prepared.credential_id.as_u128());
+    let email = format!("operator-{id}@example.com");
+    let mut tx = f.pool.begin().await.unwrap();
+    sqlx::query(
+        "INSERT INTO principals(id,email,first_name,last_name) VALUES($1,$2,'Operator','Fixture')",
+    )
+    .bind(id)
+    .bind(&email)
+    .execute(&mut *tx)
+    .await
+    .unwrap();
+    sqlx::query("INSERT INTO credentials(id,principal_id,kind) VALUES($1,$2,'password')")
+        .bind(credential)
+        .bind(id)
+        .execute(&mut *tx)
+        .await
+        .unwrap();
+    sqlx::query("INSERT INTO password_credentials(credential_id,verifier) VALUES($1,$2)")
+        .bind(credential)
+        .bind(prepared.verifier)
+        .execute(&mut *tx)
+        .await
+        .unwrap();
+    sqlx::query("INSERT INTO platform_administrators(principal_id) VALUES($1)")
+        .bind(id)
+        .execute(&mut *tx)
+        .await
+        .unwrap();
+    tx.commit().await.unwrap();
+    (id, email)
+}
+fn invoke(args: &[&str], input: Value) -> (i32, Value) {
+    let mut command = Command::new(variable("DARKHORSE_TEST_SERVER_PATH"));
+    command.env_clear().env("PATH", variable("PATH"));
+    for name in [
+        "DARKHORSE_DATABASE_URL",
+        "DARKHORSE_DATABASE_INSECURE",
+        "DARKHORSE_REDIS_CACHE_URL",
+        "DARKHORSE_REDIS_LIMITER_URL",
+        "DARKHORSE_REDIS_INSECURE",
+    ] {
+        command.env(name, variable(name));
+    }
+    if let Ok(value) = std::env::var("LLVM_PROFILE_FILE") {
+        command.env("LLVM_PROFILE_FILE", value);
+    }
+    let mut database = url::Url::parse(&variable("DARKHORSE_DATABASE_URL")).unwrap();
+    database.set_username("darkhorse_runtime").unwrap();
+    database
+        .set_password(Some("source-only-runtime-fixture"))
+        .unwrap();
+    command.env("DARKHORSE_DATABASE_URL", database.as_str());
+    command
+        .env("DARKHORSE_LOGIN_ENABLED", "true")
+        .env("DARKHORSE_LOGIN_LIMIT_KEY", "07".repeat(32));
+    let mut child = command
+        .args(["--yes", "--auth-stdin", "--output", "json"])
+        .args(args)
+        .stdin(Stdio::piped())
+        .stdout(Stdio::piped())
+        .stderr(Stdio::piped())
+        .spawn()
+        .unwrap();
+    child
+        .stdin
+        .take()
+        .unwrap()
+        .write_all(input.to_string().as_bytes())
+        .unwrap();
+    let result = child.wait_with_output().unwrap();
+    for bytes in [&result.stdout, &result.stderr] {
+        assert!(!String::from_utf8_lossy(bytes).contains(PASSWORD));
+    }
+    let code = result.status.code().unwrap();
+    let bytes = if code == 0 {
+        assert!(result.stderr.is_empty());
+        result.stdout
+    } else {
+        assert!(result.stdout.is_empty());
+        result.stderr
+    };
+    (code, serde_json::from_slice(&bytes).unwrap())
+}
+fn input(email: &str) -> Value {
+    json!({"email":email,"password":PASSWORD,"reason":"Source-defined operator fixture"})
+}
+fn succeeds(args: &[&str], email: &str) -> Value {
+    let (code, value) = invoke(args, input(email));
+    assert_eq!(code, 0, "{value}");
+    value["data"].clone()
+}
+#[tokio::test]
+async fn account_cli_authenticates_each_process_shares_http_budgets_and_fails_when_fenced() {
+    let _serial = SERIAL.lock().await;
+    let f = Fixture::new().await;
+    f.activate().await;
+    restrict_database(&f).await;
+    let (id, email) = actor(&f).await;
+    let id = id.to_string();
+    let before: i64 = sqlx::query_scalar("SELECT count(*) FROM browser_sessions")
+        .fetch_one(&f.pool)
+        .await
+        .unwrap();
+    let account = succeeds(&["operator", "account", "show", &id], &email);
+    assert_eq!(account["revision"], 0);
+    assert_eq!(account["email"], email);
+    let changed = succeeds(&["revoke-all", &id, "0"], &email);
+    assert_eq!(changed["changed"], true);
+    assert_eq!(changed["revision"], 1);
+    let stale = invoke(
+        &["operator", "account", "revoke-all", &id, "0"],
+        input(&email),
+    );
+    assert_eq!(stale.0, 1);
+    assert!(
+        stale.1["error"]["message"]
+            .as_str()
+            .unwrap()
+            .contains("changed")
+    );
+    let wrong = invoke(
+        &["account", &id],
+        json!({"email":email,"password":"wrong password"}),
+    );
+    assert_eq!(wrong.0, 1);
+    assert!(
+        wrong.1["error"]["message"]
+            .as_str()
+            .unwrap()
+            .contains("denied")
+    );
+    // The exact admission component used by HTTP consumes the fifth attempt.
+    let http = SharedLoginAdmission::new(f.limiter(), [7; 32]);
+    assert_eq!(http.admit(&email).await, Ok(()));
+    let limited = invoke(&["account", &id], input(&email));
+    assert_eq!(limited.0, 1);
+    assert!(limited.1["data"]["retry_after_ms"].as_u64().unwrap() > 0);
+    assert!(matches!(
+        http.admit(&email).await,
+        Err(AuthError::Limited { .. })
+    ));
+    assert_eq!(
+        sqlx::query_scalar::<_, i64>("SELECT count(*) FROM browser_sessions")
+            .fetch_one(&f.pool)
+            .await
+            .unwrap(),
+        before
+    );
+    let counts:(i64,i64)=sqlx::query_as("SELECT count(*),count(*) FILTER(WHERE actor_id IS NULL) FROM operator_account_audit WHERE target_id=$1 AND database_role='darkhorse_runtime'").bind(Uuid::parse_str(&id).unwrap()).fetch_one(&f.pool).await.unwrap();
+    assert_eq!(counts, (4, 1));
+    f.fence().await;
+    let fenced = invoke(&["account", &id], input(&email));
+    assert_eq!(fenced.0, 1);
+    assert!(
+        fenced.1["error"]["message"]
+            .as_str()
+            .unwrap()
+            .contains("unavailable")
+    );
+}
+#[tokio::test]
+async fn account_cli_rechecks_membership_and_credentials_and_commits_all_four_operations() {
+    let _serial = SERIAL.lock().await;
+    let f = Fixture::new().await;
+    f.activate().await;
+    restrict_database(&f).await;
+    let (id, email) = actor(&f).await;
+    let (target, _) = actor(&f).await;
+    let target = target.to_string();
+    succeeds(&["deactivate", &target, "0"], &email);
+    succeeds(&["operator", "account", "reactivate", &target, "1"], &email);
+    let row = succeeds(&["account", &target], &email);
+    assert_eq!(row["active"], true);
+    assert_eq!(row["revision"], 2);
+    sqlx::query("DELETE FROM platform_administrators WHERE principal_id=$1")
+        .bind(id)
+        .execute(&f.pool)
+        .await
+        .unwrap();
+    assert_eq!(invoke(&["revoke-all", &target, "2"], input(&email)).0, 1);
+    sqlx::query("UPDATE credentials SET revoked=true WHERE principal_id=$1")
+        .bind(id)
+        .execute(&f.pool)
+        .await
+        .unwrap();
+    assert_eq!(invoke(&["account", &target], input(&email)).0, 1);
+    assert_eq!(
+        sqlx::query_scalar::<_, i64>("SELECT revision FROM principals WHERE id=$1")
+            .bind(Uuid::parse_str(&target).unwrap())
+            .fetch_one(&f.pool)
+            .await
+            .unwrap(),
+        2
+    );
+}
+
+#[tokio::test]
+async fn restricted_runtime_audit_insert_failure_rolls_back_the_actual_cli_operation() {
+    let _serial = SERIAL.lock().await;
+    let f = Fixture::new().await;
+    f.activate().await;
+    restrict_database(&f).await;
+    let (id, email) = actor(&f).await;
+    let target = id.to_string();
+    sqlx::query("REVOKE INSERT ON operator_account_audit FROM darkhorse_runtime")
+        .execute(&f.pool)
+        .await
+        .unwrap();
+    let read = invoke(&["account", &target], input(&email));
+    let change = invoke(&["revoke-all", &target, "0"], input(&email));
+    sqlx::query("GRANT INSERT ON operator_account_audit TO darkhorse_runtime")
+        .execute(&f.pool)
+        .await
+        .unwrap();
+    assert_eq!(read.0, 1);
+    assert_eq!(change.0, 1);
+    assert!(
+        read.1["error"]["message"]
+            .as_str()
+            .unwrap()
+            .contains("unavailable")
+    );
+    assert!(
+        change.1["error"]["message"]
+            .as_str()
+            .unwrap()
+            .contains("unavailable")
+    );
+    let state:(i64,i64,i64)=sqlx::query_as("SELECT revision,credential_epoch,(SELECT count(*) FROM security_audit WHERE principal_id=$1) FROM principals WHERE id=$1").bind(id).fetch_one(&f.pool).await.unwrap();
+    assert_eq!(state, (0, 0, 0));
+    succeeds(&["revoke-all", &target, "0"], &email);
+    assert_eq!(sqlx::query_scalar::<_,i64>("SELECT count(*) FROM operator_account_audit WHERE target_id=$1 AND database_role='darkhorse_runtime'").bind(id).fetch_one(&f.pool).await.unwrap(),1);
+}

@@ -25,9 +25,11 @@ impl PostgresStore {
 
 impl AuthenticationStore for PostgresStore {
     async fn candidate(&self, email_key: &str) -> Result<Option<Candidate>, AuthError> {
-        let row = sqlx::query("SELECT p.id, p.active, p.credential_epoch, c.id AS credential, pc.verifier FROM principals p JOIN credentials c ON c.principal_id=p.id AND c.kind='password' AND NOT c.revoked JOIN password_credentials pc ON pc.credential_id=c.id WHERE p.email_key=$1 AND NOT pg_is_in_recovery()")
-            .bind(email_key).fetch_optional(&self.pool).await.map_err(unavailable)?;
-        row.map(candidate).transpose()
+        candidate_record(&self.pool, email_key)
+            .await?
+            .as_ref()
+            .map(candidate)
+            .transpose()
     }
     async fn establish(
         &self,
@@ -75,21 +77,28 @@ impl AuthenticationStore for PostgresStore {
     }
 }
 
-fn candidate(row: PgRow) -> Result<Candidate, AuthError> {
+pub(super) async fn candidate_record(
+    pool: &sqlx::PgPool,
+    email_key: &str,
+) -> Result<Option<PgRow>, AuthError> {
+    sqlx::query("SELECT p.id,p.active,p.credential_epoch,c.id AS credential,pc.verifier,floor(extract(epoch FROM clock_timestamp())*1000)::bigint AS observed_ms FROM principals p JOIN credentials c ON c.principal_id=p.id AND c.kind='password' AND NOT c.revoked JOIN password_credentials pc ON pc.credential_id=c.id WHERE p.email_key=$1 AND NOT pg_is_in_recovery()")
+        .bind(email_key).fetch_optional(pool).await.map_err(unavailable)
+}
+pub(super) fn candidate(row: &PgRow) -> Result<Candidate, AuthError> {
     Ok(Candidate {
-        principal: principal(&row)?,
+        principal: principal(row)?,
         credential: CredentialId::from_u128(
             row.try_get::<Uuid, _>("credential")
                 .map_err(unavailable)?
                 .as_u128(),
         )
         .map_err(unavailable)?,
-        epoch: number(&row, "credential_epoch")?,
+        epoch: number(row, "credential_epoch")?,
         active: row.try_get("active").map_err(unavailable)?,
         verifier: row.try_get("verifier").map_err(unavailable)?,
     })
 }
-async fn recheck(
+pub(super) async fn recheck(
     tx: &mut Transaction<'_, Postgres>,
     c: &Candidate,
 ) -> Result<SessionView, AuthError> {

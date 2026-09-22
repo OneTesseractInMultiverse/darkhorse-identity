@@ -18,8 +18,18 @@ fn decision(command: Command, confirmed: bool, terminal: bool, format: Format) -
     }
     Decision::Prompt
 }
-pub fn confirm(command: Command, confirmed: bool, format: Format) -> Result<(), Failure> {
-    match decision(command, confirmed, std::io::stdin().is_terminal(), format) {
+pub fn confirm(
+    command: Command,
+    confirmed: bool,
+    format: Format,
+    auth_stdin: bool,
+) -> Result<(), Failure> {
+    match decision(
+        command,
+        confirmed,
+        std::io::stdin().is_terminal() && !auth_stdin,
+        format,
+    ) {
         Decision::Proceed => Ok(()),
         Decision::Deny => Err(Failure::confirmation()),
         Decision::Prompt => prompt(),

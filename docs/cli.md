@@ -4,8 +4,8 @@ The same `darkhorse-server` binary serves HTTP and runs local operator commands.
 Clap handles syntax in the adapter layer. Existing application use cases retain
 their transaction ownership and domain invariants. Read the
 [authority matrix](operator-authority.md) before granting access: this interface
-currently uses trusted deployment credentials, not authenticated administrator
-sessions. Future `admin` user/application groups are tracked in #25/#26 and are
+uses deployment credentials and, for account operations, a fresh administrator
+password. See [account authentication](operator-accounts.md). Future `admin` user/application groups are tracked in #25/#26 and are
 not exposed as placeholder commands.
 
 ## Discover commands
@@ -52,12 +52,12 @@ Signing status also requires confirmation because the existing implementation
 can initialize the provider binding before reading its inventory.
 
 JSON mode never prompts: mutations require `--yes`, and bootstrap additionally
-requires `--stdin`. This keeps its stdout/stderr records machine-readable even
+requires `--stdin`; account operations require `--auth-stdin`. This keeps its stdout/stderr records machine-readable even
 when launched from a terminal.
 
 ```sh
 darkhorse-server operator migrate --yes
-darkhorse-server --output json operator account show <principal-id>
+darkhorse-server --output json --auth-stdin operator account show <principal-id> < protected-account.json
 darkhorse-server operator account revoke-all <principal-id> <revision> --yes
 darkhorse-server operator bootstrap --stdin --yes < protected-input.json
 darkhorse-server operator signing import --stdin <revision> --yes < private-key.der
@@ -106,10 +106,10 @@ fixed human diagnostic because parsing did not establish a valid output mode.
 | `3`  | Required confirmation absent or declined                                                                                                                                     |
 | `74` | Bounded rendering or output write/flush failed; the operation may already have committed                                                                                     |
 
-Interactive bootstrap catches `SIGINT`, `SIGTERM`, `SIGHUP`, `SIGQUIT`, `SIGTSTP`,
+Interactive bootstrap and account operations catch `SIGINT`, `SIGTERM`, `SIGHUP`, `SIGQUIT`, `SIGTSTP`,
 `SIGTTIN` and `SIGTTOU` during input collection and application execution, returning exit `1` with
 `operation_interrupted`. Ctrl-Z cancels this operation instead of suspending it.
-Other invocations retain their ordinary OS signal behavior (shells commonly report
+Other command groups retain their ordinary OS signal behavior (shells commonly report
 `130` for SIGINT). An interrupted process or lost response is not proof of rollback. Do not
 automatically retry mutations after execution/output failures; inspect revisions,
 bootstrap state, key inventory or limiter state first. A closed stdout/stderr pipe

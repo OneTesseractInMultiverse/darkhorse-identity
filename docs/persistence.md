@@ -1,6 +1,6 @@
 # Persistence and operator bootstrap
 
-This is the first PostgreSQL persistence boundary. It provides administrator bootstrap and trusted operator account operations. Login, issued credentials, HTTP directory administration, and production deployment qualification are separate work. No bootstrap endpoint is exposed over HTTP.
+This is the first PostgreSQL persistence boundary. It provides administrator bootstrap and account persistence. CLI account operations now require [per-command authentication](operator-accounts.md). Login, issued credentials, HTTP directory administration, and production deployment qualification are separate work. No bootstrap endpoint is exposed over HTTP.
 
 ## Local database
 
@@ -42,14 +42,9 @@ The operator prepares identifiers and the verifier before beginning the database
 
 These commands require trusted operator database access. They are not user-facing authenticated APIs and do not perform application RBAC checks. HTTP adapters establish caller authority before invoking their application ports. Platform administrator membership is separate from application ownership and does not bypass the pure authorization evaluator.
 
-After building the binary, use `account ID` to read the current record. `deactivate ID REVISION`, `reactivate ID REVISION`, and `revoke-all ID REVISION` require its current revision. The local wrapper can supply development database settings:
+After building the binary, use `operator account show ID` to read the current record. `deactivate ID REVISION`, `reactivate ID REVISION`, and `revoke-all ID REVISION` require its current revision. Supply the same login/limiter/database configuration as the running deployment and authenticate for each command as described in [the account CLI contract](operator-accounts.md). The database-only local wrapper does not supply all of these settings.
 
-```sh
-node scripts/database.mjs run account ID
-node scripts/database.mjs run revoke-all ID REVISION
-```
-
-Replace the placeholders with the returned UUID and revision. Conflicting revisions fail; read current state before deciding whether to retry. A no-op status change leaves revisions and audit unchanged. Real transitions and their audit event commit atomically:
+Conflicting revisions fail; read current state before deciding whether to retry. A no-op status change preserves the target revision and existing security audit, but adds an operator outcome record. Real transitions and their audit event commit atomically:
 
 | Change     | Principal revision | Credential epoch |
 | ---------- | ------------------ | ---------------- |
@@ -67,7 +62,7 @@ The singleton policy revision advances transactionally for principal inserts/upd
 
 Security writes take the singleton lock before reading account facts, then lock the principal, compute the transition, and persist its audit. This deliberately serializes low-rate security mutations. It does not write during authorization checks or justify caching positive decisions. Benchmark lock contention before expanding write-heavy workflows. No transaction spans password hashing or external service calls.
 
-Audit rows record the operation, subject, resulting revisions, timestamp and database login role. Supported operations always write their audit in the same transaction. Ordinary DML cannot edit/delete those rows, but a database owner can change schema and privileged SQL can bypass supported workflows. This is not an externally tamper-evident audit system. Runtime/migration role separation, user actor attribution, audit export/retention, backup/restore and production TLS topology remain deployment/security work.
+Audit rows record the operation, subject, resulting revisions, timestamp and database login role. Supported operations always write their audit in the same transaction. Ordinary DML cannot edit/delete those rows, but a database owner can change schema and privileged SQL can bypass supported workflows. This is not an externally tamper-evident audit system. Runtime/migration role separation, broader operator actor attribution, audit export/retention, backup/restore and production TLS topology remain deployment/security work.
 
 ## Connection settings
 
@@ -88,7 +83,7 @@ make docker-build
 make docker-smoke      # disposable database and the built image
 ```
 
-The integration runner allocates random names, credentials and loopback ports, and cleans up only its own containers/network. Tests create isolated databases inside the disposable server. They verify repeated migrations, bootstrap races, atomic audit rollback, lifecycle epochs, stale revisions, concurrent administrator and credential-revocation protection, uniqueness, foreign keys, immutable identifiers/meaning, and counter failures. Operator smoke checks exercise real hashing, protected stdin, duplicate rejection and revocation. Unit builds use runtime parameterized SQL rather than compile-time database introspection, so no database or generated query metadata is needed for compilation.
+The integration runner allocates random names, credentials and loopback ports, and cleans up only its own containers/network. Tests create isolated databases inside the disposable server. They verify repeated migrations, bootstrap races, atomic audit rollback, lifecycle epochs, stale revisions, concurrent administrator and credential-revocation protection, uniqueness, foreign keys, immutable identifiers/meaning, and counter failures. Operator smoke checks exercise real hashing, protected stdin, duplicate rejection and missing authentication configuration. `make test-operator-accounts` adds real password verification, shared Redis budgets, actor/revision rechecks, audit rollback and lost commit responses. Unit builds use runtime parameterized SQL rather than compile-time database introspection, so no database or generated query metadata is needed for compilation.
 
 The pinned multi-stage image builds Rust and static SvelteKit assets and runs as UID 10001. It contains the binary, static assets and runtime certificate store, with no Node server or private inputs. `make docker-smoke` checks HTTP/static serving under a read-only filesystem with capabilities dropped. Override `IMAGE` for another local image tag. The first build needs access to image registries and dependency registries. Development database Compose remains separate from the [integrated HTTPS qualification stack](compose.md), which adds file-backed secrets and runtime/operator role separation. Production deployment and Kubernetes qualification remain open.
 

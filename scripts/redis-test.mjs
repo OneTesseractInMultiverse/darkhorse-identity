@@ -149,6 +149,20 @@ async function database(network, profiling) {
 }
 async function hostChecks(env, db, directory, benchmark) {
   const profiling = benchmark?.profile.profiling === true;
+  await command("cargo", [
+    "build",
+    ...(benchmark ? ["--release"] : []),
+    ...(profiling ? ["--features", "benchmark-profiling"] : []),
+    "-p",
+    "darkhorse-server",
+    "--locked",
+    "--offline",
+  ]);
+  const executable = resolve(
+    process.env.CARGO_TARGET_DIR ?? "target",
+    `${benchmark ? "release" : "debug"}/darkhorse-server`,
+  );
+  env = { ...env, DARKHORSE_TEST_SERVER_PATH: executable };
   if (!benchmark) {
     await command(
       "cargo",
@@ -183,19 +197,6 @@ async function hostChecks(env, db, directory, benchmark) {
       { env },
     );
   }
-  await command("cargo", [
-    "build",
-    ...(benchmark ? ["--release"] : []),
-    ...(profiling ? ["--features", "benchmark-profiling"] : []),
-    "-p",
-    "darkhorse-server",
-    "--locked",
-    "--offline",
-  ]);
-  const executable = resolve(
-    process.env.CARGO_TARGET_DIR ?? "target",
-    `${benchmark ? "release" : "debug"}/darkhorse-server`,
-  );
   const invoke = (operation, operator = false, acceptFailure = false) =>
     command(executable, [operation, "--yes"], {
       env: {

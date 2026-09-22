@@ -13,10 +13,17 @@ pub(super) fn invocation(options: Options) -> Result<Invocation, Failure> {
     if options.output == Format::Json && matches!(command, Command::Bootstrap { stdin: false }) {
         return Err(Failure::usage());
     }
+    let account = matches!(command, Command::Account(_) | Command::Change { .. });
+    if (options.auth_stdin && !account)
+        || (account && options.output == Format::Json && !options.auth_stdin)
+    {
+        return Err(Failure::usage());
+    }
     Ok(Invocation {
         command,
         format: options.output,
         confirmed: options.yes,
+        auth_stdin: options.auth_stdin,
     })
 }
 fn operator(value: Operator) -> Command {

@@ -66,6 +66,14 @@ fn errors_never_echo_supplied_values_and_arguments_are_bounded() {
     let secret = "marker-secret-\x1b[31m\nforged";
     for args in [
         vec!["--output", "json", "bootstrap", "--yes"],
+        vec!["serve", "--auth-stdin"],
+        vec!["migrate", "--auth-stdin"],
+        vec![
+            "--output",
+            "json",
+            "account",
+            "00000000-0000-0000-0000-000000000001",
+        ],
         vec!["unknown", secret],
         vec!["bootstrap", "--password", secret],
         vec!["account", secret],
@@ -106,4 +114,19 @@ fn errors_never_echo_supplied_values_and_arguments_are_bounded() {
             2
         );
     }
+}
+
+#[test]
+fn account_authentication_input_is_explicit_and_not_a_bypass_flag() {
+    let command = run(&[
+        "--output",
+        "json",
+        "operator",
+        "account",
+        "show",
+        "00000000-0000-0000-0000-000000000001",
+        "--auth-stdin",
+    ]);
+    assert!(command.auth_stdin);
+    assert!(!run(&["account", "00000000-0000-0000-0000-000000000001"]).auth_stdin);
 }
