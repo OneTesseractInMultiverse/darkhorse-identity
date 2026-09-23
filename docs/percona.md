@@ -1,6 +1,6 @@
 # Percona PostgreSQL containers
 
-Development Compose and both integration runners use
+Development Compose and the integration runners use
 `percona/percona-distribution-postgresql:18.6`, pinned to the multi-platform digest
 `sha256:dae47360e8137cafc1e8d66f9a1be348f1405e3cf51daa383b94e6c277e6b256`.
 The image runs Percona Server for PostgreSQL 18.6.1, based on PostgreSQL 18.6,
@@ -10,30 +10,30 @@ and [Docker documentation](https://docs.percona.com/postgresql/18/docker.html).
 
 SQLx, schema migrations, transaction boundaries and application behavior remain
 PostgreSQL-based. No Percona-specific extension is required by Darkhorse. The image
-bundles additional tools and extensions, but changing the image does not enable
+bundles additional tools and extensions, but changing the image does not activate
 transparent data encryption, database audit logging, query monitoring, pooling,
 backups or high availability. Those features need their own configuration and
 qualification. Query capture must not expose identity credentials or sensitive
-parameters; encryption needs an external key-management and recovery design.
+parameters. Encryption needs an external key-management and recovery design.
 
 ## Container contract
 
 - Compose stores the cluster at `/data/db` in the workspace's `percona-data` volume.
   The former upstream image used `/var/lib/postgresql/18/docker` inside
   `database-data`. These directories are not interchangeable container mounts.
-- The owner-only `.local/database-password` remains a read-only Compose secret;
-  credentials and the loopback endpoint remain unchanged.
+- The owner-only `.local/database-password` remains a read-only Compose secret.
+  Credentials and the loopback endpoint remain unchanged.
 - Compose starts the vendor entrypoint as root to read that protected secret and
   prepare volume ownership. It drops to the image's `postgres` user, UID/GID 26,
   before initialization and database service execution. Integration containers
   use the image's default UID 26 with generated, disposable credentials.
 - Readiness checks use `pg_isready -h 127.0.0.1`. Initialization temporarily serves
-  a Unix socket before the final network listener is ready; checking that socket
+  a Unix socket before the final network listener is ready. Checking that socket
   alone can report readiness too early.
 - Resource limits and the loopback-only published port remain in
   `config/compose.dev.yaml`. The database TLS exception applies only to this local
-  topology. Production database transport and runtime/migration role separation
-  still require the deployment work described in [persistence](persistence.md).
+  topology. Packaged [Compose](compose.md) and [Kubernetes](kubernetes.md) profiles use TLS
+  and separate database roles. Their production qualification remains incomplete.
 
 Fresh workspaces use the existing commands:
 
@@ -51,7 +51,7 @@ no running database, Docker engine or local configuration.
 
 Use a logical dump and restore into a separate volume. This preserves the old
 cluster and rebuilds indexes under the target image's locale libraries. Do not
-point the Percona image at the old directory or reuse its raw files solely because
+point the Percona image at the old directory or reuse its raw files on the assumption that
 the PostgreSQL major version matches. The base images and operating-system users
 differ.
 
@@ -60,7 +60,7 @@ an old `database-data` volume and no `percona-data` volume. This is a guard agai
 an accidental empty-directory cutover, not a validation of a manually created
 restore target. Finish and verify the restore before using `make db-up`.
 
-The following is the local single-database migration procedure; it is not a
+The following is the local single-database migration procedure. It is not a
 production online-migration or disaster-recovery runbook:
 
 1. Stop application writers and the workspace's database container. Identify the
@@ -85,7 +85,7 @@ production online-migration or disaster-recovery runbook:
 
    Here `migration_source` is the temporary source container name and
    `percona_backup` is the protected directory from step 2. Dumps include sensitive
-   records and role verifiers; do not publish them or print their contents.
+   records and role verifiers. Do not publish them or print their contents.
    Back up every additional application database separately if the inventory finds
    more than `darkhorse` and the standard `postgres` database.
 
@@ -109,7 +109,7 @@ production online-migration or disaster-recovery runbook:
    ```
 
    `migration_target` is the temporary Percona container from step 4. Stop on any
-   error; an existing target volume alone does not mean restoration succeeded.
+   error. An existing target volume alone does not mean restoration succeeded.
 
 6. Verify all table contents and sequence values against the quiesced source,
    including migration history, principal IDs, password verifiers, administrator
@@ -125,7 +125,7 @@ production online-migration or disaster-recovery runbook:
    validation.
 
 A failed restore must not be used by applications. Recreate only its newly created
-target volume when retrying; never delete the source volume or the protected dump
+target volume when retrying. Never delete the source volume or the protected dump
 as part of a retry. After applications resume writes on Percona, the old volume is
 stale. Restoring it can revive revoked access or discard new data, so it is not an
 automatic rollback path. Production backup/restore and credential fencing remain

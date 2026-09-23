@@ -1,12 +1,22 @@
 # Engineering rules
 
+Darkhorse's architecture separates policy from effects. Its tests verify correct
+results and explicit failures. Contribution records connect each change to an
+issue, its evidence, and any incomplete criteria.
+
 ## Issue-based contributions
 
-Use [GitHub issues](https://github.com/OneTesseractInMultiverse/darkhorse-identity/issues) to track remaining work. Before implementation, select the relevant open issue or create one with a clear outcome and completion criteria. Keep progress, decisions, validation evidence, and remaining items in that issue. A slice can take several focused commits; partial implementation does not complete the issue.
+Use [GitHub issues](https://github.com/OneTesseractInMultiverse/darkhorse-identity/issues)
+to define outcomes and completion criteria. Record decisions, progress, evidence,
+and remaining work in the owning issue. One issue can contain several focused
+increments. A partial implementation does not close it.
 
-The normal workflow is an issue, a short-lived feature branch, and a reviewed pull request into `main`. External contributors work in forks; maintainers may use branches in this repository. Keep each pull request focused on one reviewable outcome. See [Contributing](../CONTRIBUTING.md) for setup, branch naming, validation, review, and merge requirements. Project boards and milestones are optional.
+The contributor workflow uses an issue, a short-lived feature branch, and a reviewed
+pull request into `main`. External contributors use forks. Maintainers can use
+repository branches. Read [Contributing](../CONTRIBUTING.md) for branch names,
+validation, review, and merge requirements.
 
-Every new commit must reference its corresponding issue. Use a concise subject and `Refs #<number>` in the body for progress. Use `Closes #<number>` in a pull request description only when the merge completes all issue criteria and required checks. For example:
+Every commit references its owning issue:
 
 ```text
 feat: add persistent principal records
@@ -14,32 +24,86 @@ feat: add persistent principal records
 Refs #3
 ```
 
-Use the actual issue number for the work. In fork commits, qualify the reference as `Refs OneTesseractInMultiverse/darkhorse-identity#<number>`. Keep one primary issue per commit where practical; list additional references when a change genuinely spans them. Partial pull requests use ordinary issue references, with remaining work recorded in the issue. Reserve closing keywords and GitHub's closing issue links for completion. Preserve issue references in the final squash commit. Never rewrite published `main` history or force-push shared branches.
+Use the actual issue number. Fork commits qualify the reference as
+`Refs OneTesseractInMultiverse/darkhorse-identity#<number>`. Keep one primary issue
+per commit where practical. Use closing keywords only for work that completes all
+criteria and required checks. Preserve the issue reference in a squash commit.
+Never rewrite published `main` history or force-push shared branches.
 
-Run the checks relevant to the change, review the staged diff, and record actual results before committing. Use project-focused language without generation notices, tool/model branding, or automatic attribution trailers. Private planning and local state remain excluded from commits and release inputs; public issues, documentation, and commands must stand alone.
+Review the staged diff and record actual validation results before committing.
+Keep credentials, private planning, and local state outside commits and release
+inputs. Public documentation and issues must stand alone. Use project-focused
+commit messages without generated attribution or tool branding.
 
-## Boundaries
+## Dependency boundaries
 
-Dependencies point inward: composition → adapters → application → domain. The core has no HTTP, serialization, environment, SQL, cache, filesystem, clock, or cloud dependencies. Introduce project-owned ports only when an actual use case needs them. Adapters translate their library types into project-owned inputs.
+Dependencies point inward: composition → adapters → application → domain.
+The core has no HTTP, serialization, environment, SQL, cache, filesystem, clock,
+or cloud dependency. Introduce a project-owned port only for an actual use case.
+Adapters translate external types into those project-owned inputs.
 
-Internal identity references use distinct types for principals, applications, resources, roles, capabilities, scopes, clients, and credentials. They preserve nonzero 128-bit values; an application ID cannot substitute for a client ID at a typed boundary. Adapters own external string formats, serialization, and generation. These identifiers are references, not authentication secrets or proof of access.
+Internal identifiers have distinct types for principals, applications, resources,
+roles, capabilities, scopes, clients, and credentials. They preserve nonzero 128-bit
+values. External formats and identifier generation belong in adapters. Identifiers
+are references, not authentication secrets or grants.
 
-Functions are either computations or coordinators. Computations decide and transform explicit inputs without external effects. Coordinators sequence effects and call computations; they do not embed business policy. Keep coordinators small, with transaction ownership visible at the use-case boundary. Mechanical error propagation and transport mapping must not conceal business rules.
+Functions are computations or coordinators. Computations decide and transform
+explicit inputs without external effects. Coordinators sequence effects and call
+computations. Keep coordinators small and transaction ownership visible. Transport
+mapping and error propagation must not hide business policy.
 
-The frontend uses Svelte 5 runes, TypeScript strict mode, and static output. No server routes, server-only modules, remote functions, sessions, or credentials belong in the frontend. Generated build-time rendering is allowed; Node is not a production application server.
+The frontend uses Svelte 5 runes, strict TypeScript, and static output. Server routes,
+server-only modules, remote functions, sessions, and credentials belong in Rust.
+Build-time rendering is permitted. Node is not a production application server.
 
-`make architecture-check` checks every declared dependency kind of the core crates, including renamed and development dependencies, and rejects frontend server/test locations. It is an early guardrail, not a proof of all architectural rules. Rust compilation enforces undeclared imports. Review must also inspect cross-module policy placement, ambient access through the standard library, transaction boundaries, and orchestration size.
+`make architecture-check` inspects all declared core dependency kinds, including
+renamed and development dependencies. It rejects prohibited frontend server and
+test locations. This catches structural violations, not every architectural defect.
+Review policy placement, standard-library side effects, transaction boundaries,
+and coordinator size. See the [architecture guide](architecture.md).
 
-## Tests
+## Test-driven development
 
-Start with a meaningful failing test, implement the smallest behavior, then refactor. Verify correct results and explicit failure cases; do not write tests merely to increase a number. Test code mirrors production source under `tests/unit`, with module-level Rust inclusion preserving private APIs. Unit inputs and fakes are defined in source. Unit tests do not read fixtures/settings, mutate process environment, make network calls, or start infrastructure.
+Start a behavior change with a meaningful failing test. Implement the smallest
+correct behavior, then refactor. Test successful results, invalid inputs, authority
+loss, dependency failures, and relevant concurrency. Avoid tests that merely repeat
+the implementation or increase a percentage.
 
-Component tests use jsdom and fake API ports. The real browser, TLS, process lifecycle, and static-file checks are separate integration evidence. New behavior needs appropriate tests at its actual boundary.
+Tests mirror production paths under `tests/unit`. Rust module inclusion preserves
+private APIs. Unit inputs and fakes live in source. Unit tests require no external
+fixtures, settings, services, process-environment mutation, or network calls.
 
-The target remains 100% coverage of authored executable logic. Coverage is evidence of execution, not proof of correctness. Report pure/unit coverage separately from combined process, browser, and adapter coverage. Show untested entrypoints and coordination paths instead of silently excluding them. Upstream vendored UI components have their own provenance; local changes to them join the authored denominator. Do not claim full coverage until instrumentation and combined suites substantiate it.
+Component tests use jsdom and fake API ports. Real browser, TLS, terminal, process,
+SQL, Redis, and object-storage behavior needs separate integration evidence.
+New behavior requires tests at its actual boundary.
 
-The domain authorization suite verifies validated catalogs, live permission computation, and delegation ceilings. It includes exhaustive properties over small capability sets and mutation tests for security checks. These tests do not establish authentication, protocol, persistence, or concurrency correctness; those boundaries require their own suites as they are implemented. See the [authorization contract](authorization.md).
+## Security changes
 
-`make coverage-unit` runs two explicit reports. Rust uses cargo-llvm-cov 0.9.1 and `llvm-tools-preview`, with a 100% library line-coverage gate. Install those optional instrumentation tools explicitly with `cargo install cargo-llvm-cov --version 0.9.1 --locked` and `rustup component add llvm-tools-preview`. Stable Rust does not supply branch coverage in this report. The frontend report measures authored library, connection/login component, page interaction, and utility source; upstream button code and static layout/build configuration are excluded. The server executable, tooling entrypoints, and combined process/browser execution are not measured by these unit reports. Full authored-code coverage remains a separate, unfinished qualification requirement.
+State the authority source and transaction boundary before implementation. Identify
+which facts need a fresh primary read. Preserve exclusive-writer and shared-reader
+ordering. A preflight check never replaces the final mutation check.
 
-The persistence slice adds real SQL and operator effects to the Rust library denominator. Its service-free unit report therefore no longer meets the 100% library gate. The threshold remains unchanged. `make coverage-postgres` instruments unit tests, real PostgreSQL integration and host operator smoke execution together, includes the server executable, and reports remaining paths with the same 100% line requirement. It also remains below the target; neither report is presented as complete. See [persistence verification](persistence.md#verification-and-packaging) and the open foundation qualification issue.
+Commit security changes and their required audit together. Bound inputs, expensive
+work, queues, deadlines, and retained data. Use maintained cryptographic libraries
+through adapters. Do not implement cryptographic primitives in project code.
+
+Describe unknown outcomes explicitly. A failed transport or output stream can follow
+a committed mutation. Automatic retry requires a proven idempotency contract.
+External service calls need defined reconciliation or cleanup behavior.
+
+## Coverage and qualification
+
+The target remains 100% of authored executable logic. Coverage demonstrates
+execution, not correctness. Report isolated and combined coverage separately.
+Retain uncovered entrypoints and coordination paths in the relevant denominator.
+Local changes to upstream UI components join the authored denominator.
+
+`make coverage-unit` reports Rust libraries and frontend unit scope separately.
+Database effects leave the Rust unit report below its unchanged 100% line gate.
+Combined PostgreSQL and Redis reports add real effects but remain incomplete.
+Core-only coverage cannot stand in for whole-system coverage.
+
+[Verification](verification.md) defines targets, instrumentation versions, exclusions,
+latest dated evidence, and practical limits. [Release qualification](release-readiness.md)
+defines the remaining gates. Report failures and skips directly. Do not lower a
+gate or remove executable paths to manufacture completion.

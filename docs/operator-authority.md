@@ -2,7 +2,7 @@
 
 This is the authority inventory for the existing operator interface. The Clap
 command tree in [the CLI guide](cli.md) preserves these application operations.
-Account commands now require per-command administrator authentication; other
+Account commands now require per-command administrator authentication. Other
 operator commands still use deployment credentials. This does not complete
 [#23](https://github.com/OneTesseractInMultiverse/darkhorse-identity/issues/23).
 Container location, Unix UID, command spelling, a supplied actor name, and `--yes`
@@ -11,37 +11,48 @@ provide no application authority. `--yes` confirms intent only.
 ## Implemented command and dependency matrix
 
 All operator commands below can run with HTTP stopped. They use configured
-deployment credentials; they do not call an internal HTTP endpoint or start
+deployment credentials. They do not call an internal HTTP endpoint or start
 server maintenance workers. Help/version/invalid syntax use no runtime settings
 or service connections.
 
-| Command                                                         | Required access and state                                                                                                  | Existing invariants / audit boundary                                                                                                                                                                                                                                                                                                              |
-| --------------------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `serve`                                                         | Runtime configuration; enabled features determine database, Redis and key access                                           | Existing HTTP authentication/authorization and admission policies; runtime has broad application DML privileges.                                                                                                                                                                                                                                  |
-| `operator account show ID`                                      | Operator or runtime database access, enabled login configuration, active shared limiter and current administrator password | Verified actor, current password credential and administrator membership rechecked under the security fence. Read and its audit commit together; no password material is returned.                                                                                                                                                                |
-| `operator account deactivate/reactivate/revoke-all ID REVISION` | Same per-command authentication as account reads, plus a bounded reason                                                    | Expected revision, shared security transaction fence, last eligible administrator protection and credential epochs. Mutation and actor-attributed operator audit commit together. See the [account authentication contract](operator-accounts.md).                                                                                                |
-| `operator bootstrap`                                            | Nonowner operator database access; unconsumed bootstrap state                                                              | Exactly one initial eligible administrator; credentials, membership, bootstrap flag and security audit in one transaction. Password input is protected. No supported bootstrap reset.                                                                                                                                                             |
-| `operator migrate`                                              | Schema owner/migration authority                                                                                           | SQLx migration checks/history. This is not an individually authenticated management operation or a complete operator intent/result audit. Stop serving and serialize deployment changes as documented.                                                                                                                                            |
-| `operator signing status/generate/import/activate/retire`       | Provider origin/configuration, wrapping key and trusted database access                                                    | Every command validates or initially creates the issuer/wrapping-key binding. Therefore even `status` requires confirmation. Existing revision, publication and verification-retention rules apply; key lifecycle mutation/audit is atomic. Binding creation precedes the lifecycle transaction and has no complete operator intent/result audit. |
-| `operator limiter status`                                       | Database; runtime limiter Redis credentials when active                                                                    | Observes authoritative generation and validated counters. Does not grant admission or establish a reusable authorization decision.                                                                                                                                                                                                                |
-| `operator limiter fence`                                        | Protected database mutation authority                                                                                      | Durable inactive generation, mandatory recovery wait and limiter audit commit together. Repeated fencing starts another wait.                                                                                                                                                                                                                     |
-| `operator limiter activate`                                     | Protected database authority and separately provisioned Redis recovery credentials                                         | Commits durable intent before Redis initialization; activation, limiter audit and receipt commit together in PostgreSQL. Cross-system uncertainty requires [inspection](limiter-activation.md). No skip-wait or reset-active-generation option.                                                                                                   |
-| `operator limiter inspect OPERATION_ID`                         | Operator database journal SELECT access; no Redis dependency                                                               | One primary snapshot of historical intent/receipt and current generation. Read-only; no individual human authentication or per-read audit. See [activation evidence](limiter-activation.md).                                                                                                                                                      |
-| `operator redis status`                                         | Cache and limiter diagnostic credentials                                                                                   | Reports role-specific reachability/configuration and public process metadata, not enforcement readiness. No individual operator/read audit.                                                                                                                                                                                                       |
+| Command                                                         | Required authority                                        | Commit or observation boundary                                           |
+| --------------------------------------------------------------- | --------------------------------------------------------- | ------------------------------------------------------------------------ |
+| `serve`                                                         | Configured runtime features and credentials               | Per-request HTTP authentication and authorization                        |
+| `operator account show ID`                                      | Database, active limiter, fresh administrator password    | Verified read and actor audit commit together                            |
+| `operator account deactivate/reactivate/revoke-all ID REVISION` | Same account authority, expected revision, bounded reason | Account change and actor audit commit together                           |
+| `operator bootstrap`                                            | Nonowner operator database login, unused bootstrap        | Initial account, credential, membership, flag, and audit commit together |
+| `operator migrate`                                              | Schema owner                                              | Checksummed SQLx migration history                                       |
+| `operator signing status/generate/import/activate/retire`       | Operator database login, canonical origin, wrapping key   | Binding validation, revision checks, lifecycle audit                     |
+| `operator limiter status`                                       | Database and runtime Redis access for active state        | Point-in-time enforcement observation                                    |
+| `operator limiter fence`                                        | Protected database mutation authority                     | Inactive generation, wait, and audit commit together                     |
+| `operator limiter activate`                                     | Database and Redis recovery credential                    | Durable intent, Redis effect, atomic completion receipt                  |
+| `operator limiter inspect OPERATION_ID`                         | Operator journal read privileges                          | Read-only primary snapshot, no Redis dependency                          |
+| `operator redis status`                                         | Cache and limiter diagnostic credentials                  | Reachability and configuration, no admission decision                    |
+
+Signing commands validate or initially create the issuer and wrapping-key binding.
+That includes `status`, so it requires confirmation. Binding creation precedes the
+key-lifecycle transaction. The group has no complete operator intent/result journal.
+Publication and verification-retention waits remain mandatory.
+
+Migration history does not provide individually authenticated operator attribution.
+Limiter inspection has no human authentication or per-read audit. Its durable
+[activation receipt](limiter-activation.md) records the database credential boundary.
+A repeated fence starts another wait. Activation cannot reset an active generation
+or skip the wait. All operator commands remain subject to their documented grants.
 
 Canonical and compatibility spellings share one dispatch path and confirmation
 policy. No command grants application roles, impersonates users, or bypasses the
 domain authorization evaluator. Administrator membership and application-resource
 access remain separate concepts. Active platform administrators may perform only
-the four implemented account operations; this grants no application-resource
-authority. Deployments must also restrict database credential access.
+the four implemented account operations. This grants no application-resource
+authority. Deployments must restrict database credential access.
 
 ## Credential separation and limits
 
 The [Compose](compose.md#topology-and-authority) and [Kubernetes](kubernetes.md)
 fixtures use independent nonowner runtime and operator database logins. A
-separate migrator workload receives only the schema-owner URL and public CA;
-operator workloads receive the nonowner operator URL and recovery credentials.
+separate migrator workload receives only the schema-owner URL and public CA.
+Operator workloads receive the nonowner operator URL and recovery credentials.
 Neither nonowner role can migrate or edit audit records. Runtime cannot write
 selected administrator/signing/limiter records, and operator grants exclude
 browser sessions, tokens, client secrets and unrelated application tables.
@@ -59,7 +70,7 @@ Deliver secrets through the documented protected files/mounts or existing
 deployment configuration. Do not put passwords, tokens, database URLs, wrapping
 keys or private signing material in command arguments. Limit container exec,
 Pod creation, secret access and database-owner access outside the application.
-Host/container root and database owners remain trusted; database owners can alter
+Host/container root and database owners remain trusted. Database owners can alter
 stored audit records. Records are not tamper-proof. Kubernetes execution identity
 is external evidence and is not automatically verified inside the CLI.
 
@@ -71,7 +82,7 @@ planned in #25/#26 ship:
 
 - Routine administration needs verified actor authentication, bounded/recent
   assurance appropriate to the operation, and current operation/target grants.
-  Reuse shared attempt limits if passwords are verified; a fresh CLI process
+  Reuse shared attempt limits if passwords are verified. A fresh CLI process
   cannot reset an attempt budget. A platform administrator receives no automatic
   access to application resources or impersonation authority.
 - Exceptional recovery needs separately provisioned, bounded credentials and an
@@ -84,7 +95,7 @@ planned in #25/#26 ship:
   the verified actor or identified operator credential, operation, target,
   correlation, relevant revisions, result and required reason without secrets.
   Supplied claims remain unverified. Define retention, read/export access and
-  sanitization; do not silently prune or expose personal audit data.
+  sanitization. Do not silently prune or expose personal audit data.
 - For migrations and cross-system recovery, add durable intent/result recording,
   reconciliation and conservative unknown-outcome handling. Select protected
   out-of-band evidence before claiming recovery with audit storage unavailable.
@@ -98,5 +109,5 @@ Routine account commands use the password baseline described in
 privileged assurance level, runtime-compromise containment, and operator audit retention/export policy remain open
 decisions in #1/#23. This inventory is not their independent security review.
 The design requirements follow [OWASP authorization guidance](https://cheatsheetseries.owasp.org/cheatsheets/Authorization_Cheat_Sheet.html)
-and [logging guidance](https://cheatsheetseries.owasp.org/cheatsheets/Logging_Cheat_Sheet.html);
-database role ownership follows [PostgreSQL privileges](https://www.postgresql.org/docs/18/ddl-priv.html).
+and [logging guidance](https://cheatsheetseries.owasp.org/cheatsheets/Logging_Cheat_Sheet.html).
+Database role ownership follows [PostgreSQL privileges](https://www.postgresql.org/docs/18/ddl-priv.html).

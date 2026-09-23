@@ -1,16 +1,61 @@
 # Darkhorse
 
 <p>
-  <img src="docs/brand/readme-banner.svg" alt="DarkHorse Identity Server" width="560">
+  <img src="docs/brand/readme-banner.svg" alt="Darkhorse Identity Server" width="560">
 </p>
 
-An identity server for one organization and its applications, built with Rust, a static SvelteKit/TypeScript console, PostgreSQL, and Redis.
+Darkhorse centralizes identity and access for one organization and its applications.
+Rust owns the server, protocol endpoints, sessions, background workers, and local CLI.
+SvelteKit supplies a static TypeScript console. PostgreSQL stores authoritative
+security state. Separate Redis services support shared attempt limits and cache isolation.
 
-**Early development.** The repository contains a pure authorization policy engine, PostgreSQL persistence, operator-only administrator bootstrap, shared Redis attempt limiting, a password login portal with Rust-owned sessions, administrator-only application/client registration, protected signing keys/JWKS, and an initial `openid` authorization-code flow with consent, opaque access tokens, signed ID tokens, scoped UserInfo, client-authenticated introspection and revocation. Resource token issuance now binds persisted role permissions to immutable consent and token ceilings. Dedicated resource-server introspection now recomputes current capabilities for protected API checks. Opted-in confidential clients support [session-bound refresh rotation](docs/refresh-tokens.md) with family replay revocation and bounded cleanup. The portal supports [self-service session history and termination](docs/sessions.md) and an [administrator user directory](docs/console.md) with profile/name views, status changes, and application role assignments. The [application catalog console](docs/catalog-administration.md) manages clients, secrets, resources, scopes, capabilities, roles, and explicit bindings. Delegated administration, logout propagation and production deployment qualification remain unfinished.
+**Development status:** Darkhorse has no qualified production release. The project
+license remains undecided. Read the [implementation status](docs/implementation-status.md),
+[release requirements](docs/release-readiness.md), and [third-party notices](docs/third-party-notices.md).
+
+## System at a glance
+
+```mermaid
+flowchart LR
+    Browser["Browser"] -->|HTTPS| Edge["TLS proxy"]
+    Edge --> Server["Rust server and static console"]
+    App["Confidential application backend"] -->|Code exchange and token checks| Edge
+    API["Protected resource server"] -->|Authenticated introspection| Edge
+    Server --> DB[("PostgreSQL primary")]
+    Server --> Limiter[("Redis attempt limiter")]
+    Server -.-> Cache[("Separate Redis cache service")]
+    Server -.-> Mail["Configured TLS SMTP service"]
+    Server -.-> Objects["Private S3-compatible bucket"]
+```
+
+The dashed edges describe optional facilities or reserved cache infrastructure.
+Redis does not supply positive authorization decisions. Each new authorization
+check reads current primary state, including committed revocation and permission changes.
+
+## Implemented capabilities
+
+| Area              | Current behavior                                                                                                            |
+| ----------------- | --------------------------------------------------------------------------------------------------------------------------- |
+| Authentication    | Password login, Rust-owned opaque browser sessions, shared login attempt limits                                             |
+| OpenID Connect    | Confidential clients, authorization code with S256 PKCE, discovery, JWKS, signed RS256 ID tokens                            |
+| Credentials       | Opaque access tokens, rotating session-bound refresh tokens, personal API keys                                              |
+| Authorization     | Application-scoped roles, explicit capabilities, resource scope limits, immutable credential ceilings                       |
+| Token checks      | Scoped UserInfo, client and resource-server introspection, client-bound revocation                                          |
+| Account lifecycle | Invitation-only onboarding, current-email verification, individual session termination, account deactivation and revoke-all |
+| Console           | User directory, client and access catalogs, extended profiles, private pictures, login branding                             |
+| Operations        | Rust CLI, separate database roles, durable limiter activation records, Compose and Kubernetes packaging                     |
+
+Back-channel logout has persisted relying-party session references and signed
+`sid` claims. Notification delivery remains unimplemented. Password recovery,
+email changes, passkeys, delegated administration, and authorization computation
+caching remain open work. The [status reference](docs/implementation-status.md)
+links each boundary to its guide and issue.
 
 ## Quick start
 
-Install Rust through rustup, Node **24.19.0**, pnpm **11.19.0**, and GNU Make **3.81 or newer**. The Rust toolchain is pinned to **1.97.1**. macOS and Linux are the intended development platforms; host certificate trust automation currently supports macOS.
+Install Rust through rustup, Node **24.19.0**, pnpm **11.19.0**, and GNU Make
+**3.81 or newer**. The repository pins Rust **1.97.1**. macOS and Linux are the
+intended development platforms.
 
 ```sh
 make help
@@ -19,61 +64,55 @@ make check
 make build
 ```
 
-Dependency installation needs network access. After dependencies are installed, unit tests run without environment files, databases, Redis, Docker, certificates, or a browser installation. Rust commands use locked dependencies in offline mode. A clean checkout needs no private planning files.
+Dependency installation uses the network. Installed dependencies suffice for unit
+tests. Those tests require no settings, private files, Docker, databases, Redis,
+certificates, or browser installation. Rust checks use locked offline dependencies.
 
-For HTTPS development, install [Caddy 2.11.4](https://github.com/caddyserver/caddy/releases/tag/v2.11.4), then:
+To run the management portal, install Docker with Compose and Caddy **2.11.4**.
+Then follow [the password-portal setup](docs/development.md#run-the-password-portal).
+It provisions local secrets, applies migrations, creates the first administrator,
+and establishes the limiter generation. The recovery wait is **904 seconds**.
+Open [https://localhost:8443](https://localhost:8443) after `make dev-login` starts.
 
-```sh
-make https-setup
-make https-trust  # explicit macOS user trust; may display an OS prompt
-make dev
-```
+`make dev` runs the unauthenticated foundation preview. `make dev-login` runs the
+prepared login and management stack. `make dev-provider` adds the configured OIDC
+provider. `make dev-media` adds the prepared object store. The [development guide](docs/development.md)
+explains these commands and their prerequisites.
 
-Open **https://localhost:8443**. Stop the foreground stack with Ctrl-C. Run `make https-check` in another terminal to validate the project CA and Rust route. See [development](docs/development.md) for trust, ports, and troubleshooting.
+## Documentation
 
-For the optional database/bootstrap and Docker workflows, see [persistence](docs/persistence.md). Local Compose and integration tests use [Percona Distribution for PostgreSQL](docs/percona.md); that guide also covers existing-volume migration. `make test-postgres` and `make docker-smoke` use disposable infrastructure; ordinary unit tests remain service-free. Full coverage qualification remains open in [issue #2](https://github.com/OneTesseractInMultiverse/darkhorse-identity/issues/2).
+Start with the [documentation index](docs/README.md).
 
-The [integrated Compose qualification stack](docs/compose.md) packages HTTPS, the Rust/static console image, PostgreSQL and separate TLS Redis services. It includes explicit setup, migration, bootstrap, health and backup commands, with mounted secrets and separate runtime/operator credentials. This initial topology is loopback-only and uses short-lived test certificates; production deployment qualification remains open.
+| Goal                                                      | Guide                                                                                                |
+| --------------------------------------------------------- | ---------------------------------------------------------------------------------------------------- |
+| Understand trust, dependencies, and transaction ownership | [Architecture](docs/architecture.md)                                                                 |
+| Integrate an application                                  | [OIDC provider](docs/provider.md), [registration](docs/registration.md)                              |
+| Protect an API                                            | [Resource introspection](docs/resource-introspection.md), [authorization](docs/authorization.md)     |
+| Configure a deployment                                    | [Configuration](docs/configuration.md), [Compose](docs/compose.md), [Kubernetes](docs/kubernetes.md) |
+| Operate the server from a terminal                        | [CLI](docs/cli.md), [operator authority](docs/operator-authority.md)                                 |
+| Review evidence and unresolved risks                      | [Verification](docs/verification.md), [release qualification](docs/release-readiness.md)             |
+| Contribute                                                | [Contributing](CONTRIBUTING.md), [engineering rules](docs/engineering.md)                            |
 
-The [Kubernetes application qualification](docs/kubernetes.md) adds explicit-context manifests, two restricted replicas, primary readiness, separate operator Jobs and an isolated local cluster test. Production failover, upgrades, restore and capacity qualification remain open.
+## Repository structure
 
-Redis infrastructure, atomic shared attempt budgets and durable recovery are implemented in [issue #4](https://github.com/OneTesseractInMultiverse/darkhorse-identity/issues/4). See [Redis setup, enforcement and recovery](docs/redis.md). For the enabled password portal, follow the [login setup and security contract](docs/authentication.md), then run `make dev-login`. The default preview keeps login disabled. `make browser-install` and `make test-browser` provide disposable HTTPS browser integration tests.
+| Directory            | Responsibility                                                          |
+| -------------------- | ----------------------------------------------------------------------- |
+| `crates/domain`      | Typed identities, policy computations, lifecycle rules                  |
+| `crates/application` | Project-owned ports and use-case coordination                           |
+| `crates/adapters`    | Axum, Serde, Clap, SQLx, Redis, cryptography, SMTP, and object storage  |
+| `apps/server`        | Runtime construction, HTTP serving, shutdown, and maintenance workers   |
+| `apps/console`       | Static SvelteKit application, TypeScript, and shadcn-svelte components  |
+| `scripts`            | Development, deployment, measurement, and verification commands         |
+| `config`             | Local HTTPS and dependency configuration                                |
+| `deploy`             | Container packaging, Kubernetes manifests, and reviewed database grants |
 
-For opt-in code authorization and signing-key commands, see the [provider contract](docs/provider.md). `make provider-setup` and `make dev-provider` extend the prepared login environment; two-application SSO and [identity token checks](docs/token-checks.md) are exercised by `make test-browser`.
+Tests mirror source paths under `tests/unit`. Dependencies point toward the domain.
+Framework types remain in adapters and the composition root.
 
-For opt-in current-email verification, see the [email verification and SMTP contract](docs/email-verification.md). `make email-setup` preserves a private local verification key; `make dev-email` starts the HTTPS login portal with your configured SMTP service. The full browser suite exercises actual TLS email delivery and single-use confirmation.
+## Work tracking and security reports
 
-For a reproducible release-build HTTPS workload, run `make benchmark` or `make benchmark-baseline`. Use `make benchmark-arrivals` or `make benchmark-arrivals-baseline` for paced arrivals that continue independently of response times. Use `make benchmark-profile` or `make benchmark-profile-baseline` for opt-in Rust stage/pool and SQL/WAL profiling. Use `make benchmark-pools` or `make benchmark-pools-baseline` for sequential, repeated connection-pool comparisons. See the [performance baseline](docs/performance.md) for raw reports, revocation checks, topology and measurement limits.
+Contributions use an issue, a feature branch or fork, and a reviewed pull request.
+Each commit references its issue. [GitHub issues](https://github.com/OneTesseractInMultiverse/darkhorse-identity/issues)
+record implementation and qualification work separately.
 
-## Structure
-
-| Directory            | Responsibility                                                      |
-| -------------------- | ------------------------------------------------------------------- |
-| `crates/domain`      | Framework-free identity types and authorization computations        |
-| `crates/application` | Project-owned use cases, ports and coordinators                     |
-| `crates/adapters`    | Transport, configuration, SQLx persistence and password preparation |
-| `apps/server`        | Rust composition root and process lifecycle                         |
-| `apps/console`       | Static SvelteKit frontend; TypeScript and shadcn-svelte             |
-| `scripts`            | Development and repository verification tools                       |
-| `config`             | Local HTTPS proxy and PostgreSQL Compose configuration              |
-| `deploy`             | Compose/Kubernetes packaging and reviewed runtime grants            |
-
-Tests mirror source paths under `tests/unit`. Rust includes private unit modules from that parallel tree. Framework and serialization types remain outside domain/application contracts. See [engineering](docs/engineering.md) for the implementation rules and [dependencies](docs/dependencies.md) for library boundaries.
-
-The [resource issuance contract](docs/resource-issuance.md) describes persisted role assignments and bounded policy loading. The [resource introspection contract](docs/resource-introspection.md) covers dedicated resource credentials and live capability checks. [Personal API keys](docs/personal-api-keys.md) add owner-managed, application-bound credentials with immutable resource ceilings, optional expiration, and single-reveal delivery at `/security/keys`. The [authorization contract](docs/authorization.md) explains application isolation, roles, scopes, credential ceilings, and authoritative-state requirements. Run `make test-authorization` and `make test-personal-keys` for their self-contained tests.
-
-## Work tracking
-
-Contributions follow an issue → feature branch → reviewed pull request workflow. Every new commit references its issue. Start with [Contributing](CONTRIBUTING.md) and the [engineering rules](docs/engineering.md).
-
-Remaining work is tracked in [GitHub issues](https://github.com/OneTesseractInMultiverse/darkhorse-identity/issues). Persistence and bootstrap are tracked in [issue #3](https://github.com/OneTesseractInMultiverse/darkhorse-identity/issues/3). Application and confidential client registration is tracked in [issue #6](https://github.com/OneTesseractInMultiverse/darkhorse-identity/issues/6). See the [registration API and security contract](docs/registration.md), including exact callbacks, explicit resource/scope allowances and one-time client-secret issuance.
-
-The project license has not been selected. Third-party component licenses remain applicable; see [third-party notices](docs/third-party-notices.md).
-
-The [Rust CLI guide](docs/cli.md) documents command groups, protected input, confirmations, JSON output and exit codes. Use `make cli-help` to discover existing operations and read their [current authority boundaries](docs/operator-authority.md).
-
-See [release qualification](docs/release-readiness.md) for hosted checks, advisory scans and remaining production gates. Report suspected vulnerabilities through the private channel in [SECURITY.md](SECURITY.md).
-
-Invitation-only ordinary-account onboarding and its API are described in [the invitation contract](docs/invitations.md).
-
-See [profiles, private images, and login branding](docs/profiles-and-media.md) for the account/settings screens and local object-storage commands.
+Report suspected vulnerabilities through the private channel in [SECURITY.md](SECURITY.md).

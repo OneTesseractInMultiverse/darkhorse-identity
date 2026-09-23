@@ -7,13 +7,13 @@ resource capabilities and cannot authorize an application's protected API.
 The separate [resource issuance profile](resource-issuance.md) creates credentials
 with capability ceilings. UserInfo rejects them and this identity introspection
 profile returns inactive for them. Dedicated [resource-server credentials](resource-introspection.md)
-now enable current capability checks for protected APIs.
+provide current capability checks for protected APIs.
 The issuing client can revoke its resource credentials through the same endpoint.
 
 ## Approved identity claims
 
-Every identity authorization request includes `openid`. It may additionally request
-`profile` and `email`; resource scopes use the separate resource profile.
+Every identity authorization request includes `openid`. It may request
+`profile` and `email`. Resource scopes use the separate resource profile.
 Consent displays the requested scopes. Both the code and access credential retain
 immutable approved scopes, and the access credential records its claim ceiling.
 Adding scope support never expands an already-issued credential: migration 0009
@@ -25,15 +25,16 @@ preserves existing codes/tokens as `openid` and `sub` only.
 | `profile` | `name`, `given_name`, `family_name`     |
 | `email`   | `email`, authoritative `email_verified` |
 
-Profile values come from the current directory record. Email ownership comes from the current persisted [email verification](email-verification.md) state; existing accounts start unverified and changing an email clears its proof. Country, phone, secondary names,
-bio and picture remain later profile work. Unapproved fields are omitted from the
+Profile values come from the current directory record. Email ownership comes from the current persisted [email verification](email-verification.md) state. Existing accounts start unverified and changing an email clears its proof. Country, phone, secondary names,
+bio, and pictures exist in the [private profile API](profiles-and-media.md).
+The current UserInfo projection does not disclose those fields. Unapproved fields are omitted from the
 response and are not selected by the profile query. ID tokens retain their
-existing authentication-event claims; these new profile values appear in UserInfo.
+existing authentication-event claims. These new profile values appear in UserInfo.
 The mapping follows [OIDC scope claims](https://openid.net/specs/openid-connect-core-1_0.html#ScopeClaims).
 
 A broader remembered consent does not broaden old token ceilings. Replacing that
 consent with narrower scopes invalidates tokens needing a removed scope. Those
-access tokens stay invalid; the server does not silently rewrite their immutable
+access tokens stay invalid. The server does not silently rewrite their immutable
 grant. Opted-in clients may explicitly request narrower scopes through the
 [refresh flow](refresh-tokens.md), or complete a new authorization flow. Removing a consent record likewise invalidates its
 tokens. Consent reduction is rechecked at redemption, UserInfo and introspection.
@@ -46,10 +47,10 @@ one nonempty `token`. The optional `token_type_hint` is accepted as a hint and
 ignored when identifying the actual opaque credential format. It cannot
 convert an ID token, Logout Token, code or session handle into an access token.
 Opted-in clients receive [refresh credentials](refresh-tokens.md). Introspection
-returns inactive for them; authenticated revocation terminates the owning family
+returns inactive for them. Authenticated revocation terminates the owning family
 and invalidates all of its access tokens.
 
-The body is capped at 4096 bytes and 16 pairs; token text is capped at 2048 bytes.
+The body is capped at 4096 bytes and 16 pairs. Token text is capped at 2048 bytes.
 Duplicate parameters/authentication headers, body client authentication, query
 credentials, Origin and Cookie headers are rejected. These are backend endpoints,
 with no browser CORS support. The route group retains 16 concurrent admissions per
@@ -63,18 +64,31 @@ only `{ "active": false }` for a foreign, unknown, revoked, expired or stale tok
 An active response contains `active`, `token_type`, `iss`, `aud`, `client_id`, `sub`,
 `scope`, `iat` and `exp`. It contains no names, email, roles or capabilities.
 Unavailable primary state returns 503, rather than a guessed active/inactive result.
-Clients must enforce the returned audience; active does not grant access to another
+Clients must enforce the returned audience. Active does not grant access to another
 API. See [RFC 7662](https://www.rfc-editor.org/rfc/rfc7662.html#section-2).
 
 Revocation authenticates the caller and verifies token ownership. Revocation and its
 critical audit event commit atomically. Audit failure rolls back and returns 503.
-A successful response is empty HTTP 200; unknown, foreign, wrong-purpose and
+A successful response is empty HTTP 200. Unknown, foreign, wrong-purpose and
 already-revoked credentials get the same response without changing another
-client's state. Concurrent revocations write one audit event. Revocation also covers owned resource credentials and works even
+client's state. Concurrent revocations write one audit event. Revocation covers owned resource credentials and works even
 when the owned token has expired or its consent is no longer valid. The response
 contract follows [RFC 7009](https://www.rfc-editor.org/rfc/rfc7009.html#section-2).
 Revoking access does not retract an accepted ID token or terminate the identity
-browser session; signed back-channel logout remains separate work.
+browser session. Signed back-channel logout remains separate work.
+
+```mermaid
+flowchart TD
+    Input["Authenticated client and opaque token"] --> Bound{"Owned identity access token?"}
+    Bound -->|No| Inactive["Inactive response"]
+    Bound -->|Yes| Live{"Current primary state accepts all bindings?"}
+    Live -->|No| Inactive
+    Live -->|Yes| Active["Active metadata for UserInfo audience"]
+    Live -->|Unavailable| Error["503 without an authority claim"]
+```
+
+This diagram covers client identity introspection. Resource credentials and
+personal keys use the separate resource-server projection.
 
 ## Freshness and transaction contract
 
@@ -86,14 +100,14 @@ and the current consent row. Token time validity is checked after those potentia
 blocking reads. UserInfo reads the approved profile fields in the same transaction.
 
 Registration and directory mutations acquire the security state lock first.
-Revocation takes the code update lock before changing access state; checks use the
+Revocation takes the code update lock before changing access state. Checks use the
 same order with shared locks. Consent rows are held with shared locks during a
 check. The coherence contract depends on preserving this order in future mutation
 ports. Replicas in recovery cannot supply authority. Redis and stale read replicas
 are not consulted for positive access decisions.
 
 A request begun after a relevant change commits observes the new state. A check
-that overlaps a mutation may finish under the earlier state; the mutation cannot
+that overlaps a mutation may finish under the earlier state. The mutation cannot
 invalidate facts halfway through that check's protected reads. An application
 must not cache or reuse a positive introspection response for a new authorization
 check. The response cannot close the gap between that check and an unrelated
@@ -102,8 +116,9 @@ application's later write. Object-specific rules remain in the consuming service
 Introspection and UserInfo perform no synchronous usage/audit writes and do not
 extend browser idle lifetime. There is no last-used telemetry presented as exact
 accounting. This avoids a write and hot counter on every read without weakening
-revocation. Retention, ingress abuse controls, failure qualification, policy-management
-interfaces and sustained-load measurement remain release requirements.
+revocation. Retention, ingress abuse controls, fault qualification, and sustained-load
+measurement remain release requirements. Catalog management is implemented in the
+[administrative console](catalog-administration.md).
 
 ## Verification
 
@@ -117,29 +132,14 @@ and a reader blocked on an uncommitted revocation followed by checks after commi
 It verifies introspection does not append token-audit rows.
 
 `make test-browser` exercises two independently registered applications sharing one
-login through verified HTTPS. One receives `sub` only; the other explicitly approves
+login through verified HTTPS. One receives `sub` only. The other explicitly approves
 names/email. It verifies signatures, scope separation, client-bound introspection,
 foreign revocation isolation, wrong token types, CSRF boundaries and immediate
 post-commit denial. The test-only reference client reports ten sequential full
-HTTPS/Basic/primary-state timings. The login uses the existing Redis limiter;
-token routes retain their admission controls during the measurement. This small
+HTTPS/Basic/primary-state timings. The login uses the existing Redis limiter.
+Token routes retain their admission controls during the measurement. This small
 development sample is instrumentation evidence, not a throughput benchmark or SLO.
 
-The 2026-09-18 validation passed `make ci`, then `make check` from a clean staged
-export with network denied: 191 isolated tests (68 adapter, 14 application,
-69 domain, 26 frontend and 14 tooling). Real integration passed 41 PostgreSQL,
-five Redis infrastructure and 14 limiter/login scenarios plus the separate-process
-helper and the two-application HTTPS browser flow. Docker build and non-root,
-read-only/static/operator smoke passed from that same export. Existing local
-services were not migrated by these disposable tests.
-
-Core line/function/region coverage is 100%. Combined Rust unit, PostgreSQL, Redis,
-operator and browser process coverage is 98.04% lines, 99.26% functions and 92.08%
-regions, with 122 uncovered lines. The unchanged 100% line gate fails. Remaining
-paths include startup, input, storage and transport failures; JavaScript tooling,
-SQL and deployment/load qualification remain separate.
-
-The unchanged 100% authored-code target and the remaining policy-management and
-production qualification are tracked in the open issues. Functional evidence for
-this identity profile does not claim complete resource authorization or provider
-conformance.
+The [consolidated verification reference](verification.md) records dated counts,
+coverage denominators, and remaining qualification. Functional identity tests do
+not establish complete provider conformance or production capacity.
