@@ -25,6 +25,32 @@ async fn user(db: &Database) {
     db.store.establish(&candidate, [2; 32], None).await.unwrap();
 }
 #[tokio::test]
+async fn saved_phone_values_remain_readable_and_correctable_after_metadata_updates() {
+    let db = oidc::fixture().await;
+    user(&db).await;
+    // The previous validator accepted this extra digit. Restore an existing row;
+    // new writes must still pass the current metadata before reaching the store.
+    sqlx::query("UPDATE principals SET calling_code='353',national_number='22123450',revision=revision+1 WHERE id=$1")
+        .bind(Uuid::from_u128(2))
+        .execute(&db.pool)
+        .await
+        .unwrap();
+    let before = db.store.profile([2; 32], None).await.unwrap();
+    assert_eq!(before.fields.phone().unwrap().e164(), "+35322123450");
+    assert_eq!(
+        db.store.profile([1; 32], Some(id(2))).await.unwrap().fields,
+        before.fields
+    );
+    let after = db
+        .store
+        .update_profile([2; 32], None, before.revision, fields())
+        .await
+        .unwrap();
+    assert_eq!(after.fields, fields());
+    assert_eq!(after.revision, before.revision + 1);
+    db.store.close().await;
+}
+#[tokio::test]
 async fn profiles_are_owner_or_admin_only_audited_and_do_not_grant_authority() {
     let db = oidc::fixture().await;
     user(&db).await;

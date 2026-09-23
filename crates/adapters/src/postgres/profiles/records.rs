@@ -11,7 +11,7 @@ fn project(row: &PgRow, id: PrincipalId) -> Result<Profile, Error> {
         (Some(code), Some(national)) => Some(Phone::new(&code, &national).map_err(storage)?),
         _ => return Err(Error::Unavailable),
     };
-    let fields = crate::profiles::prepare(Input {
+    let fields = crate::profiles::stored_fields(Input {
         first_name: row.try_get("first_name").map_err(storage)?,
         last_name: row.try_get("last_name").map_err(storage)?,
         second_name: optional(row, "second_name")?,

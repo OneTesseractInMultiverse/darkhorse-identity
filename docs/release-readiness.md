@@ -50,6 +50,13 @@ merely to make the gate pass. See the dated [dependency review](dependencies.md#
 These scanners do not review licenses, container OS packages, source secrets,
 compiler provenance, deployment configuration, or independent protocol security.
 
+The phone-validator replacement in [#28](https://github.com/OneTesseractInMultiverse/darkhorse-identity/issues/28)
+removed the obsolete `atomic-polyfill` chain. The **2026-09-23 UTC** full-lockfile
+scan passed for 351 Rust and 336 JavaScript packages with no suppressed findings.
+See the [dependency decision](dependencies.md#phone-validator-replacement) and
+the issue's exact revision/hosted evidence. This clears that dated advisory
+finding; it does not qualify the open release gates below.
+
 ## Hosted checks
 
 [CI](../.github/workflows/ci.yaml) runs on pushes to `main`, pull requests targeting

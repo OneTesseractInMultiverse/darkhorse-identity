@@ -18,6 +18,51 @@ export async function verifyProfiles(page, origin, principal, runSql) {
   await page.getByRole("button", { name: "Save profile", exact: true }).click();
   await page.getByText("Profile saved.", { exact: true }).waitFor();
   assert.equal(await page.locator(".bio dd").textContent(), "🦀".repeat(2000));
+  const phoneCheck = await page.evaluate(async () => {
+    const profile = await (await fetch("/api/profiles/me")).json();
+    const options = await (await fetch("/api/profiles/options")).json();
+    const {
+      revision,
+      first_name,
+      second_name,
+      last_name,
+      second_last_name,
+      country,
+      bio,
+    } = profile;
+    const response = await fetch("/api/profiles/me", {
+      method: "POST",
+      headers: { "content-type": "application/json", "x-darkhorse-csrf": "1" },
+      body: JSON.stringify({
+        revision,
+        first_name,
+        second_name,
+        last_name,
+        second_last_name,
+        country,
+        bio,
+        calling_code: "50",
+        national_number: "688887777",
+      }),
+    });
+    const after = await (await fetch("/api/profiles/me")).json();
+    return {
+      version: options.phone_version,
+      status: response.status,
+      body: await response.json(),
+      unchanged: JSON.stringify(after) === JSON.stringify(profile),
+      callingCode: after.calling_code,
+      nationalNumber: after.national_number,
+    };
+  });
+  assert.deepEqual(phoneCheck, {
+    version: "libphonenumber-9.0.39",
+    status: 400,
+    body: { error: "invalid_request" },
+    unchanged: true,
+    callingCode: "506",
+    nationalNumber: "88887777",
+  });
   const original = await page.evaluate(() => {
     const c = document.createElement("canvas");
     c.width = 600;

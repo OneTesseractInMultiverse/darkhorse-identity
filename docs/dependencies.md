@@ -67,7 +67,7 @@ complete transitive advisory or license audit. [Lettre advisories](https://rusts
 
 ## Profile and image dependencies
 
-- `isocountry` 0.3.2 (MIT) supplies the compiled ISO country list; `phonenumber` 0.3.10 (Apache-2.0, libphonenumber 9.0.33 metadata) validates canonical international contact numbers. [Country API](https://docs.rs/isocountry/0.3.2/isocountry/), [phone API](https://docs.rs/phonenumber/0.3.10+9.0.33/phonenumber/).
+- `isocountry` 0.3.2 (MIT) supplies the compiled ISO country list; `rlibphonenumber` 2.2.12 (Apache-2.0, libphonenumber 9.0.39 metadata) validates canonical international contact numbers. [Country API](https://docs.rs/isocountry/0.3.2/isocountry/), [phone API](https://docs.rs/rlibphonenumber/2.2.12/rlibphonenumber/). See the [replacement review](#phone-validator-replacement).
 - `image` 0.25.10 (MIT/Apache-2.0), default features disabled, enables only PNG and JPEG decoding/encoding. Width/height limits are strict; allocation limits are best effort. [Decoder limits](https://docs.rs/image/0.25.10/image/struct.Limits.html).
 - Apache `object_store` 0.14.2 (MIT/Apache-2.0), default features disabled with S3/TLS support, supplies signed object requests; `futures-util` provides bounded stream consumption. Exact transitive dependencies are locked. [Object store API](https://docs.rs/object_store/0.14.2/object_store/).
 - RustFS 1.0.0 (Apache-2.0) is the pinned local/disposable S3-compatible service; it is not the required production provider. [Upstream release](https://github.com/rustfs/rustfs/releases/tag/1.0.0).
@@ -88,7 +88,7 @@ raw parser errors and emits fixed diagnostics. The new locked packages are
 metadata and the [maintained upstream API](https://docs.rs/clap/4.6.7/clap/).
 
 The 2026-09-21 full-lockfile cargo-audit 0.22.2 check introduced no new findings;
-the existing `atomic-polyfill` warning in #28 still blocks overall qualification.
+it retained the `atomic-polyfill` warning subsequently addressed in #28.
 This is maintenance/feature/license/advisory evidence, not an independent audit.
 The terminal adapter replaces rpassword/rtoolbox with **nix 0.31.3** (MIT,
 Rust minimum 1.69), using only `term`, `process`, `signal` and `fs` with defaults
@@ -103,8 +103,8 @@ only for interactive bootstrap and kept through that entire operation. No signal
 registration is added to help, parsing, protected-stdin operations or ordinary
 server startup. See [descriptor readiness](https://docs.rs/tokio/1.53.1/tokio/io/unix/struct.AsyncFd.html)
 and [signal lifetime](https://docs.rs/tokio/1.53.1/tokio/signal/unix/struct.Signal.html).
-The 2026-09-22 full-lockfile scan covers 327 Rust dependencies and adds no new
-finding; RUSTSEC-2023-0089 in #28 remains. Terminal guarantees and unavoidable
+The 2026-09-22 full-lockfile scan covered 327 Rust dependencies and added no new
+finding; it retained RUSTSEC-2023-0089. Terminal guarantees and unavoidable
 abort/device-loss limitations are explicit in [the CLI guide](cli.md).
 
 ## Release advisory review
@@ -128,9 +128,9 @@ atomic-polyfill` graph exposes that chain. Inverse graphs for
 `x86_64-unknown-linux-gnu`, `aarch64-unknown-linux-gnu`, and
 `aarch64-apple-darwin` contain no active dependency; heapless selects it for
 embedded targets. This limits the observed runtime exposure but does not turn a
-full-lockfile warning into a passing release check. The strict gate remains
-blocked, with no ignore or target filter. [Issue #28](https://github.com/OneTesseractInMultiverse/darkhorse-identity/issues/28)
-tracks removing the obsolete dependency before claiming complete dependency qualification.
+full-lockfile warning into a passing release check. That scan remained blocked,
+with no ignore or target filter. [Issue #28](https://github.com/OneTesseractInMultiverse/darkhorse-identity/issues/28)
+records the replacement below and revision-specific verification evidence.
 
 Run `make audit-tools` explicitly to install the pinned auditor, and
 `make audit-dependencies` for fresh evidence. The committed `.cargo/audit.toml`
@@ -144,3 +144,55 @@ Hosted checks pin `actions/checkout` 7.0.1, `actions/setup-node` 7.0.0 and
 `actions/upload-artifact` 7.0.1 to verified upstream commit references. Updates
 require reviewing upstream provenance and permissions; a tag comment is not a
 substitute for the immutable reference.
+
+### Phone validator replacement
+
+Reviewed on **2026-09-23 UTC**: the published `phonenumber` 0.3.10 and its
+upstream development branch still enable postcard's default heapless dependency;
+postcard 1.1.3 has no published fix for that chain. Darkhorse now pins the maintained
+registry release **rlibphonenumber 2.2.12**, published 2026-09-10 from upstream
+[`483eae4`](https://github.com/vloldik/rlibphonenumber/tree/483eae4c391cd9508ed73466dfdea836a0f55144).
+This replaces the validator in the adapter without a vendored fork or advisory
+exception. The new library is younger and less widely adopted; this review and
+passing tests do not establish an independent security audit.
+
+Defaults are disabled. Explicit `builtin_metadata`, `global_static`, `regex`,
+and `protox` features embed metadata, share the initialized validator and compile
+the bundled protobuf definitions with Rust. Installation fetches locked packages;
+builds/tests need no system `protoc`, remote metadata, or runtime files. The
+crate's Rust minimum is 1.88, below the pinned toolchain. Parse/validate/format
+and build paths were reviewed. Core types, database phone columns and HTTP
+error redaction remain project-owned. Inputs reach the parser only after the
+domain's ASCII-digit and 15-digit bounds. The library's trace messages contain
+phone data; Darkhorse installs no `log` logger or tracing bridge. Any future
+logging integration must exclude those dependency messages before activation.
+
+The metadata version moves from 9.0.33 to 9.0.39. A comparison using 4,403 unique
+bounded numbers from the old bundled examples plus shortened, appended-zero,
+zero-filled and changed-final-digit variants found 63 validation differences.
+All 63 agreed with the independently maintained Python `phonenumbers` 9.0.39
+reference. This is compatibility sampling, not exhaustive conformance. Committed
+source-only regressions cover representative differences, canonical leading
+zeros, shared and international service codes, absent fields, invalid prefixes,
+extensions, incorrect calling-code splits and fixed HTTP failures. The dropdown
+preserves all 207 previous calling codes and adds `800`, `808`, `870`, `878`,
+`881`, `882`, `883`, and `888`. Historical contacts remain readable without
+applying new numbering rules; new input is always validated before persistence.
+
+The full lockfile removes `atomic-polyfill`, `heapless`, and `postcard`. Rust
+package count increases from 327 to 351, largely from protobuf/Unicode build
+tooling. The direct replacement and its macro crate are Apache-2.0; added
+packages declare MIT, Apache-2.0, MIT/Unlicense alternatives or Zlib, with optional
+LLVM-exception alternatives on rustix/linux-raw-sys. Preserve applicable code
+and bundled-data notices; the complete release license inventory and project
+license decision remain separate work. No independent dependency audit or
+performance improvement is claimed.
+
+The **2026-09-23 UTC** full-lockfile check with cargo-audit 0.22.2 and pnpm
+11.19.0 passed for 351 Rust and 336 JavaScript packages, with no vulnerability,
+informational or yanked-package findings. The RustSec database revision was
+`f7dc4b2860b29978f400fda0aab31cc4dbd21134`. Complete target graphs for `all`,
+`x86_64-unknown-linux-gnu`, `aarch64-unknown-linux-gnu`, and
+`aarch64-apple-darwin` contain no `atomic-polyfill`; the scanner still checks the
+entire lockfile. Rerun the command for current evidence and consult #28 for the
+exact committed revision and hosted result. All other release gates remain.

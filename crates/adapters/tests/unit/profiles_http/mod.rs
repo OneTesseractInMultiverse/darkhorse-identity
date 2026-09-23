@@ -90,6 +90,7 @@ async fn profile_and_dropdown_responses_expose_only_the_documented_fields() {
     let actual: serde_json::Value =
         serde_json::from_slice(&to_bytes(r.into_body(), 65536).await.unwrap()).unwrap();
     assert_eq!(actual["countries"].as_array().unwrap().len(), 249);
+    assert_eq!(actual["phone_version"], "libphonenumber-9.0.39");
     assert!(
         actual["calling_codes"]
             .as_array()
@@ -97,6 +98,32 @@ async fn profile_and_dropdown_responses_expose_only_the_documented_fields() {
             .contains(&json!("506"))
     );
     assert_eq!(calls.load(Ordering::SeqCst), 3);
+}
+#[tokio::test]
+async fn invalid_phone_inputs_are_redacted_and_never_reach_the_store() {
+    let (app, calls) = app(None);
+    for (code, number) in [
+        ("50", "688887777"),
+        ("999", "123456789"),
+        ("44", "02070313000"),
+        ("1", "2025550123;ext=42"),
+        ("1", "private-phone-value"),
+    ] {
+        let mut input = body();
+        input["calling_code"] = code.into();
+        input["national_number"] = number.into();
+        let response = app
+            .clone()
+            .oneshot(request("/api/profiles/me", Some(input)))
+            .await
+            .unwrap();
+        assert_eq!(response.status(), 400);
+        assert_eq!(response.headers()["cache-control"], "no-store");
+        let actual: serde_json::Value =
+            serde_json::from_slice(&to_bytes(response.into_body(), 1024).await.unwrap()).unwrap();
+        assert_eq!(actual, json!({"error":"invalid_request"}));
+    }
+    assert_eq!(calls.load(Ordering::SeqCst), 0);
 }
 #[tokio::test]
 async fn malformed_unauthenticated_cross_origin_and_oversized_inputs_never_reach_the_store() {
