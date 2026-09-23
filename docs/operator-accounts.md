@@ -90,7 +90,7 @@ Database owners remain trusted, and broad runtime DML still permits misleading
 audit insertion outside the application. Per-command authentication does not
 contain a compromised server or database credential. Migration, bootstrap,
 signing and limiter operations retain their separate deployment-credential
-boundaries. Emergency access, dedicated operator database privileges,
+boundaries. Emergency access, runtime-compromise containment,
 production privileged assurance/MFA, external evidence and retention/export
 remain open in #1/#23. There is no emergency password or audit-bypass switch.
 

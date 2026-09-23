@@ -83,7 +83,7 @@ export function application(input) {
           },
         },
       },
-      ...["runtime", "operator"].map((role) => ({
+      ...["runtime", "operator", "migrator"].map((role) => ({
         apiVersion: "v1",
         kind: "ServiceAccount",
         metadata: metadata(`darkhorse-${role}`),
@@ -166,9 +166,10 @@ export function operatorJob(input, command, name) {
     throw new Error(
       "Use a supported one-shot command and unique bounded job name.",
     );
-  const spec = pod(c, true);
+  const role = command === "migrate" ? "migrator" : "operator";
+  const spec = pod(c, role);
   spec.restartPolicy = "Never";
-  spec.containers[0].name = "operator";
+  spec.containers[0].name = role;
   spec.containers[0].args = [command, "--yes"];
   return {
     apiVersion: "batch/v1",
@@ -181,7 +182,7 @@ export function operatorJob(input, command, name) {
       completions: 1,
       activeDeadlineSeconds: 120,
       ttlSecondsAfterFinished: 3600,
-      template: { metadata: { labels: labels("operator") }, spec },
+      template: { metadata: { labels: labels(role) }, spec },
     },
   };
 }

@@ -12,7 +12,7 @@ use std::{
 use uuid::Uuid;
 const PASSWORD: &str = "source-only operator passphrase";
 async fn restrict_database(f: &Fixture) {
-    sqlx::raw_sql("DO $$ BEGIN IF NOT EXISTS(SELECT 1 FROM pg_roles WHERE rolname='darkhorse_runtime') THEN CREATE ROLE darkhorse_runtime LOGIN PASSWORD 'source-only-runtime-fixture'; CREATE ROLE darkhorse_owner NOLOGIN; END IF; END $$;").execute(&f.pool).await.unwrap();
+    sqlx::raw_sql("DO $$ BEGIN IF NOT EXISTS(SELECT 1 FROM pg_roles WHERE rolname='darkhorse_runtime') THEN CREATE ROLE darkhorse_runtime LOGIN PASSWORD 'source-only-runtime-fixture'; CREATE ROLE darkhorse_owner NOLOGIN; CREATE ROLE darkhorse_operator LOGIN PASSWORD 'source-only-operator-fixture'; END IF; END $$;").execute(&f.pool).await.unwrap();
     let grants = include_str!("../../../../deploy/grant-runtime.sql")
         .lines()
         .filter(|line| !line.starts_with('\\'))
@@ -62,6 +62,9 @@ async fn actor(f: &Fixture) -> (Uuid, String) {
     (id, email)
 }
 fn invoke(args: &[&str], input: Value) -> (i32, Value) {
+    invoke_as("runtime", args, input)
+}
+fn invoke_as(role: &str, args: &[&str], input: Value) -> (i32, Value) {
     let mut command = Command::new(variable("DARKHORSE_TEST_SERVER_PATH"));
     command.env_clear().env("PATH", variable("PATH"));
     for name in [
@@ -77,9 +80,9 @@ fn invoke(args: &[&str], input: Value) -> (i32, Value) {
         command.env("LLVM_PROFILE_FILE", value);
     }
     let mut database = url::Url::parse(&variable("DARKHORSE_DATABASE_URL")).unwrap();
-    database.set_username("darkhorse_runtime").unwrap();
+    database.set_username(&format!("darkhorse_{role}")).unwrap();
     database
-        .set_password(Some("source-only-runtime-fixture"))
+        .set_password(Some(&format!("source-only-{role}-fixture")))
         .unwrap();
     command.env("DARKHORSE_DATABASE_URL", database.as_str());
     command
@@ -262,4 +265,42 @@ async fn restricted_runtime_audit_insert_failure_rolls_back_the_actual_cli_opera
     assert_eq!(state, (0, 0, 0));
     succeeds(&["revoke-all", &target, "0"], &email);
     assert_eq!(sqlx::query_scalar::<_,i64>("SELECT count(*) FROM operator_account_audit WHERE target_id=$1 AND database_role='darkhorse_runtime'").bind(id).fetch_one(&f.pool).await.unwrap(),1);
+}
+
+#[tokio::test]
+async fn operator_database_role_supports_account_commands_and_atomic_audit_failure() {
+    let _serial = SERIAL.lock().await;
+    let f = Fixture::new().await;
+    f.activate().await;
+    restrict_database(&f).await;
+    let (_, email) = actor(&f).await;
+    let (target, _) = actor(&f).await;
+    let text = target.to_string();
+    for args in [
+        vec!["operator", "account", "show", &text],
+        vec!["operator", "account", "deactivate", &text, "0"],
+        vec!["operator", "account", "reactivate", &text, "1"],
+        vec!["operator", "account", "revoke-all", &text, "2"],
+    ] {
+        let (code, value) = invoke_as("operator", &args, input(&email));
+        assert_eq!(code, 0, "{value}");
+    }
+    sqlx::query("REVOKE INSERT ON operator_account_audit FROM darkhorse_operator")
+        .execute(&f.pool)
+        .await
+        .unwrap();
+    assert_eq!(
+        invoke_as("operator", &["revoke-all", &text, "3"], input(&email)).0,
+        1
+    );
+    let actual: (i64, i64) =
+        sqlx::query_as("SELECT revision,credential_epoch FROM principals WHERE id=$1")
+            .bind(target)
+            .fetch_one(&f.pool)
+            .await
+            .unwrap();
+    assert_eq!(actual, (3, 2));
+    let count: i64 = sqlx::query_scalar("SELECT count(*) FROM operator_account_audit WHERE target_id=$1 AND database_role='darkhorse_operator' AND actor_id IS NOT NULL")
+        .bind(target).fetch_one(&f.pool).await.unwrap();
+    assert_eq!(count, 4);
 }

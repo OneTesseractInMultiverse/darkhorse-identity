@@ -5,7 +5,11 @@ import { readFile, rm, writeFile } from "node:fs/promises";
 import { resolve, join } from "node:path";
 import { setTimeout as delay } from "node:timers/promises";
 import { run } from "./lib/command.mjs";
-import { setupStack, stackDirectory } from "./lib/deployment-state.mjs";
+import {
+  setupStack,
+  stackDirectory,
+  loadStack,
+} from "./lib/deployment-state.mjs";
 import {
   compose,
   operator,
@@ -84,7 +88,29 @@ async function prepare() {
   assert.equal(config.services.api.user, "10001:10001");
   assert.ok(config.services.api.read_only);
   assert.ok(
-    !config.services.api.secrets.some((s) => /owner|admin/.test(s.source)),
+    !config.services.api.secrets.some((s) =>
+      /owner|operator|admin/.test(s.source),
+    ),
+  );
+  const operations = JSON.parse(
+    (
+      await compose(
+        stack,
+        ["--profile", "operations", "config", "--format", "json"],
+        captured,
+      )
+    ).stdout,
+  ).services;
+  assert.deepEqual(operations.migrator.secrets.map((s) => s.source).sort(), [
+    "ca",
+    "owner_db",
+  ]);
+  assert.deepEqual(Object.keys(operations.migrator.networks), ["database"]);
+  assert.ok(
+    !operations.operator.secrets.some((s) => /owner|runtime/.test(s.source)),
+  );
+  assert.ok(
+    operations.operator.secrets.some((s) => s.source === "operator_db"),
   );
   await compose(
     stack,
@@ -109,6 +135,16 @@ async function prepare() {
     )
   ).stdout.trim();
   assert.equal(permissions, "f|f|f|f|f|f");
+  assert.notEqual(
+    (
+      await compose(
+        stack,
+        ["run", "--rm", "--no-deps", "-T", "operator", "--yes", "migrate"],
+        { ...captured, acceptFailure: true },
+      )
+    ).code,
+    0,
+  );
   const password = randomBytes(24).toString("base64url");
   const boot = await operation("bootstrap", ["--stdin"], {
     input: JSON.stringify({
@@ -210,7 +246,7 @@ async function transport(origin, ca) {
       "api",
       "sh",
       "-c",
-      "test ! -e /run/secrets/owner_db && test ! -e /run/secrets/limiter_admin_url && test ! -e /app/context && test ! -e /app/.context",
+      "test ! -e /run/secrets/owner_db && test ! -e /run/secrets/operator_db && test ! -e /run/secrets/limiter_admin_url && test ! -e /app/context && test ! -e /app/.context",
     ],
     captured,
   );
@@ -379,26 +415,32 @@ async function outages({ introspect, loginProbe, http }) {
 }
 async function archive() {
   await compose(stack, ["stop", "edge", "api"], captured);
-  const job = (
-    await compose(
-      stack,
-      [
-        "run",
-        "--rm",
-        "--detach",
-        "--no-deps",
-        "--entrypoint",
-        "/bin/sleep",
-        "operator",
-        "60",
-      ],
-      captured,
-    )
-  ).stdout.trim();
-  try {
-    await assert.rejects(backup(stack), /Stop the application/);
-  } finally {
-    await command("docker", ["stop", job], { ...captured, signal: undefined });
+  for (const role of ["operator", "migrator"]) {
+    const job = (
+      await compose(
+        stack,
+        [
+          "run",
+          "--rm",
+          "--detach",
+          "--no-deps",
+          "--entrypoint",
+          "/bin/sleep",
+          role,
+          "60",
+        ],
+        captured,
+      )
+    ).stdout.trim();
+    try {
+      await assert.rejects(backup(stack), /Stop the application/);
+      await assert.rejects(migrate(stack), /Stop the application/);
+    } finally {
+      await command("docker", ["stop", job], {
+        ...captured,
+        signal: undefined,
+      });
+    }
   }
   const archive = await backup(stack);
   const bytes = await readFile(join(archive, "database.dump"));
@@ -463,6 +505,21 @@ async function main() {
     join(stack.directory, "settings.json"),
     "utf8",
   );
+  await writeFile(
+    join(stack.directory, "settings.json"),
+    JSON.stringify({ ...JSON.parse(manifest), version: 1 }),
+  );
+  await assert.rejects(loadStack(name), /Incompatible stack manifest/);
+  await assert.rejects(
+    setupStack(name, origin, stack.settings.image, command),
+    /Incompatible stack manifest/,
+  );
+  assert.equal(
+    JSON.parse(await readFile(join(stack.directory, "settings.json"), "utf8"))
+      .version,
+    1,
+  );
+  await writeFile(join(stack.directory, "settings.json"), manifest);
   await setupStack(name, origin, stack.settings.image, command);
   await assert.rejects(
     setupStack(

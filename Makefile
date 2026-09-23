@@ -399,7 +399,7 @@ stack-setup: stack-edge-build ## Compose: prepare an isolated stack and short-li
 	$(NODE) scripts/deployment.mjs setup "$(STACK)" "$(STACK_ORIGIN)" "$(IMAGE)"
 stack-infra: ## Compose: start owned PostgreSQL and separate TLS Redis services
 	$(NODE) scripts/deployment.mjs infra "$(STACK)"
-stack-migrate: ## Compose: apply schema and runtime grants while the application is stopped
+stack-migrate: ## Compose: apply schema and runtime/operator grants while the application is stopped
 	$(NODE) scripts/deployment.mjs migrate "$(STACK)"
 stack-bootstrap: ## Compose: interactively create the one-time administrator in an operator container
 	$(NODE) scripts/deployment.mjs operator "$(STACK)" bootstrap

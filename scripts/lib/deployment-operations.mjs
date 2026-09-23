@@ -1,7 +1,7 @@
 import { readFile, mkdir, open, cp, writeFile } from "node:fs/promises";
 import { join, resolve } from "node:path";
 import { spawn } from "node:child_process";
-import { operatorArgs } from "./deployment-plan.mjs";
+import { operatorArgs, operatorWorkload } from "./deployment-plan.mjs";
 import { run } from "./command.mjs";
 import { httpsCall } from "./deployment-client.mjs";
 export function compose(stack, args, options = {}) {
@@ -24,7 +24,7 @@ export function operator(stack, command, args = [], options = {}) {
       "--rm",
       "--no-deps",
       ...(tty ? [] : ["-T"]),
-      "operator",
+      operatorWorkload(command, args),
       "--yes",
       ...operatorArgs(command, args),
     ],
@@ -53,7 +53,7 @@ export async function stopped(stack) {
       },
     )
   ).stdout.split("\n");
-  if (running.some((v) => ["api", "edge", "operator"].includes(v)))
+  if (running.some((v) => ["api", "edge", "operator", "migrator"].includes(v)))
     throw new Error(
       "Stop the application and finish operator jobs before migrations or backup.",
     );
@@ -80,7 +80,7 @@ export async function migrate(stack) {
       capture: true,
     },
   );
-  console.log("Schema migrated and reviewed runtime grants applied.");
+  console.log("Schema migrated and reviewed runtime/operator grants applied.");
 }
 export async function check(stack) {
   const ca = await readFile(join(stack.directory, "secrets/ca.pem"));

@@ -98,6 +98,7 @@ services:
       [
         postgres_password,
         owner_password,
+        operator_password,
         runtime_password,
         database_cert,
         database_key,
@@ -154,12 +155,12 @@ services:
     profiles: [operations]
     environment:
       <<: *environment
-      DARKHORSE_DATABASE_URL_FILE: /run/secrets/owner_db
+      DARKHORSE_DATABASE_URL_FILE: /run/secrets/operator_db
       DARKHORSE_DATABASE_POOL_SIZE: "2"
       DARKHORSE_REDIS_LIMITER_ADMIN_URL_FILE: /run/secrets/limiter_admin_url
     secrets:
       [
-        owner_db,
+        operator_db,
         login_key,
         wrap_key,
         cache_url,
@@ -169,6 +170,18 @@ services:
       ]
     networks: [database, cache, limiter]
     restart: "no"
+  migrator:
+    <<: *server
+    profiles: [operations]
+    command: ["--yes", "operator", "migrate"]
+    environment:
+      DARKHORSE_DATABASE_URL_FILE: /run/secrets/owner_db
+      DARKHORSE_DATABASE_POOL_SIZE: "2"
+      PGSSLROOTCERT: /run/secrets/ca
+    secrets: [owner_db, ca]
+    networks: [database]
+    restart: "no"
+
 networks:
   edge: {}
   database: { internal: true }
@@ -179,6 +192,9 @@ volumes:
   limiter-data: {}
 secrets:
   runtime_db: { file: "${DARKHORSE_STACK_DIR}/secrets/runtime-db" }
+  operator_db: { file: "${DARKHORSE_STACK_DIR}/secrets/operator-db" }
+  operator_password:
+    { file: "${DARKHORSE_STACK_DIR}/secrets/operator-password" }
   owner_db: { file: "${DARKHORSE_STACK_DIR}/secrets/owner-db" }
   postgres_password:
     { file: "${DARKHORSE_STACK_DIR}/secrets/postgres-password" }

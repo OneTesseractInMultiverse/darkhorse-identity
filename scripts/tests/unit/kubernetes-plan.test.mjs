@@ -87,7 +87,7 @@ test("operator jobs disable configured retries and reject arbitrary command text
     "migrate",
     "--yes",
   ]);
-  assert.ok(JSON.stringify(job).includes("operator-secrets"));
+  assert.ok(JSON.stringify(job).includes("migrator-secrets"));
   for (const command of ["serve", "bootstrap", "sh", "migrate; echo secret"])
     assert.throws(() => operatorJob(c, command, "job-1"));
 });
@@ -158,4 +158,46 @@ test("policy peers require both the selected namespace and the correct dependenc
       ports: [{ port: 8443, protocol: "TCP" }],
     },
   ]);
+});
+
+test("migration owner secrets never reach operators or runtime and migration has only database dependencies", () => {
+  const migration = operatorJob(input, "migrate", "migration-1").spec.template;
+  const operator = operatorJob(input, "limiter-fence", "fence-1").spec.template;
+  const runtime = application(input).items.find((v) => v.kind === "Deployment")
+    .spec.template;
+  for (const [template, role, file] of [
+    [migration, "migrator", "owner-db"],
+    [operator, "operator", "operator-db"],
+    [runtime, "runtime", "runtime-db"],
+  ]) {
+    const spec = template.spec;
+    assert.equal(spec.serviceAccountName, `darkhorse-${role}`);
+    const secret = spec.volumes.find((v) => v.name === "identity").secret;
+    assert.equal(secret.secretName, `darkhorse-${role}-secrets`);
+    assert.equal(
+      spec.containers[0].env.find(
+        (v) => v.name === "DARKHORSE_DATABASE_URL_FILE",
+      ).value,
+      `/run/secrets/${file}`,
+    );
+    // Explicit projection also prevents mounting accidentally co-located secrets.
+    const keys = secret.items.map((v) => v.key);
+    assert.ok(keys.includes(file));
+    assert.equal(keys.includes("owner-db"), role === "migrator");
+    if (role === "migrator") {
+      assert.deepEqual(keys, ["owner-db", "ca"]);
+      assert.ok(
+        spec.containers[0].env.every(
+          (v) => !/REDIS|LOGIN|SIGNING/.test(v.name),
+        ),
+      );
+    }
+  }
+  const policy = application(input).items.find(
+    (v) =>
+      v.kind === "NetworkPolicy" && v.metadata.name === "darkhorse-migrator",
+  ).spec;
+  assert.deepEqual(policy.ingress, []);
+  assert.equal(policy.egress.length, 2);
+  assert.deepEqual(policy.egress[1].ports, [{ port: 5432, protocol: "TCP" }]);
 });

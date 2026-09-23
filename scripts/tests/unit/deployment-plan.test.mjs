@@ -5,6 +5,7 @@ import {
   secretFiles,
   environment,
   operatorArgs,
+  operatorWorkload,
 } from "../../lib/deployment-plan.mjs";
 const image = "sha256:" + "a".repeat(64);
 const input = {
@@ -41,17 +42,20 @@ test("canonical deployment identity rejects ambiguous names, issuer routes and m
   assert.ok(!JSON.stringify(env).includes("password"));
 });
 test("dedicated file credentials preserve role and TLS separation", () => {
-  const secrets = Array.from({ length: 7 }, (_, i) =>
+  const secrets = Array.from({ length: 8 }, (_, i) =>
     (i + 1).toString(16).repeat(64),
   );
   const files = secretFiles(secrets);
   assert.match(files["runtime-db"], /^postgres:\/\/darkhorse_runtime:/);
+  assert.match(files["operator-db"], /^postgres:\/\/darkhorse_operator:/);
+  assert.notEqual(files["operator-password"], files["owner-password"]);
+  assert.notEqual(files["operator-password"], files["runtime-password"]);
   assert.match(files["owner-db"], /^postgres:\/\/darkhorse_owner:/);
   assert.match(files["limiter-url"], /^rediss:\/\/darkhorse-limiter:/);
   assert.match(files["limiter-admin-url"], /^rediss:\/\/operator:/);
   assert.ok(!files["cache-acl"].includes(secrets[3]));
   assert.ok(files["cache-acl"].includes("user default off"));
-  assert.throws(() => secretFiles(Array(7).fill(secrets[0])));
+  assert.throws(() => secretFiles(Array(8).fill(secrets[0])));
   assert.throws(() => secretFiles(["bad"]));
 });
 test("one-shot commands use explicit allowlists and never accept credential arguments", () => {
@@ -80,4 +84,18 @@ test("one-shot commands use explicit allowlists and never accept credential argu
     ["limiter-activate", ["--force"]],
   ])
     assert.throws(() => operatorArgs(name, args));
+});
+
+test("only reviewed migrations select the owner workload", () => {
+  assert.equal(operatorWorkload("migrate", []), "migrator");
+  for (const command of [
+    "limiter-fence",
+    "limiter-activate",
+    "signing-status",
+    "redis-status",
+    "bootstrap",
+  ])
+    assert.equal(operatorWorkload(command, []), "operator");
+  assert.throws(() => operatorWorkload("migrate", ["--extra"]));
+  assert.throws(() => operatorWorkload("serve", []));
 });

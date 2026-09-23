@@ -12,32 +12,53 @@ export const security = () => ({
   seccompProfile: { type: "RuntimeDefault" },
 });
 const env = (name, value) => ({ name, value });
-export function runtimeEnvironment(c, operator = false) {
+export function secretKeys(role) {
+  if (role === "migrator") return ["owner-db", "ca"];
+  if (!["runtime", "operator"].includes(role))
+    throw new Error("Unknown database workload.");
   return [
+    role === "operator" ? "operator-db" : "runtime-db",
+    "login-key",
+    "wrap-key",
+    "cache-url",
+    "limiter-url",
+    "ca",
+    ...(role === "operator" ? ["limiter-admin-url"] : []),
+  ];
+}
+export function runtimeEnvironment(c, role = "runtime") {
+  const database = secretKeys(role)[0];
+  const common = [
+    env("DARKHORSE_DATABASE_POOL_SIZE", role === "runtime" ? "5" : "2"),
+    env("PGSSLROOTCERT", "/run/secrets/ca"),
+    env("DARKHORSE_DATABASE_URL_FILE", `/run/secrets/${database}`),
+  ];
+  if (role === "migrator") return common;
+  return [
+    ...common,
     env("DARKHORSE_PUBLIC_ORIGIN", c.origin),
     env("DARKHORSE_LOGIN_ENABLED", "true"),
     env("DARKHORSE_PROVIDER_ENABLED", "true"),
-    env("DARKHORSE_DATABASE_POOL_SIZE", operator ? "2" : "5"),
     env("DARKHORSE_REDIS_CACHE_CONNECTIONS", "2"),
-    env("DARKHORSE_REDIS_LIMITER_CONNECTIONS", operator ? "1" : "4"),
-    env("PGSSLROOTCERT", "/run/secrets/ca"),
+    env("DARKHORSE_REDIS_LIMITER_CONNECTIONS", role === "operator" ? "1" : "4"),
     ...[
-      ["DATABASE_URL", operator ? "owner-db" : "runtime-db"],
       ["LOGIN_LIMIT_KEY", "login-key"],
       ["SIGNING_WRAP_KEY", "wrap-key"],
       ["REDIS_CACHE_URL", "cache-url"],
       ["REDIS_LIMITER_URL", "limiter-url"],
       ["REDIS_CACHE_CA_PEM", "ca"],
       ["REDIS_LIMITER_CA_PEM", "ca"],
-      ...(operator ? [["REDIS_LIMITER_ADMIN_URL", "limiter-admin-url"]] : []),
+      ...(role === "operator"
+        ? [["REDIS_LIMITER_ADMIN_URL", "limiter-admin-url"]]
+        : []),
     ].map(([key, file]) =>
       env(`DARKHORSE_${key}_FILE`, `/run/secrets/${file}`),
     ),
   ];
 }
-export function pod(c, operator = false) {
+export function pod(c, role = "runtime") {
   return {
-    serviceAccountName: operator ? "darkhorse-operator" : "darkhorse-runtime",
+    serviceAccountName: `darkhorse-${role}`,
     automountServiceAccountToken: false,
     enableServiceLinks: false,
     securityContext: {
@@ -55,10 +76,10 @@ export function pod(c, operator = false) {
         imagePullPolicy: "IfNotPresent",
         args: ["serve"],
         securityContext: security(),
-        env: runtimeEnvironment(c, operator),
+        env: runtimeEnvironment(c, role),
         resources: {
           requests: { cpu: "250m", memory: "256Mi" },
-          limits: { cpu: operator ? "1" : "2", memory: "512Mi" },
+          limits: { cpu: role === "runtime" ? "2" : "1", memory: "512Mi" },
         },
         volumeMounts: [
           { name: "identity", mountPath: "/run/secrets", readOnly: true },
@@ -70,9 +91,8 @@ export function pod(c, operator = false) {
       {
         name: "identity",
         secret: {
-          secretName: operator
-            ? "darkhorse-operator-secrets"
-            : "darkhorse-runtime-secrets",
+          secretName: `darkhorse-${role}-secrets`,
+          items: secretKeys(role).map((key) => ({ key, path: key })),
           defaultMode: 0o440,
         },
       },

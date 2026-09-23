@@ -26,7 +26,7 @@ export function settings({ name, origin, image, edgeImage }) {
   if (port !== 443 && (port < 1024 || port > 65535))
     throw new Error("Use port 443 or a port from 1024 through 65535.");
   return {
-    version: 1,
+    version: 2,
     name,
     project: `darkhorse-stack-${name}`,
     origin,
@@ -48,16 +48,19 @@ export function environment(value, directory) {
 }
 export function secretFiles(values) {
   if (
-    values.length !== 7 ||
-    new Set(values).size !== 7 ||
+    values.length !== 8 ||
+    new Set(values).size !== 8 ||
     values.some((v) => !/^[a-f0-9]{64}$/.test(v))
   )
-    throw new Error("Seven distinct random credentials are required.");
-  const [root, owner, runtime, cache, limiter, limiterAdmin, wrap] = values;
+    throw new Error("Eight distinct random credentials are required.");
+  const [root, owner, runtime, cache, limiter, limiterAdmin, wrap, operator] =
+    values;
   const hash = (v) => createHash("sha256").update(v).digest("hex");
   return {
     "postgres-password": root,
     "owner-password": owner,
+    "operator-password": operator,
+    "operator-db": `postgres://darkhorse_operator:${operator}@postgres:5432/darkhorse`,
     "runtime-password": runtime,
     "owner-db": `postgres://darkhorse_owner:${owner}@postgres:5432/darkhorse`,
     "runtime-db": `postgres://darkhorse_runtime:${runtime}@postgres:5432/darkhorse`,
@@ -101,4 +104,9 @@ export function operatorArgs(command, args) {
   throw new Error(
     "Unsupported operator command or arguments. Credentials use protected files or standard input.",
   );
+}
+
+export function operatorWorkload(command, args) {
+  operatorArgs(command, args);
+  return command === "migrate" ? "migrator" : "operator";
 }

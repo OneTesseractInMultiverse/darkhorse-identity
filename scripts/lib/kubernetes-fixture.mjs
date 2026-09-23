@@ -1,6 +1,6 @@
 import { readFile } from "node:fs/promises";
 import { join } from "node:path";
-import { labels, security } from "./kubernetes-pods.mjs";
+import { labels, security, secretKeys } from "./kubernetes-pods.mjs";
 const database =
   "percona/percona-distribution-postgresql:18.6@sha256:dae47360e8137cafc1e8d66f9a1be348f1405e3cf51daa383b94e6c277e6b256";
 const redis =
@@ -27,23 +27,6 @@ export async function backendFixture(c, directory) {
         ),
       ),
     });
-  const runtime = [
-    "runtime-db",
-    "login-key",
-    "wrap-key",
-    "cache-url",
-    "limiter-url",
-    "ca.pem",
-  ];
-  const operator = [
-    "owner-db",
-    "login-key",
-    "wrap-key",
-    "cache-url",
-    "limiter-url",
-    "limiter-admin-url",
-    "ca.pem",
-  ];
   const appSecret = async (name, keys) => ({
     ...(await secret(
       name,
@@ -70,8 +53,14 @@ export async function backendFixture(c, directory) {
       metadata: { name: c.ingressNamespace },
     },
     configs,
-    await appSecret("darkhorse-runtime-secrets", runtime),
-    await appSecret("darkhorse-operator-secrets", operator),
+    ...(await Promise.all(
+      ["runtime", "operator", "migrator"].map((role) =>
+        appSecret(
+          `darkhorse-${role}-secrets`,
+          secretKeys(role).map((key) => (key === "ca" ? "ca.pem" : key)),
+        ),
+      ),
+    )),
     {
       ...(await secret("darkhorse-edge-tls", [
         ["tls.crt", "edge.pem"],
@@ -83,6 +72,7 @@ export async function backendFixture(c, directory) {
     await secret("postgres", [
       ["postgres_password", "postgres-password"],
       ["owner_password", "owner-password"],
+      ["operator_password", "operator-password"],
       ["runtime_password", "runtime-password"],
       ["database_cert", "postgres.pem"],
       ["database_key", "postgres.key"],

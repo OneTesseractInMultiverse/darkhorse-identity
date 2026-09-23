@@ -17,6 +17,7 @@ BEGIN
   'SELECT * FROM _sqlx_migrations',
   'CREATE TABLE runtime_owned(value text)',
   'SET ROLE darkhorse_owner',
+  'SET ROLE darkhorse_operator',
   'INSERT INTO platform_administrators SELECT principal_id FROM platform_administrators WHERE false',
   'DELETE FROM platform_administrators WHERE false',
   'UPDATE signing_keys SET phase=phase WHERE false',

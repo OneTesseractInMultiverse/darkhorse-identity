@@ -1,4 +1,5 @@
 // Real database/process evidence; never imported by the service-free unit suite.
+import { verifyOperatorAuthority } from "./operator-authority-test.mjs";
 import assert from "node:assert/strict";
 import { randomBytes } from "node:crypto";
 import { readFile } from "node:fs/promises";
@@ -11,6 +12,7 @@ export async function verifyDatabaseAuthority(docker, database, command, port) {
   await verifyAudit(fixture, grants);
   await verifyTopology(fixture, grants);
   await verifyAtomicGrants(fixture, grants);
+  await verifyOperatorAuthority(fixture, grants);
   console.log(
     "Runtime allowlist, reapplication, new-object denial, role topology, audit rollback and atomic grants passed with authenticated nonowner credentials.",
   );
@@ -19,6 +21,7 @@ export async function verifyDatabaseAuthority(docker, database, command, port) {
 async function prepare(docker, database, command, port) {
   const passwords = {
     darkhorse_owner: randomBytes(32).toString("hex"),
+    darkhorse_operator: randomBytes(32).toString("hex"),
     darkhorse_runtime: randomBytes(32).toString("hex"),
   };
   const admin = (input, name = "darkhorse_authority") =>
@@ -78,23 +81,25 @@ async function prepare(docker, database, command, port) {
   await admin(
     `CREATE ROLE darkhorse_owner LOGIN NOSUPERUSER NOCREATEDB NOCREATEROLE NOREPLICATION NOBYPASSRLS PASSWORD '${passwords.darkhorse_owner}';
 CREATE ROLE darkhorse_runtime LOGIN NOSUPERUSER NOCREATEDB NOCREATEROLE NOREPLICATION NOBYPASSRLS PASSWORD '${passwords.darkhorse_runtime}';
+CREATE ROLE darkhorse_operator LOGIN NOSUPERUSER NOCREATEDB NOCREATEROLE NOREPLICATION NOBYPASSRLS PASSWORD '${passwords.darkhorse_operator}';
 CREATE DATABASE darkhorse_authority OWNER darkhorse_owner;
 REVOKE ALL ON DATABASE darkhorse_authority FROM PUBLIC;
-GRANT CONNECT ON DATABASE darkhorse_authority TO darkhorse_runtime,darkhorse_owner;`,
+GRANT CONNECT ON DATABASE darkhorse_authority TO darkhorse_runtime,darkhorse_owner,darkhorse_operator;`,
     "postgres",
   );
   const executable = resolve(
     process.env.CARGO_TARGET_DIR ?? "target",
     "debug/darkhorse-server",
   );
-  const invoke = (role, args, acceptFailure = false) =>
+  const invoke = (role, args, acceptFailure = false, options = {}) =>
     command(executable, ["--yes", ...args], {
       env: {
         ...process.env,
         DARKHORSE_DATABASE_URL: `postgres://${role}:${passwords[role]}@127.0.0.1:${port}/darkhorse_authority`,
         DARKHORSE_DATABASE_INSECURE: "true",
+        ...options.env,
       },
-      input: "",
+      input: options.input ?? "",
       capture: true,
       acceptFailure,
     });

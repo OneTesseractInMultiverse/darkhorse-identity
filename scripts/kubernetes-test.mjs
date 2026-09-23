@@ -191,7 +191,7 @@ async function prepareOperator() {
     "--timeout=120s",
   ]);
   await sql(await readFile("deploy/grant-runtime.sql", "utf8"));
-  const spec = pod(c, true);
+  const spec = pod(c, "operator");
   spec.containers[0].command = ["/bin/sleep"];
   spec.containers[0].args = ["1800"];
   await apply({
@@ -214,6 +214,22 @@ async function prepareOperator() {
   ]);
 }
 async function initializeIdentity() {
+  assert.notEqual(
+    (await operator(["migrate"], { acceptFailure: true })).code,
+    0,
+    "operator credentials cannot migrate even an up-to-date schema",
+  );
+  await kube([
+    "-n",
+    c.namespace,
+    "exec",
+    "operator",
+    "--",
+    "sh",
+    "-c",
+    "test -e /run/secrets/operator-db && test ! -e /run/secrets/owner-db",
+  ]);
+
   const password = randomBytes(24).toString("base64url");
   const boot = await operator(["bootstrap", "--stdin"], {
     input: JSON.stringify({

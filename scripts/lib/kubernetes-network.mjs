@@ -42,6 +42,12 @@ export function policies(c) {
       ingress: [{ from: [namespace(c.ingressNamespace)], ports: [port(8443)] }],
       egress: dependencies,
     }),
+    make("darkhorse-migrator", {
+      podSelector: { matchLabels: labels("migrator") },
+      policyTypes: ["Ingress", "Egress"],
+      ingress: [],
+      egress: dependencies.slice(0, 2),
+    }),
     make("darkhorse-operator", {
       podSelector: { matchLabels: labels("operator") },
       policyTypes: ["Ingress", "Egress"],

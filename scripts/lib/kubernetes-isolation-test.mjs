@@ -76,7 +76,7 @@ export async function isolation({ c, kube, apply }, pods, ca) {
       "--",
       "sh",
       "-c",
-      "test ! -e /var/run/secrets/kubernetes.io/serviceaccount/token && test ! -e /run/secrets/owner-db && test ! -e /run/secrets/limiter-admin-url",
+      "test ! -e /var/run/secrets/kubernetes.io/serviceaccount/token && test ! -e /run/secrets/owner-db && test ! -e /run/secrets/operator-db && test ! -e /run/secrets/limiter-admin-url",
     ]);
     assert.equal(r.code, 0);
     assert.notEqual(

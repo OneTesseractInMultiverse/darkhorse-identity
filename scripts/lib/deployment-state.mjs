@@ -59,7 +59,7 @@ async function createStack(directory, value, command) {
   await mkdir(secrets, { mode: 0o700 });
   await mkdir(pki, { mode: 0o700 });
   const values = secretFiles(
-    Array.from({ length: 7 }, () => randomBytes(32).toString("hex")),
+    Array.from({ length: 8 }, () => randomBytes(32).toString("hex")),
   );
   values["login-key"] = randomBytes(32).toString("hex");
   for (const [name, bytes] of Object.entries(values)) {
@@ -97,8 +97,10 @@ export async function loadStack(name) {
   if (!info.isFile() || info.size > 4096 || info.mode & 0o077)
     throw new Error("Owner-only stack manifest required.");
   const raw = JSON.parse(await readFile(path, "utf8"));
-  if (raw.version !== 1 || raw.name !== name)
-    throw new Error("Incompatible stack manifest.");
+  if (raw.version !== 2 || raw.name !== name)
+    throw new Error(
+      "Incompatible stack manifest; existing files are preserved. Follow docs/compose.md for the offline role transition.",
+    );
   const value = settings(raw);
   if (JSON.stringify(raw) !== JSON.stringify(value))
     throw new Error("Unexpected stack manifest fields.");

@@ -1,7 +1,8 @@
 # Database authority and audit retention
 
 The deployment grants in [grant-runtime.sql](../deploy/grant-runtime.sql) use an
-explicit allowlist for the dedicated application database. Apply them with HTTP
+explicit allowlist for the dedicated application database and its independent
+`darkhorse_runtime` and `darkhorse_operator` logins. Apply them with HTTP
 serving stopped, after reviewed migrations, as `darkhorse_owner` or the cluster
 administrator. Compose `make stack-migrate` applies this script; Kubernetes
 operators apply it explicitly after migration. It is a deployment policy, not a
@@ -46,6 +47,47 @@ or dependent grants also abort the transaction. An interrupted connection can
 leave the commit outcome unknown: inspect privileges and reapply the reviewed
 script before restarting. Never infer successful application from a lost reply.
 
+## Operator and migration boundary
+
+`darkhorse_operator` is a nonowner login with no memberships. It receives only
+these existing command requirements:
+
+- Bootstrap: SELECT/INSERT on principals, credentials, password verifiers and
+  administrator membership; UPDATE of the bootstrap flag and security revision.
+- Account commands: principal status/epoch/revision changes, eligible-administrator
+  reads, credential recheck locks, login-budget binding and security/account audit
+  INSERT/SELECT. The principal trigger can cancel invitations using only its
+  required columns. Password-verifier replacement and credential revocation are
+  not granted. Fixed `kind` columns permit credential row locks.
+- Signing: provider binding, revision/time changes, key insertion and lifecycle
+  updates; provider audit INSERT/SELECT.
+- Limiter: authority insertion/updates and limiter audit INSERT/SELECT.
+
+There are no operator grants on migration history, browser sessions, OAuth/client
+secrets, access/refresh tokens, personal-key verifiers, unrelated audit records or
+future objects. Neither nonowner role can alter schema, disable triggers, edit or
+truncate audits, create temporary tables, delegate permissions or switch roles.
+The same topology guards and atomic grant reset apply to both roles; a missing
+role fails before grants change. Provision both logins before applying this policy.
+
+The schema owner `darkhorse_owner` is reserved for migrations and trusted database
+maintenance. Compose's `migrator` service and Kubernetes's `darkhorse-migrator`
+service account/secret receive only its database URL and the public CA. They have
+no signing, login or Redis secret mounts and only database network access (plus
+cluster DNS in Kubernetes). The ordinary operator receives its independent
+`operator-db` credential and the existing recovery material. Kubernetes projects
+only the listed secret keys into each workload. This does not restrict a host,
+database owner or cluster administrator who can change mounts, labels or grants.
+
+Bootstrap needs sensitive INSERT privileges: a stolen operator credential can
+still create accounts/administrator membership, read password verifiers, change
+account status, and append misleading evidence. These are **trusted deployment
+credentials**, not individually authenticated or scoped emergency credentials.
+Application bootstrap remains one-time; SQL grants do not enforce that lifecycle
+against direct SQL. Account CLI commands still require fresh administrator
+passwords, shared admission and transaction-time authority rechecks. The role
+split does not add administrative assurance to other command groups.
+
 ## Audit access and limitations
 
 There is no automatic audit deletion, retention deadline or public export
@@ -66,8 +108,7 @@ caller-supplied fields are not independent provenance.
 This remains partial separation. Runtime credentials still permit broad credential/session writes.
 Account CLI operations additionally require a fresh administrator password and
 transactional actor audit, described in [the account contract](operator-accounts.md).
-Operator and migration workloads still share the schema-owner credential.
-Narrower database authority, protected emergency
+Runtime-compromise containment, protected emergency
 credentials, independent audit evidence and cross-system recovery recording
 remain in [#23](https://github.com/OneTesseractInMultiverse/darkhorse-identity/issues/23).
 No audit-bypass or emergency-access mechanism is introduced here.
@@ -75,11 +116,13 @@ No audit-bypass or emergency-access mechanism is introduced here.
 ## Verification
 
 `make test-db-authority` creates its own disposable Percona database and uses real
-password-authenticated owner/runtime connections. It rejects a wrong password,
+password-authenticated owner/runtime/operator connections. It rejects a wrong password,
 checks SQLSTATE permission failures independently of row triggers, denies new
 objects and role escalation, verifies grant reapplication/rollback, and exercises
 direct SQL transactions with allowed and denied audit insertion, plus account CLI
-refusal without authentication. Actual authenticated account operations and
+refusal without authentication. Operator checks exercise actual bootstrap,
+signing and limiter commands, audit-failure rollback, migration refusal, future-object
+denial, unsafe topology and atomic grant reapplication. Actual authenticated account operations and
 transactional audit failures are covered by `make test-operator-accounts`. It also runs
 inside `make test-postgres` and hosted source verification. These are integration
 tests; `make test-unit` remains service-free.
