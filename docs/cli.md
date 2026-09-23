@@ -165,3 +165,10 @@ These integration tests are separate from service-free source-defined unit tests
 actual operator business effects and wrapper compatibility. Hosted source CI also
 runs `test-cli`. Complete authored-code coverage and #23 authority qualification
 remain separate gates; these tests do not establish production readiness.
+
+## Container launchers
+
+The [container account runbook](container-accounts.md) provides Compose exec,
+Compose one-shot and explicitly selected Kubernetes exec targets for protected
+stdin and JSON output. Use `make test-account-launcher` for their service-free
+process checks; deployment checks run separately.

@@ -6,20 +6,20 @@ The existing [development portal](development.md) remains a separate workflow wi
 
 ## Topology and authority
 
-| Service    | Exposure and state                                                       | Authority                                                           |
-| ---------- | ------------------------------------------------------------------------ | ------------------------------------------------------------------- |
-| `edge`     | Only published port; bound to `127.0.0.1`; HTTPS with canonical hostname | Proxy only, no application/database credentials                     |
-| `api`      | Static frontend and API on private port 3001                             | Nonowner database login and runtime Redis credentials               |
-| `postgres` | TLS only over private database network; named persistent volume          | Separate superuser, schema owner, runtime and operator logins       |
-| `cache`    | Separate internal network; TLS; disposable memory; eviction allowed      | Diagnostic-only runtime ACL until cache implementation is qualified |
-| `limiter`  | Separate internal network; TLS; persistent AOF; no eviction              | Bounded runtime script/hash ACL; independent recovery credential    |
-| `operator` | Explicit one-shot container; no HTTP listener or published port          | Nonowner operator login and limiter recovery credential             |
-
-| `migrator` | Explicit one-shot container; database network only | Schema-owner login and public CA only |
+| Service    | Exposure and state                                                         | Authority                                                              |
+| ---------- | -------------------------------------------------------------------------- | ---------------------------------------------------------------------- |
+| `edge`     | Only published port; bound to `127.0.0.1`; HTTPS with canonical hostname   | Proxy only, no application/database credentials                        |
+| `api`      | Static frontend and API on private port 3001                               | Nonowner database login and runtime Redis credentials                  |
+| `postgres` | TLS only over private database network; named persistent volume            | Separate superuser, schema owner, runtime and operator logins          |
+| `cache`    | Separate internal network; TLS; disposable memory; eviction allowed        | Diagnostic-only runtime ACL until cache implementation is qualified    |
+| `limiter`  | Separate internal network; TLS; persistent AOF; no eviction                | Bounded runtime script/hash ACL; independent recovery credential       |
+| `operator` | Explicit one-shot container; no HTTP listener or published port            | Nonowner operator login and limiter recovery credential                |
+| `account`  | Explicit one-shot authenticated account command; no HTTP or published port | Runtime database and limiter credentials; fresh administrator password |
+| `migrator` | Explicit one-shot container; database network only                         | Schema-owner login and public CA only                                  |
 
 Infrastructure images are pinned by digest. Setup resolves the locally built application and proxy to immutable image IDs and records them in a private manifest. The proxy image removes the upstream executable's port-binding capability so it can run with all capabilities dropped. Application/proxy/cache containers use nonroot users, read-only root filesystems, bounded writable temporary mounts, and no new privileges. PostgreSQL and limiter entrypoints initialize volume ownership before dropping to their database users. Every service has memory, CPU, and process limits. The database/cache/limiter networks are marked internal; no Docker socket or repository tree is mounted.
 
-Application, operator and migrator share the same binary. Only the migrator receives the owner URL; only the operator receives the operator URL and limiter recovery credential. `stack-migrate` selects the migrator; other stack operator commands select the nonowner operator. Runtime cannot create schema, inspect migration history, insert administrator membership, change signing keys, or update limiter authority. The runtime grant script is reapplied explicitly after reviewed migrations. Runtime still has broad DML access required by existing application workflows; this is **partial privilege separation**, not containment of every action a compromised runtime could take. The complete authenticated/operator authority contract remains in [#23](https://github.com/OneTesseractInMultiverse/darkhorse-identity/issues/23) and [#27](https://github.com/OneTesseractInMultiverse/darkhorse-identity/issues/27). Host/Docker administrators remain trusted.
+Application, account, operator and migrator share the same binary. Only the migrator receives the owner URL; only the operator receives the operator URL and limiter recovery credential. `stack-migrate` selects the migrator; other stack operator commands select the nonowner operator. Runtime cannot create schema, inspect migration history, insert administrator membership, change signing keys, or update limiter authority. The runtime grant script is reapplied explicitly after reviewed migrations. Runtime still has broad DML access required by existing application workflows; this is **partial privilege separation**, not containment of every action a compromised runtime could take. The complete authenticated/operator authority contract remains in [#23](https://github.com/OneTesseractInMultiverse/darkhorse-identity/issues/23) and [#27](https://github.com/OneTesseractInMultiverse/darkhorse-identity/issues/27). Host/Docker administrators remain trusted.
 
 The [database authority policy](database-authority.md) uses named runtime/operator grants,
 append/read audit privileges, and default denial for new objects. Unsafe nonowner
@@ -104,7 +104,7 @@ make stack-stop STACK=trial
 make stack-backup STACK=trial
 ```
 
-Migration and backup commands reject a running API, proxy, operator or migrator job. The operator must also exclude other writers and concurrent stack commands. Backup writes an owner-only directory containing a custom-format logical PostgreSQL dump, the immutable-image manifest, and secret/certificate material. A `RECOVERY.txt` file is written only after those copies succeed; a directory without it is incomplete. The archive contains password verifiers, credential state and private keys: encrypt it before transferring it and enforce restricted storage/access and retention. Backups are not exported into images or Git.
+Migration and backup commands reject a running API, proxy, account, operator or migrator job. The operator must also exclude other writers and concurrent stack commands. Backup writes an owner-only directory containing a custom-format logical PostgreSQL dump, the immutable-image manifest, and secret/certificate material. A `RECOVERY.txt` file is written only after those copies succeed; a directory without it is incomplete. The archive contains password verifiers, credential state and private keys: encrypt it before transferring it and enforce restricted storage/access and retention. Backups are not exported into images or Git.
 
 The Compose integration test restores the archive into a separate **quarantined database** and checks its contents. It never attaches that restored database to an HTTP server. Restoring an older identity database can resurrect revoked tokens, sessions, API keys or client secrets. Before a supported restore-to-service command can be added, the recovery design must independently preserve/reconcile revocations or invalidate the restored credential generations, fence limiter state for the full wait, reconcile signing material and external assets, and test that revoked credentials remain rejected. Do not restore over a serving database. `stack-backup` is not a supported disaster-recovery or rollback procedure by itself.
 
@@ -163,3 +163,10 @@ make test-compose
 `test-compose` uses its own randomly named stack, generated users/credentials and port, then removes only its disposable containers, volumes and files. It verifies internal DNS and trusted TLS from host/container clients; rejects an untrusted CA and wrong hostname; checks separate runtime/operator/migration secret mounts and denied nonowner migrations; performs real PKCE authorization, independent ID-token signature validation, opaque introspection and UserInfo; exercises cache loss, limiter restart/recovery, database loss, application restart and durable state; and restores a dump into quarantine. Recovery/publication tests use explicit clock fixtures in their disposable database after checking premature activation fails; they do not establish a 904-second elapsed-wall-clock soak. Service-free unit tests cover configuration source selection and deployment policy. Real file-boundary failures run in `test-postgres`.
 
 These checks do not yet qualify sustained capacity, memory exhaustion, concurrent deploy operations, production certificates, internet exposure, complete CLI security, secret rotation, upgrade/rollback, SMTP/object-service recovery or restoration to service. Track those criteria in #19 and its linked issues. The unchanged 100% authored-line coverage target remains separately tracked in [#2](https://github.com/OneTesseractInMultiverse/darkhorse-identity/issues/2); passing deployment smoke tests does not meet that target.
+
+## Authenticated account launchers
+
+Use `stack-account-exec` for a running API and `stack-account-run` for a one-shot
+account command, including while HTTP is stopped. See the [container account
+runbook](container-accounts.md) for protected input, explicit confirmation, exit
+status, dependency requirements and interrupted-operation reconciliation.

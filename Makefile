@@ -459,3 +459,22 @@ kube-job-render: ## Kubernetes: render one supported operator Job; requires JOB_
 	@$(NODE) scripts/kubernetes.mjs job "$(KUBE_CONFIG)" "$(JOB_COMMAND)" "$(JOB_NAME)"
 test-kubernetes: stack-edge-build ## Test: owned local kind cluster, two replicas, TLS, isolation and failure behavior
 	KIND="$(KIND)" DARKHORSE_TEST_IMAGE="$(IMAGE)" $(NODE) scripts/kubernetes-test.mjs
+
+# Account launchers receive nonsecret selectors through the environment; secret
+# input is inherited directly on stdin and never interpolated into a shell line.
+ACCOUNT_OPERATION ?= show
+ACCOUNT_ID ?=
+ACCOUNT_REVISION ?=
+ACCOUNT_CONFIRM ?= no
+ACCOUNT_POD ?=
+export ACCOUNT_OPERATION ACCOUNT_ID ACCOUNT_REVISION ACCOUNT_CONFIRM ACCOUNT_POD
+export STACK KUBE_CONFIG KUBE_ACCESS KUBE_CONTEXT
+.PHONY: stack-account-exec stack-account-run kube-account-exec test-account-launcher
+stack-account-exec: ## Account: protected-stdin administration in the running Compose api container
+	@$(NODE) scripts/account.mjs compose-exec
+stack-account-run: ## Account: protected-stdin one-shot administration while Compose HTTP is stopped
+	@$(NODE) scripts/account.mjs compose-run
+kube-account-exec: ## Account: protected-stdin administration in explicit ACCOUNT_POD/api; requires KUBE_CONFIG/KUBE_ACCESS/KUBE_CONTEXT
+	@$(NODE) scripts/account.mjs kube-exec
+test-account-launcher: ## Test: real launcher subprocess stdin, status, deadlines and owned process cleanup
+	$(NODE) scripts/account-launcher-test.mjs

@@ -15,6 +15,10 @@ import {
   forward,
   localPort,
 } from "./lib/kubernetes-cluster.mjs";
+import {
+  accountCommand,
+  accountResult,
+} from "./lib/container-account-test.mjs";
 import { httpsCall } from "./lib/deployment-client.mjs";
 import {
   replicaProtocol,
@@ -337,7 +341,7 @@ async function rolling(requests, ca, protocol) {
     "Same-version rolling replacement preserves shared sessions and opaque credentials.",
   );
 }
-async function limiterContinuity(requests, protocol) {
+async function limiterContinuity(requests, protocol, account) {
   const snapshot = JSON.parse(
     (await kube(["-n", c.backendNamespace, "get", "pod/limiter", "-o", "json"]))
       .stdout,
@@ -396,6 +400,7 @@ async function limiterContinuity(requests, protocol) {
   for (const request of requests)
     assert.equal((await login(request)).status, 503);
   await protocol.check(true);
+  accountResult(await account(), 1, /Account operation unavailable/);
   await recovery();
   for (const request of requests)
     assert.equal((await login(request)).status, 401);
@@ -427,18 +432,85 @@ async function main() {
   await isolation(checks, list, ca);
   await availability(checks, list, requests, protocol);
   await rolling(requests, ca, protocol);
-  await limiterContinuity(requests, protocol);
+  const currentPod = (await servingPods()).find(
+    (p) => !p.metadata.deletionTimestamp,
+  ).metadata.name;
+  const settings = {
+    KUBE_CONFIG: join(directory, "configuration.json"),
+    KUBE_ACCESS: access,
+    KUBE_CONTEXT: context,
+    ACCOUNT_POD: currentPod,
+    ACCOUNT_ID: user.principal,
+  };
+  const auth = {
+    email: "replicas@example.com",
+    password: user.password,
+    reason: "Verify replica revocation",
+  };
+  const account = (extra = {}, input = auth) =>
+    accountCommand(command, "kube-exec", { ...settings, ...extra }, input);
+  await limiterContinuity(requests, protocol, account);
   await sharedBudgets(c.origin, requests);
-  await operator(["--auth-stdin", "revoke-all", user.principal, "0"], {
-    input: JSON.stringify({
-      email: "replicas@example.com",
-      password: user.password,
-      reason: "Verify replica revocation",
-    }),
-  });
+  await accountChecks(account, settings, auth, user);
   await protocol.check(false);
   console.log(
     "Cross-replica shared limiting and strict post-commit account revocation passed.",
+  );
+}
+async function accountChecks(account, settings, auth, user) {
+  assert.equal(accountResult(await account(), 0).id, user.principal);
+  accountResult(
+    await account({}, { ...auth, password: "source-defined-wrong-password" }),
+    1,
+    /Administrator authentication or authority denied/,
+  );
+  accountResult(
+    await account({ ACCOUNT_OPERATION: "revoke-all", ACCOUNT_REVISION: "0" }),
+    3,
+    /confirmation_required/,
+  );
+  accountResult(
+    await account({
+      ACCOUNT_OPERATION: "revoke-all",
+      ACCOUNT_REVISION: "99",
+      ACCOUNT_CONFIRM: "yes",
+    }),
+    1,
+    /principal changed/,
+  );
+  const revoked = accountResult(
+    await account({
+      ACCOUNT_OPERATION: "revoke-all",
+      ACCOUNT_REVISION: "0",
+      ACCOUNT_CONFIRM: "yes",
+    }),
+    0,
+  );
+  assert.equal(revoked.revision, 1);
+  assert.equal(
+    (
+      await sql(
+        "SELECT bool_and(database_role='darkhorse_runtime') FROM operator_account_audit;",
+      )
+    ).stdout.trim(),
+    "t",
+  );
+  const made = await command(
+    "make",
+    [
+      "--no-print-directory",
+      "kube-account-exec",
+      ...Object.entries(settings).map(([key, value]) => `${key}=${value}`),
+      "ACCOUNT_OPERATION=show",
+      "ACCOUNT_REVISION=",
+      "ACCOUNT_CONFIRM=no",
+    ],
+    { input: JSON.stringify(auth) },
+  );
+  assert.equal(accountResult(made, 0).revision, 1);
+  assert.ok(
+    !made.stdout.includes(auth.password) &&
+      !made.stderr.includes(auth.password),
   );
 }
 try {

@@ -170,6 +170,25 @@ services:
       ]
     networks: [database, cache, limiter]
     restart: "no"
+  account:
+    <<: *server
+    profiles: [operations]
+    command: ["operator", "account", "--help"]
+    environment:
+      DARKHORSE_DATABASE_URL_FILE: /run/secrets/runtime_db
+      DARKHORSE_DATABASE_POOL_SIZE: "2"
+      DARKHORSE_LOGIN_ENABLED: "true"
+      DARKHORSE_LOGIN_LIMIT_KEY_FILE: /run/secrets/login_key
+      DARKHORSE_REDIS_CACHE_URL_FILE: /run/secrets/cache_url
+      DARKHORSE_REDIS_LIMITER_URL_FILE: /run/secrets/limiter_url
+      DARKHORSE_REDIS_CACHE_CA_PEM_FILE: /run/secrets/ca
+      DARKHORSE_REDIS_LIMITER_CA_PEM_FILE: /run/secrets/ca
+      DARKHORSE_REDIS_CACHE_CONNECTIONS: "1"
+      DARKHORSE_REDIS_LIMITER_CONNECTIONS: "1"
+      PGSSLROOTCERT: /run/secrets/ca
+    secrets: [runtime_db, login_key, cache_url, limiter_url, ca]
+    networks: [database, limiter]
+    restart: "no"
   migrator:
     <<: *server
     profiles: [operations]

@@ -113,3 +113,12 @@ The test creates a random, disposable single-node kind cluster with a private ku
 The suite exercises shared sessions and consent, cross-Pod authorization-code and refresh races, independent ID-token verification, replay revocation, shared login budgets, committed account revocation, actual denied network paths, runtime/operator/migrator secret separation and operator migration refusal, database-outage readiness without liveness restarts, same-version rolling replacement, and conservative limiter restart/recovery on both replicas. The publication and limiter recovery setup first verifies premature activation fails, then advances disposable database clock fixtures. This is not an elapsed-wall-clock recovery soak. Two Pods on one node establish process replication, not node-failure tolerance.
 
 Multi-node partitions, CNI failures, database promotion and old-primary fencing, policy revision races, limiter failover/lost state, pool exhaustion under sustained load, outbox concurrency, image/schema upgrades, complete draining and disaster recovery still require evidence. Production stateful topology, RPO/RTO and capacity SLOs remain undecided. Keep #20 open until those criteria and the full install/upgrade/restore contract are met. The unchanged 100% authored-code coverage target is separately tracked in [#2](https://github.com/OneTesseractInMultiverse/darkhorse-identity/issues/2).
+
+## Authenticated account exec
+
+`make kube-account-exec` runs the existing account commands in an explicitly
+selected running Pod and its `api` container. It uses runtime credentials and a
+fresh administrator password on protected stdin. See the [container account
+runbook](container-accounts.md) for cluster selection, capacity, exit behavior and
+uncertain outcomes. It does not create a recovery Pod or copy operator secrets
+into a serving replica.

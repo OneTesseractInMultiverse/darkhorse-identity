@@ -17,6 +17,10 @@ import {
   check,
   backup,
 } from "./lib/deployment-operations.mjs";
+import {
+  accountCommand,
+  accountResult,
+} from "./lib/container-account-test.mjs";
 import { httpsCall } from "./lib/deployment-client.mjs";
 import { validateIdToken, validateCallback } from "./lib/reference-client.mjs";
 process.chdir(resolve(import.meta.dirname, ".."));
@@ -111,6 +115,23 @@ async function prepare() {
   );
   assert.ok(
     operations.operator.secrets.some((s) => s.source === "operator_db"),
+  );
+  assert.deepEqual(operations.account.secrets.map((s) => s.source).sort(), [
+    "ca",
+    "cache_url",
+    "limiter_url",
+    "login_key",
+    "runtime_db",
+  ]);
+  assert.deepEqual(Object.keys(operations.account.networks).sort(), [
+    "database",
+    "limiter",
+  ]);
+  assert.equal(operations.account.user, "10001:10001");
+  assert.ok(operations.account.read_only);
+  assert.equal(
+    operations.account.environment.DARKHORSE_DATABASE_POOL_SIZE,
+    "2",
   );
   await compose(
     stack,
@@ -413,9 +434,153 @@ async function outages({ introspect, loginProbe, http }) {
     "1",
   );
 }
+async function accounts(user) {
+  await fixtureRecovery();
+  const input = {
+    email: "compose@example.com",
+    password: user.password,
+    reason: "Verify container account commands",
+  };
+  const settings = { STACK: name, ACCOUNT_ID: user.principal };
+  const exec = (extra = {}, auth = input) =>
+    accountCommand(command, "compose-exec", { ...settings, ...extra }, auth);
+  await runningAccountChecks(exec, user, input);
+  await stoppedAccountChecks(settings, input, exec);
+  console.log(
+    "Account launchers: runtime authentication, confirmation/revision/invariant failures, limiter refusal and all four commands with HTTP stopped passed.",
+  );
+}
+async function runningAccountChecks(exec, user, input) {
+  const shown = accountResult(await exec(), 0);
+  assert.equal(shown.id, user.principal);
+  assert.equal(shown.revision, 0);
+  accountResult(
+    await exec({}, { ...input, password: "source-defined-wrong-password" }),
+    1,
+    /Administrator authentication or authority denied/,
+  );
+  accountResult(
+    await exec({ ACCOUNT_OPERATION: "revoke-all", ACCOUNT_REVISION: "0" }),
+    3,
+    /confirmation_required/,
+  );
+  accountResult(
+    await exec({
+      ACCOUNT_OPERATION: "revoke-all",
+      ACCOUNT_REVISION: "99",
+      ACCOUNT_CONFIRM: "yes",
+    }),
+    1,
+    /principal changed/,
+  );
+  accountResult(
+    await exec({
+      ACCOUNT_OPERATION: "deactivate",
+      ACCOUNT_REVISION: "0",
+      ACCOUNT_CONFIRM: "yes",
+    }),
+    1,
+    /directory invariant/,
+  );
+  const made = await command(
+    "make",
+    [
+      "--no-print-directory",
+      "stack-account-exec",
+      `STACK=${name}`,
+      `ACCOUNT_ID=${user.principal}`,
+      "ACCOUNT_OPERATION=show",
+      "ACCOUNT_REVISION=",
+      "ACCOUNT_CONFIRM=no",
+    ],
+    { input: JSON.stringify(input), ...captured },
+  );
+  assert.equal(accountResult(made, 0).id, user.principal);
+  assert.ok(
+    !made.stdout.includes(input.password) &&
+      !made.stderr.includes(input.password),
+  );
+  const unconfirmed = await command(
+    "make",
+    [
+      "--no-print-directory",
+      "stack-account-exec",
+      `STACK=${name}`,
+      `ACCOUNT_ID=${user.principal}`,
+      "ACCOUNT_OPERATION=revoke-all",
+      "ACCOUNT_REVISION=0",
+      "ACCOUNT_CONFIRM=no",
+    ],
+    { input: JSON.stringify(input), ...captured, acceptFailure: true },
+  );
+  accountResult(unconfirmed, 2, /confirmation_required/);
+}
+async function stoppedAccountChecks(settings, input, exec) {
+  await compose(stack, ["stop", "edge", "api"], captured);
+  assert.notEqual((await exec()).code, 0, "exec cannot start a stopped API");
+  await compose(stack, ["restart", "limiter"], captured);
+  accountResult(
+    await accountCommand(command, "compose-run", settings, input),
+    1,
+    /Account operation unavailable/,
+  );
+  await fixtureRecovery();
+  const target = "00000000-0000-0000-0000-000000000009";
+  await sql(
+    `INSERT INTO principals(id,email,first_name,last_name) VALUES('${target}','target@example.com','Target','Fixture');`,
+  );
+  for (const [operation, revision] of [
+    ["deactivate", 0],
+    ["reactivate", 1],
+    ["revoke-all", 2],
+  ]) {
+    const result = accountResult(
+      await accountCommand(
+        command,
+        "compose-run",
+        {
+          ...settings,
+          ACCOUNT_ID: target,
+          ACCOUNT_OPERATION: operation,
+          ACCOUNT_REVISION: String(revision),
+          ACCOUNT_CONFIRM: "yes",
+        },
+        input,
+      ),
+      0,
+    );
+    assert.equal(result.revision, revision + 1);
+    assert.equal(result.changed, true);
+  }
+  const after = accountResult(
+    await accountCommand(
+      command,
+      "compose-run",
+      { ...settings, ACCOUNT_ID: target },
+      input,
+    ),
+    0,
+  );
+  assert.equal(after.active, true);
+  assert.equal(after.revision, 3);
+  const running = (
+    await compose(stack, ["ps", "--services", "--status", "running"], captured)
+  ).stdout.split("\n");
+  assert.ok(
+    !running.some((service) => ["api", "edge", "account"].includes(service)),
+  );
+  assert.equal(
+    (
+      await sql(
+        "SELECT bool_and(database_role='darkhorse_runtime') FROM operator_account_audit;",
+      )
+    ).stdout.trim(),
+    "t",
+  );
+}
 async function archive() {
   await compose(stack, ["stop", "edge", "api"], captured);
-  for (const role of ["operator", "migrator"]) {
+  for (const role of ["operator", "migrator", "account"]) {
     const job = (
       await compose(
         stack,
@@ -487,7 +652,7 @@ async function archive() {
     ],
     captured,
   );
-  assert.equal(restored.stdout.trim(), "1");
+  assert.equal(restored.stdout.trim(), "2");
   console.log(
     "Cache degradation, restrictive limiter restart/recovery, database outage, durable restart and quarantined archive restore passed.",
   );
@@ -548,6 +713,7 @@ async function main() {
   await transport(origin, ca);
   const client = await sso(origin, ca, principal, password);
   await outages(client);
+  await accounts({ principal, password });
   await archive();
 }
 try {

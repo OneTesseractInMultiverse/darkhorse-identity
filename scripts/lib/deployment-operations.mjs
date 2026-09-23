@@ -53,7 +53,11 @@ export async function stopped(stack) {
       },
     )
   ).stdout.split("\n");
-  if (running.some((v) => ["api", "edge", "operator", "migrator"].includes(v)))
+  if (
+    running.some((v) =>
+      ["api", "edge", "operator", "migrator", "account"].includes(v),
+    )
+  )
     throw new Error(
       "Stop the application and finish operator jobs before migrations or backup.",
     );
