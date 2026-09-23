@@ -119,3 +119,16 @@ fn signing_operations_accept_only_bounded_public_arguments() {
         assert!(parse(&args(&bad)).is_err());
     }
 }
+#[test]
+fn limiter_inspection_is_a_read_with_a_typed_operation_identifier() {
+    let operation = darkhorse_domain::identity::OperationId::from_u128(1).unwrap();
+    let id = "00000000-0000-0000-0000-000000000001";
+    assert_eq!(
+        parse(&args(&["operator", "limiter", "inspect", id])),
+        Ok(Command::LimiterInspect(operation))
+    );
+    assert!(!requires_confirmation(Command::LimiterInspect(operation)));
+    for id in ["bad", "00000000-0000-0000-0000-000000000000", "--force"] {
+        assert!(parse(&args(&["operator", "limiter", "inspect", id])).is_err());
+    }
+}

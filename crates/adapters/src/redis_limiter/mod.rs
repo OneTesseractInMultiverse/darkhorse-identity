@@ -297,3 +297,14 @@ fn expired(
 #[cfg(test)]
 #[path = "../../tests/unit/redis_limiter/mod.rs"]
 mod tests;
+
+impl darkhorse_application::limiter_activation::Initializer for RedisCounters {
+    async fn initialize(
+        &self,
+        state: Enforcement,
+    ) -> Result<ServerIdentity, darkhorse_application::limiter_activation::Error> {
+        RedisCounters::initialize(self, state)
+            .await
+            .map_err(|_| darkhorse_application::limiter_activation::Error::Unavailable)
+    }
+}

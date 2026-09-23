@@ -36,10 +36,12 @@ is also accepted. Neither `NO_COLOR` nor any terminal setting enables color.
 | `operator signing activate KID REVISION`   | `signing-activate KID REVISION`                       |
 | `operator signing retire KID REVISION`     | `signing-retire KID REVISION`                         |
 | `operator limiter status/fence/activate`   | `limiter-status`, `limiter-fence`, `limiter-activate` |
+| `operator limiter inspect OPERATION_ID`    | None                                                  |
 | `operator redis status`                    | `redis-status`                                        |
 
 `ID` is a nonzero principal UUID, `KID` a public URL-safe unpadded 32-byte key ID,
 and `REVISION` a nonnegative integer no larger than PostgreSQL's signed bigint.
+`OPERATION_ID` is a nonzero activation UUID; see [activation inspection](limiter-activation.md).
 Service/domain checks still validate current state. Legacy spellings are hidden
 from top-level help and use the same typed conversion and dispatch.
 

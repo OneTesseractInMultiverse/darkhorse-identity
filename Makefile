@@ -478,3 +478,12 @@ kube-account-exec: ## Account: protected-stdin administration in explicit ACCOUN
 	@$(NODE) scripts/account.mjs kube-exec
 test-account-launcher: ## Test: real launcher subprocess stdin, status, deadlines and owned process cleanup
 	$(NODE) scripts/account-launcher-test.mjs
+
+OPERATION_ID ?=
+export OPERATION_ID
+.PHONY: limiter-inspect stack-limiter-inspect
+limiter-inspect: ## Limiter: inspect an activation record by OPERATION_ID using PostgreSQL only
+	$(NODE) scripts/redis.mjs limiter-inspect
+
+stack-limiter-inspect: ## Compose: inspect a durable activation record by OPERATION_ID
+	$(NODE) scripts/deployment.mjs limiter-inspect

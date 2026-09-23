@@ -10,6 +10,16 @@ BEGIN
  -- A constraint/immutable-row trigger failure is not proof of restricted grants.
  FOREACH statement IN ARRAY ARRAY[
   'SELECT * FROM future_operator_state',
+  'UPDATE limiter_activation_intents SET operation_id=operation_id WHERE false',
+  'DELETE FROM limiter_activation_intents WHERE false',
+  'TRUNCATE limiter_activation_intents',
+  'SELECT * FROM limiter_activation_intents',
+  'INSERT INTO limiter_activation_intents(operation_id) SELECT operation_id FROM limiter_activation_intents WHERE false',
+  'UPDATE limiter_activation_receipts SET operation_id=operation_id WHERE false',
+  'DELETE FROM limiter_activation_receipts WHERE false',
+  'TRUNCATE limiter_activation_receipts',
+  'SELECT * FROM limiter_activation_receipts',
+  'INSERT INTO limiter_activation_receipts(operation_id) SELECT operation_id FROM limiter_activation_receipts WHERE false',
   'UPDATE future_operator_state SET secret=''forged'' WHERE false',
   'INSERT INTO future_operator_state VALUES (''forged'')',
   'SELECT nextval(''future_operator_sequence'')',

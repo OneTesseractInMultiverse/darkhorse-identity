@@ -2,6 +2,7 @@ import { createHash, randomBytes } from "node:crypto";
 import { mkdir, open, lstat, readFile, unlink, rename } from "node:fs/promises";
 import { resolve } from "node:path";
 import { run } from "./lib/command.mjs";
+import { operatorArgs } from "./lib/deployment-plan.mjs";
 import {
   contents,
   parseEnvironment,
@@ -69,6 +70,22 @@ async function main() {
     throw new Error(
       "Use setup, up, down, status, acl-update, limiter-status, limiter-fence, or limiter-activate.",
     );
+  if (operation === "limiter-inspect") {
+    const args = operatorArgs(operation, [process.env.OPERATION_ID]);
+    if (!(await exists(".local/database.env")))
+      throw new Error("Run make db-setup first.");
+    await run(
+      "cargo",
+      ["run", "--locked", "--offline", "-p", "darkhorse-server", "--", ...args],
+      {
+        env: {
+          ...process.env,
+          ...databaseEnvironment(await readFile(".local/database.env", "utf8")),
+        },
+      },
+    );
+    return;
+  }
   if (operation === "setup") {
     await setup();
     console.log("Redis credentials prepared; existing files preserved.");

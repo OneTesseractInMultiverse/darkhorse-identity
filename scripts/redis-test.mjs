@@ -198,19 +198,23 @@ async function hostChecks(env, db, directory, benchmark) {
     );
   }
   const invoke = (operation, operator = false, acceptFailure = false) =>
-    command(executable, [operation, "--yes"], {
-      env: {
-        ...runtimeEnvironment(env),
-        ...(operator
-          ? {
-              DARKHORSE_REDIS_LIMITER_ADMIN_URL:
-                env.DARKHORSE_REDIS_LIMITER_ADMIN_URL,
-            }
-          : {}),
+    command(
+      executable,
+      ["--yes", ...(Array.isArray(operation) ? operation : [operation])],
+      {
+        env: {
+          ...runtimeEnvironment(env),
+          ...(operator
+            ? {
+                DARKHORSE_REDIS_LIMITER_ADMIN_URL:
+                  env.DARKHORSE_REDIS_LIMITER_ADMIN_URL,
+              }
+            : {}),
+        },
+        capture: true,
+        acceptFailure,
       },
-      capture: true,
-      acceptFailure,
-    });
+    );
   await verifyLimiter(invoke, db);
   if (benchmark || process.env.DARKHORSE_TEST_BROWSER === "true") {
     const { verifyBrowser } = await import("./browser-test.mjs");
@@ -254,10 +258,29 @@ async function verifyLimiter(invoke, db) {
     "-c",
     "ALTER TABLE limiter_authority DISABLE TRIGGER limiter_authority_transition; UPDATE limiter_authority SET not_before_ms=0; ALTER TABLE limiter_authority ENABLE TRIGGER limiter_authority_transition;",
   ]);
-  assert.match(
-    (await invoke("limiter-activate", true)).stdout,
-    /generation activated/,
+  const activated = JSON.parse(
+    (
+      await invoke(
+        ["--output", "json", "operator", "limiter", "activate"],
+        true,
+      )
+    ).stdout,
   );
+  assert.equal(activated.data.activated, true);
+  const record = JSON.parse(
+    (
+      await invoke([
+        "operator",
+        "limiter",
+        "inspect",
+        activated.data.operation_id,
+      ])
+    ).stdout,
+  );
+  assert.equal(record.recorded_outcome, "activated");
+  assert.equal(record.same_generation, true);
+  assert.equal(record.current_phase, "active");
+  assert.ok(record.completed_ms >= record.prepared_ms);
   const active = JSON.parse((await invoke("limiter-status")).stdout);
   assert.equal(active.phase, "active");
   assert.equal(active.counter_entries, 0);
@@ -326,7 +349,7 @@ async function imageChecks(tag, env, cache, limiter, db) {
         ...names.flatMap((n) => ["--env", n]),
         tag,
         "--yes",
-        operation,
+        ...(Array.isArray(operation) ? operation : [operation]),
       ],
       { env: runtime },
     );

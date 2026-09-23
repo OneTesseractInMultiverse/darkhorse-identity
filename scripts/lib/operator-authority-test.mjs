@@ -23,6 +23,7 @@ export async function verifyOperatorAuthority(fixture, grants) {
     0,
   );
   await verifyCommands(fixture, grants);
+  await verifyActivationJournal(fixture);
   await verifyReapplication(fixture, grants, checks);
   console.log(
     "Operator bootstrap/signing/limiter commands, audit rollback, SQL denials, unsafe-role refusal and migration separation passed.",
@@ -206,4 +207,43 @@ ALTER TABLE profile_audit RENAME TO missing_profile_audit;`,
     await admin(restore);
   }
   await sql("darkhorse_owner", grants);
+}
+
+async function verifyActivationJournal({ sql, invoke }) {
+  const id = "00000000-0000-0000-0000-000000000789";
+  await sql(
+    "darkhorse_operator",
+    `INSERT INTO limiter_activation_intents(operation_id,epoch,generation,not_before_ms) SELECT '${id}',epoch,generation,0 FROM limiter_authority;`,
+  );
+  const inspect = ["--output", "json", "operator", "limiter", "inspect", id];
+  const record = JSON.parse(
+    (await invoke("darkhorse_operator", inspect)).stdout,
+  ).data;
+  assert.equal(record.recorded_outcome, "pending");
+  assert.equal(record.database_role, "darkhorse_operator");
+  assert.equal(record.current_phase, "cooling");
+  assert.ok(record.prepared_ms <= record.database_ms);
+  assert.notEqual((await invoke("darkhorse_runtime", inspect, true)).code, 0);
+  // Receipts require activation and cannot impersonate another database login.
+  const receipt = `INSERT INTO limiter_activation_receipts(operation_id,run_id,replication_id) VALUES('${id}',decode(repeat('ab',20),'hex'),decode(repeat('cd',20),'hex'));`;
+  assert.notEqual((await sql("darkhorse_owner", receipt, true)).code, 0);
+  assert.notEqual((await sql("darkhorse_operator", receipt, true)).code, 0);
+  // Advance only this owner-controlled disposable fixture past its recovery wait.
+  await sql(
+    "darkhorse_owner",
+    "ALTER TABLE limiter_authority DISABLE TRIGGER limiter_authority_transition; UPDATE limiter_authority SET not_before_ms=0; ALTER TABLE limiter_authority ENABLE TRIGGER limiter_authority_transition;",
+  );
+  await sql(
+    "darkhorse_operator",
+    "UPDATE limiter_authority SET active=true,run_id=decode(repeat('ab',20),'hex'),replication_id=decode(repeat('cd',20),'hex');",
+  );
+  assert.notEqual((await sql("darkhorse_owner", receipt, true)).code, 0);
+  await sql("darkhorse_operator", receipt);
+  const completed = JSON.parse(
+    (await invoke("darkhorse_operator", inspect)).stdout,
+  ).data;
+  assert.equal(completed.recorded_outcome, "activated");
+  assert.equal(completed.current_phase, "active");
+  assert.ok(completed.completed_ms >= record.prepared_ms);
+  assert.notEqual((await sql("darkhorse_operator", receipt, true)).code, 0);
 }

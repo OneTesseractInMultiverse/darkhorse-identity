@@ -100,4 +100,7 @@ GRANT UPDATE(revision,last_ms) ON provider_state TO darkhorse_operator;
 GRANT UPDATE(phase,activated_ms,verify_until_ms,ciphertext) ON signing_keys TO darkhorse_operator;
 GRANT UPDATE(epoch,generation,active,not_before_ms,run_id,replication_id) ON limiter_authority
  TO darkhorse_operator;
+GRANT SELECT ON limiter_activation_intents,limiter_activation_receipts TO darkhorse_operator;
+GRANT INSERT(operation_id,epoch,generation,not_before_ms) ON limiter_activation_intents TO darkhorse_operator;
+GRANT INSERT(operation_id,run_id,replication_id) ON limiter_activation_receipts TO darkhorse_operator;
 COMMIT;

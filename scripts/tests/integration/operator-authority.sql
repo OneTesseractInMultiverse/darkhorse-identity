@@ -8,6 +8,15 @@ BEGIN
  END IF;
  FOREACH statement IN ARRAY ARRAY[
   'SELECT * FROM future_operator_state',
+  'UPDATE limiter_activation_intents SET operation_id=operation_id WHERE false',
+  'DELETE FROM limiter_activation_intents WHERE false',
+  'TRUNCATE limiter_activation_intents',
+  'UPDATE limiter_activation_receipts SET operation_id=operation_id WHERE false',
+  'DELETE FROM limiter_activation_receipts WHERE false',
+  'TRUNCATE limiter_activation_receipts',
+  'INSERT INTO limiter_activation_intents(database_role) SELECT database_role FROM limiter_activation_intents WHERE false',
+  'INSERT INTO limiter_activation_intents(prepared_ms) SELECT prepared_ms FROM limiter_activation_intents WHERE false',
+  'INSERT INTO limiter_activation_receipts(completed_ms) SELECT completed_ms FROM limiter_activation_receipts WHERE false',
   'SELECT nextval(''future_operator_sequence'')',
   'SELECT future_operator_function()',
   'SELECT * FROM _sqlx_migrations',

@@ -15,6 +15,7 @@ use redis::aio::MultiplexedConnection;
 use sqlx::PgPool;
 use std::{sync::Arc, time::Duration};
 static SERIAL: tokio::sync::Mutex<()> = tokio::sync::Mutex::const_new(());
+mod limiter_activation_redis;
 mod login;
 mod operator_process;
 fn variable(name: &str) -> String {

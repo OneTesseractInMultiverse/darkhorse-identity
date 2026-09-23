@@ -105,6 +105,11 @@ pub(super) enum Signing {
 #[derive(Subcommand)]
 pub(super) enum Limiter {
     Status,
+    /// Inspect one activation record without contacting Redis or changing state.
+    Inspect {
+        #[arg(value_parser=crate::operator::command::operation_identifier)]
+        id: darkhorse_domain::identity::OperationId,
+    },
     Fence,
     Activate,
 }

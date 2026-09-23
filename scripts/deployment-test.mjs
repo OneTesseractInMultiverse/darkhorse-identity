@@ -72,7 +72,21 @@ async function fixtureRecovery() {
   await sql(
     "ALTER TABLE limiter_authority DISABLE TRIGGER limiter_authority_transition; UPDATE limiter_authority SET not_before_ms=0; ALTER TABLE limiter_authority ENABLE TRIGGER limiter_authority_transition;",
   );
-  await operation("limiter-activate");
+  const activated = (await operation("limiter-activate")).stdout;
+  const id = /Correlation: ([a-f0-9-]{36})/.exec(activated)?.[1];
+  assert.ok(id);
+  const inspected = await run(
+    "make",
+    ["--no-print-directory", "--silent", "stack-limiter-inspect"],
+    {
+      env: { ...stack.env, STACK: stack.settings.name, OPERATION_ID: id },
+      capture: true,
+    },
+  );
+  const record = JSON.parse(inspected.stdout);
+  assert.equal(record.recorded_outcome, "activated");
+  assert.equal(record.database_role, "darkhorse_operator");
+  assert.equal(record.same_generation, true);
 }
 async function prepare() {
   const config = JSON.parse(

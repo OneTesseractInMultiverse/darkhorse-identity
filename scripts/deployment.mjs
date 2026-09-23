@@ -11,6 +11,13 @@ import { run } from "./lib/command.mjs";
 process.chdir(resolve(import.meta.dirname, ".."));
 async function main() {
   const [mode, name, ...args] = process.argv.slice(2);
+  if (mode === "limiter-inspect") {
+    if (name !== undefined)
+      throw new Error("Use STACK and OPERATION_ID for limiter inspection.");
+    const stack = await loadStack(process.env.STACK);
+    await operator(stack, "limiter-inspect", [process.env.OPERATION_ID]);
+    return;
+  }
   if (mode === "setup") {
     if (args.length !== 2)
       throw new Error(

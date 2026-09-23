@@ -99,3 +99,23 @@ test("only reviewed migrations select the owner workload", () => {
   assert.throws(() => operatorWorkload("migrate", ["--extra"]));
   assert.throws(() => operatorWorkload("serve", []));
 });
+
+test("activation inspection accepts one nonzero UUID and uses nonowner authority", () => {
+  const id = "00000000-0000-0000-0000-000000000123";
+  assert.deepEqual(operatorArgs("limiter-inspect", [id]), [
+    "operator",
+    "limiter",
+    "inspect",
+    id,
+  ]);
+  assert.equal(operatorWorkload("limiter-inspect", [id]), "operator");
+  for (const args of [
+    [],
+    [id, id],
+    ["--force"],
+    ["00000000-0000-0000-0000-000000000000"],
+    [id + "\n"],
+    ["$(touch unexpected)"],
+  ])
+    assert.throws(() => operatorArgs("limiter-inspect", args));
+});

@@ -1,4 +1,7 @@
-use darkhorse_domain::{directory::AccountAction, identity::PrincipalId};
+use darkhorse_domain::{
+    directory::AccountAction,
+    identity::{OperationId, PrincipalId},
+};
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum Command {
@@ -8,6 +11,7 @@ pub enum Command {
     LimiterFence,
     LimiterActivate,
     LimiterStatus,
+    LimiterInspect(OperationId),
     Signing(super::signing::Operation),
     Bootstrap {
         stdin: bool,
@@ -36,10 +40,19 @@ pub(super) fn counter(value: &str) -> Result<u64, &'static str> {
 pub fn requires_confirmation(command: Command) -> bool {
     !matches!(
         command,
-        Command::Serve | Command::Account(_) | Command::RedisStatus | Command::LimiterStatus
+        Command::Serve
+            | Command::Account(_)
+            | Command::RedisStatus
+            | Command::LimiterStatus
+            | Command::LimiterInspect(_)
     )
 }
 
 #[cfg(test)]
 #[path = "../../tests/unit/operator/command.rs"]
 mod tests;
+
+pub(super) fn operation_identifier(value: &str) -> Result<OperationId, &'static str> {
+    let value = uuid::Uuid::parse_str(value).map_err(|_| "Invalid operation identifier.")?;
+    OperationId::from_u128(value.as_u128()).map_err(|_| "Invalid operation identifier.")
+}

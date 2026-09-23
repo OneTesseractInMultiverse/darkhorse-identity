@@ -23,6 +23,11 @@ make redis-down db-down
 
 Every new enforcement generation, including the first, has the same mandatory wait. `limiter-fence` commits an inactive generation immediately and starts a new wait; repeating it extends the interruption. `limiter-activate` requires the wait to have elapsed and protected operator credentials. There is no skip-wait flag or runtime test switch. Activation binds the generation to the observed Redis process and replication identity. Repeating activation cannot reset an active generation's counters.
 
+Activation now commits a durable intent before initializing Redis and an atomic
+PostgreSQL completion receipt. Use `make limiter-inspect OPERATION_ID=<id>` to
+inspect an uncertain attempt without Redis. Read the [activation evidence and
+upgrade procedure](limiter-activation.md) before upgrading existing operators.
+
 Setup creates owner-only `.local/redis-cache.acl`, `.local/redis-limiter.acl` and `.local/redis.env`. Four independent random credentials cover the two runtime users and two operators. Complete existing settings are preserved; partial settings, symlinks and broad permissions are rejected. `redis-acl-update` rewrites ACL policy with the same credentials; restart services to load it. Keep limiter data and credentials together. Private files remain excluded from Git, images and exports.
 
 Each service has a separate bridge network, credentials and memory allocation. Host ports bind only to loopback: cache `63791`, limiter `63792`. Different workspace projects still share these default port numbers; change both port settings and corresponding URLs in the protected settings file when needed. These are development networks, not production network-policy qualification.

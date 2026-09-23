@@ -9,11 +9,12 @@ use darkhorse_domain::limiter_recovery::{
 use sqlx::{Row, postgres::PgRow};
 use uuid::Uuid;
 
-const READ: &str = "SELECT *, floor(extract(epoch FROM clock_timestamp())*1000)::bigint AS now_ms FROM limiter_authority WHERE singleton AND NOT pg_is_in_recovery()";
+pub(super) const READ: &str = "SELECT *, floor(extract(epoch FROM clock_timestamp())*1000)::bigint AS now_ms FROM limiter_authority WHERE singleton AND NOT pg_is_in_recovery()";
+pub(super) const LOCK: &str = "SELECT *, floor(extract(epoch FROM clock_timestamp())*1000)::bigint AS now_ms FROM limiter_authority WHERE singleton AND NOT pg_is_in_recovery() FOR UPDATE";
 fn unavailable<T>(_: T) -> LimiterUnavailable {
     LimiterUnavailable
 }
-fn state(row: PgRow) -> Result<Enforcement, LimiterUnavailable> {
+pub(super) fn state(row: PgRow) -> Result<Enforcement, LimiterUnavailable> {
     let nonce: Uuid = row.try_get("generation").map_err(unavailable)?;
     let epoch: i64 = row.try_get("epoch").map_err(unavailable)?;
     let active: bool = row.try_get("active").map_err(unavailable)?;
@@ -97,20 +98,34 @@ impl RecoveryAuthority for PostgresStore {
         identity: ServerIdentity,
     ) -> Result<(), LimiterUnavailable> {
         let mut tx = self.pool.begin().await.map_err(unavailable)?;
-        let current=state(sqlx::query("SELECT *, floor(extract(epoch FROM clock_timestamp())*1000)::bigint AS now_ms FROM limiter_authority WHERE singleton AND NOT pg_is_in_recovery() FOR UPDATE").fetch_one(&mut *tx).await.map_err(unavailable)?)?;
-        activation_matches(current, generation)?;
-        sqlx::query(
-            "UPDATE limiter_authority SET active=true,run_id=$1,replication_id=$2 WHERE singleton",
-        )
-        .bind(identity.run.as_slice())
-        .bind(identity.replication.as_slice())
-        .execute(&mut *tx)
-        .await
-        .map_err(unavailable)?;
-        audit(&mut tx, generation, "limiter.activated").await?;
+        activate_transaction(&mut tx, generation, identity).await?;
         tx.commit().await.map_err(unavailable)
     }
 }
+pub(super) async fn activate_transaction(
+    tx: &mut sqlx::Transaction<'_, sqlx::Postgres>,
+    generation: Generation,
+    identity: ServerIdentity,
+) -> Result<(), LimiterUnavailable> {
+    let current = state(
+        sqlx::query(LOCK)
+            .fetch_one(&mut **tx)
+            .await
+            .map_err(unavailable)?,
+    )?;
+    activation_matches(current, generation)?;
+    sqlx::query(
+        "UPDATE limiter_authority SET active=true,run_id=$1,replication_id=$2 WHERE singleton",
+    )
+    .bind(identity.run.as_slice())
+    .bind(identity.replication.as_slice())
+    .execute(&mut **tx)
+    .await
+    .map_err(unavailable)?;
+    audit(tx, generation, "limiter.activated").await?;
+    Ok(())
+}
+
 fn activation_matches(
     state: Enforcement,
     generation: Generation,

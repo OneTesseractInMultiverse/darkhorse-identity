@@ -62,6 +62,9 @@ these existing command requirements:
 - Signing: provider binding, revision/time changes, key insertion and lifecycle
   updates; provider audit INSERT/SELECT.
 - Limiter: authority insertion/updates and limiter audit INSERT/SELECT.
+  [Activation journal](limiter-activation.md): SELECT and column-scoped INSERT;
+  database role and timestamps are supplied by PostgreSQL. Runtime receives no
+  journal grants. Neither nonowner can edit/delete/truncate records.
 
 There are no operator grants on migration history, browser sessions, OAuth/client
 secrets, access/refresh tokens, personal-key verifiers, unrelated audit records or

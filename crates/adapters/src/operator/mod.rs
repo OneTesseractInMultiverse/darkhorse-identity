@@ -24,6 +24,7 @@ pub async fn run(command: Command, auth_stdin: bool) -> Result<Output, Failure> 
         Command::LimiterFence => limiter::run(limiter::Operation::Fence).await,
         Command::LimiterActivate => limiter::run(limiter::Operation::Activate).await,
         Command::LimiterStatus => limiter::run(limiter::Operation::Status).await,
+        Command::LimiterInspect(id) => limiter::run(limiter::Operation::Inspect(id)).await,
         Command::Signing(operation) => signing::run(operation).await,
         Command::Serve => Err("Use the HTTP composition root for serve.".into()),
         Command::Bootstrap { stdin: false } => cancellation::run(run_bootstrap(false)).await,

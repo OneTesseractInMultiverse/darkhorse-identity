@@ -288,7 +288,23 @@ async function recovery() {
   await sql(
     "ALTER TABLE limiter_authority DISABLE TRIGGER limiter_authority_transition; UPDATE limiter_authority SET not_before_ms=0; ALTER TABLE limiter_authority ENABLE TRIGGER limiter_authority_transition;",
   );
-  await operator(["limiter-activate"]);
+  const activated = JSON.parse(
+    (await operator(["--output", "json", "operator", "limiter", "activate"]))
+      .stdout,
+  );
+  const record = JSON.parse(
+    (
+      await operator([
+        "operator",
+        "limiter",
+        "inspect",
+        activated.data.operation_id,
+      ])
+    ).stdout,
+  );
+  assert.equal(record.recorded_outcome, "activated");
+  assert.equal(record.database_role, "darkhorse_operator");
+  assert.equal(record.same_generation, true);
 }
 async function servingPods() {
   return JSON.parse(

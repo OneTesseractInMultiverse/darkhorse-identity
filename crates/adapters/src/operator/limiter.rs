@@ -4,10 +4,16 @@ pub(super) enum Operation {
     Fence,
     Activate,
     Status,
+    Inspect(OperationId),
 }
 use crate::{redis_configuration, redis_limiter::RedisCounters};
+use darkhorse_application::limiter_activation::{self, Error, Journal};
 use darkhorse_application::shared_limiting::{EnforcementAuthority, RecoveryAuthority};
-use darkhorse_domain::limiter_recovery::{Enforcement, activation_ready};
+use darkhorse_domain::{
+    identity::OperationId,
+    limiter_recovery::{Enforcement, activation_ready},
+};
+mod journal;
 
 const FAILURE: &str = "Limiter operation failed or enforcement is untrusted; inspect state and follow the recovery procedure.";
 struct RecoveryEnvironment;
@@ -36,6 +42,12 @@ async fn execute(
         Operation::Fence => fence(store).await,
         Operation::Activate => activate(store).await,
         Operation::Status => status(store).await,
+        Operation::Inspect(id) => store
+            .inspect(id)
+            .await
+            .map(journal::project)
+            .map(Output::record)
+            .map_err(|e| journal::failure(e, id)),
     }
 }
 async fn fence(store: &crate::postgres::PostgresStore) -> Result<Output, Failure> {
@@ -45,23 +57,27 @@ async fn fence(store: &crate::postgres::PostgresStore) -> Result<Output, Failure
     Ok(Output::record(project(state, None)))
 }
 async fn activate(store: &crate::postgres::PostgresStore) -> Result<Output, Failure> {
-    let state = store.read().await.map_err(|_| FAILURE)?;
-    activation_ready(state).map_err(
-        |_| "Limiter recovery wait has not elapsed, or the generation is already active.",
-    )?;
-    let settings = redis_configuration::load(RecoveryEnvironment)
-        .map_err(|_| "Invalid operator Redis configuration.")?;
-    let counters = RedisCounters::new(settings).map_err(|_| FAILURE)?;
-    let identity = counters.initialize(state).await.map_err(|_| FAILURE)?;
-    store
-        .activate(state.generation, identity)
+    let id = journal::operation_id()?;
+    activation(store, id)
         .await
-        .map_err(|_| FAILURE)?;
+        .map_err(|error| journal::failure(error, id))?;
+    let correlation = uuid::Uuid::from_u128(id.as_u128()).to_string();
     Ok(Output::message(
-        "Limiter generation activated. Use limiter-status to inspect enforcement.",
-        serde_json::json!({"activated":true}),
+        format!(
+            "Limiter generation activated. Correlation: {correlation}. Use limiter-status to inspect enforcement."
+        ),
+        serde_json::json!({"activated":true,"operation_id":correlation}),
     ))
 }
+async fn activation(store: &crate::postgres::PostgresStore, id: OperationId) -> Result<(), Error> {
+    activation_ready(store.read().await.map_err(|_| Error::Unavailable)?)
+        .map_err(|_| Error::NotReady)?;
+    let settings =
+        redis_configuration::load(RecoveryEnvironment).map_err(|_| Error::Unavailable)?;
+    let counters = RedisCounters::new(settings).map_err(|_| Error::Unavailable)?;
+    limiter_activation::activate(store, &counters, id).await
+}
+
 async fn status(store: &crate::postgres::PostgresStore) -> Result<Output, Failure> {
     let state = store.read().await.map_err(|_| FAILURE)?;
     let count = if state.active {

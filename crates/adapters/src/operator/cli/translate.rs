@@ -33,6 +33,7 @@ fn operator(value: Operator) -> Command {
         Operator::Account(value) => account(value),
         Operator::Signing(value) => Command::Signing(signing(value)),
         Operator::Limiter(Limiter::Status) => Command::LimiterStatus,
+        Operator::Limiter(Limiter::Inspect { id }) => Command::LimiterInspect(id),
         Operator::Limiter(Limiter::Fence) => Command::LimiterFence,
         Operator::Limiter(Limiter::Activate) => Command::LimiterActivate,
         Operator::Redis(Redis::Status) => Command::RedisStatus,
