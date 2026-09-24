@@ -105,6 +105,63 @@ configuration or admission failures happen before catalog access and are not
 transactional read-audit records. Database owners remain trusted; these records
 are not tamper-proof and runtime-compromise containment remains open in #23.
 
+## Make launchers
+
+The four catalog targets reuse the account launcher's deployment selection,
+protected stdin, bounded supervision and one-shot workload lifecycle. The native Rust command validates protected input and performs authentication
+and catalog operations.
+
+| Target               | Execution mode                                          | Required deployment selectors                               |
+| -------------------- | ------------------------------------------------------- | ----------------------------------------------------------- |
+| `stack-catalog-exec` | Existing Compose `api`, UID/GID `10001:10001`           | `STACK`                                                     |
+| `stack-catalog-run`  | One-shot Compose `account` service, HTTP may be stopped | `STACK`                                                     |
+| `kube-catalog-exec`  | Explicit running Pod and `api` container                | `KUBE_CONFIG`, `KUBE_ACCESS`, `KUBE_CONTEXT`, `ACCOUNT_POD` |
+| `kube-catalog-run`   | Standalone account Pod, HTTP may be stopped             | `KUBE_CONFIG`, `KUBE_ACCESS`, `KUBE_CONTEXT`                |
+
+`ACCOUNT_POD` is the shared existing-Pod selector. The one-shot target generates
+its own Pod name. Read [container operation](container-accounts.md) for configuration
+paths, required manifests, credentials, network policy, deadlines, cleanup and
+trusted deployment permissions. The account workload name and resource limits
+remain the same for catalog commands.
+
+| Catalog selector         | Contract                                                               |
+| ------------------------ | ---------------------------------------------------------------------- |
+| `CATALOG_TARGET`         | Required: `application` or `client`                                    |
+| `CATALOG_OPERATION`      | `list` only; omitted or empty defaults to `list`                       |
+| `CATALOG_APPLICATION_ID` | Required nonzero UUID for client listing; omit for application listing |
+| `CATALOG_SEARCH`         | Optional literal prefix, at most 100 Unicode characters                |
+| `CATALOG_STATUS`         | Optional `active` or `inactive`                                        |
+| `CATALOG_AFTER`          | Optional nonzero UUID from `data.next`                                 |
+| `CATALOG_LIMIT`          | 1–25; omitted or empty defaults to 25                                  |
+
+These selectors contain no credentials. Make preserves their values literally;
+search strings are not expanded as Make expressions or shell commands. Quote
+values for the invoking shell. Omit account-operation selectors, revisions and
+confirmations. Conflicting settings fail before configuration is read or a remote
+process starts. Account launchers likewise reject catalog selectors. Unknown or
+unsupported native command groups cannot be passed through these targets.
+
+```sh
+make stack-catalog-exec STACK=trial CATALOG_TARGET=application CATALOG_STATUS=active < /private/path/catalog-input.json
+make stack-catalog-run STACK=trial CATALOG_TARGET=client CATALOG_APPLICATION_ID=<application-uuid> CATALOG_LIMIT=25 < /private/path/catalog-input.json
+make kube-catalog-exec KUBE_CONFIG=/absolute/path/identity.json KUBE_ACCESS=/absolute/path/access.yaml KUBE_CONTEXT=reviewed-context ACCOUNT_POD=<reviewed-pod> CATALOG_TARGET=application < /private/path/catalog-input.json
+make kube-catalog-run KUBE_CONFIG=/absolute/path/identity.json KUBE_ACCESS=/absolute/path/access.yaml KUBE_CONTEXT=reviewed-context CATALOG_TARGET=client CATALOG_APPLICATION_ID=<application-uuid> < /private/path/catalog-input.json
+```
+
+All four targets require noninteractive protected stdin and produce JSON. No TTY
+is allocated. Each invocation authenticates a current administrator and runs one
+page; the launcher neither traverses subsequent pages nor retries. Search arguments
+remain visible to trusted process and orchestration infrastructure. Protect output,
+which can contain owner emails. A read commits an audit record, so interruption can
+leave an uncertain audit outcome even though catalog state was not changed.
+
+The underlying launcher preserves the CLI exit status. GNU Make returns `2` when
+a recipe fails, while retaining the CLI's redacted diagnostic on stderr. Automation
+that needs the native exit code may invoke `node scripts/catalog.mjs compose-run`
+(or `compose-exec`, `kube-exec`, `kube-run`) with the same environment and protected
+stdin. Successful JSON is written only to stdout; workload identity and cleanup
+messages use stderr. No target applies migrations or refreshes grants automatically.
+
 ## Process and container operation
 
 Authenticated account and catalog commands share protected input and connection
@@ -126,7 +183,7 @@ configuration. The CLI starts no HTTP listener and can run in a prepared account
 workload while serving processes are stopped. Container/cluster control-plane
 access remains a trusted deployment capability and can expose workload secrets.
 Protect stdin and output as described in [container account operations](container-accounts.md).
-Dedicated catalog launcher targets remain part of the work tracked in #27.
+The Make targets above provide the same four deployment paths under #27.
 
 ## Evidence and remaining scope
 
@@ -135,8 +192,12 @@ application isolation, owner-only denial, demotion during a lock wait, proof
 expiry, audit refusal/suppression and uncertain commits. `make test-redis` runs
 real CLI processes with restricted runtime grants and shared HTTP attempt budgets.
 `make test-cli` covers service-free help, parsing and redacted configuration failures.
-Compose and Kubernetes fixtures exercise the packaged commands with HTTP stopped,
-including read-audit provenance and denial after administrator demotion.
+`make test-catalog-launcher` exercises both launcher entrypoints and shared
+process supervision, including selector redaction, literal Make values, protected
+stdin, exit status, interruption, failed creation, Pod replacement and cleanup
+failure. Compose and Kubernetes fixtures exercise both catalog commands through
+all four Make targets, including read-audit provenance and denial after administrator
+demotion. One-shot fixtures run with HTTP stopped.
 
 These are correctness and boundary tests. Full provider conformance, privileged
 assurance, delegated management permissions, query-plan/capacity qualification,

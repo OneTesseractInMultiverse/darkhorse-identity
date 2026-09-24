@@ -181,9 +181,15 @@ make test-compose
 
 These checks do not yet qualify sustained capacity, memory exhaustion, concurrent deploy operations, production certificates, internet exposure, complete CLI security, secret rotation, upgrade/rollback, SMTP/object-service recovery or restoration to service. Track those criteria in #19 and its linked issues. The unchanged 100% authored-line coverage target remains separately tracked in [#2](https://github.com/OneTesseractInMultiverse/darkhorse-identity/issues/2). Passing deployment smoke tests does not meet that target.
 
-## Authenticated account launchers
+## Authenticated administration launchers
 
 Use `stack-account-exec` for a running API and `stack-account-run` for a one-shot
 account command, with HTTP running or stopped. See the [container account
 runbook](container-accounts.md) for protected input, explicit confirmation, exit
 status, dependency requirements and interrupted-operation reconciliation.
+
+`stack-catalog-exec` and `stack-catalog-run` list applications or clients through
+the same runtime workloads, protected-input transport and resource limits. See the
+[catalog selectors and examples](operator-catalog.md#make-launchers). The disposable
+suite exercises both public targets, including denial after administrator demotion
+and restored catalog audit records.

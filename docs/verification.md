@@ -31,23 +31,23 @@ Integration suites own disposable services and clean only their own resources.
 
 ## Command map
 
-| Command                       | Evidence                                                       | Prerequisites                               |
-| ----------------------------- | -------------------------------------------------------------- | ------------------------------------------- |
-| `make check`                  | Format, lint, types, architecture, isolated tests              | Installed locked dependencies               |
-| `make ci`                     | Fast checks plus release and static builds                     | Same toolchain                              |
-| `make test-postgres`          | SQL constraints, transactions, races, operator persistence     | Docker with Compose                         |
-| `make test-db-authority`      | Reviewed grants and denied database operations                 | Docker                                      |
-| `make test-redis`             | Shared budgets, continuity loss, TLS, uncertain writes, login  | Docker and OpenSSL                          |
-| `make test-cli`               | Real parser, pipes, terminal restoration, cancellation         | Python 3 and POSIX host                     |
-| `make test-operator-accounts` | Fresh operator authentication and shared budgets               | Database, Redis, and CLI test prerequisites |
-| `make test-account-launcher`  | Protected stdin, deadlines, exit status, owned process cleanup | Local process toolchain                     |
-| `make test-browser`           | Static console and protocol flows over verified HTTPS          | Pinned Chromium, Docker, OpenSSL            |
-| `make test-media`             | Browser and real S3 adapter paths                              | Browser prerequisites                       |
-| `make test-compose`           | Packaged HTTPS, roles, failure handling, isolated restore      | Built application image and Docker          |
-| `make test-kubernetes`        | Two replicas, policies, Jobs, isolation, runtime behavior      | kind, kubectl, built images                 |
-| `make test-release-tools`     | Git archives and release-tool failure handling                 | Git and Node                                |
-| `make source-package-check`   | Selected Git tree and archive contents                         | Git and Node                                |
-| `make audit-dependencies`     | Current Rust and JavaScript advisories                         | Network and pinned audit tools              |
+| Command                       | Evidence                                                        | Prerequisites                               |
+| ----------------------------- | --------------------------------------------------------------- | ------------------------------------------- |
+| `make check`                  | Format, lint, types, architecture, isolated tests               | Installed locked dependencies               |
+| `make ci`                     | Fast checks plus release and static builds                      | Same toolchain                              |
+| `make test-postgres`          | SQL constraints, transactions, races, operator persistence      | Docker with Compose                         |
+| `make test-db-authority`      | Reviewed grants and denied database operations                  | Docker                                      |
+| `make test-redis`             | Shared budgets, continuity loss, TLS, uncertain writes, login   | Docker and OpenSSL                          |
+| `make test-cli`               | Real parser, pipes, terminal restoration, cancellation          | Python 3 and POSIX host                     |
+| `make test-operator-accounts` | Fresh operator authentication and shared budgets                | Database, Redis, and CLI test prerequisites |
+| `make test-account-launcher`  | Account/catalog input, literal selectors, deadlines and cleanup | Local process toolchain                     |
+| `make test-browser`           | Static console and protocol flows over verified HTTPS           | Pinned Chromium, Docker, OpenSSL            |
+| `make test-media`             | Browser and real S3 adapter paths                               | Browser prerequisites                       |
+| `make test-compose`           | Packaged HTTPS, roles, failure handling, isolated restore       | Built application image and Docker          |
+| `make test-kubernetes`        | Two replicas, policies, Jobs, isolation, runtime behavior       | kind, kubectl, built images                 |
+| `make test-release-tools`     | Git archives and release-tool failure handling                  | Git and Node                                |
+| `make source-package-check`   | Selected Git tree and archive contents                          | Git and Node                                |
+| `make audit-dependencies`     | Current Rust and JavaScript advisories                          | Network and pinned audit tools              |
 
 `make help` lists focused policy suites and benchmark targets. `make browser-install`
 installs the pinned browser. Integration prerequisites never become unit-test prerequisites.
@@ -96,6 +96,35 @@ cargo install cargo-mutants --version 27.1.0 --locked
 
 Mutation targets run an unmodified baseline first, then test selected source mutations.
 A missed mutation requires investigation. A passing coverage percentage cannot clear it.
+
+## Catalog container launcher increment
+
+The launcher increment in [#27](https://github.com/OneTesseractInMultiverse/darkhorse-identity/issues/27)
+adds four public Make targets for the existing Rust catalog commands. Verification
+on **2026-09-24** includes 564 isolated checks (183 adapters, 35 application,
+107 domain, 143 frontend and 96 tooling), plus real launcher/terminal/release checks.
+The process fixture runs both account and catalog entrypoints through Kubernetes
+creation, identity replacement, protected input, signal and cleanup failures.
+A failing Make-expression regression was fixed by preserving selectors literally;
+both environment and command-line Make assignments are exercised.
+
+Focused Node unit coverage records 100% lines, branches and functions in
+`catalog-plan.mjs` and `operator-options.mjs`. The existing `account-plan.mjs`
+has 100% lines/functions and 95.31% branches in this selected run. This report
+excludes process orchestration and cannot stand in for overall coverage; real
+launcher and deployment evidence is reported separately.
+
+Full Compose and Kubernetes fixtures run application/client listing through all
+four public Make targets with current runtime authority, audited reads and denial
+after administrator demotion. The one-shot paths run with HTTP stopped. The Compose
+restore checks all four fixture principals and six catalog audit records. No Rust,
+SQL schema, dependency or image payload changes belong to this increment. The
+existing migration and runtime-grant requirements remain in force.
+
+The launcher process preserves native exit status; Make wraps recipe failures as
+`2`. Tests distinguish those boundaries. Coverage and capacity remain scoped to
+their actual evidence; this increment does not close #27's load, temporary-credential,
+remote-terminal, upgrade or independent security-review gates.
 
 ## Authenticated CLI catalog increment
 

@@ -66,24 +66,38 @@ if (phase === "create") {
     { mode: 0o700 },
   );
 }
-function invoke(mode, override = {}) {
+function invoke(mode, override = {}, script = "scripts/account.mjs", makeMode) {
+  const group = script === "scripts/catalog.mjs" ? "catalog" : "account";
+  const searchKey = `${group.toUpperCase()}_SEARCH`;
   return new Promise((done, reject) => {
-    const child = spawn(process.execPath, ["scripts/account.mjs", "kube-run"], {
-      env: {
-        ...process.env,
-        PATH: directory + ":" + process.env.PATH,
-        KUBE_CONFIG: config,
-        KUBE_ACCESS: join(directory, "access"),
-        KUBE_CONTEXT: "fixture",
-        ACCOUNT_ID: "00000000-0000-0000-0000-000000000001",
-        ACCOUNT_OPERATION: "show",
-        ACCOUNT_REVISION: "",
-        ACCOUNT_CONFIRM: "no",
-        FIXTURE_MODE: mode,
-        ...override,
+    const child = spawn(
+      makeMode ? "make" : process.execPath,
+      makeMode
+        ? [
+            "--no-print-directory",
+            `kube-${group}-run`,
+            ...(makeMode === "arguments"
+              ? [`${searchKey}=${override[searchKey]}`]
+              : []),
+          ]
+        : [script, "kube-run"],
+      {
+        env: {
+          ...process.env,
+          PATH: directory + ":" + process.env.PATH,
+          KUBE_CONFIG: config,
+          KUBE_ACCESS: join(directory, "access"),
+          KUBE_CONTEXT: "fixture",
+          ACCOUNT_ID: "00000000-0000-0000-0000-000000000001",
+          ACCOUNT_OPERATION: "show",
+          ACCOUNT_REVISION: "",
+          ACCOUNT_CONFIRM: "no",
+          FIXTURE_MODE: mode,
+          ...override,
+        },
+        stdio: "pipe",
       },
-      stdio: "pipe",
-    });
+    );
     let stdout = "",
       stderr = "",
       sent = false;
@@ -123,9 +137,46 @@ function invoke(mode, override = {}) {
     child.stdin.end(marker);
   });
 }
-async function scenarios() {
-  const namedLikeCommand = await invoke("success", { KUBE_CONTEXT: "exec" });
+async function scenarios(script = "scripts/account.mjs") {
+  const catalog = script === "scripts/catalog.mjs";
+  const settings = catalog
+    ? {
+        ACCOUNT_OPERATION: "",
+        ACCOUNT_ID: "",
+        ACCOUNT_CONFIRM: "",
+        CATALOG_TARGET: "client",
+        CATALOG_APPLICATION_ID: "00000000-0000-0000-0000-000000000001",
+        CATALOG_SEARCH: "--literal $(text)",
+      }
+    : {};
+  const run = (mode, extra = {}) =>
+    invoke(mode, { ...settings, ...extra }, script);
+  const namedLikeCommand = await run("success", { KUBE_CONTEXT: "exec" });
   assert.equal(namedLikeCommand.code, 0, namedLikeCommand.stderr);
+  for (const makeMode of ["environment", "arguments"]) {
+    await writeFile(events, "");
+    const search = "--$(shell printf EXPANDED) `literal` %_\\";
+    const result = await invoke(
+      "success",
+      catalog
+        ? { ...settings, CATALOG_SEARCH: search }
+        : { ACCOUNT_OPERATION: "list", ACCOUNT_ID: "", ACCOUNT_SEARCH: search },
+      script,
+      makeMode,
+    );
+    assert.equal(result.code, 0, result.stderr);
+    const calls = (await readFile(events, "utf8"))
+      .trim()
+      .split("\n")
+      .map(JSON.parse);
+    assert.ok(
+      calls.find((v) => v.phase === "exec").args.includes(`--search=${search}`),
+      "Make must preserve selector bytes without expanding embedded Make expressions",
+    );
+    assert.ok(
+      !result.stdout.includes(marker) && !result.stderr.includes(marker),
+    );
+  }
   for (const [mode, code, executed, removed] of [
     ["success", 0, 1, 1],
     ["denied", 3, 1, 1],
@@ -139,7 +190,7 @@ async function scenarios() {
     ["cleanup-fail", 1, 1, 1],
   ]) {
     await writeFile(events, "");
-    const result = await invoke(mode);
+    const result = await run(mode);
     assert.equal(result.code, code, `${mode}: ${result.stderr}`);
     assert.ok(
       !result.stdout.includes(marker) && !result.stderr.includes(marker),
@@ -150,6 +201,18 @@ async function scenarios() {
     assert.equal(calls.filter((v) => v.phase === "create").length, 1);
     assert.equal(calls.filter((v) => v.phase === "exec").length, executed);
     assert.equal(calls.filter((v) => v.phase === "delete").length, removed);
+    if (executed) {
+      const args = calls.find((v) => v.phase === "exec").args;
+      assert.equal(args.includes("-t"), false);
+      assert.ok(args.includes("--auth-stdin"));
+      if (catalog) {
+        assert.ok(args.includes("--search=--literal $(text)"));
+        assert.deepEqual(
+          args.slice(args.indexOf("operator"), args.indexOf("operator") + 4),
+          ["operator", "client", "list", settings.CATALOG_APPLICATION_ID],
+        );
+      }
+    }
     if (mode === "success" || mode === "denied")
       assert.deepEqual(JSON.parse(result.stdout), {
         received: true,
@@ -168,14 +231,24 @@ async function scenarios() {
       assert.equal(result.stdout, "");
     }
   }
-  for (const settings of [
+  if (catalog)
+    assert.equal(
+      (
+        await run("success", {
+          CATALOG_TARGET: "application",
+          CATALOG_APPLICATION_ID: "",
+        })
+      ).code,
+      0,
+    );
+  for (const invalid of [
     { KUBE_ACCESS: "relative" },
     { KUBE_CONTEXT: "" },
-    { ACCOUNT_ID: "bad" },
+    catalog ? { CATALOG_APPLICATION_ID: "bad" } : { ACCOUNT_ID: "bad" },
     { KUBE_CONFIG: directory },
   ]) {
     await writeFile(events, "");
-    const result = await invoke("success", settings);
+    const result = await run("success", invalid);
     assert.equal(result.code, 2);
     assert.equal(await readFile(events, "utf8"), "");
     assert.ok(!result.stderr.includes(marker));
@@ -184,8 +257,9 @@ async function scenarios() {
 try {
   await prepare();
   await scenarios();
+  await scenarios("scripts/catalog.mjs");
   console.log(
-    "One-shot Kubernetes launcher process checks passed: stdin isolation, single execution, rejected configuration/creation/replacement, signals and conditional cleanup failures.",
+    "One-shot Kubernetes account/catalog launcher process checks passed: stdin isolation, single execution, rejected configuration/creation/replacement, signals and conditional cleanup failures.",
   );
 } finally {
   await rm(directory, { recursive: true, force: true });

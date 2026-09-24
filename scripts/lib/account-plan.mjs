@@ -1,17 +1,22 @@
-export class UsageError extends Error {}
+import {
+  UsageError,
+  protectedStdin,
+  nonzeroUuid,
+  listingOptions,
+  hasCatalogSelectors,
+} from "./operator-options.mjs";
+export { UsageError } from "./operator-options.mjs";
 const invalid = () =>
   new UsageError(
     "Use a supported account operation, nonzero UUID, expected revision for changes and ACCOUNT_CONFIRM=yes only for explicit confirmation. See docs/container-accounts.md.",
   );
 export function accountOptions(values, stdinIsTTY) {
-  if (stdinIsTTY)
-    throw new UsageError(
-      "Account launchers require protected stdin; use a protected file or pipe. Use the documented native terminal commands for hidden interactive input.",
-    );
-  const operation = values.ACCOUNT_OPERATION ?? "show",
+  protectedStdin(stdinIsTTY);
+  if (hasCatalogSelectors(values)) throw invalid();
+  const operation = values.ACCOUNT_OPERATION || "show",
     id = values.ACCOUNT_ID ?? "",
     revision = values.ACCOUNT_REVISION ?? "",
-    confirm = values.ACCOUNT_CONFIRM ?? "no";
+    confirm = values.ACCOUNT_CONFIRM || "no";
   if (operation === "list") return listOptions(values);
   if (
     [values.ACCOUNT_SEARCH, values.ACCOUNT_STATUS, values.ACCOUNT_AFTER].some(
@@ -22,8 +27,7 @@ export function accountOptions(values, stdinIsTTY) {
     throw invalid();
   if (
     !["show", "deactivate", "reactivate", "revoke-all"].includes(operation) ||
-    !/^[a-f0-9]{8}(?:-[a-f0-9]{4}){3}-[a-f0-9]{12}$/i.test(id) ||
-    id === "00000000-0000-0000-0000-000000000000" ||
+    !nonzeroUuid(id) ||
     !["yes", "no"].includes(confirm)
   )
     throw invalid();
@@ -119,23 +123,11 @@ export function interrupted(reason) {
 }
 
 function listOptions(values) {
-  const search = values.ACCOUNT_SEARCH ?? "",
-    status = values.ACCOUNT_STATUS ?? "",
-    after = values.ACCOUNT_AFTER ?? "",
-    limit = values.ACCOUNT_LIMIT ?? "25",
-    confirm = values.ACCOUNT_CONFIRM ?? "no";
+  const confirm = values.ACCOUNT_CONFIRM || "no";
   if (
     values.ACCOUNT_ID ||
     values.ACCOUNT_REVISION ||
-    !["yes", "no"].includes(confirm) ||
-    !["", "active", "inactive"].includes(status) ||
-    !/^(?:[1-9]|1[0-9]|2[0-5])$/.test(limit) ||
-    search !== search.trim() ||
-    Array.from(search).length > 100 ||
-    /[\p{Cc}]/u.test(search) ||
-    (after &&
-      (!/^[a-f0-9]{8}(?:-[a-f0-9]{4}){3}-[a-f0-9]{12}$/i.test(after) ||
-        after === "00000000-0000-0000-0000-000000000000"))
+    !["yes", "no"].includes(confirm)
   )
     throw invalid();
   return [
@@ -146,10 +138,11 @@ function listOptions(values) {
     "operator",
     "account",
     "list",
-    "--limit",
-    limit,
-    ...(search ? [`--search=${search}`] : []),
-    ...(status ? ["--status", status] : []),
-    ...(after ? ["--after", after] : []),
+    ...listingOptions({
+      search: values.ACCOUNT_SEARCH,
+      status: values.ACCOUNT_STATUS,
+      after: values.ACCOUNT_AFTER,
+      limit: values.ACCOUNT_LIMIT || undefined,
+    }),
   ];
 }

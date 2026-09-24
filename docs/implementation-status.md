@@ -4,7 +4,9 @@ This inventory describes the current source, reviewed on **2026-09-24**. It incl
 the operator journals and authenticated directory/catalog reads under
 [#23](https://github.com/OneTesseractInMultiverse/darkhorse-identity/issues/23),
 [#25](https://github.com/OneTesseractInMultiverse/darkhorse-identity/issues/25) and
-[#26](https://github.com/OneTesseractInMultiverse/darkhorse-identity/issues/26).
+[#26](https://github.com/OneTesseractInMultiverse/darkhorse-identity/issues/26), plus
+account/catalog container launchers under
+[#27](https://github.com/OneTesseractInMultiverse/darkhorse-identity/issues/27).
 Darkhorse has no qualified production release and no selected project license.
 
 ## Status vocabulary
@@ -40,7 +42,7 @@ conformance, fault tolerance, capacity, or security.
 | Limiter journal           | Implemented | Intent before Redis, atomic PostgreSQL completion, read-only inspection                                                               | Protected evidence export/retention and broader recovery reconciliation               |
 | Redis authorization cache | Planned     | Separate cache deployment exists                                                                                                      | Versioned computation caching with fresh primary checks                               |
 | Compose                   | Implemented | Packaged HTTPS, private services, reviewed grants, backup and isolated recovery tests                                                 | Production topology, certificate lifecycle, coordinated disaster recovery             |
-| Kubernetes                | Implemented | Explicit namespace/context, two-replica tests, network policies, operator/migrator Jobs, one-shot account Pods                        | Multi-host faults, production CNI/storage qualification, operational readiness        |
+| Kubernetes                | Implemented | Explicit namespace/context, two-replica tests, network policies, operator/migrator Jobs, account/catalog launchers and one-shot Pods  | Multi-host faults, production CNI/storage qualification, operational readiness        |
 | Passkeys                  | Planned     | No WebAuthn authentication or authenticator lifecycle                                                                                 | [Issue #22](https://github.com/OneTesseractInMultiverse/darkhorse-identity/issues/22) |
 
 ## Important distinctions

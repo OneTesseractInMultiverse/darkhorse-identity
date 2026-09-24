@@ -206,9 +206,11 @@ remain separate gates. These tests do not establish production readiness.
 ## Container launchers
 
 The [container account runbook](container-accounts.md) provides Compose exec,
-Compose one-shot and explicitly selected Kubernetes exec targets for protected
-stdin and JSON output. Use `make test-account-launcher` for their service-free
-process checks. Deployment checks run separately.
+Compose one-shot, explicitly selected Kubernetes exec and one-shot Pod targets
+for protected stdin and JSON output. The [catalog targets](operator-catalog.md#make-launchers)
+use the same lifecycle for application/client listing. Use `make test-account-launcher`
+or its `make test-catalog-launcher` alias for both groups' service-free process
+checks. Deployment checks run separately.
 
 ## Source reference
 

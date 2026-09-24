@@ -19,6 +19,20 @@ export async function stoppedKubernetesAccounts({
   auth,
   user,
 }) {
+  const catalogSettings = {
+    KUBE_CONFIG: settings.KUBE_CONFIG,
+    KUBE_ACCESS: settings.KUBE_ACCESS,
+    KUBE_CONTEXT: settings.KUBE_CONTEXT,
+    ACCOUNT_POD: settings.ACCOUNT_POD,
+  };
+  await catalogCommands(
+    command,
+    "kube-catalog-exec",
+    catalogSettings,
+    sql,
+    user.principal,
+    auth.password,
+  );
   await kube([
     "-n",
     c.namespace,
@@ -50,7 +64,15 @@ export async function stoppedKubernetesAccounts({
         { ...settings, ACCOUNT_ID: target, ...extra },
         input,
       );
-  await accountPodIsolation({ c, kube, apply, sql, user, auth });
+  await accountPodIsolation({ c, kube, apply });
+  await catalogCommands(
+    command,
+    "kube-catalog-run",
+    catalogSettings,
+    sql,
+    user.principal,
+    auth.password,
+  );
   const rejected = await fixtureAdministrator(sql, user, auth);
   await rejectedAccounts(accountFor(rejected.auth), rejected.auth);
   const changes = await fixtureAdministrator(sql, user, auth);
@@ -107,7 +129,7 @@ export async function stoppedKubernetesAccounts({
     ),
   );
   console.log(
-    "One-shot Kubernetes account commands passed with zero serving Pods: lifecycle mutations and directory-read audit, authority and dependency failures, secret/network isolation and UID-conditioned cleanup.",
+    "Kubernetes account/catalog commands passed: catalog exec in a running Pod, one-shot lifecycle/directory/catalog commands with zero serving Pods, audit, authority/dependency failures, secret/network isolation and UID-conditioned cleanup.",
   );
 }
 async function rejectedAccounts(account, auth) {
@@ -183,7 +205,7 @@ INSERT INTO password_credentials(credential_id,verifier) SELECT '${credential}',
 INSERT INTO platform_administrators(principal_id) VALUES('${replacement}'); COMMIT;`);
   return { principal: replacement, auth: { ...auth, email } };
 }
-async function accountPodIsolation({ c, kube, apply, sql, user, auth }) {
+async function accountPodIsolation({ c, kube, apply }) {
   const manifest = accountPod(c, "darkhorse-account-0123456789abcdef");
   const name = manifest.metadata.name;
   await apply(manifest);
@@ -240,30 +262,6 @@ async function accountPodIsolation({ c, kube, apply, sql, user, auth }) {
       denied.code,
       124,
       "account cache connection must time out without retry",
-    );
-    await catalogCommands(
-      (args, input) =>
-        kube(
-          [
-            "-n",
-            c.namespace,
-            "exec",
-            "-i",
-            name,
-            "-c",
-            "api",
-            "--",
-            "/usr/local/bin/darkhorse-server",
-            "--auth-stdin",
-            "--output",
-            "json",
-            ...args,
-          ],
-          { input, acceptFailure: true },
-        ),
-      sql,
-      user.principal,
-      auth.password,
     );
     const wrong = removal(manifest, "00000000-0000-0000-0000-000000000001");
     const rejected = await kube(

@@ -207,7 +207,7 @@ The suite exercises shared sessions and consent, cross-Pod authorization-code an
 
 Multi-node partitions, CNI failures, database promotion and old-primary fencing, policy revision races, limiter failover/lost state, pool exhaustion under sustained load, outbox concurrency, image/schema upgrades, complete draining and disaster recovery still require evidence. Production stateful topology, RPO/RTO and capacity SLOs remain undecided. Keep #20 open until those criteria and the full install/upgrade/restore contract are met. The unchanged 100% authored-code coverage target is separately tracked in [#2](https://github.com/OneTesseractInMultiverse/darkhorse-identity/issues/2).
 
-## Authenticated account commands
+## Authenticated administration commands
 
 `make kube-account-exec` runs the existing account commands in an explicitly
 selected running Pod and its `api` container. It uses runtime credentials and a
@@ -230,3 +230,9 @@ The disposable suite stops both serving replicas, exercises one-shot lifecycle a
 commands and their audit records, rejects lost administrator authority and database
 access, verifies denied cache connections and secret isolation, and checks cleanup.
 These checks use the existing runtime role and do not qualify emergency access.
+
+`kube-catalog-exec` and `kube-catalog-run` expose authenticated application/client
+listing through these same execution paths and account workload limits. The
+[catalog guide](operator-catalog.md#make-launchers) defines their selectors and
+protected input. The disposable suite exercises both Make targets with runtime-role
+audit and administrator-demotion denial; one-shot reads run with zero serving Pods.

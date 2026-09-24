@@ -526,9 +526,17 @@ async function accounts(user) {
   const exec = (extra = {}, auth = input) =>
     accountCommand(command, "compose-exec", { ...settings, ...extra }, auth);
   await runningAccountChecks(exec, user, input);
+  await catalogCommands(
+    command,
+    "stack-catalog-exec",
+    { STACK: name },
+    sql,
+    user.principal,
+    user.password,
+  );
   await stoppedAccountChecks(settings, input, exec);
   console.log(
-    "Account launchers: runtime authentication, confirmation/revision/invariant failures, limiter refusal and lifecycle and directory commands with HTTP stopped passed.",
+    "Account and catalog launchers: runtime authentication, confirmation/revision/invariant failures, limiter refusal, running-container catalog reads and stopped-HTTP one-shot commands passed.",
   );
 }
 async function runningAccountChecks(exec, user, input) {
@@ -654,22 +662,9 @@ async function stoppedAccountChecks(settings, input, exec) {
     sql,
   );
   await catalogCommands(
-    (args, input) =>
-      compose(
-        stack,
-        [
-          "run",
-          "--rm",
-          "--no-deps",
-          "-T",
-          "account",
-          "--auth-stdin",
-          "--output",
-          "json",
-          ...args,
-        ],
-        { ...captured, input, acceptFailure: true },
-      ),
+    command,
+    "stack-catalog-run",
+    { STACK: name },
     sql,
     settings.ACCOUNT_ID,
     input.password,
@@ -763,7 +758,7 @@ async function archive() {
     ],
     captured,
   );
-  assert.equal(restored.stdout.trim(), "3|3");
+  assert.equal(restored.stdout.trim(), "4|6");
   console.log(
     "Cache degradation, restrictive limiter restart/recovery, database outage, durable restart and quarantined archive restore passed.",
   );

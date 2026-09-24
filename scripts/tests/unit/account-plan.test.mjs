@@ -10,6 +10,23 @@ import {
 } from "../../lib/account-plan.mjs";
 const id = "00000000-0000-0000-0000-000000000123";
 const options = { ACCOUNT_OPERATION: "show", ACCOUNT_ID: id };
+test("account launchers reject catalog selectors rather than running an inherited account mutation", () => {
+  for (const key of [
+    "CATALOG_TARGET",
+    "CATALOG_OPERATION",
+    "CATALOG_APPLICATION_ID",
+    "CATALOG_SEARCH",
+    "CATALOG_STATUS",
+    "CATALOG_AFTER",
+    "CATALOG_LIMIT",
+    "CATALOG_CONFIRM",
+    "CATALOG_REVISION",
+  ])
+    assert.throws(
+      () => accountOptions({ ...options, [key]: "unexpected" }, false),
+      UsageError,
+    );
+});
 test("account launchers accept only bounded existing commands and protected stdin", () => {
   assert.deepEqual(accountOptions(options, false), [
     "--auth-stdin",

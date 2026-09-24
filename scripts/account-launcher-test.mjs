@@ -172,14 +172,51 @@ async function rejectedConfiguration() {
   }
 }
 
+async function catalogFailures() {
+  for (const mode of ["compose-exec", "compose-run", "kube-exec", "kube-run"]) {
+    for (const extra of [
+      { CATALOG_TARGET: marker },
+      { CATALOG_TARGET: "client", CATALOG_APPLICATION_ID: marker },
+      { CATALOG_OPERATION: marker },
+      { CATALOG_LIMIT: marker },
+      { ACCOUNT_ID: marker },
+    ]) {
+      const result = await invoke("scripts/catalog.mjs", [mode], marker, {
+        ...process.env,
+        CATALOG_TARGET: "application",
+        ...extra,
+      });
+      assert.equal(result.code, 2);
+      assert.equal(result.stdout, "");
+      assert.ok(!result.stderr.includes(marker));
+    }
+  }
+  for (const args of [
+    ["compose-exec", marker],
+    [marker],
+    ["kube-exec"],
+    ["kube-run"],
+  ]) {
+    const result = await invoke("scripts/catalog.mjs", args, marker, {
+      ...process.env,
+      CATALOG_TARGET: "application",
+      KUBE_CONFIG: join(directory, "invalid.json"),
+    });
+    assert.ok([1, 2].includes(result.code));
+    assert.equal(result.stdout, "");
+    assert.ok(!result.stderr.includes(marker));
+  }
+}
+
 try {
   await prepare();
   await streams();
   await interruption();
   await rejectedSettings();
   await rejectedConfiguration();
+  await catalogFailures();
   console.log(
-    "Account launcher process checks passed: protected stdin, exit status, timeout/signals, owned descendant cleanup, unrelated process survival and no retry.",
+    "Account/catalog launcher process checks passed: protected stdin, exit status, timeout/signals, owned descendant cleanup, unrelated process survival and no retry.",
   );
 } finally {
   await rm(directory, { recursive: true, force: true });

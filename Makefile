@@ -462,21 +462,43 @@ kube-job-render: ## Kubernetes: render one supported operator Job; requires JOB_
 test-kubernetes: stack-edge-build ## Test: owned local kind cluster, two replicas, TLS, isolation and failure behavior
 	KIND="$(KIND)" DARKHORSE_TEST_IMAGE="$(IMAGE)" $(NODE) scripts/kubernetes-test.mjs
 
-# Account launchers receive nonsecret selectors through the environment; secret
+# Administration launchers receive nonsecret selectors through the environment; secret
 # input is inherited directly on stdin and never interpolated into a shell line.
-ACCOUNT_OPERATION ?= show
-ACCOUNT_ID ?=
-ACCOUNT_REVISION ?=
-ACCOUNT_CONFIRM ?= no
-ACCOUNT_SEARCH ?=
-ACCOUNT_STATUS ?=
-ACCOUNT_AFTER ?=
-ACCOUNT_LIMIT ?= 25
+# Preserve nonsecret selectors literally; defaults and validation belong to the launcher.
+override ACCOUNT_OPERATION := $(value ACCOUNT_OPERATION)
+override ACCOUNT_ID := $(value ACCOUNT_ID)
+override ACCOUNT_REVISION := $(value ACCOUNT_REVISION)
+override ACCOUNT_CONFIRM := $(value ACCOUNT_CONFIRM)
+override ACCOUNT_SEARCH := $(value ACCOUNT_SEARCH)
+override ACCOUNT_STATUS := $(value ACCOUNT_STATUS)
+override ACCOUNT_AFTER := $(value ACCOUNT_AFTER)
+override ACCOUNT_LIMIT := $(value ACCOUNT_LIMIT)
+override ACCOUNT_POD := $(value ACCOUNT_POD)
+override CATALOG_TARGET := $(value CATALOG_TARGET)
+override CATALOG_OPERATION := $(value CATALOG_OPERATION)
+override CATALOG_APPLICATION_ID := $(value CATALOG_APPLICATION_ID)
+override CATALOG_SEARCH := $(value CATALOG_SEARCH)
+override CATALOG_STATUS := $(value CATALOG_STATUS)
+override CATALOG_AFTER := $(value CATALOG_AFTER)
+override CATALOG_LIMIT := $(value CATALOG_LIMIT)
+override CATALOG_CONFIRM := $(value CATALOG_CONFIRM)
+override CATALOG_REVISION := $(value CATALOG_REVISION)
 export ACCOUNT_SEARCH ACCOUNT_STATUS ACCOUNT_AFTER ACCOUNT_LIMIT
-ACCOUNT_POD ?=
 export ACCOUNT_OPERATION ACCOUNT_ID ACCOUNT_REVISION ACCOUNT_CONFIRM ACCOUNT_POD
+export CATALOG_TARGET CATALOG_OPERATION CATALOG_APPLICATION_ID
+export CATALOG_SEARCH CATALOG_STATUS CATALOG_AFTER CATALOG_LIMIT CATALOG_CONFIRM CATALOG_REVISION
 export STACK KUBE_CONFIG KUBE_ACCESS KUBE_CONTEXT
 .PHONY: stack-account-exec stack-account-run kube-account-exec kube-account-run test-account-launcher
+.PHONY: stack-catalog-exec stack-catalog-run kube-catalog-exec kube-catalog-run test-catalog-launcher
+stack-catalog-exec: ## Catalog: protected-stdin application/client listing in the running Compose api
+	@$(NODE) scripts/catalog.mjs compose-exec
+stack-catalog-run: ## Catalog: protected-stdin application/client listing while Compose HTTP is stopped
+	@$(NODE) scripts/catalog.mjs compose-run
+kube-catalog-exec: ## Catalog: protected-stdin application/client listing in explicit ACCOUNT_POD/api
+	@$(NODE) scripts/catalog.mjs kube-exec
+kube-catalog-run: ## Catalog: protected-stdin application/client listing in a one-shot Kubernetes Pod
+	@$(NODE) scripts/catalog.mjs kube-run
+test-catalog-launcher: test-account-launcher ## Test: catalog/account launcher input, status, deadlines and cleanup
 stack-account-exec: ## Account: protected-stdin administration in the running Compose api container
 	@$(NODE) scripts/account.mjs compose-exec
 stack-account-run: ## Account: protected-stdin one-shot administration while Compose HTTP is stopped
@@ -485,7 +507,7 @@ kube-account-exec: ## Account: protected-stdin administration in explicit ACCOUN
 	@$(NODE) scripts/account.mjs kube-exec
 kube-account-run: ## Account: protected-stdin one-shot Pod while Kubernetes HTTP is stopped; requires KUBE_CONFIG/KUBE_ACCESS/KUBE_CONTEXT
 	@$(NODE) scripts/account.mjs kube-run
-test-account-launcher: ## Test: real launcher subprocess stdin, status, deadlines and owned process cleanup
+test-account-launcher: ## Test: account/catalog launcher subprocess stdin, status, deadlines and cleanup
 	$(NODE) scripts/account-launcher-test.mjs
 	$(NODE) scripts/kubernetes-account-launcher-test.mjs
 

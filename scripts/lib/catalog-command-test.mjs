@@ -2,7 +2,16 @@
 import assert from "node:assert/strict";
 import { randomUUID } from "node:crypto";
 import { accountResult } from "./container-account-test.mjs";
-export async function catalogCommands(invoke, sql, source, password) {
+export async function catalogCommands(
+  command,
+  target,
+  settings,
+  sql,
+  source,
+  password,
+) {
+  const invoke = (selectors, input) =>
+    catalogCommand(command, target, { ...settings, ...selectors }, input);
   const actor = randomUUID(),
     credential = randomUUID(),
     app = randomUUID(),
@@ -20,11 +29,24 @@ COMMIT;`);
   const input = JSON.stringify({ email, password });
   for (const [args, id, fields] of [
     [
-      ["operator", "application", "list", "--search", name, "--limit", "1"],
+      {
+        CATALOG_TARGET: "application",
+        CATALOG_SEARCH: name,
+        CATALOG_STATUS: "active",
+        CATALOG_LIMIT: "1",
+      },
       app,
       6,
     ],
-    [["operator", "client", "list", app, "--limit", "1"], client, 5],
+    [
+      {
+        CATALOG_TARGET: "client",
+        CATALOG_APPLICATION_ID: app,
+        CATALOG_LIMIT: "1",
+      },
+      client,
+      5,
+    ],
   ]) {
     const result = await invoke(args, input),
       page = accountResult(result, 0);
@@ -47,7 +69,47 @@ COMMIT;`);
   await sql(
     `DELETE FROM platform_administrators WHERE principal_id='${actor}';`,
   );
-  const denied = await invoke(["operator", "client", "list", app], input);
-  accountResult(denied, 1, /Administrator authentication or authority denied/);
+  const denied = await invoke(
+    { CATALOG_TARGET: "client", CATALOG_APPLICATION_ID: app },
+    input,
+  );
+  accountResult(denied, 2, /Administrator authentication or authority denied/);
   assert.ok(!denied.stderr.includes(password));
+  assert.equal(
+    (
+      await sql(
+        `SELECT count(*) FROM operator_catalog_audit WHERE actor_id='${actor}' AND application_id='${app}' AND command='client.list' AND result='denied' AND database_role='darkhorse_runtime';`,
+      )
+    ).stdout.trim(),
+    "1",
+  );
+}
+
+async function catalogCommand(command, target, settings, input) {
+  return command("make", ["--no-print-directory", target], {
+    env: {
+      ...process.env,
+      ACCOUNT_OPERATION: "",
+      ACCOUNT_ID: "",
+      ACCOUNT_REVISION: "",
+      ACCOUNT_CONFIRM: "",
+      ACCOUNT_SEARCH: "",
+      ACCOUNT_STATUS: "",
+      ACCOUNT_AFTER: "",
+      ACCOUNT_LIMIT: "",
+      CATALOG_TARGET: "",
+      CATALOG_OPERATION: "list",
+      CATALOG_APPLICATION_ID: "",
+      CATALOG_SEARCH: "",
+      CATALOG_STATUS: "",
+      CATALOG_AFTER: "",
+      CATALOG_LIMIT: "25",
+      CATALOG_CONFIRM: "",
+      CATALOG_REVISION: "",
+      ...settings,
+    },
+    input,
+    capture: true,
+    acceptFailure: true,
+  });
 }
