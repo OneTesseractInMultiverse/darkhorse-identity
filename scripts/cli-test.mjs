@@ -47,6 +47,8 @@ async function information() {
     ["--version"],
     ["help", "operator"],
     ["operator", "--help"],
+    ["operator", "migrate", "--help"],
+    ["operator", "migrate", "inspect", "--help"],
     ["operator", "account", "--help"],
     ["operator", "signing", "import", "--help"],
     ["operator", "signing", "activate", "--help"],
@@ -60,6 +62,19 @@ async function information() {
   }
 }
 async function failures() {
+  const inspection = await invoke([
+    "--output",
+    "json",
+    "operator",
+    "migrate",
+    "inspect",
+    "00000000-0000-0000-0000-000000000123",
+  ]);
+  assert.equal(inspection.code, 1);
+  assert.equal(JSON.parse(inspection.stderr).error.code, "operation_failed");
+  assert.equal(inspection.stdout, "");
+  assert.ok(!inspection.stderr.includes(environment.DARKHORSE_DATABASE_URL));
+
   const marker = "test-secret-do-not-echo";
   const key = "-" + "A".repeat(42);
   for (const action of ["activate", "retire"]) {

@@ -37,6 +37,15 @@ ALTER DEFAULT PRIVILEGES FOR ROLE darkhorse_owner REVOKE ALL ON ROUTINES FROM PU
 ALTER DEFAULT PRIVILEGES FOR ROLE darkhorse_owner IN SCHEMA public REVOKE ALL ON TABLES FROM PUBLIC, darkhorse_runtime, darkhorse_operator;
 ALTER DEFAULT PRIVILEGES FOR ROLE darkhorse_owner IN SCHEMA public REVOKE ALL ON SEQUENCES FROM PUBLIC, darkhorse_runtime, darkhorse_operator;
 ALTER DEFAULT PRIVILEGES FOR ROLE darkhorse_owner IN SCHEMA public REVOKE ALL ON ROUTINES FROM PUBLIC, darkhorse_runtime, darkhorse_operator;
+-- Migration evidence belongs exclusively to the database owner. Inspection does
+-- not grant migration authority to either nonowner role.
+DO $$ BEGIN
+ IF to_regnamespace('darkhorse_migration_v1') IS NOT NULL THEN
+  REVOKE ALL ON SCHEMA darkhorse_migration_v1 FROM PUBLIC, darkhorse_runtime, darkhorse_operator;
+  REVOKE ALL ON ALL TABLES IN SCHEMA darkhorse_migration_v1 FROM PUBLIC, darkhorse_runtime, darkhorse_operator;
+  REVOKE ALL ON ALL ROUTINES IN SCHEMA darkhorse_migration_v1 FROM PUBLIC, darkhorse_runtime, darkhorse_operator;
+ END IF;
+END $$;
 GRANT USAGE ON SCHEMA public TO darkhorse_runtime, darkhorse_operator;
 -- These four pure, invoker-rights validators are used by CHECK constraints.
 GRANT EXECUTE ON FUNCTION

@@ -99,7 +99,7 @@ A missed mutation requires investigation. A passing coverage percentage cannot c
 
 ## Recorded implementation baseline
 
-The latest consolidated evidence predates this documentation-only rewrite. It covers
+This historical consolidated baseline covers
 commit [`9e34da4`](https://github.com/OneTesseractInMultiverse/darkhorse-identity/commit/9e34da49cd38e79dfa8cf2095bfba099690dfcf1)
 on **2026-09-23**.
 
@@ -123,6 +123,25 @@ and [hosted run](https://github.com/OneTesseractInMultiverse/darkhorse-identity/
 record this baseline. Advisory results are time-bound. Rescan before release.
 The historical measurements in [performance](performance.md) describe different,
 explicitly dated runs and must not be treated as new measurements.
+
+## Migration reconciliation increment
+
+The migration increment on **2026-09-23** passed 538 isolated tests: 175 adapter,
+35 application, 105 domain, 143 frontend, and 80 tooling tests. The real PostgreSQL
+suite passed 186 scenarios. New scenarios cover fresh setup and adoption, partial
+batches, checksum and history rejection, concurrent migrators, receipt rollback,
+cancellation, and discarded intent/step/final commit replies. Actual TCP logins
+verify owner-only migration and inspection and grant-policy reapplication.
+CLI/terminal and launcher process checks passed. See [migration reconciliation](migration-operations.md)
+for the scope and operational limits. The owning issue records the committed
+revision and packaged/hosted results.
+
+The combined Rust unit/PostgreSQL/CLI report measured **14,087/15,244 lines
+(92.41%)**, **1,929/2,052 functions (94.01%)**, and **23,397/26,914 regions
+(86.93%)**. The unchanged 100% line gate fails. The five new migration Rust modules
+measured 237/237 lines and 41/41 functions, with 397/419 regions (94.75%). These
+figures do not measure JavaScript, SQL, Lua, or every runtime path. They do not
+replace the whole-system coverage qualification in #2.
 
 ## Release interpretation
 

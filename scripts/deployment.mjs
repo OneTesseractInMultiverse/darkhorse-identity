@@ -11,7 +11,9 @@ import { run } from "./lib/command.mjs";
 process.chdir(resolve(import.meta.dirname, ".."));
 async function main() {
   const [mode, name, ...args] = process.argv.slice(2);
-  if (["limiter-inspect", "signing-inspect"].includes(mode)) {
+  if (
+    ["limiter-inspect", "signing-inspect", "migration-inspect"].includes(mode)
+  ) {
     if (name !== undefined)
       throw new Error("Use STACK and OPERATION_ID for operation inspection.");
     const stack = await loadStack(process.env.STACK);

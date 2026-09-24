@@ -41,6 +41,7 @@ is accepted. Neither `NO_COLOR` nor any terminal setting activates color.
 | Canonical command                          | Compatibility spelling                                |
 | ------------------------------------------ | ----------------------------------------------------- |
 | `operator migrate`                         | `migrate`                                             |
+| `operator migrate inspect OPERATION_ID`    | None                                                  |
 | `operator bootstrap [--stdin]`             | `bootstrap [--stdin]`                                 |
 | `operator account show ID`                 | `account ID`                                          |
 | `operator account deactivate ID REVISION`  | `deactivate ID REVISION`                              |
@@ -58,8 +59,8 @@ is accepted. Neither `NO_COLOR` nor any terminal setting activates color.
 
 `ID` is a nonzero principal UUID, `KID` a public URL-safe unpadded 32-byte key ID,
 and `REVISION` a nonnegative integer no larger than PostgreSQL's signed bigint.
-`OPERATION_ID` is a nonzero operation UUID. See [activation inspection](limiter-activation.md)
-and [signing inspection](signing-operations.md). Signing mutations reserve one revision
+`OPERATION_ID` is a nonzero operation UUID. See [activation inspection](limiter-activation.md),
+[signing inspection](signing-operations.md), and [migration inspection](migration-operations.md). Signing mutations reserve one revision
 increment, so the largest signed bigint is not a valid expected mutation revision.
 Service/domain checks still validate current state. Legacy spellings are hidden
 from top-level help and use the same typed conversion and dispatch.
@@ -69,7 +70,8 @@ from top-level help and use the same typed conversion and dispatch.
 Mutations require `--yes` for automation, or an interactive `yes` response on a
 terminal. Refusal/EOF cancels before settings or service access. Protected-stdin
 operations always require `--yes`, so a confirmation cannot consume secret input.
-Signing inspection requires no confirmation or wrapping key.
+Signing inspection requires no confirmation or wrapping key. Migration inspection requires
+database-owner credentials and no confirmation.
 Signing status requires confirmation. The implementation can initialize the provider binding before reading its inventory.
 
 JSON mode never prompts: mutations require `--yes`, and bootstrap requires `--stdin`. Account operations require `--auth-stdin`. This keeps its stdout/stderr records machine-readable even
@@ -108,7 +110,15 @@ key, private key or database URL values.
 `--output json` emits one success envelope on stdout:
 
 ```json
-{ "schema_version": 1, "ok": true, "data": { "migrated": true } }
+{
+  "schema_version": 1,
+  "ok": true,
+  "data": {
+    "migrated": true,
+    "operation_id": "00000000-0000-0000-0000-000000000001",
+    "recorded_outcome": "completed"
+  }
+}
 ```
 
 Execution/confirmation failures emit one error envelope on stderr, with a stable

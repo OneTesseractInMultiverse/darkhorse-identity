@@ -1,4 +1,8 @@
-import { settings } from "./deployment-plan.mjs";
+import {
+  settings,
+  operatorArgs,
+  operatorWorkload,
+} from "./deployment-plan.mjs";
 import { pod, servingPod, labels, proxy } from "./kubernetes-pods.mjs";
 import { policies } from "./kubernetes-network.mjs";
 const fields = [
@@ -150,11 +154,12 @@ export function application(input) {
     ],
   };
 }
-export function operatorJob(input, command, name) {
+export function operatorJob(input, command, name, args = []) {
   const c = configuration(input);
   if (
     ![
       "migrate",
+      "migration-inspect",
       "limiter-status",
       "limiter-fence",
       "limiter-activate",
@@ -166,11 +171,14 @@ export function operatorJob(input, command, name) {
     throw new Error(
       "Use a supported one-shot command and unique bounded job name.",
     );
-  const role = command === "migrate" ? "migrator" : "operator";
+  const role = operatorWorkload(command, args);
   const spec = pod(c, role);
   spec.restartPolicy = "Never";
   spec.containers[0].name = role;
-  spec.containers[0].args = [command, "--yes"];
+  spec.containers[0].args = [
+    ...operatorArgs(command, args),
+    ...(command === "migration-inspect" ? [] : ["--yes"]),
+  ];
   return {
     apiVersion: "batch/v1",
     kind: "Job",

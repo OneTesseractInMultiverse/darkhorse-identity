@@ -3,6 +3,7 @@ mod cancellation;
 pub mod cli;
 pub mod command;
 pub mod input;
+mod migrations;
 pub mod output;
 pub mod signing;
 mod terminal;
@@ -83,13 +84,8 @@ async fn run_bootstrap(stdin: bool) -> Result<Output, Failure> {
 
 async fn run_database_command(store: &PostgresStore, command: Command) -> Result<Output, Failure> {
     match command {
-        Command::Migrate => {
-            store.migrate().await.map_err(directory_message)?;
-            Ok(Output::message(
-                "Database migrations applied.",
-                serde_json::json!({"migrated":true}),
-            ))
-        }
+        Command::Migrate => migrations::apply(store).await,
+        Command::MigrationInspect(id) => migrations::inspect(store, id).await,
         _ => Err("Invalid database operation.".into()),
     }
 }

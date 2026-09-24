@@ -89,8 +89,10 @@ truncate audits, create temporary tables, delegate permissions or switch roles.
 The same topology guards and atomic grant reset apply to both roles. A missing
 role fails before grants change. Provision both logins before applying this policy.
 
-The schema owner `darkhorse_owner` is reserved for migrations and trusted database
-maintenance. Compose's `migrator` service and Kubernetes's `darkhorse-migrator`
+The database and schema owner `darkhorse_owner` is reserved for migrations and trusted database
+maintenance. [Migration inspection](migration-operations.md) uses the same owner login
+and reads the private `darkhorse_migration_v1` journal. Neither nonowner role has access.
+Compose's `migrator` service and Kubernetes's `darkhorse-migrator`
 service account/secret receive only its database URL and the public CA. They have
 no signing, login or Redis secret mounts and only database network access (plus
 cluster DNS in Kubernetes). The ordinary operator receives its independent

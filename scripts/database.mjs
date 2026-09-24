@@ -2,6 +2,7 @@ import { createHash, randomBytes } from "node:crypto";
 import { mkdir, open, readFile, lstat, unlink } from "node:fs/promises";
 import { resolve } from "node:path";
 import { run } from "./lib/command.mjs";
+import { operatorArgs } from "./lib/deployment-plan.mjs";
 import { checkDatabaseVolumes } from "./lib/database-stack.mjs";
 
 const root = resolve(import.meta.dirname, "..");
@@ -104,7 +105,23 @@ async function main() {
     });
   } else if (operation === "down")
     await run("docker", [...compose, "down"], { env: await environment() });
-  else if (operation === "run")
+  else if (operation === "inspect") {
+    if (args.length)
+      throw new Error("Use OPERATION_ID for migration inspection.");
+    await run(
+      "cargo",
+      [
+        "run",
+        "--locked",
+        "--offline",
+        "-p",
+        "darkhorse-server",
+        "--",
+        ...operatorArgs("migration-inspect", [process.env.OPERATION_ID]),
+      ],
+      { env: await environment() },
+    );
+  } else if (operation === "run")
     await run(
       "cargo",
       [

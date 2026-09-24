@@ -164,6 +164,55 @@ async function prepare() {
   console.log("Compose fixture: private dependencies started.");
   await migrate(stack);
   console.log("Compose fixture: schema and runtime grants ready.");
+  const migrationId = (
+    await sql(
+      "SELECT operation_id FROM darkhorse_migration_v1.intents ORDER BY prepared_ms DESC LIMIT 1",
+    )
+  ).stdout.trim();
+  const migrationRecord = JSON.parse(
+    (
+      await run(
+        "make",
+        ["--no-print-directory", "--silent", "stack-migration-inspect"],
+        {
+          env: {
+            ...stack.env,
+            STACK: stack.settings.name,
+            OPERATION_ID: migrationId,
+          },
+          capture: true,
+        },
+      )
+    ).stdout,
+  );
+  assert.equal(migrationRecord.recorded_outcome, "completed");
+  assert.equal(migrationRecord.database_role, "darkhorse_owner");
+  assert.ok(
+    migrationRecord.steps.every(
+      (v) => v.current_matches && v.completed_ms !== null,
+    ),
+  );
+  assert.notEqual(
+    (
+      await compose(
+        stack,
+        [
+          "run",
+          "--rm",
+          "--no-deps",
+          "-T",
+          "operator",
+          "operator",
+          "migrate",
+          "inspect",
+          migrationId,
+        ],
+        { ...captured, acceptFailure: true },
+      )
+    ).code,
+    0,
+  );
+
   const permissions = (
     await sql(
       "SELECT has_schema_privilege('darkhorse_runtime','public','CREATE'),has_table_privilege('darkhorse_runtime','platform_administrators','INSERT'),has_table_privilege('darkhorse_runtime','signing_keys','INSERT'),has_table_privilege('darkhorse_runtime','limiter_authority','UPDATE'),rolsuper,rolcreaterole FROM pg_roles WHERE rolname='darkhorse_runtime';",

@@ -23,9 +23,9 @@ async function main() {
     return console.log(JSON.stringify(manifest, null, 2));
   if (mode === "budgets" && !args.length)
     return console.log(JSON.stringify(budgets(), null, 2));
-  if (mode === "job" && args.length === 2)
+  if (mode === "job" && (args.length === 2 || args.length === 3))
     return console.log(
-      JSON.stringify(operatorJob(c, args[0], args[1]), null, 2),
+      JSON.stringify(operatorJob(c, args[0], args[1], args.slice(2)), null, 2),
     );
   if (
     !["prepare", "validate", "apply", "status"].includes(mode) ||

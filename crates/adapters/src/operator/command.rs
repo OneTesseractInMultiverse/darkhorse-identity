@@ -7,6 +7,7 @@ use darkhorse_domain::{
 pub enum Command {
     Serve,
     Migrate,
+    MigrationInspect(OperationId),
     RedisStatus,
     LimiterFence,
     LimiterActivate,
@@ -41,6 +42,7 @@ pub fn requires_confirmation(command: Command) -> bool {
     !matches!(
         command,
         Command::Serve
+            | Command::MigrationInspect(_)
             | Command::Account(_)
             | Command::RedisStatus
             | Command::LimiterStatus

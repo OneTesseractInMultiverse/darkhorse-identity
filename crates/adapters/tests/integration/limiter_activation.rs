@@ -230,6 +230,12 @@ async fn actual_lost_commit_responses_preserve_inspectable_intent_or_completed_r
     }
 }
 pub(super) async fn lost_commit(pool: &PgPool) -> (PostgresStore, tokio::task::JoinHandle<()>) {
+    lost_nth_commit(pool, 1).await
+}
+pub(super) async fn lost_nth_commit(
+    pool: &PgPool,
+    target: usize,
+) -> (PostgresStore, tokio::task::JoinHandle<()>) {
     use tokio::{
         io::AsyncWriteExt,
         net::{TcpListener, TcpStream},
@@ -246,9 +252,13 @@ pub(super) async fn lost_commit(pool: &PgPool) -> (PostgresStore, tokio::task::J
         let forward = tokio::spawn(async move {
             let _ = tokio::io::copy(&mut read_client, &mut write_server).await;
         });
+        let mut commits = 0;
         loop {
             let (header, payload) = message(&mut read_server).await;
             if header[0] == b'C' && payload == b"COMMIT\0" {
+                commits += 1;
+            }
+            if commits == target {
                 forward.abort();
                 write_client.shutdown().await.unwrap();
                 break;

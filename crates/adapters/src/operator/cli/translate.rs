@@ -28,7 +28,10 @@ pub(super) fn invocation(options: Options) -> Result<Invocation, Failure> {
 }
 fn operator(value: Operator) -> Command {
     match value {
-        Operator::Migrate => Command::Migrate,
+        Operator::Migrate(Migration { command: None }) => Command::Migrate,
+        Operator::Migrate(Migration {
+            command: Some(MigrationCommand::Inspect { id }),
+        }) => Command::MigrationInspect(id),
         Operator::Bootstrap(value) => Command::Bootstrap { stdin: value.stdin },
         Operator::Account(value) => account(value),
         Operator::Signing(value) => Command::Signing(signing(value)),
@@ -76,7 +79,7 @@ fn signing(value: Signing) -> Operation {
 }
 fn legacy(value: Legacy) -> Command {
     operator(match value {
-        Legacy::Migrate => Operator::Migrate,
+        Legacy::Migrate => Operator::Migrate(Migration { command: None }),
         Legacy::Bootstrap(v) => Operator::Bootstrap(v),
         Legacy::Account(v) => Operator::Account(Account::Show(v)),
         Legacy::Deactivate(v) => Operator::Account(Account::Deactivate(v)),

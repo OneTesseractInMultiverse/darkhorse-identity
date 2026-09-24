@@ -139,3 +139,22 @@ test("signing inspection accepts one nonzero UUID and uses nonowner authority", 
   ])
     assert.throws(() => operatorArgs("signing-inspect", args));
 });
+
+test("migration inspection uses only the dedicated owner workload", () => {
+  const id = "00000000-0000-0000-0000-000000000123";
+  assert.deepEqual(operatorArgs("migration-inspect", [id]), [
+    "operator",
+    "migrate",
+    "inspect",
+    id,
+  ]);
+  assert.equal(operatorWorkload("migration-inspect", [id]), "migrator");
+  for (const args of [
+    [],
+    [id, id],
+    ["--force"],
+    ["00000000-0000-0000-0000-000000000000"],
+    [id + "\n"],
+  ])
+    assert.throws(() => operatorArgs("migration-inspect", args));
+});

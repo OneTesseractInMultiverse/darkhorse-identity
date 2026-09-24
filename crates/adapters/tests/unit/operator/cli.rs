@@ -130,3 +130,20 @@ fn account_authentication_input_is_explicit_and_not_a_bypass_flag() {
     assert!(command.auth_stdin);
     assert!(!run(&["account", "00000000-0000-0000-0000-000000000001"]).auth_stdin);
 }
+
+#[test]
+fn migration_inspection_is_read_only_and_uses_a_typed_operation_id() {
+    let invocation = run(&[
+        "operator",
+        "migrate",
+        "inspect",
+        "00000000-0000-0000-0000-000000000001",
+    ]);
+    assert!(!crate::operator::command::requires_confirmation(
+        invocation.command
+    ));
+    for value in ["invalid", "00000000-0000-0000-0000-000000000000"] {
+        assert!(parse(&["operator", "migrate", "inspect", value]).is_err());
+    }
+    assert!(parse(&["operator", "migrate", "inspect"]).is_err());
+}

@@ -45,8 +45,9 @@ impl PostgresStore {
         Ok(Self::from_pool(pool))
     }
     pub async fn migrate(&self) -> Result<(), DirectoryFailure> {
-        MIGRATOR
-            .run(&self.pool)
+        let id = darkhorse_domain::identity::OperationId::from_u128(uuid::Uuid::new_v4().as_u128())
+            .map_err(|_| DirectoryFailure::Unavailable)?;
+        self.migrate_operation(id)
             .await
             .map_err(|_| DirectoryFailure::Unavailable)
     }
@@ -121,3 +122,5 @@ mod readiness;
 mod limiter_activation;
 
 mod signing_operations;
+
+pub mod migrations;

@@ -37,8 +37,8 @@ pub(super) enum Root {
 }
 #[derive(Subcommand)]
 pub(super) enum Operator {
-    /// Apply embedded database migrations using the schema owner.
-    Migrate,
+    /// Apply embedded database migrations, or inspect an earlier operation, using the database owner.
+    Migrate(Migration),
     /// Create the single initial administrator.
     Bootstrap(Bootstrap),
     #[command(subcommand)]
@@ -155,4 +155,18 @@ pub(super) enum Legacy {
     LimiterActivate,
     #[command(hide = true)]
     RedisStatus,
+}
+
+#[derive(Args)]
+pub(super) struct Migration {
+    #[command(subcommand)]
+    pub command: Option<MigrationCommand>,
+}
+#[derive(Subcommand)]
+pub(super) enum MigrationCommand {
+    /// Read recorded progress and current history without running migrations.
+    Inspect {
+        #[arg(value_parser=crate::operator::command::operation_identifier)]
+        id: darkhorse_domain::identity::OperationId,
+    },
 }

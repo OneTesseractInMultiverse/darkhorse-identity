@@ -43,6 +43,7 @@ can still require load testing, protocol conformance, or an independent security
 
 ## Storage, deployment, and recovery
 
+- [Migration reconciliation](migration-operations.md) explains partial batches, receipts, and interrupted upgrades.
 - [Persistence](persistence.md) covers bootstrap, migrations, account epochs, and SQL connections.
 - [Database authority](database-authority.md) defines runtime, operator, and migration grants.
 - [Percona containers](percona.md) documents the PostgreSQL distribution and volume transition.

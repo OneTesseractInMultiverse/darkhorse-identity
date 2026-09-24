@@ -21,7 +21,8 @@ or service connections.
 | `operator account show ID`                                      | Database, active limiter, fresh administrator password    | Verified read and actor audit commit together                            |
 | `operator account deactivate/reactivate/revoke-all ID REVISION` | Same account authority, expected revision, bounded reason | Account change and actor audit commit together                           |
 | `operator bootstrap`                                            | Nonowner operator database login, unused bootstrap        | Initial account, credential, membership, flag, and audit commit together |
-| `operator migrate`                                              | Schema owner                                              | Checksummed SQLx migration history                                       |
+| `operator migrate`                                              | Database-owner login                                      | Intent, per-migration atomic history/receipt, final batch receipt        |
+| `operator migrate inspect OPERATION_ID`                         | Database-owner login                                      | Read-only primary snapshot of original targets and current history       |
 | `operator signing status`                                       | Operator database login, canonical origin, wrapping key   | Binding creation or validation, then inventory                           |
 | `operator signing generate/import/activate/retire`              | Same signing authority and expected revision              | Durable intent, atomic binding/change/audit/receipt                      |
 | `operator signing inspect OPERATION_ID`                         | Operator journal read privileges                          | Read-only primary snapshot, database configuration only                  |
@@ -36,8 +37,9 @@ Provider binding, revision checks, lifecycle audit, and receipt share the mutati
 transaction. `status` can initialize the binding outside this journal, so it
 requires confirmation. Publication and verification-retention waits remain mandatory.
 
-Migration history does not provide individually authenticated operator attribution.
-Signing and limiter inspection have no human authentication or per-read audit. The limiter
+[Migration reconciliation](migration-operations.md) preserves a committed prefix after a later
+step fails. It does not provide individually authenticated operator attribution.
+Signing, limiter, and migration inspection have no human authentication or per-read audit. The limiter
 [activation receipt](limiter-activation.md) records the database credential boundary.
 A repeated fence starts another wait. Activation cannot reset an active generation
 or skip the wait. All operator commands remain subject to their documented grants.
@@ -98,8 +100,8 @@ planned in #25/#26 ship:
   correlation, relevant revisions, result and required reason without secrets.
   Supplied claims remain unverified. Define retention, read/export access and
   sanitization. Do not silently prune or expose personal audit data.
-- For migrations and cross-system recovery, add durable intent/result recording,
-  reconciliation and conservative unknown-outcome handling. Select protected
+- Migration, signing, and limiter journals provide durable intent/result recording
+  and conservative unknown-outcome handling for their documented scope. Select protected
   out-of-band evidence before claiming recovery with audit storage unavailable.
   No audit-bypass flag or cross-system atomicity claim is permitted.
 - Test runtime compromise, stolen operator credentials, forged actor metadata,

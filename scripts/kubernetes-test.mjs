@@ -195,6 +195,63 @@ async function prepareOperator() {
     "--timeout=120s",
   ]);
   await sql(await readFile("deploy/grant-runtime.sql", "utf8"));
+  const migrationId = (
+    await sql(
+      "SELECT operation_id FROM darkhorse_migration_v1.intents ORDER BY prepared_ms DESC LIMIT 1",
+    )
+  ).stdout.trim();
+  const inspectionJob = operatorJob(
+    c,
+    "migration-inspect",
+    "migration-inspect-1",
+    [migrationId],
+  );
+  const full = await kube(["apply", "-f", "-"], {
+    input: JSON.stringify(inspectionJob),
+    acceptFailure: true,
+  });
+  assert.notEqual(full.code, 0);
+  assert.match(full.stderr, /exceeded quota/);
+  const migrationLog = (
+    await kube(["-n", c.namespace, "logs", "job/migration-1"])
+  ).stdout;
+  assert.ok(migrationLog.includes(migrationId));
+  // Retain the completed result before freeing this fixture's single Job slot.
+  await kube([
+    "-n",
+    c.namespace,
+    "delete",
+    "job/migration-1",
+    "--wait=true",
+    "--timeout=30s",
+  ]);
+  await apply(inspectionJob);
+  await kube([
+    "-n",
+    c.namespace,
+    "wait",
+    "--for=condition=complete",
+    "job/migration-inspect-1",
+    "--timeout=120s",
+  ]);
+  const migrationRecord = JSON.parse(
+    (await kube(["-n", c.namespace, "logs", "job/migration-inspect-1"])).stdout,
+  );
+  assert.equal(migrationRecord.recorded_outcome, "completed");
+  assert.equal(migrationRecord.database_role, "darkhorse_owner");
+  assert.ok(
+    migrationRecord.steps.every(
+      (v) => v.current_matches && v.completed_ms !== null,
+    ),
+  );
+  await kube([
+    "-n",
+    c.namespace,
+    "delete",
+    "job/migration-inspect-1",
+    "--wait=true",
+    "--timeout=30s",
+  ]);
   const spec = pod(c, "operator");
   spec.containers[0].command = ["/bin/sleep"];
   spec.containers[0].args = ["1800"];

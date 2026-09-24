@@ -103,7 +103,56 @@ GRANT CONNECT ON DATABASE darkhorse_authority TO darkhorse_runtime,darkhorse_own
       capture: true,
       acceptFailure,
     });
-  await invoke("darkhorse_owner", ["operator", "migrate"]);
+  const migrated = JSON.parse(
+    (
+      await invoke("darkhorse_owner", [
+        "--output",
+        "json",
+        "operator",
+        "migrate",
+      ])
+    ).stdout,
+  ).data;
+  const inspectArgs = [
+    "--output",
+    "json",
+    "operator",
+    "migrate",
+    "inspect",
+    migrated.operation_id,
+  ];
+  const inspected = JSON.parse(
+    (await invoke("darkhorse_owner", inspectArgs)).stdout,
+  ).data;
+  assert.equal(inspected.recorded_outcome, "completed");
+  assert.equal(inspected.database_role, "darkhorse_owner");
+  const absent = JSON.parse(
+    (
+      await invoke("darkhorse_owner", [
+        "--output",
+        "json",
+        "operator",
+        "migrate",
+        "inspect",
+        "00000000-0000-0000-0000-000000000123",
+      ])
+    ).stdout,
+  ).data;
+  assert.equal(absent.recorded_outcome, "absent");
+  assert.equal(inspected.steps.length, 24);
+  assert.ok(
+    inspected.steps.every(
+      (v) => v.completed_ms !== null && !v.already_applied && v.current_matches,
+    ),
+  );
+  for (const role of ["darkhorse_runtime", "darkhorse_operator"]) {
+    assert.notEqual((await invoke(role, inspectArgs, true)).code, 0);
+    assert.notEqual(
+      (await sql(role, "SELECT * FROM darkhorse_migration_v1.intents", true))
+        .code,
+      0,
+    );
+  }
   const invalid = await sql(
     "darkhorse_runtime",
     "SELECT 1;",
@@ -153,6 +202,8 @@ GRANT SELECT ON future_operator_state TO PUBLIC;
 GRANT ALL ON SEQUENCE future_operator_sequence TO darkhorse_runtime;
 GRANT UPDATE(event) ON security_audit TO darkhorse_runtime;
 GRANT EXECUTE ON FUNCTION future_operator_function() TO PUBLIC;
+GRANT USAGE ON SCHEMA darkhorse_migration_v1 TO PUBLIC,darkhorse_runtime,darkhorse_operator;
+GRANT SELECT ON darkhorse_migration_v1.intents TO PUBLIC,darkhorse_runtime,darkhorse_operator;
 `,
   );
   // Remove old, PUBLIC, column and accidental privileges without automatically
@@ -160,6 +211,13 @@ GRANT EXECUTE ON FUNCTION future_operator_function() TO PUBLIC;
   for (let repeat = 0; repeat < 2; repeat++) {
     await sql("darkhorse_owner", grants);
     await sql("darkhorse_runtime", checks);
+    for (const role of ["darkhorse_runtime", "darkhorse_operator"]) {
+      assert.notEqual(
+        (await sql(role, "SELECT * FROM darkhorse_migration_v1.intents", true))
+          .code,
+        0,
+      );
+    }
   }
   const migrate = await invoke(
     "darkhorse_runtime",

@@ -201,3 +201,17 @@ test("migration owner secrets never reach operators or runtime and migration has
   assert.equal(policy.egress.length, 2);
   assert.deepEqual(policy.egress[1].ports, [{ port: 5432, protocol: "TCP" }]);
 });
+
+test("migration inspection job has owner isolation and bounded operation arguments", () => {
+  const id = "00000000-0000-0000-0000-000000000123";
+  const job = operatorJob(input, "migration-inspect", "inspect-1", [id]);
+  const container = job.spec.template.spec.containers[0];
+  assert.deepEqual(container.args, ["operator", "migrate", "inspect", id]);
+  assert.equal(job.spec.template.spec.serviceAccountName, "darkhorse-migrator");
+  assert.equal(job.spec.backoffLimit, 0);
+  for (const args of [[], [id, id], ["--force"]])
+    assert.throws(() =>
+      operatorJob(input, "migration-inspect", "inspect-1", args),
+    );
+  assert.throws(() => operatorJob(input, "migrate", "migration-1", [id]));
+});

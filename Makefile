@@ -494,3 +494,10 @@ signing-inspect: ## Provider: inspect a signing operation by OPERATION_ID using 
 
 stack-signing-inspect: ## Compose: inspect a durable signing operation by OPERATION_ID
 	$(NODE) scripts/deployment.mjs signing-inspect
+
+.PHONY: db-migration-inspect stack-migration-inspect
+db-migration-inspect: ## Database: inspect a migration operation by OPERATION_ID without applying changes
+	$(NODE) scripts/database.mjs inspect
+
+stack-migration-inspect: ## Compose: inspect migration evidence through the dedicated owner workload
+	$(NODE) scripts/deployment.mjs migration-inspect
