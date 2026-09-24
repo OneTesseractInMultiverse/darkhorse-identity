@@ -41,6 +41,125 @@ Compare only reports with matching source/binary digests, workload profile, host
 
 These commands change only disposable benchmark configuration. Choosing a deployment pool requires the connection budget across all server replicas, other database clients and the target database. The production default, token-route admission limit and strict primary-state freshness contract remain unchanged.
 
+## Native CLI interference
+
+```sh
+make benchmark-operators          # four clients; three seconds per paced phase
+make benchmark-operators-baseline # eight clients; ten seconds per paced phase
+make test-benchmark-tools         # real subprocess bounds and failure behavior
+```
+
+These profiles measure a small administrative burst while HTTPS introspection
+continues at **200 scheduled requests/s**. They use the same release executable
+for the server and native CLI. After provisioning and a 64-request warmup, the
+runner executes these phases in order:
+
+```mermaid
+flowchart TD
+    A[Control before: HTTPS only] --> B[HTTPS with two CLI read workers]
+    B --> C[Control after: HTTPS only]
+    C --> D[HTTPS with CLI revoke-all halfway through]
+    D --> E[64 explicit checks after commit acknowledgement]
+    E --> F[Verify eight read audits and one mutation audit]
+```
+
+Each read worker makes four calls, alternating `operator account list --limit 25`
+and `operator application list --limit 25`. Calls are scheduled at the start and
+at each quarter of the phase. A worker waits for its current command to finish
+before starting another. The two workers have separate fixture administrators;
+each command verifies a password through the real Argon2id and shared Redis
+admission path, rechecks authority on the primary, and commits its read audit.
+Four calls per actor fit the existing five-attempt minute budget. No measured
+phase resets the limiter or reuses an authenticated CLI session.
+
+The controls before and after the burst use the same tokens, offered rate,
+connection reuse and phase duration. Compare their authorized scheduled p95/p99,
+throughput, unavailable responses and generator drops with the read-burst phase.
+The two controls help reveal host drift; they do not remove order effects.
+The revocation phase is a separate correctness experiment: at its midpoint the
+original administrator invokes `operator account revoke-all` with the expected
+revision and a reason. All fixture tokens share that principal and session.
+Checks dispatched after successful CLI acknowledgement must return exactly
+`{"active":false}`. All 64 explicit post-commit checks must also deny access.
+Earlier checks may observe either state while the mutation overlaps them.
+Do not compare the mixed active/inactive revocation latency with normal access
+checks as evidence of an optimization.
+
+Every native command has a 30-second deadline and a combined stdout/stderr bound
+of 64 KiB. Protected input goes through stdin; command arguments contain no
+password. Output is reduced in memory to a validated audit correlation ID.
+Failure, interruption or output overflow stops the command without retrying it;
+started HTTP requests and both CLI lanes drain before fixture cleanup. A killed
+command may already have committed. Its failure is not evidence of rollback.
+Reports retain timing and audit identifiers, not credentials or returned profiles.
+The separate process test exercises input delivery, exit failures, output
+limits, cancellation and deadlines; isolated unit tests use in-memory fakes.
+
+Each phase reports command start/end times, scheduled times, latency percentiles,
+and the count of HTTP requests dispatched during each command. It also reports
+HTTP latency percentiles restricted to dispatches during commands, because
+whole-phase percentiles can hide short bursts. Overlapping
+commands do not double-count the phase total. A run fails if any command has no
+observed request overlap. `operatorAudit` confirms the eight successful read
+records and one committed revocation record. `operatorLimits` records two read
+workers, four calls per worker, one Redis limiter connection per CLI and at most
+two PostgreSQL connections per CLI. With the default server pool of five, the
+read phase permits at most nine configured application connections. These are
+configured limits, not observed concurrent connection or memory peaks.
+
+The fixture uses a small directory and policy graph, a database owner connection,
+and native host processes. It does not qualify restricted-role query plans,
+container/Kubernetes scheduling, remote terminal behavior, large directories,
+sustained administrative traffic, fleet-wide concurrent password hashing or peak
+memory consumption. Four successful calls per actor are a bounded burst, not a
+sustained CLI throughput measurement. The ordinary before/after resource snapshots
+remain coarse; these profiles do not enable statement or stage instrumentation.
+[Operator container qualification](container-accounts.md) and
+[account security boundaries](operator-accounts.md) remain separate requirements.
+
+### Initial native interference measurements
+
+Two sequential `operator-baseline` runs on September 24, 2026 used an Apple M5
+host with 10 logical CPUs and 24 GiB RAM; Docker 29.6.2 had 10 CPUs and
+8,321,515,520 bytes of memory. Both used Rust 1.97.1, Node 24.19.0, Percona
+PostgreSQL 18.6.1, the default five-connection server pool and the same release
+binary. Each control and burst phase scheduled 2,000 requests over ten seconds.
+
+| Run | Control before p95 / p99 | Read-burst phase p95 / p99 | Control after p95 / p99 | Dispatches during CLI p95 / p99 |
+| --- | ------------------------ | -------------------------- | ----------------------- | ------------------------------- |
+| 1   | 5.76 / 8.29 ms           | 5.53 / 7.68 ms             | 5.38 / 7.92 ms          | 7.27 / 7.97 ms                  |
+| 2   | 5.63 / 8.00 ms           | 5.64 / 8.35 ms             | 5.91 / 8.60 ms          | 11.70 / 17.18 ms                |
+
+All latency columns describe authorized requests measured from their scheduled
+arrival. Each burst phase dispatched and authorized all 2,000 requests; 80 were
+dispatched during CLI execution. The eight read commands had p95 durations of
+98.56 and 105.19 ms respectively. With eight samples, nearest-rank p95 is the
+largest observation, not a stable population estimate. Run 1 had no generator
+drops. Run 2 missed one arrival in each control phase (0.05% per control), with no
+drops in the read or revocation phases. Neither run observed a server-unavailable
+response, transport error, other request error or authority mismatch.
+
+CLI revoke-all completed in 102.65 and 93.18 ms, overlapping 21 and 19 request
+dispatches. The paced phases included 979 and 981 checks dispatched after its
+acknowledgement; every one denied access, as did all 64 explicit post-commit
+checks in each run. Both runs verified eight successful read audits and one
+committed revocation audit.
+
+These samples establish a reproducible small-burst baseline and preserve the
+revocation invariant in that fixture. Whole-phase percentiles hide the more
+variable tail during CLI execution. Two runs do not isolate CPU, hashing,
+transaction-lock or host-scheduling effects, establish statistical significance,
+or justify a production capacity/SLO claim. Larger populations, stronger offered
+loads and real deployment topologies still require measurement.
+
+The local report identifiers are `run-QKnDYO` and `run-vnqxsi`. Both recorded
+source SHA-256 `e29cc667cadec028aba5fbad939eedb77c2f00d533b9211fa1c314d195872dd9`
+and binary SHA-256 `c8dc9b69a773b0b654508c3f66177e18c9fbd8e59dfd24a31cc23621774329ae`.
+They were measured before commit, with the implementation changes present;
+use these digests and the issue-linked change set rather than their parent
+commit alone. Raw reports stay in the ignored benchmark directory and can be
+reproduced with the public target above.
+
 ## Workloads and interpretation
 
 Every fixture has its own application, confidential OAuth client, resource, introspection credential, `operate` scope and role with read/write capabilities. They share one signed-in principal and SSO session. This small policy graph is a reproducible initial fixture, not a realistic large-organization population.

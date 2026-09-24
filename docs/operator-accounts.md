@@ -180,7 +180,11 @@ It covers listing and the four single-target commands, generic denials, independ
 processes sharing HTTP admission budgets, membership and credential reductions,
 expired proofs, revision/last-administrator rules, audit rollback, commit failure,
 and loss of an actual committed PostgreSQL response. Unit tests remain
-self-contained and run through `make test-unit`. Full authored-code coverage and
+self-contained and run through `make test-unit`. The [native interference benchmark](performance.md#native-cli-interference) measures
+two concurrent authenticated read workers alongside HTTPS checks, then exercises
+CLI revocation under paced traffic. It verifies actual overlap and committed
+audits in a disposable owner-role fixture; production role, population and
+container load qualification remain open. Full authored-code coverage and
 independent security qualification remain open requirements.
 
 The authentication and authorization boundaries follow

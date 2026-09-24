@@ -533,3 +533,13 @@ db-migration-inspect: ## Database: inspect a migration operation by OPERATION_ID
 
 stack-migration-inspect: ## Compose: inspect migration evidence through the dedicated owner workload
 	$(NODE) scripts/deployment.mjs migration-inspect
+
+.PHONY: benchmark-operators benchmark-operators-baseline test-benchmark-tools
+benchmark-operators: ## Performance: native CLI bursts alongside paced HTTPS introspection
+	$(MAKE) benchmark BENCH_PROFILE=operator-smoke
+
+benchmark-operators-baseline: ## Performance: longer CLI interference comparison and live revocation
+	$(MAKE) benchmark BENCH_PROFILE=operator-baseline
+
+test-benchmark-tools: ## Test: bounded benchmark subprocess input, deadlines, interruption and output
+	$(NODE) scripts/benchmark-tools-test.mjs

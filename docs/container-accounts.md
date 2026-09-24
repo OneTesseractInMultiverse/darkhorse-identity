@@ -321,3 +321,13 @@ binary/schema versions, temporary-credential Kubernetes recovery,
 credentials, independent security review and release artifact qualification remain
 open. This increment does not complete #27 or establish production readiness.
 Full authored-code coverage remains open in #2.
+
+## Native load baseline
+
+The [CLI interference benchmark](performance.md#native-cli-interference) runs the
+release native executable alongside paced HTTPS introspection, with fresh
+password verification, shared Redis admission, primary authority and audit.
+It provides an initial host-process comparison and tests CLI revocation during
+traffic. It does not measure `docker compose exec/run`, Kubernetes Pod scheduling,
+attachment loss or remote-terminal overhead. Those production-container load
+and failure scenarios remain part of deployment qualification.

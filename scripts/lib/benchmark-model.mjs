@@ -4,6 +4,18 @@ export function benchmarkProfile(name) {
     return { name, requests: 128, clients: 4, concurrency: [1, 8, 32] };
   if (name === "baseline")
     return { name, requests: 2048, clients: 8, concurrency: [1, 8, 32, 64] };
+  if (["operator-smoke", "operator-baseline"].includes(name))
+    return {
+      name,
+      operators: true,
+      clients: name === "operator-smoke" ? 4 : 8,
+      arrivals: {
+        durationMs: name === "operator-smoke" ? 3000 : 10000,
+        rate: 200,
+        maxInFlight: 128,
+        maxLatenessMs: 5,
+      },
+    };
   if (["profile-smoke", "profile-baseline"].includes(name))
     return {
       ...benchmarkProfile(name.replace("profile-", "arrival-")),
@@ -25,7 +37,7 @@ export function benchmarkProfile(name) {
       },
     };
   throw new Error(
-    "Unknown benchmark profile; use smoke, baseline, arrival-smoke, arrival-baseline, profile-smoke or profile-baseline.",
+    "Unknown benchmark profile; use smoke, baseline, arrival-smoke, arrival-baseline, profile-smoke, profile-baseline, operator-smoke or operator-baseline.",
   );
 }
 export function classify(response, expected) {

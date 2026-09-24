@@ -9,6 +9,7 @@ import { chromium } from "@playwright/test";
 import { tlsProxy } from "./lib/redis-test-proxy.mjs";
 import { runtimeEnvironment } from "./lib/redis-settings.mjs";
 import { profileChannel } from "./lib/benchmark-profile-channel.mjs";
+import { runBenchmarkCommand } from "./lib/benchmark-command.mjs";
 import { startProcess } from "./lib/process.mjs";
 import { seedSigning, verifyProvider } from "./lib/provider-browser.mjs";
 import { verifyRegistration } from "./lib/registration-browser.mjs";
@@ -70,6 +71,7 @@ export async function verifyBrowser(
     exercise = exerciseBrowser,
     profiling = false,
     poolSize = 5,
+    signal,
   } = {},
 ) {
   const port = await freePort();
@@ -192,6 +194,8 @@ export async function verifyBrowser(
       password,
       principal,
       invoke,
+      benchmarkInvoke: (args, input) =>
+        runBenchmarkCommand(executable, args, { env: runtime, input, signal }),
       runSql,
       serverPid: server.pid,
       profileSnapshot: channel

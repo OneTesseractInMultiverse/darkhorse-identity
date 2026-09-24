@@ -1,6 +1,12 @@
 import assert from "node:assert/strict";
 import { Agent } from "node:https";
 import { setTimeout as delay } from "node:timers/promises";
+import { operatorFixture } from "./benchmark-operator-fixture.mjs";
+import { measureOperatorPhase } from "./benchmark-operator-load.mjs";
+import {
+  operatorSummary,
+  operatorLimits,
+} from "./benchmark-operator-model.mjs";
 import { measureArrivals } from "./benchmark-arrival-phase.mjs";
 import { mkdir, mkdtemp, writeFile, appendFile } from "node:fs/promises";
 import { resolve, join } from "node:path";
@@ -292,20 +298,46 @@ async function changes(state, agent, measure = phase) {
     agent,
   );
 }
-async function pacedPhase(state, name, select, agent, rate, change) {
+async function pacedPhase(state, name, select, agent, rate, change, operator) {
   await state.observer?.before();
   const settings = { ...state.profile.arrivals, rate };
-  const { rows, summary } = await measureArrivals({
-    name,
-    settings,
-    change,
-    clock: () => performance.now() - state.started,
-    sleep: delay,
-    select,
-    perform: (selected) =>
-      request(state.options, state.fixtures, agent, selected),
-  });
+  const load = () =>
+    measureArrivals({
+      name,
+      settings,
+      change,
+      clock: () => performance.now() - state.started,
+      sleep: delay,
+      select,
+      perform: (selected) =>
+        request(state.options, state.fixtures, agent, selected),
+    });
+  const { rows, summary } = operator?.invoke
+    ? await measureOperatorPhase({
+        load,
+        durationMs: settings.durationMs,
+        clock: () => performance.now() - state.started,
+        sleep: delay,
+        invoke: operator.invoke,
+      })
+    : await load();
+  if (operator?.mutation)
+    summary.operators = operatorSummary(
+      [
+        {
+          operation: "account.revoke_all",
+          startMs: summary.change.startMs,
+          endMs: summary.change.acknowledgedMs,
+        },
+      ],
+      rows,
+    );
   await recordPhase(state, name, rows, summary);
+  if (operator)
+    assert.ok(
+      summary.operators.commands.every((command) => command.requestsDuring > 0),
+      "No HTTPS dispatch overlapped native CLI execution.",
+    );
   console.log(
     `  scheduled=${summary.scheduled}, driver-late=${summary.generatorDrops.late}, driver-full=${summary.generatorDrops.full}, authorized scheduled p95=${summary.authorizedScheduledLatencyMs?.p95.toFixed(2) ?? "n/a"}ms`,
   );
@@ -334,6 +366,61 @@ async function arrivalWorkloads(state, agent) {
       change,
     );
   await changes(state, agent, measure);
+}
+async function operatorWorkloads(state, agent) {
+  const { options, fixtures, profile } = state;
+  const fixture = await operatorFixture(options);
+  const choose = (index) => selection(options, fixtures, index);
+  await phase(state, "warmup", 64, 8, choose, agent);
+  const rate = profile.arrivals.rate;
+  await pacedPhase(state, "operator-control-before", choose, agent, rate);
+  const reads = await pacedPhase(
+    state,
+    "operator-read-bursts",
+    choose,
+    agent,
+    rate,
+    undefined,
+    { invoke: fixture.read },
+  );
+  await pacedPhase(state, "operator-control-after", choose, agent, rate);
+  await operatorRevocation(state, agent, fixture, choose);
+  state.report.operatorAudit = await fixture.verify(reads.operators.commands);
+}
+async function operatorRevocation(state, agent, fixture, choose) {
+  let committed = false;
+  const revoked = (index) => ({
+    ...choose(index),
+    epoch: committed ? "after-commit" : "overlapping",
+    expected: committed
+      ? { active: false }
+      : { ...choose(index).expected, allowInactive: true },
+  });
+  await pacedPhase(
+    state,
+    "operator-revocation-concurrent",
+    revoked,
+    agent,
+    state.profile.arrivals.rate,
+    async () => {
+      await fixture.revoke();
+      committed = true;
+    },
+    { mutation: true },
+  );
+  const after = await phase(
+    state,
+    "operator-revocation-after-commit",
+    64,
+    8,
+    revoked,
+    agent,
+  );
+  assert.equal(
+    after.outcomes.denied,
+    64,
+    "All explicit post-commit checks must deny revoked access.",
+  );
 }
 async function save(state) {
   await writeFile(
@@ -379,12 +466,15 @@ export async function benchmarkBrowser(options, profile) {
     const provisioned = await provision(options, profile);
     state.fixtures = provisioned.fixtures;
     report.sso = provisioned.sso;
+    if (profile.operators)
+      report.operatorLimits = operatorLimits(options.poolSize);
     report.before = await snapshot(options);
     if (profile.profiling) {
       state.observer = await profiler(options);
       report.profiling = { enabled: true, postgres: state.observer.settings };
     }
-    if (profile.arrivals) await arrivalWorkloads(state, agent);
+    if (profile.operators) await operatorWorkloads(state, agent);
+    else if (profile.arrivals) await arrivalWorkloads(state, agent);
     else {
       await steady(state, agent);
       await changes(state, agent);

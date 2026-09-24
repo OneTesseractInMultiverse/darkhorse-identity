@@ -221,6 +221,7 @@ async function hostChecks(env, db, directory, benchmark) {
     const options = benchmark
       ? {
           profile: "release",
+          signal: abort.signal,
           profiling,
           poolSize: benchmark.poolSize,
           exercise: async (options) =>
