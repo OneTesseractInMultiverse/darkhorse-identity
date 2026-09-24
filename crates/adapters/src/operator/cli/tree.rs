@@ -196,11 +196,23 @@ pub(super) enum Status {
 
 #[derive(Subcommand)]
 pub(super) enum Application {
+    /// Read one application's configuration after fresh administrator authentication.
+    Show {
+        #[arg(value_parser=crate::operator::command::application_identifier)]
+        application: darkhorse_domain::identity::ApplicationId,
+    },
     /// Read one authenticated page of applications.
     List(CatalogList),
 }
 #[derive(Subcommand)]
 pub(super) enum Client {
+    /// Read one client's configuration within its application; excludes credentials.
+    Show {
+        #[arg(value_parser=crate::operator::command::application_identifier)]
+        application: darkhorse_domain::identity::ApplicationId,
+        #[arg(value_parser=crate::operator::command::client_identifier)]
+        client: darkhorse_domain::identity::ClientId,
+    },
     /// Read one authenticated page of clients belonging to an application.
     List {
         #[arg(value_parser=crate::operator::command::application_identifier)]

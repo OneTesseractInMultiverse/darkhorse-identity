@@ -41,6 +41,7 @@ export function hasCatalogSelectors(values) {
     "CATALOG_TARGET",
     "CATALOG_OPERATION",
     "CATALOG_APPLICATION_ID",
+    "CATALOG_CLIENT_ID",
     "CATALOG_SEARCH",
     "CATALOG_STATUS",
     "CATALOG_AFTER",

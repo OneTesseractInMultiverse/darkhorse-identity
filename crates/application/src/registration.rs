@@ -56,7 +56,7 @@ impl Command {
         matches!(self, Self::CreateClient { .. } | Self::RotateSecret { .. })
     }
 }
-#[derive(Debug, Clone, Copy)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum ReadTarget {
     Application(ApplicationId),
     Client {

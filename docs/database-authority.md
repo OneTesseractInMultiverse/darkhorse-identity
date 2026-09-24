@@ -69,7 +69,10 @@ configuration with fresh administrator authentication.
 
 Catalog listing additionally requires SELECT/INSERT on `operator_catalog_audit`
 from migration `0026`, with the same append/read-only runtime boundary. No grants
-are added for the nonowner deployment operator. See [catalog reads](operator-catalog.md).
+are added for the nonowner deployment operator. Detail reads add the same explicit
+SELECT/INSERT grants on `operator_catalog_detail_audit` from migration `0027`.
+Apply the migration and refreshed grants with serving stopped. Neither ledger
+permits runtime updates, deletes or truncation. See [catalog reads](operator-catalog.md).
 
 ## Operator and migration boundary
 

@@ -1,15 +1,16 @@
 # Authenticated catalog reads
 
-`operator application list` and `operator client list APPLICATION_ID` provide
-bounded catalog inspection through the same Rust binary that serves HTTP.
-They use the console's catalog query and the account commands' fresh password
+`operator application` and `operator client` support bounded `list` and `show`
+reads through the same Rust binary that serves HTTP. They reuse the console's
+catalog and registration queries and the account commands' fresh password
 verification and shared login admission. A current platform administrator is
-required for every page. Application ownership is contact metadata and grants no
+required for every invocation. Application ownership is contact metadata and grants no
 administrative authority.
 
-This is the first increment of [#26](https://github.com/OneTesseractInMultiverse/darkhorse-identity/issues/26).
-Creation, editing, disabling, secret rotation, detailed client views and access-catalog
-writes remain separate work. The commands never retrieve a client secret or verifier.
+This implements catalog inspection in [#26](https://github.com/OneTesseractInMultiverse/darkhorse-identity/issues/26).
+Creation, editing, disabling, secret rotation and access-catalog writes remain
+separate work. These commands never query client credentials, including their
+nonsecret lifecycle metadata.
 
 ## Invocation and page contract
 
@@ -59,6 +60,39 @@ boundary rather than a reference that must still exist. Pages are independent
 live reads; concurrent edits can change their membership. Each invocation consumes
 another shared login attempt. This interface is not a consistent bulk export.
 
+## Application and client details
+
+```sh
+darkhorse-server --auth-stdin --output json operator application show <application-uuid> < /private/path/catalog-input.json
+darkhorse-server --auth-stdin --output json operator client show <application-uuid> <client-uuid> < /private/path/catalog-input.json
+```
+
+Both commands require a nonzero application UUID. Client inspection also requires
+a nonzero client UUID within that application. Listing selectors are rejected.
+The protected input and output envelope are the same as for listing, but `data`
+contains `operation_id` and a single `record`:
+
+| Record      | Fields                                                                                                                                                     |
+| ----------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Application | `kind`, `id`, `name`, `owner_id`, `owner_email`, `active`, `revision`                                                                                      |
+| Client      | `kind`, `id`, `application_id`, `name`, `active`, `revision`, `token_endpoint_auth_method`, `refresh_tokens`, `redirect_uris`, `resource_ids`, `scope_ids` |
+
+`kind` is `application` or `client`; `revision` is a decimal string. The client
+method is `client_secret_basic`. Callback strings preserve the registered value
+exactly. Resource and scope IDs describe the client configuration; they are not a
+user's effective permissions. The result contains at most eight callbacks, 32
+resource IDs and 128 scope IDs. No credential identifier, verifier, expiration or
+secret field is included. The configuration reader does not access the client
+secret table, while the HTTP registration reader retains its existing credential
+metadata behavior.
+
+Inactive applications and clients remain inspectable. A missing application,
+missing client or client outside the requested application returns the same fixed
+not-found error after current authority is verified. SQL reads at most one more
+callback or allowance than the domain limit. An over-limit stored configuration
+fails validation; it never becomes a successful truncated configuration. The
+shared reader applies these bounds to HTTP registration reads as well.
+
 ## Authority, transaction and audit
 
 The application creates a private proof after password verification. Its 60-second
@@ -78,28 +112,36 @@ sequenceDiagram
     A->>A: Shared attempt admission and password verification
     A->>P: Acquire shared security fence
     P->>P: Recheck current administrator and proof lifetime
-    P->>P: Execute console application-scoped query
-    P->>P: Recheck authority and append catalog read audit
+    P->>P: Read bounded catalog page or registration configuration
+    P->>P: Recheck authority and append the matching read audit
     P-->>C: Commit acknowledgement
     C->>C: Render bounded public fields
 ```
 
-Migration `0026` creates `operator_catalog_audit`. Apply the migration and reapply
-[the reviewed runtime grants](database-authority.md) with serving stopped before
-using these commands. Runtime may append/read the table, with no update, delete
-or truncate privilege. The nonowner deployment-operator role receives no access.
-Use the runtime account-command configuration and a valid administrator password.
+Migration `0026` creates the listing ledger, `operator_catalog_audit`. Migration
+`0027` adds `operator_catalog_detail_audit` for `application.show` and `client.show`.
+The separate ledger preserves the existing listing contract. Apply the migrations
+and reapply [the reviewed runtime grants](database-authority.md) with serving
+stopped before using these commands. Runtime may append/read both tables, with no
+update, delete or truncate privilege. The nonowner deployment-operator role
+receives no access. Use the runtime account-command configuration and a valid
+administrator password.
 
 Each read, authenticated not-found result or authentication denial records a
-correlation ID, command, optional requested application, verified actor/credential
-facts when available, query bounds, status/cursor, search-present flag, outcome,
-returned count, database time and database role. Raw search text, catalog names,
-owner emails and secret material are excluded. An unknown application is retained
-as a requested reference, without requiring a foreign-key match.
+correlation ID, command, requested application/client references, verified
+actor/credential facts when available, outcome, database time and database role.
+Listing additionally records query bounds, status/cursor, a search-present flag
+and returned count. Detail audits contain the requested application and, for
+client inspection, the requested client. Unknown identifiers remain requested
+references without a foreign-key dependency on the target.
+
+Neither ledger contains raw search text, returned catalog names, owner emails,
+callback URLs, allowance lists or secret material. Actor IDs and credential IDs
+identify the authenticating administrator, not a returned client credential.
 
 Results are released only after exactly one audit row commits. An insert error or
 a trigger that suppresses insertion prevents success. Commit acknowledgement loss
-returns an unknown outcome with no page and no retry. Inspect the correlation in
+returns an unknown outcome with no result and no retry. Inspect the correlation in
 the authoritative audit before deciding to repeat the read. Invalid input,
 configuration or admission failures happen before catalog access and are not
 transactional read-audit records. Database owners remain trusted; these records
@@ -124,15 +166,19 @@ paths, required manifests, credentials, network policy, deadlines, cleanup and
 trusted deployment permissions. The account workload name and resource limits
 remain the same for catalog commands.
 
-| Catalog selector         | Contract                                                               |
-| ------------------------ | ---------------------------------------------------------------------- |
-| `CATALOG_TARGET`         | Required: `application` or `client`                                    |
-| `CATALOG_OPERATION`      | `list` only; omitted or empty defaults to `list`                       |
-| `CATALOG_APPLICATION_ID` | Required nonzero UUID for client listing; omit for application listing |
-| `CATALOG_SEARCH`         | Optional literal prefix, at most 100 Unicode characters                |
-| `CATALOG_STATUS`         | Optional `active` or `inactive`                                        |
-| `CATALOG_AFTER`          | Optional nonzero UUID from `data.next`                                 |
-| `CATALOG_LIMIT`          | 1–25; omitted or empty defaults to 25                                  |
+| Catalog selector         | Contract                                                                                        |
+| ------------------------ | ----------------------------------------------------------------------------------------------- |
+| `CATALOG_TARGET`         | Required: `application` or `client`                                                             |
+| `CATALOG_OPERATION`      | `list` or `show`; omitted or empty defaults to `list`                                           |
+| `CATALOG_APPLICATION_ID` | Required nonzero UUID for client listing and both detail commands; omit for application listing |
+| `CATALOG_CLIENT_ID`      | Required nonzero UUID for client `show`; omit otherwise                                         |
+| `CATALOG_SEARCH`         | Optional literal prefix, at most 100 Unicode characters                                         |
+| `CATALOG_STATUS`         | Optional `active` or `inactive`                                                                 |
+| `CATALOG_AFTER`          | Optional nonzero UUID from `data.next`                                                          |
+| `CATALOG_LIMIT`          | 1–25; omitted or empty defaults to 25                                                           |
+
+`CATALOG_SEARCH`, `CATALOG_STATUS`, `CATALOG_AFTER` and `CATALOG_LIMIT` apply
+only to `list`; omit them for `show`, including an explicit default limit.
 
 These selectors contain no credentials. Make preserves their values literally;
 search strings are not expanded as Make expressions or shell commands. Quote
@@ -143,16 +189,17 @@ unsupported native command groups cannot be passed through these targets.
 
 ```sh
 make stack-catalog-exec STACK=trial CATALOG_TARGET=application CATALOG_STATUS=active < /private/path/catalog-input.json
-make stack-catalog-run STACK=trial CATALOG_TARGET=client CATALOG_APPLICATION_ID=<application-uuid> CATALOG_LIMIT=25 < /private/path/catalog-input.json
-make kube-catalog-exec KUBE_CONFIG=/absolute/path/identity.json KUBE_ACCESS=/absolute/path/access.yaml KUBE_CONTEXT=reviewed-context ACCOUNT_POD=<reviewed-pod> CATALOG_TARGET=application < /private/path/catalog-input.json
+make stack-catalog-run STACK=trial CATALOG_TARGET=client CATALOG_OPERATION=show CATALOG_APPLICATION_ID=<application-uuid> CATALOG_CLIENT_ID=<client-uuid> < /private/path/catalog-input.json
+make kube-catalog-exec KUBE_CONFIG=/absolute/path/identity.json KUBE_ACCESS=/absolute/path/access.yaml KUBE_CONTEXT=reviewed-context ACCOUNT_POD=<reviewed-pod> CATALOG_TARGET=application CATALOG_OPERATION=show CATALOG_APPLICATION_ID=<application-uuid> < /private/path/catalog-input.json
 make kube-catalog-run KUBE_CONFIG=/absolute/path/identity.json KUBE_ACCESS=/absolute/path/access.yaml KUBE_CONTEXT=reviewed-context CATALOG_TARGET=client CATALOG_APPLICATION_ID=<application-uuid> < /private/path/catalog-input.json
 ```
 
 All four targets require noninteractive protected stdin and produce JSON. No TTY
-is allocated. Each invocation authenticates a current administrator and runs one
-page; the launcher neither traverses subsequent pages nor retries. Search arguments
-remain visible to trusted process and orchestration infrastructure. Protect output,
-which can contain owner emails. A read commits an audit record, so interruption can
+is allocated. Each invocation authenticates a current administrator and reads one
+page or record; the launcher neither traverses subsequent pages nor retries. Search
+arguments remain visible to trusted process and orchestration infrastructure.
+Protect output, which can contain owner emails, callbacks and allowance identifiers.
+A read commits an audit record, so interruption can
 leave an uncertain audit outcome even though catalog state was not changed.
 
 The underlying launcher preserves the CLI exit status. GNU Make returns `2` when
@@ -187,23 +234,29 @@ The Make targets above provide the same four deployment paths under #27.
 
 ## Evidence and remaining scope
 
-`make test-postgres` exercises shared-query parity, literal search, pagination,
+`make test-postgres` exercises shared-query parity, exact callback configuration,
+over-limit stored configuration rejection, literal search, pagination,
 application isolation, owner-only denial, demotion during a lock wait, proof
 expiry, audit refusal/suppression and uncertain commits. `make test-redis` runs
 real CLI processes with restricted runtime grants and shared HTTP attempt budgets.
+The detail fixture removes SELECT on client secrets and still requires successful
+application/client inspection, then removes detail-audit INSERT and requires failure.
 `make test-cli` covers service-free help, parsing and redacted configuration failures.
 `make test-catalog-launcher` exercises both launcher entrypoints and shared
 process supervision, including selector redaction, literal Make values, protected
 stdin, exit status, interruption, failed creation, Pod replacement and cleanup
-failure. Compose and Kubernetes fixtures exercise both catalog commands through
-all four Make targets, including read-audit provenance and denial after administrator
-demotion. One-shot fixtures run with HTTP stopped.
+failure. Compose and Kubernetes fixtures exercise application/client listing and
+detail commands through all four Make targets, including read-audit provenance
+and denial after administrator demotion. One-shot fixtures run with HTTP stopped.
 
 These are correctness and boundary tests. Full provider conformance, privileged
 assurance, delegated management permissions, query-plan/capacity qualification,
 audit retention/export and the 100% authored-logic coverage target remain open.
 
-Source: [request policy](../crates/domain/src/operator_catalog.rs),
+Source: [listing policy](../crates/domain/src/operator_catalog.rs),
 [CLI adapter](../crates/adapters/src/operator/catalog.rs),
 [shared setup](../crates/adapters/src/operator/authenticated.rs),
-[catalog transaction](../crates/adapters/src/postgres/operator_catalog.rs).
+[listing transaction](../crates/adapters/src/postgres/operator_catalog.rs),
+[detail projection](../crates/adapters/src/operator/catalog_details.rs),
+[detail transaction](../crates/adapters/src/postgres/operator_catalog_details.rs),
+and [shared configuration reader](../crates/adapters/src/postgres/registration/records.rs).

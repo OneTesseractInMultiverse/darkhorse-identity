@@ -15,7 +15,11 @@ pub(super) fn invocation(options: Options) -> Result<Invocation, Failure> {
     }
     let account = matches!(
         command,
-        Command::Account(_) | Command::Accounts(_) | Command::Catalog(_) | Command::Change { .. }
+        Command::Account(_)
+            | Command::Accounts(_)
+            | Command::Catalog(_)
+            | Command::CatalogShow(_)
+            | Command::Change { .. }
     );
     if (options.auth_stdin && !account)
         || (account && options.output == Format::Json && !options.auth_stdin)
@@ -37,6 +41,16 @@ fn operator(value: Operator) -> Result<Command, Failure> {
         }) => Command::MigrationInspect(id),
         Operator::Bootstrap(value) => Command::Bootstrap { stdin: value.stdin },
         Operator::Account(value) => account(value)?,
+        Operator::Application(Application::Show { application }) => Command::CatalogShow(
+            darkhorse_application::registration::ReadTarget::Application(application),
+        ),
+        Operator::Client(Client::Show {
+            application,
+            client,
+        }) => Command::CatalogShow(darkhorse_application::registration::ReadTarget::Client {
+            application,
+            client,
+        }),
         Operator::Application(Application::List(query)) => catalog(
             darkhorse_domain::operator_catalog::Target::Applications,
             query,

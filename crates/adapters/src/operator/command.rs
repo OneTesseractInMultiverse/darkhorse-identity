@@ -20,6 +20,7 @@ pub enum Command {
     Account(PrincipalId),
     Accounts(darkhorse_domain::operator_directory::Request),
     Catalog(darkhorse_domain::operator_catalog::Request),
+    CatalogShow(darkhorse_application::registration::ReadTarget),
     Change {
         id: PrincipalId,
         revision: u64,
@@ -48,6 +49,7 @@ pub fn requires_confirmation(command: &Command) -> bool {
             | Command::Account(_)
             | Command::Accounts(_)
             | Command::Catalog(_)
+            | Command::CatalogShow(_)
             | Command::RedisStatus
             | Command::LimiterStatus
             | Command::LimiterInspect(_)
@@ -70,4 +72,12 @@ pub(super) fn application_identifier(
     let value = uuid::Uuid::parse_str(value).map_err(|_| "Invalid application identifier.")?;
     darkhorse_domain::identity::ApplicationId::from_u128(value.as_u128())
         .map_err(|_| "Invalid application identifier.")
+}
+
+pub(super) fn client_identifier(
+    value: &str,
+) -> Result<darkhorse_domain::identity::ClientId, &'static str> {
+    let value = uuid::Uuid::parse_str(value).map_err(|_| "Invalid client identifier.")?;
+    darkhorse_domain::identity::ClientId::from_u128(value.as_u128())
+        .map_err(|_| "Invalid client identifier.")
 }

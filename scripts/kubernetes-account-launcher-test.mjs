@@ -153,6 +153,43 @@ async function scenarios(script = "scripts/account.mjs") {
     invoke(mode, { ...settings, ...extra }, script);
   const namedLikeCommand = await run("success", { KUBE_CONTEXT: "exec" });
   assert.equal(namedLikeCommand.code, 0, namedLikeCommand.stderr);
+  if (catalog) {
+    for (const target of ["application", "client"]) {
+      await writeFile(events, "");
+      const client = "00000000-0000-0000-0000-000000000002";
+      const result = await invoke(
+        "success",
+        {
+          ...settings,
+          CATALOG_TARGET: target,
+          CATALOG_OPERATION: "show",
+          CATALOG_SEARCH: "",
+          CATALOG_CLIENT_ID: target === "client" ? client : "",
+        },
+        script,
+        "environment",
+      );
+      assert.equal(result.code, 0, result.stderr);
+      const calls = (await readFile(events, "utf8"))
+        .trim()
+        .split("\n")
+        .map(JSON.parse);
+      const execution = calls.filter((v) => v.phase === "exec");
+      assert.equal(execution.length, 1);
+      const args = execution[0].args;
+      assert.deepEqual(args.slice(args.indexOf("operator")), [
+        "operator",
+        target,
+        "show",
+        settings.CATALOG_APPLICATION_ID,
+        ...(target === "client" ? [client] : []),
+      ]);
+      assert.equal(calls.filter((v) => v.phase === "delete").length, 1);
+      assert.ok(
+        !result.stdout.includes(marker) && !result.stderr.includes(marker),
+      );
+    }
+  }
   for (const makeMode of ["environment", "arguments"]) {
     await writeFile(events, "");
     const search = "--$(shell printf EXPANDED) `literal` %_\\";

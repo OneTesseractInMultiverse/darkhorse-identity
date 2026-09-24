@@ -73,7 +73,7 @@ fn project(target: Target, item: Item) -> Result<serde_json::Value, Error> {
         _ => return Err(Error::Unavailable),
     })
 }
-fn failure(error: Error, id: OperationId) -> Failure {
+pub(super) fn failure(error: Error, id: OperationId) -> Failure {
     let mut data =
         serde_json::json!({"operation_id":uuid::Uuid::from_u128(id.as_u128()).to_string()});
     if let Error::Limited { retry_after_ms } = error {
@@ -85,7 +85,7 @@ fn message(error: Error) -> &'static str {
     match error {
         Error::Denied => "Administrator authentication or authority denied.",
         Error::Limited { .. } => "Authentication attempt limit reached; wait before retrying.",
-        Error::NotFound => "Application not found.",
+        Error::NotFound => "Catalog target not found.",
         Error::Uncertain => "Outcome unknown; inspect the catalog read audit before retrying.",
         _ => {
             "Catalog read unavailable; check input, login configuration, database, limiter and audit availability."

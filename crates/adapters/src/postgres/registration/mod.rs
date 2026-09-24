@@ -135,3 +135,11 @@ fn constraint(error: sqlx::Error) -> Error {
         _ => Error::Unavailable,
     }
 }
+
+// Caller owns the security fence, authority checks and transaction completion.
+pub(super) async fn configuration_current(
+    tx: &mut Tx<'_>,
+    target: ReadTarget,
+) -> Result<Record, Error> {
+    records::configuration(tx, target).await
+}

@@ -97,6 +97,53 @@ cargo install cargo-mutants --version 27.1.0 --locked
 Mutation targets run an unmodified baseline first, then test selected source mutations.
 A missed mutation requires investigation. A passing coverage percentage cannot clear it.
 
+## Authenticated CLI configuration details
+
+The detail-read increment in [#26](https://github.com/OneTesseractInMultiverse/darkhorse-identity/issues/26)
+adds application and scoped-client `show` commands and extends the four catalog
+Make launchers. Verification on **2026-09-24** passed 577 isolated tests: 186
+adapter, 35 application, 107 domain, 143 frontend and 106 tooling checks. The CLI,
+terminal, release-tool and launcher process suites passed. Help and invalid input
+remain service-free; detail commands reject listing selectors and require protected
+stdin for JSON automation.
+
+The instrumented PostgreSQL suite passed 205 cases, including historical catalog
+and listing-audit preservation across migration `0027`, shared HTTP/CLI configuration
+reads, exact callback values, foreign-client denial, proof expiry/demotion during
+lock waits, over-limit stored configuration, audit suppression and actual lost commit
+acknowledgements. Real runtime/operator grants and migration receipts were checked.
+Redis verification passed five infrastructure and 23 limiter/operator cases; its
+ignored child-worker entry is executed by the parent multiprocess scenario. A real
+CLI fixture removes client-secret SELECT while requiring successful details, then
+removes detail-audit INSERT while requiring failure. It also verifies shared HTTP
+login budgets and owner-only denial.
+
+`make coverage-integration` executed the unit, PostgreSQL, Redis and native process
+suites successfully, then **failed the unchanged 100% line gate**. Its measured Rust
+scope records 15,027/15,843 lines (94.85%), 2,091/2,164 functions (96.63%) and
+24,979/27,975 regions (89.29%). Server entrypoints and other unexecuted paths remain
+in the denominator. This is a combined Rust report, not isolated coverage or a
+whole-system measure. The new CLI and PostgreSQL detail modules each reached 100%
+lines/functions, with 97.66% and 95.18% regions respectively; the shared registration
+record reader reached 100% lines/functions and 88.94% regions. Stable Rust does not
+report branch coverage here. The global qualification gate remains open in #2.
+
+The full Compose and Kubernetes fixtures passed against the rebuilt application
+image. Both execute application/client listing and details through all four public
+Make targets, verify runtime-role audits and demotion denial, and run the one-shot
+commands with HTTP stopped. The Compose quarantine restore retains four fixture
+principals, four listing audits and six detail audits. Kubernetes also rechecks
+its existing two-replica protocol, outage, rolling replacement and network policy
+contracts. These fixtures do not establish production capacity or independent
+security qualification.
+
+Focused Node unit coverage records 100% lines, branches and functions in the catalog
+selector module. The shared operator-options module records 100% lines/functions
+and 95.65% branches in that selected run. Host supervision and deployment effects
+are outside this report. See [catalog reads](operator-catalog.md) for the authority,
+output, query-bound and migration contracts. Application/client writes, secret
+delivery and delegated management permissions remain open in #26.
+
 ## Catalog container launcher increment
 
 The launcher increment in [#27](https://github.com/OneTesseractInMultiverse/darkhorse-identity/issues/27)

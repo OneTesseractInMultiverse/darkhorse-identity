@@ -2,6 +2,7 @@ mod accounts;
 mod authenticated;
 mod cancellation;
 mod catalog;
+mod catalog_details;
 pub mod cli;
 pub mod command;
 pub mod input;
@@ -23,6 +24,10 @@ pub mod confirmation;
 
 pub async fn run(command: Command, auth_stdin: bool) -> Result<Output, Failure> {
     match command {
+        Command::CatalogShow(target) if auth_stdin => catalog_details::run(target, true).await,
+        Command::CatalogShow(target) => {
+            cancellation::run(catalog_details::run(target, false)).await
+        }
         Command::Catalog(request) if auth_stdin => catalog::run(request, true).await,
         Command::Catalog(request) => cancellation::run(catalog::run(request, false)).await,
         Command::RedisStatus => redis_status::run().await,

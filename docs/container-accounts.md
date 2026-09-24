@@ -2,7 +2,7 @@
 
 The host-side launchers run the existing Rust `operator account` commands inside
 the selected deployment: `list`, `show`, `deactivate`, `reactivate` and `revoke-all`.
-The parallel [catalog targets](operator-catalog.md#make-launchers) list applications
+The parallel [catalog targets](operator-catalog.md#make-launchers) list and inspect applications
 and clients through the same launch and workload lifecycle. Both groups require a
 fresh platform-administrator password on every invocation. Container
 access alone does not identify or authenticate an application actor. Read the
@@ -299,7 +299,7 @@ prerequisites and remaining deployment limits in the linked guides.
 | Kubernetes one-shot list/show/deactivate/reactivate/revoke-all, zero serving Pods | Workload creation, exec, runtime secrets and administrator password | Expected revisions and runtime-role audit. No serving workload. Owned Pod removed                                 | JSON, `0`. Kubernetes suite                                              |
 | One-shot Kubernetes authority loss / database network outage                      | Same deployment permissions, revoked actor or unavailable database  | No target mutation. Fresh authority and required dependency checks reject access                                  | `1`. Kubernetes suite                                                    |
 | One-shot creation/replacement/cleanup failure                                     | Host fixture or controlled cluster                                  | No command retry, no execution after failed preflight, UID-conditional deletion                                   | Process suite and actual wrong-UID deletion rejection                    |
-| Application/client listing through all four catalog Make targets                  | Exec or workload creation plus current administrator password       | Bounded public metadata and runtime-role read audit; one-shot paths work with HTTP stopped; demoted owners denied | JSON, `0`; denied command wrapped by Make as `2`. Both deployment suites |
+| Application/client listing and details through all four catalog Make targets      | Exec or workload creation plus current administrator password       | Bounded public metadata and runtime-role read audit; one-shot paths work with HTTP stopped; demoted owners denied | JSON, `0`; denied command wrapped by Make as `2`. Both deployment suites |
 
 Native interactive commands inside a running container can use
 `docker exec --interactive --tty --user 10001:10001 <reviewed-api-container-id> /usr/local/bin/darkhorse-server operator account show <principal-uuid>`

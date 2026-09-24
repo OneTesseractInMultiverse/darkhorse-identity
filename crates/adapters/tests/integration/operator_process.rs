@@ -387,7 +387,7 @@ async fn catalog_cli_uses_current_admin_authority_runtime_grants_and_shared_logi
         input(),
     );
     assert_eq!(code, 1);
-    assert_eq!(value["error"]["message"], "Application not found.");
+    assert_eq!(value["error"]["message"], "Catalog target not found.");
     sqlx::query("REVOKE INSERT ON operator_catalog_audit FROM darkhorse_runtime")
         .execute(&f.pool)
         .await
@@ -427,6 +427,91 @@ async fn catalog_cli_uses_current_admin_authority_runtime_grants_and_shared_logi
         &["operator", "application", "list"],
         json!({"email":owner_email,"password":"source-only wrong password"}),
     );
+    assert_eq!(code, 1);
+    assert_eq!(
+        value["error"]["message"],
+        "Administrator authentication or authority denied."
+    );
+}
+
+#[tokio::test]
+async fn catalog_detail_cli_uses_runtime_grants_without_client_secret_table_access() {
+    let _serial = SERIAL.lock().await;
+    let f = Fixture::new().await;
+    f.activate().await;
+    restrict_database(&f).await;
+    let (principal, email) = actor(&f).await;
+    let app = Uuid::new_v4();
+    let client = Uuid::new_v4();
+    sqlx::query(
+        "INSERT INTO applications(id,name,owner_id,active) VALUES($1,'Detail fixture',$2,true)",
+    )
+    .bind(app)
+    .bind(principal)
+    .execute(&f.pool)
+    .await
+    .unwrap();
+    sqlx::query("INSERT INTO oauth_clients(id,application_id,name,active) VALUES($1,$2,'Detail client',true)").bind(client).bind(app).execute(&f.pool).await.unwrap();
+    sqlx::query(
+        "INSERT INTO client_redirects VALUES($1,'https://client.example/callback?fixed=1')",
+    )
+    .bind(client)
+    .execute(&f.pool)
+    .await
+    .unwrap();
+    sqlx::query("REVOKE SELECT ON oauth_client_secrets FROM darkhorse_runtime")
+        .execute(&f.pool)
+        .await
+        .unwrap();
+    let input = || json!({"email":email,"password":PASSWORD});
+    let app_string = app.to_string();
+    let client_string = client.to_string();
+    for args in [
+        vec!["operator", "application", "show", &app_string],
+        vec!["operator", "client", "show", &app_string, &client_string],
+    ] {
+        let (code, value) = invoke(&args, input());
+        assert_eq!(code, 0, "{value}");
+        assert!(value["data"]["record"]["revision"].is_string());
+        assert!(value["data"]["record"].get("secrets").is_none());
+    }
+    assert_eq!(sqlx::query_scalar::<_,i64>("SELECT count(*) FROM operator_catalog_detail_audit WHERE result='read' AND database_role='darkhorse_runtime'").fetch_one(&f.pool).await.unwrap(),2);
+    let args = ["operator", "client", "show", &app_string, &client_string];
+    sqlx::query("REVOKE INSERT ON operator_catalog_detail_audit FROM darkhorse_runtime")
+        .execute(&f.pool)
+        .await
+        .unwrap();
+    assert_eq!(invoke(&args, input()).0, 1);
+    sqlx::query("GRANT INSERT ON operator_catalog_detail_audit TO darkhorse_runtime")
+        .execute(&f.pool)
+        .await
+        .unwrap();
+    assert_eq!(
+        invoke(
+            &args,
+            json!({"email":email,"password":"source-only incorrect password"})
+        )
+        .0,
+        1
+    );
+    let admission = SharedLoginAdmission::new(f.limiter(), [7; 32]);
+    admission.admit(&email).await.unwrap();
+    let (code, value) = invoke(&args, input());
+    assert_eq!(code, 1);
+    assert!(value["data"]["retry_after_ms"].as_u64().unwrap() > 0);
+    let (owner, owner_email) = actor(&f).await;
+    sqlx::query("UPDATE applications SET owner_id=$1,revision=revision+1 WHERE id=$2")
+        .bind(owner)
+        .bind(app)
+        .execute(&f.pool)
+        .await
+        .unwrap();
+    sqlx::query("DELETE FROM platform_administrators WHERE principal_id=$1")
+        .bind(owner)
+        .execute(&f.pool)
+        .await
+        .unwrap();
+    let (code, value) = invoke(&args, json!({"email":owner_email,"password":PASSWORD}));
     assert_eq!(code, 1);
     assert_eq!(
         value["error"]["message"],

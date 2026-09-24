@@ -45,6 +45,8 @@ is accepted. Neither `NO_COLOR` nor any terminal setting activates color.
 | `operator account list [--search PREFIX] [--status STATUS] [--after UUID] [--limit N]` | None                                                  |
 | `operator application list [OPTIONS]`                                                  | None                                                  |
 | `operator client list APPLICATION_ID [OPTIONS]`                                        | None                                                  |
+| `operator application show APPLICATION_ID`                                             | None                                                  |
+| `operator client show APPLICATION_ID CLIENT_ID`                                        | None                                                  |
 | `operator account show ID`                                                             | `account ID`                                          |
 | `operator account deactivate ID REVISION`                                              | `deactivate ID REVISION`                              |
 | `operator account reactivate ID REVISION`                                              | `reactivate ID REVISION`                              |
@@ -70,8 +72,9 @@ from top-level help and use the same typed conversion and dispatch.
 Directory listing accepts a 1–25 page limit and uses fresh authentication for
 each page. See [listing fields, filters and audit](operator-accounts.md#bounded-directory-listing).
 
-Application and client listing use the same fresh administrator authentication
-and accept bounded catalog filters. See [catalog read commands](operator-catalog.md).
+Application and client `list` and `show` use fresh administrator authentication.
+Listing accepts bounded catalog filters; detail reads require explicit scoped UUIDs
+and exclude client credential metadata. See [catalog read commands](operator-catalog.md).
 
 ## Confirmations and compatibility
 

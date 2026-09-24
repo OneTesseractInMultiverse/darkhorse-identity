@@ -273,3 +273,66 @@ fn catalog_listing_requires_fresh_authentication_and_typed_bounded_selectors() {
     assert_eq!(request.query().active, Some(false));
     assert_eq!(request.query().after.unwrap().get(), 32);
 }
+
+#[test]
+fn catalog_details_require_typed_targets_and_protected_json_without_list_selectors() {
+    use darkhorse_application::registration::ReadTarget;
+    let app = "00000000-0000-0000-0000-000000000010";
+    let client = "00000000-0000-0000-0000-000000000020";
+    for parts in [
+        vec!["operator", "application", "show", app],
+        vec!["operator", "client", "show", app, client],
+    ] {
+        let parsed = run(&parts);
+        assert!(!crate::operator::command::requires_confirmation(
+            &parsed.command
+        ));
+        let Command::CatalogShow(target) = parsed.command else {
+            panic!("detail target")
+        };
+        match target {
+            ReadTarget::Application(id) => assert_eq!(id.as_u128(), 16),
+            ReadTarget::Client {
+                application,
+                client,
+            } => {
+                assert_eq!(application.as_u128(), 16);
+                assert_eq!(client.as_u128(), 32);
+            }
+        }
+        let mut json = vec!["--auth-stdin", "--output", "json"];
+        json.extend(parts.clone());
+        assert!(parse(&json).is_ok());
+        for invalid in [
+            vec!["--limit", "1"],
+            vec!["--search", "name"],
+            vec!["--after", client],
+            vec!["--status", "active"],
+            vec!["--output", "json"],
+        ] {
+            let mut args = parts.clone();
+            args.extend(invalid);
+            assert!(parse(&args).is_err());
+        }
+    }
+    for parts in [
+        vec!["operator", "application", "show"],
+        vec!["operator", "client", "show", app],
+        vec!["operator", "client", "show", app, "invalid"],
+        vec![
+            "operator",
+            "client",
+            "show",
+            app,
+            "00000000-0000-0000-0000-000000000000",
+        ],
+        vec![
+            "operator",
+            "application",
+            "show",
+            "00000000-0000-0000-0000-000000000000",
+        ],
+    ] {
+        assert!(parse(&parts).is_err());
+    }
+}

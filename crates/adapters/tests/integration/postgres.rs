@@ -507,3 +507,4 @@ mod signing_operations;
 mod migrations;
 
 mod operator_catalog;
+mod operator_catalog_details;

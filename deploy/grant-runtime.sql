@@ -74,7 +74,7 @@ GRANT SELECT,INSERT ON
  authorization_policy_audit,resource_registration_audit,session_audit,
  email_verification_audit,invitation_audit,directory_admin_audit,
  catalog_admin_audit,personal_key_audit,profile_audit,media_audit,operator_account_audit,
- operator_directory_audit,operator_catalog_audit
+ operator_directory_audit,operator_catalog_audit,operator_catalog_detail_audit
  TO darkhorse_runtime;
 GRANT SELECT ON
  platform_administrators,eligible_administrators,signing_keys,limiter_authority,

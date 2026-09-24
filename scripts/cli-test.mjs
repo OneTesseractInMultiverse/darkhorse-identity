@@ -167,6 +167,14 @@ async function failures() {
   for (const args of [
     ["operator", "application", "list", "--search=--literal"],
     ["operator", "client", "list", "00000000-0000-0000-0000-000000000001"],
+    ["operator", "application", "show", "00000000-0000-0000-0000-000000000001"],
+    [
+      "operator",
+      "client",
+      "show",
+      "00000000-0000-0000-0000-000000000001",
+      "00000000-0000-0000-0000-000000000002",
+    ],
   ]) {
     const result = await invoke(
       ["--auth-stdin", "--output", "json", ...args],
@@ -178,17 +186,28 @@ async function failures() {
     assert.ok(!result.stderr.includes(marker));
     assert.ok(!result.stderr.includes(environment.DARKHORSE_DATABASE_URL));
   }
-  const reasonOnRead = await invoke(
-    ["--auth-stdin", "--output", "json", "operator", "application", "list"],
-    JSON.stringify({
-      email: "a@b.com",
-      password: marker,
-      reason: "unsupported",
-    }),
-  );
-  assert.equal(reasonOnRead.code, 2);
-  assert.equal(reasonOnRead.stdout, "");
-  assert.ok(!reasonOnRead.stderr.includes(marker));
+  for (const args of [
+    ["application", "list"],
+    ["application", "show", "00000000-0000-0000-0000-000000000001"],
+    [
+      "client",
+      "show",
+      "00000000-0000-0000-0000-000000000001",
+      "00000000-0000-0000-0000-000000000002",
+    ],
+  ]) {
+    const reasonOnRead = await invoke(
+      ["--auth-stdin", "--output", "json", "operator", ...args],
+      JSON.stringify({
+        email: "a@b.com",
+        password: marker,
+        reason: "unsupported",
+      }),
+    );
+    assert.equal(reasonOnRead.code, 2);
+    assert.equal(reasonOnRead.stdout, "");
+    assert.ok(!reasonOnRead.stderr.includes(marker));
+  }
   const interactive = await invoke(["bootstrap", "--yes"]);
   assert.equal(interactive.code, 1);
   assert.match(interactive.stderr, /requires a terminal/);

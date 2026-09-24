@@ -28,7 +28,7 @@ test("catalog launchers require an explicit target and only expose existing read
       catalogOptions(values, false),
     );
     assert.throws(() => catalogOptions(values, true), /protected stdin/);
-    for (const operation of ["create", "rotate-secret", "show", "list --help"])
+    for (const operation of ["create", "rotate-secret", "list --help"])
       assert.throws(
         () =>
           catalogOptions({ ...values, CATALOG_OPERATION: operation }, false),
@@ -128,5 +128,70 @@ test("catalog selectors reject invalid bounds and cross-command settings without
       { CATALOG_TARGET: "application", ACCOUNT_POD: "reviewed-pod" },
       false,
     ),
+  );
+});
+
+test("catalog show requires exact scoped identifiers and rejects every listing selector", () => {
+  assert.throws(
+    () =>
+      catalogOptions(
+        { CATALOG_TARGET: "application", CATALOG_OPERATION: "show" },
+        false,
+      ),
+    UsageError,
+  );
+  for (const target of ["application", "client"]) {
+    const values = {
+      CATALOG_TARGET: target,
+      CATALOG_OPERATION: "show",
+      CATALOG_APPLICATION_ID: id,
+      ...(target === "client" ? { CATALOG_CLIENT_ID: id } : {}),
+    };
+    assert.deepEqual(catalogOptions(values, false), [
+      "--auth-stdin",
+      "--output",
+      "json",
+      "operator",
+      target,
+      "show",
+      id,
+      ...(target === "client" ? [id] : []),
+    ]);
+    for (const change of [
+      { CATALOG_APPLICATION_ID: "" },
+      { CATALOG_APPLICATION_ID: "bad" },
+      ...[
+        "CATALOG_SEARCH",
+        "CATALOG_STATUS",
+        "CATALOG_AFTER",
+        "CATALOG_LIMIT",
+      ].map((key) => ({ [key]: "1" })),
+      { CATALOG_CLIENT_ID: target === "client" ? "" : "unexpected" },
+    ])
+      assert.throws(
+        () => catalogOptions({ ...values, ...change }, false),
+        UsageError,
+      );
+  }
+  assert.throws(
+    () =>
+      catalogOptions(
+        { CATALOG_TARGET: "application", CATALOG_CLIENT_ID: id },
+        false,
+      ),
+    UsageError,
+  );
+  assert.throws(
+    () =>
+      catalogOptions(
+        {
+          CATALOG_TARGET: "client",
+          CATALOG_OPERATION: "show",
+          CATALOG_APPLICATION_ID: id,
+          CATALOG_CLIENT_ID: "00000000-0000-0000-0000-000000000000",
+        },
+        false,
+      ),
+    UsageError,
   );
 });

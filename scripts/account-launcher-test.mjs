@@ -178,6 +178,7 @@ async function catalogFailures() {
       { CATALOG_TARGET: marker },
       { CATALOG_TARGET: "client", CATALOG_APPLICATION_ID: marker },
       { CATALOG_OPERATION: marker },
+      { CATALOG_CLIENT_ID: marker },
       { CATALOG_LIMIT: marker },
       { ACCOUNT_ID: marker },
     ]) {
