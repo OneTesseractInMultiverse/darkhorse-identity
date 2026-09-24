@@ -147,3 +147,35 @@ fn signing_inspection_is_read_only_and_accepts_only_an_operation_id() {
     }
     assert!(parse(&args(&["operator", "signing", "inspect", id, "extra"])).is_err());
 }
+#[test]
+fn signing_key_identifiers_accept_a_leading_base64url_hyphen() {
+    use crate::operator::signing::Operation;
+    let kid = format!("-{}", "A".repeat(42));
+    let mut bytes = [0; 32];
+    bytes[0] = 248;
+    for (name, operation) in [
+        (
+            "activate",
+            Operation::Activate {
+                kid: bytes,
+                revision: 1,
+            },
+        ),
+        (
+            "retire",
+            Operation::Retire {
+                kid: bytes,
+                revision: 1,
+            },
+        ),
+    ] {
+        assert_eq!(
+            parse(&args(&["operator", "signing", name, &kid, "1"])),
+            Ok(Command::Signing(operation))
+        );
+        assert_eq!(
+            parse(&args(&[&format!("signing-{name}"), &kid, "1"])),
+            Ok(Command::Signing(operation))
+        );
+    }
+}

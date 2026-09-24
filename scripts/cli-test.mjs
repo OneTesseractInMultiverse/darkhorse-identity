@@ -49,6 +49,8 @@ async function information() {
     ["operator", "--help"],
     ["operator", "account", "--help"],
     ["operator", "signing", "import", "--help"],
+    ["operator", "signing", "activate", "--help"],
+    ["operator", "signing", "retire", "--help"],
   ]) {
     const result = await invoke(args);
     assert.equal(result.code, 0);
@@ -59,6 +61,26 @@ async function information() {
 }
 async function failures() {
   const marker = "test-secret-do-not-echo";
+  const key = "-" + "A".repeat(42);
+  for (const action of ["activate", "retire"]) {
+    for (const command of [
+      ["operator", "signing", action],
+      [`signing-${action}`],
+    ]) {
+      const result = await invoke([
+        "--output",
+        "json",
+        "--yes",
+        ...command,
+        key,
+        "1",
+      ]);
+      assert.equal(result.code, 1);
+      assert.equal(JSON.parse(result.stderr).error.code, "operation_failed");
+      assert.equal(result.stdout, "");
+    }
+  }
+
   for (const args of [
     ["bootstrap", "--password", marker],
     ["account", marker],

@@ -82,7 +82,7 @@ pub(super) struct Import {
 }
 #[derive(Args)]
 pub(super) struct Key {
-    #[arg(value_parser=crate::operator::signing::identifier)]
+    #[arg(value_parser=crate::operator::signing::identifier, allow_hyphen_values=true)]
     pub kid: [u8; 32],
     #[arg(value_parser=counter)]
     pub revision: u64,
