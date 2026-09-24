@@ -2103,9 +2103,9 @@ dependencies = [
 
 [[package]]
 name = "restqs"
-version = "0.1.0"
+version = "0.1.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "a5de1364b7fad5e9e81ccdb4a52b24657b011e798d207bd8aa397515ac89df92"
+checksum = "7a1ebcc1a341cbe28c9f934dd1ecea1b88474598026692f535bdd67cbefa6df7"
 
 [[package]]
 name = "ring"

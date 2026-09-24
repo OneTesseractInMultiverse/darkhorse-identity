@@ -4,12 +4,45 @@ Application lockfiles are committed. Update dependencies in a reviewed change, r
 
 - **Axum 0.8.9**, Serde, Tokio, and Tower are confined to HTTP/runtime adapters and composition. Transport rejections redact malformed request contents. Request body limits remain explicit at consuming routes.
 - **envbind 0.1.0** is pinned at the configuration adapter. Tests use `MapEnvironment`. Complete settings, including library defaults, are validated before listener binding. Process environment access is restricted to the server/operator boundary. Core logic receives explicit inputs. [API documentation](https://docs.rs/envbind/0.1.0/envbind/)
-- **restqs 0.1.0** stays in the query adapter. Administrative directory and catalog routes reuse its allowlisted status and limit parsing. The adapter handles literal search and keyset cursors separately. Query criteria never establish caller authority. Mandatory owner and administrator predicates come from authenticated use cases. The source-defined `DirectoryCriteria` example remains isolated from HTTP publication. [API documentation](https://docs.rs/restqs/0.1.0/restqs/)
+- **restqs 0.1.1** stays in the query adapter, pinned with default features disabled. Administrative directory and catalog routes reuse its allowlisted status and limit parsing. The adapter handles literal search and keyset cursors separately. Query criteria never establish caller authority. Mandatory owner and administrator predicates come from authenticated use cases. The source-defined `DirectoryCriteria` example remains isolated from HTTP publication. See the [compatibility review](#query-parser-update) and [API documentation](https://docs.rs/restqs/0.1.1/restqs/).
 - **SQLx 0.9.0** is confined to the PostgreSQL adapter (MIT/Apache-2.0). Selected functionality is PostgreSQL, Tokio, rustls with ring, migrations/macros and UUIDs. Runtime parameterized queries avoid a compile-time database requirement. Only embedded migration macros are used. No query schema is fetched during unit compilation. SQL/client errors map to project-owned redacted failures. [SQLx documentation](https://docs.rs/sqlx/0.9.0/sqlx/)
 - **RustCrypto argon2 0.6.0** (MIT/Apache-2.0), **getrandom 0.4**, **zeroize 1**, and **uuid 1.26.1** implement the password/entropy boundary. Argon2 uses allocation, PHC formatting and zeroization features. Hashing parameters and bounded worker admission are explicit. No custom cryptographic primitive is implemented. Exact transitive versions are locked. The selected memory/work profile exceeds the OWASP minimum but still needs workload-specific measurement for future login capacity. [Argon2 API](https://docs.rs/argon2/0.6.0/argon2/), [password storage guidance](https://cheatsheetseries.owasp.org/cheatsheets/Password_Storage_Cheat_Sheet.html)
 - **Percona Distribution for PostgreSQL**, using Percona Server **18.6.1** based on PostgreSQL **18.6**, supplies the local Compose and integration database image, pinned by multi-platform digest. It uses the PostgreSQL License plus the licenses of bundled components. Preserve their notices. The container includes more than the database server. Rust, Node and Debian image stages are pinned. Image updates require a reviewed digest change and compatibility/smoke checks. See the [container and migration contract](percona.md), [release notes](https://docs.percona.com/postgresql/18/release-notes/release-notes-v18.6.1.html), and [licensing information](https://docs.percona.com/postgresql/18/licensing.html).
 - **Caddy 2.11.4** supplies the pinned Alpine proxy image for [Compose qualification](compose.md). The derived image removes the executable's privileged-port capability. TLS keys and trust material arrive through explicit secret mounts. Its [host matcher](https://caddyserver.com/docs/caddyfile/matchers#host) and [fallback handler](https://caddyserver.com/docs/caddyfile/directives/handle) reject requests for other hostnames. The proxy contains no identity policy or application session logic.
 - **SvelteKit**, **Svelte**, **Tailwind CSS**, and **shadcn-svelte** provide the static TypeScript UI. Exact resolved versions are in `pnpm-lock.yaml`. The button and utility source were installed using shadcn-svelte CLI 1.6.1. Styling uses local system fonts, with no remote font requirement.
+
+## Query parser update
+
+Reviewed on **2026-09-24 UTC**: the published **restqs 0.1.1** archive matches
+the registry checksum, and its Rust sources and original manifest match the
+upstream release commit
+[`973f216`](https://github.com/OneTesseractInMultiverse/restqs/tree/973f2167facc75727e67a19f25bcc819511798d7).
+The crate is MIT-licensed, declares Rust 1.85, and has no package dependencies or
+build script. The selected release needs no adapter API migration. Its optional
+SQLx feature remains disabled; Darkhorse owns its parameterized SQL and authority
+predicates. The lockfile changes only this package's version and checksum.
+[Release notes](https://github.com/OneTesseractInMultiverse/restqs/releases/tag/v0.1.1).
+
+The parser now enforces `max_value_bytes` for pagination values after percent
+decoding. Darkhorse already configured a 32-byte limit, but 0.1.0 accepted longer
+zero-padded values when their numeric result remained in range. Source-defined
+regressions demonstrate that 32-byte values remain valid and 33-byte values fail,
+both literally and percent-encoded. Administrative directory and catalog routes
+return their fixed HTTP 400 errors without calling application services. The
+2,048-byte raw query limit, page size range of 1–100, allowlisted status filters,
+canonical nonzero cursors, and separate 100-character literal search limit remain.
+Search text containing operator characters is still literal text.
+
+The release also changes operator recognition, date validation, regex restrictions
+and null SQL translation. Darkhorse exposes no date, regex, sort, projection or
+arbitrary-field query interface, and consumes no generated SQL. Tests preserve
+those rejections and accepted status/search/cursor behavior. Although upstream
+improves error display redaction, error fields and debug formatting can retain
+input. Darkhorse continues to discard parser errors at the adapter boundary and
+uses project-owned failures and fixed transport messages. Do not log raw library
+errors or query strings. This source and compatibility review supplements the
+[complete-lockfile advisory check](#release-advisory-review); it does not establish
+an independent security audit or a performance improvement.
 
 ## Redis infrastructure
 

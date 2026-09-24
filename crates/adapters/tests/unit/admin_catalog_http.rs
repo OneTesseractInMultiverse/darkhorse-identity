@@ -218,3 +218,41 @@ async fn catalog_service_failures_keep_safe_transport_status() {
         assert_eq!(response.headers()["cache-control"], "no-store");
     }
 }
+
+#[tokio::test]
+async fn query_value_limit_rejections_are_redacted_before_service_calls() {
+    let (app, calls) = app(None);
+    let path = format!(
+        "/api/admin/catalog/applications?limit={}25",
+        "%30".repeat(30)
+    );
+    let response = app
+        .clone()
+        .oneshot(request("GET", &path).body(Body::empty()).unwrap())
+        .await
+        .unwrap();
+    assert_eq!(response.status(), StatusCode::OK);
+    assert_eq!(calls.load(Ordering::SeqCst), 1);
+    for query in [
+        format!("limit={}25", "%30".repeat(31)),
+        "status=private%3E%3Dvalue".into(),
+        "private%0Afield=value".into(),
+        "status=%00private".into(),
+        "status=/private/".into(),
+    ] {
+        let path = format!("/api/admin/catalog/applications?{query}");
+        let response = app
+            .clone()
+            .oneshot(request("GET", &path).body(Body::empty()).unwrap())
+            .await
+            .unwrap();
+        assert_eq!(response.status(), StatusCode::BAD_REQUEST);
+        assert_eq!(response.headers()["cache-control"], "no-store");
+        let body = to_bytes(response.into_body(), 1024).await.unwrap();
+        assert_eq!(
+            serde_json::from_slice::<serde_json::Value>(&body).unwrap(),
+            json!({"error":"invalid_registration"})
+        );
+    }
+    assert_eq!(calls.load(Ordering::SeqCst), 1);
+}
