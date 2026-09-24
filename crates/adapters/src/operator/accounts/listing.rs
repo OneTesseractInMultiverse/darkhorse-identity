@@ -1,11 +1,7 @@
-use crate::{operator::output::Output, redis_configuration::RedisSettings};
+use crate::operator::output::Output;
 use darkhorse_application::admin_directory::Page;
 use darkhorse_domain::{AccountStatus, identity::OperationId};
 
-pub(super) fn limit_redis(mut settings: RedisSettings) -> RedisSettings {
-    settings.limiter.connections = 1;
-    settings
-}
 pub(super) fn output(id: OperationId, page: Page) -> Output {
     let users: Vec<_> = page
         .items

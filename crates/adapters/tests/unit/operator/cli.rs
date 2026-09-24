@@ -198,3 +198,78 @@ fn account_listing_is_authenticated_bounded_and_read_only() {
     }
     assert!(parse(&["operator", "account", "list", "--search", &"x".repeat(101)]).is_err());
 }
+
+#[test]
+fn catalog_listing_requires_fresh_authentication_and_typed_bounded_selectors() {
+    use darkhorse_domain::operator_catalog::Target;
+    for (parts, target) in [
+        (
+            vec!["operator", "application", "list"],
+            Target::Applications,
+        ),
+        (
+            vec![
+                "operator",
+                "client",
+                "list",
+                "00000000-0000-0000-0000-000000000010",
+            ],
+            Target::Clients(darkhorse_domain::identity::ApplicationId::from_u128(16).unwrap()),
+        ),
+    ] {
+        let parsed = run(&parts);
+        assert!(!crate::operator::command::requires_confirmation(
+            &parsed.command
+        ));
+        let Command::Catalog(request) = parsed.command else {
+            panic!("catalog request")
+        };
+        assert_eq!(request.target(), target);
+        assert_eq!(request.query().limit, 25);
+    }
+    for parts in [
+        vec!["operator", "application", "list", "--limit", "26"],
+        vec!["operator", "application", "list", "--output", "json"],
+        vec!["operator", "client", "list"],
+        vec![
+            "operator",
+            "client",
+            "list",
+            "00000000-0000-0000-0000-000000000000",
+        ],
+        vec!["operator", "application", "list", "--after", "invalid"],
+        vec![
+            "operator",
+            "application",
+            "list",
+            "--after",
+            "00000000-0000-0000-0000-000000000000",
+        ],
+        vec!["operator", "application", "create"],
+        vec!["operator", "client", "rotate-secret"],
+    ] {
+        assert!(parse(&parts).is_err());
+    }
+    let Command::Catalog(request) = run(&[
+        "--auth-stdin",
+        "--output",
+        "json",
+        "operator",
+        "application",
+        "list",
+        "--search=--literal",
+        "--status",
+        "inactive",
+        "--after",
+        "00000000-0000-0000-0000-000000000020",
+        "--limit",
+        "1",
+    ])
+    .command
+    else {
+        panic!("catalog request")
+    };
+    assert_eq!(request.query().search, "--literal");
+    assert_eq!(request.query().active, Some(false));
+    assert_eq!(request.query().after.unwrap().get(), 32);
+}

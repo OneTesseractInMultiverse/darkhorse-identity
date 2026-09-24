@@ -51,6 +51,8 @@ async function information() {
     ["operator", "migrate", "inspect", "--help"],
     ["operator", "account", "--help"],
     ["operator", "account", "list", "--help"],
+    ["operator", "application", "list", "--help"],
+    ["operator", "client", "list", "--help"],
     ["operator", "signing", "import", "--help"],
     ["operator", "signing", "activate", "--help"],
     ["operator", "signing", "retire", "--help"],
@@ -102,6 +104,8 @@ async function failures() {
     ["account", marker],
     ["operator", "unknown", marker],
     ["operator", "account", "list", "--limit", "26"],
+    ["operator", "application", "list", "--limit", "0"],
+    ["operator", "client", "list", "invalid"],
     ["--output", "json", "operator", "account", "list"],
     ["operator", "signing", "activate", marker, "0"],
     ["serve", marker],
@@ -160,6 +164,31 @@ async function failures() {
   assert.equal(JSON.parse(listing.stderr).error.code, "operation_failed");
   assert.ok(!listing.stderr.includes(marker));
   assert.ok(!listing.stderr.includes(environment.DARKHORSE_DATABASE_URL));
+  for (const args of [
+    ["operator", "application", "list", "--search=--literal"],
+    ["operator", "client", "list", "00000000-0000-0000-0000-000000000001"],
+  ]) {
+    const result = await invoke(
+      ["--auth-stdin", "--output", "json", ...args],
+      JSON.stringify({ email: "a@b.com", password: marker }),
+    );
+    assert.equal(result.code, 1);
+    assert.equal(result.stdout, "");
+    assert.equal(JSON.parse(result.stderr).error.code, "operation_failed");
+    assert.ok(!result.stderr.includes(marker));
+    assert.ok(!result.stderr.includes(environment.DARKHORSE_DATABASE_URL));
+  }
+  const reasonOnRead = await invoke(
+    ["--auth-stdin", "--output", "json", "operator", "application", "list"],
+    JSON.stringify({
+      email: "a@b.com",
+      password: marker,
+      reason: "unsupported",
+    }),
+  );
+  assert.equal(reasonOnRead.code, 2);
+  assert.equal(reasonOnRead.stdout, "");
+  assert.ok(!reasonOnRead.stderr.includes(marker));
   const interactive = await invoke(["bootstrap", "--yes"]);
   assert.equal(interactive.code, 1);
   assert.match(interactive.stderr, /requires a terminal/);

@@ -19,7 +19,7 @@ pub(super) struct Options {
     /// Output is always uncolored.
     #[arg(long, global = true)]
     pub no_color: bool,
-    /// Read account administrator email/password and mutation reason as protected JSON.
+    /// Read administrator email/password and an optional mutation reason as protected JSON.
     #[arg(long, global = true)]
     pub auth_stdin: bool,
     #[command(subcommand)]
@@ -43,6 +43,10 @@ pub(super) enum Operator {
     Bootstrap(Bootstrap),
     #[command(subcommand)]
     Account(Account),
+    #[command(subcommand)]
+    Application(Application),
+    #[command(subcommand)]
+    Client(Client),
     #[command(subcommand)]
     Signing(Signing),
     #[command(subcommand)]
@@ -188,4 +192,38 @@ pub(super) struct List {
 pub(super) enum Status {
     Active,
     Inactive,
+}
+
+#[derive(Subcommand)]
+pub(super) enum Application {
+    /// Read one authenticated page of applications.
+    List(CatalogList),
+}
+#[derive(Subcommand)]
+pub(super) enum Client {
+    /// Read one authenticated page of clients belonging to an application.
+    List {
+        #[arg(value_parser=crate::operator::command::application_identifier)]
+        application: darkhorse_domain::identity::ApplicationId,
+        #[command(flatten)]
+        query: CatalogList,
+    },
+}
+#[derive(Args)]
+pub(super) struct CatalogList {
+    #[arg(long, default_value = "")]
+    pub search: String,
+    #[arg(long, value_enum)]
+    pub status: Option<Status>,
+    #[arg(long, value_parser=catalog_cursor)]
+    pub after: Option<std::num::NonZeroU128>,
+    #[arg(long, default_value_t=25, value_parser=clap::value_parser!(u16).range(1..=25))]
+    pub limit: u16,
+}
+
+fn catalog_cursor(value: &str) -> Result<std::num::NonZeroU128, &'static str> {
+    uuid::Uuid::parse_str(value)
+        .ok()
+        .and_then(|v| std::num::NonZeroU128::new(v.as_u128()))
+        .ok_or("Invalid catalog continuation.")
 }

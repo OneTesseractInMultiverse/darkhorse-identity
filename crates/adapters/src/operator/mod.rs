@@ -1,5 +1,7 @@
 mod accounts;
+mod authenticated;
 mod cancellation;
+mod catalog;
 pub mod cli;
 pub mod command;
 pub mod input;
@@ -21,6 +23,8 @@ pub mod confirmation;
 
 pub async fn run(command: Command, auth_stdin: bool) -> Result<Output, Failure> {
     match command {
+        Command::Catalog(request) if auth_stdin => catalog::run(request, true).await,
+        Command::Catalog(request) => cancellation::run(catalog::run(request, false)).await,
         Command::RedisStatus => redis_status::run().await,
         Command::LimiterFence => limiter::run(limiter::Operation::Fence).await,
         Command::LimiterActivate => limiter::run(limiter::Operation::Activate).await,

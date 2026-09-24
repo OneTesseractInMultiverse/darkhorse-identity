@@ -505,3 +505,5 @@ mod readiness;
 mod signing_operations;
 
 mod migrations;
+
+mod operator_catalog;

@@ -3,7 +3,7 @@ use std::io::Read;
 use zeroize::{Zeroize, Zeroizing};
 #[derive(Deserialize)]
 #[serde(deny_unknown_fields)]
-pub(super) struct Input {
+pub(crate) struct Input {
     pub email: String,
     pub password: String,
     pub reason: Option<String>,
@@ -45,5 +45,5 @@ pub(super) async fn interactive(mutation: bool) -> Result<Input, &'static str> {
     })
 }
 #[cfg(test)]
-#[path = "../../../tests/unit/operator/accounts/input.rs"]
+#[path = "../../../tests/unit/operator/authenticated/input.rs"]
 mod tests;

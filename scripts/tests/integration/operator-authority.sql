@@ -48,8 +48,11 @@ BEGIN
   'UPDATE invitations SET digest=digest WHERE false',
   'TRUNCATE provider_audit',
   'SELECT * FROM operator_directory_audit',
+  'SELECT * FROM operator_catalog_audit',
+  'INSERT INTO operator_catalog_audit(operation_id) SELECT operation_id FROM operator_catalog_audit WHERE false',
   'INSERT INTO operator_directory_audit(operation_id) SELECT operation_id FROM operator_directory_audit WHERE false',
   'TRUNCATE operator_directory_audit',
+  'TRUNCATE operator_catalog_audit',
   'ALTER TABLE provider_audit DISABLE TRIGGER ALL',
   'DROP TABLE provider_audit',
   'SELECT setval(''security_audit_id_seq'', 1)'

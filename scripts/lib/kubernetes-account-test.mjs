@@ -1,3 +1,4 @@
+import { catalogCommands } from "./catalog-command-test.mjs";
 import assert from "node:assert/strict";
 import { randomUUID } from "node:crypto";
 import {
@@ -49,7 +50,7 @@ export async function stoppedKubernetesAccounts({
         { ...settings, ACCOUNT_ID: target, ...extra },
         input,
       );
-  await accountPodIsolation({ c, kube, apply });
+  await accountPodIsolation({ c, kube, apply, sql, user, auth });
   const rejected = await fixtureAdministrator(sql, user, auth);
   await rejectedAccounts(accountFor(rejected.auth), rejected.auth);
   const changes = await fixtureAdministrator(sql, user, auth);
@@ -182,7 +183,7 @@ INSERT INTO password_credentials(credential_id,verifier) SELECT '${credential}',
 INSERT INTO platform_administrators(principal_id) VALUES('${replacement}'); COMMIT;`);
   return { principal: replacement, auth: { ...auth, email } };
 }
-async function accountPodIsolation({ c, kube, apply }) {
+async function accountPodIsolation({ c, kube, apply, sql, user, auth }) {
   const manifest = accountPod(c, "darkhorse-account-0123456789abcdef");
   const name = manifest.metadata.name;
   await apply(manifest);
@@ -239,6 +240,30 @@ async function accountPodIsolation({ c, kube, apply }) {
       denied.code,
       124,
       "account cache connection must time out without retry",
+    );
+    await catalogCommands(
+      (args, input) =>
+        kube(
+          [
+            "-n",
+            c.namespace,
+            "exec",
+            "-i",
+            name,
+            "-c",
+            "api",
+            "--",
+            "/usr/local/bin/darkhorse-server",
+            "--auth-stdin",
+            "--output",
+            "json",
+            ...args,
+          ],
+          { input, acceptFailure: true },
+        ),
+      sql,
+      user.principal,
+      auth.password,
     );
     const wrong = removal(manifest, "00000000-0000-0000-0000-000000000001");
     const rejected = await kube(

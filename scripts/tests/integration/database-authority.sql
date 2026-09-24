@@ -51,6 +51,7 @@ BEGIN
   'UPDATE media_configuration SET storage_fingerprint=storage_fingerprint WHERE false',
   'TRUNCATE security_audit',
   'TRUNCATE operator_directory_audit',
+  'TRUNCATE operator_catalog_audit',
   'ALTER TABLE security_audit DISABLE TRIGGER ALL',
   'DROP TABLE security_audit',
   'SELECT setval(''security_audit_id_seq'', 1)'

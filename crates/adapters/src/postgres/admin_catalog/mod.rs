@@ -11,13 +11,20 @@ use uuid::Uuid;
 mod reads;
 mod writes;
 type Tx<'a> = Transaction<'a, Postgres>;
+pub(super) async fn list_current(
+    tx: &mut Tx<'_>,
+    target: List,
+    query: &Query,
+) -> Result<Page, Error> {
+    reads::list(tx, target, query).await
+}
 impl CatalogStore for PostgresStore {
     async fn list(&self, actor: [u8; 32], target: List, query: Query) -> Result<Page, Error> {
         query.validate()?;
         let mut tx = self.pool.begin().await.map_err(storage)?;
         fence(&mut tx, false).await?;
         authority::actor(&mut tx, actor, false).await?;
-        let page = reads::list(&mut tx, target, &query).await?;
+        let page = list_current(&mut tx, target, &query).await?;
         authority::actor(&mut tx, actor, false).await?;
         tx.commit().await.map_err(storage)?;
         Ok(page)

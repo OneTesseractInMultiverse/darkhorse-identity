@@ -19,6 +19,7 @@ pub enum Command {
     },
     Account(PrincipalId),
     Accounts(darkhorse_domain::operator_directory::Request),
+    Catalog(darkhorse_domain::operator_catalog::Request),
     Change {
         id: PrincipalId,
         revision: u64,
@@ -46,6 +47,7 @@ pub fn requires_confirmation(command: &Command) -> bool {
             | Command::MigrationInspect(_)
             | Command::Account(_)
             | Command::Accounts(_)
+            | Command::Catalog(_)
             | Command::RedisStatus
             | Command::LimiterStatus
             | Command::LimiterInspect(_)
@@ -60,4 +62,12 @@ mod tests;
 pub(super) fn operation_identifier(value: &str) -> Result<OperationId, &'static str> {
     let value = uuid::Uuid::parse_str(value).map_err(|_| "Invalid operation identifier.")?;
     OperationId::from_u128(value.as_u128()).map_err(|_| "Invalid operation identifier.")
+}
+
+pub(super) fn application_identifier(
+    value: &str,
+) -> Result<darkhorse_domain::identity::ApplicationId, &'static str> {
+    let value = uuid::Uuid::parse_str(value).map_err(|_| "Invalid application identifier.")?;
+    darkhorse_domain::identity::ApplicationId::from_u128(value.as_u128())
+        .map_err(|_| "Invalid application identifier.")
 }

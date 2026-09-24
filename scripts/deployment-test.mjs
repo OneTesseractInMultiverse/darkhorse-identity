@@ -1,3 +1,4 @@
+import { catalogCommands } from "./lib/catalog-command-test.mjs";
 import assert from "node:assert/strict";
 import { randomBytes, createHash } from "node:crypto";
 import { createServer } from "node:net";
@@ -652,6 +653,27 @@ async function stoppedAccountChecks(settings, input, exec) {
     "target@example.com",
     sql,
   );
+  await catalogCommands(
+    (args, input) =>
+      compose(
+        stack,
+        [
+          "run",
+          "--rm",
+          "--no-deps",
+          "-T",
+          "account",
+          "--auth-stdin",
+          "--output",
+          "json",
+          ...args,
+        ],
+        { ...captured, input, acceptFailure: true },
+      ),
+    sql,
+    settings.ACCOUNT_ID,
+    input.password,
+  );
   const running = (
     await compose(stack, ["ps", "--services", "--status", "running"], captured)
   ).stdout.split("\n");
@@ -737,11 +759,11 @@ async function archive() {
       "-d",
       "quarantine",
       "-Atc",
-      "SELECT count(*) FROM principals",
+      "SELECT (SELECT count(*) FROM principals),(SELECT count(*) FROM operator_catalog_audit)",
     ],
     captured,
   );
-  assert.equal(restored.stdout.trim(), "2");
+  assert.equal(restored.stdout.trim(), "3|3");
   console.log(
     "Cache degradation, restrictive limiter restart/recovery, database outage, durable restart and quarantined archive restore passed.",
   );

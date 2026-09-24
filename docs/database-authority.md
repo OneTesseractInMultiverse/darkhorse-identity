@@ -67,6 +67,10 @@ update, delete or truncate this append-only read audit. The nonowner deployment
 operator role receives no access to this new table; use the runtime account-command
 configuration with fresh administrator authentication.
 
+Catalog listing additionally requires SELECT/INSERT on `operator_catalog_audit`
+from migration `0026`, with the same append/read-only runtime boundary. No grants
+are added for the nonowner deployment operator. See [catalog reads](operator-catalog.md).
+
 ## Operator and migration boundary
 
 `darkhorse_operator` is a nonowner login with no memberships. It receives only

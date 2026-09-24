@@ -259,6 +259,9 @@ compromised workload or database credential. Production privileged assurance,
 emergency access and protected audit evidence remain in #23. Load/capacity
 qualification with maximum replicas and concurrent operators remains in #10/#27.
 
+The same runtime configuration supports native [application/client catalog reads](operator-catalog.md#process-and-container-operation). Their protected-input and bounded
+connection setup is shared with account commands.
+
 ## Validation matrix
 
 `make test-account-launcher` uses disposable local subprocesses, without services.

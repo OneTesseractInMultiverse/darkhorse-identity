@@ -8,13 +8,13 @@ use darkhorse_domain::{
     admin_directory::Query, identity::OperationId, operator_accounts::Error,
     operator_directory::Request,
 };
-struct Allow;
+pub(super) struct Allow;
 impl LoginAdmission for Allow {
     async fn admit(&self, _: &str) -> Result<(), AuthError> {
         Ok(())
     }
 }
-struct Password(bool);
+pub(super) struct Password(pub(super) bool);
 impl PasswordVerification for Password {
     async fn verify(&self, _: &str, _: Option<&str>) -> Result<bool, AuthError> {
         Ok(self.0)
@@ -157,11 +157,11 @@ async fn directory_denials_and_audit_failures_never_release_profile_data() {
     ));
 }
 
-struct Held<S> {
-    inner: S,
-    ready: tokio::sync::Notify,
-    resume: tokio::sync::Notify,
-    age: u64,
+pub(super) struct Held<S> {
+    pub(super) inner: S,
+    pub(super) ready: tokio::sync::Notify,
+    pub(super) resume: tokio::sync::Notify,
+    pub(super) age: u64,
 }
 impl<S: Store> Store for Held<S> {
     type Request = S::Request;

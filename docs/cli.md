@@ -5,8 +5,7 @@ Clap handles syntax in the adapter layer. Existing application use cases retain
 their transaction ownership and domain invariants. Read the
 [authority matrix](operator-authority.md) before granting access: this interface
 uses deployment credentials and, for account operations, a fresh administrator
-password. See [account authentication](operator-accounts.md). Future `admin` user/application groups are tracked in #25/#26 and are
-not exposed as placeholder commands.
+password. See [account authentication](operator-accounts.md). Further account and catalog administration remains tracked in #25/#26.
 
 ```mermaid
 flowchart TD
@@ -44,6 +43,8 @@ is accepted. Neither `NO_COLOR` nor any terminal setting activates color.
 | `operator migrate inspect OPERATION_ID`                                                | None                                                  |
 | `operator bootstrap [--stdin]`                                                         | `bootstrap [--stdin]`                                 |
 | `operator account list [--search PREFIX] [--status STATUS] [--after UUID] [--limit N]` | None                                                  |
+| `operator application list [OPTIONS]`                                                  | None                                                  |
+| `operator client list APPLICATION_ID [OPTIONS]`                                        | None                                                  |
 | `operator account show ID`                                                             | `account ID`                                          |
 | `operator account deactivate ID REVISION`                                              | `deactivate ID REVISION`                              |
 | `operator account reactivate ID REVISION`                                              | `reactivate ID REVISION`                              |
@@ -69,6 +70,9 @@ from top-level help and use the same typed conversion and dispatch.
 Directory listing accepts a 1–25 page limit and uses fresh authentication for
 each page. See [listing fields, filters and audit](operator-accounts.md#bounded-directory-listing).
 
+Application and client listing use the same fresh administrator authentication
+and accept bounded catalog filters. See [catalog read commands](operator-catalog.md).
+
 ## Confirmations and compatibility
 
 Mutations require `--yes` for automation, or an interactive `yes` response on a
@@ -78,7 +82,7 @@ Signing inspection requires no confirmation or wrapping key. Migration inspectio
 database-owner credentials and no confirmation.
 Signing status requires confirmation. The implementation can initialize the provider binding before reading its inventory.
 
-JSON mode never prompts: mutations require `--yes`, and bootstrap requires `--stdin`. Account operations require `--auth-stdin`. This keeps its stdout/stderr records machine-readable even
+JSON mode never prompts: mutations require `--yes`, and bootstrap requires `--stdin`. Account and catalog operations require `--auth-stdin`. This keeps its stdout/stderr records machine-readable even
 when launched from a terminal.
 
 ```sh

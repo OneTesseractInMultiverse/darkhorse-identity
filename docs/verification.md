@@ -97,6 +97,31 @@ cargo install cargo-mutants --version 27.1.0 --locked
 Mutation targets run an unmodified baseline first, then test selected source mutations.
 A missed mutation requires investigation. A passing coverage percentage cannot clear it.
 
+## Authenticated CLI catalog increment
+
+The first catalog increment in [#26](https://github.com/OneTesseractInMultiverse/darkhorse-identity/issues/26)
+adds application and application-scoped client listing. Verification on **2026-09-24**
+includes 558 isolated tests (183 adapter, 35 application, 107 domain, 143 frontend,
+90 tooling), 198 PostgreSQL scenarios, five Redis infrastructure scenarios and
+22 limiter/operator scenarios. The child-process helper is intentionally ignored
+as a standalone case and exercised by its parent.
+
+Cases cover parity with console pagination, literal search, application isolation,
+owner-only denial, current authority after lock waits, expired proofs, missing
+applications, refused/suppressed audit inserts and lost commit acknowledgements.
+Real CLI processes verify runtime grants and shared HTTP login budgets. Existing
+account, terminal, launcher, release, type, lint and architecture checks pass after
+the shared input/connection setup extraction. Full Compose and Kubernetes
+fixtures run both catalog commands with HTTP stopped and verify runtime-role audit
+and denial after demotion. The Compose restore also preserves the catalog audit.
+See [catalog reads](operator-catalog.md)
+for the exact interface and migration `0026`.
+
+Fresh core instrumentation reports 2042/2042 lines, 323/323 functions and
+2814/2820 regions (99.79%). This covers domain/application crates, including the
+new bounded request. No new whole-system or combined-effects coverage percentage
+is claimed; the authored-logic target and remaining qualification work are unchanged.
+
 ## Authenticated CLI directory increment
 
 The directory increment in [#25](https://github.com/OneTesseractInMultiverse/darkhorse-identity/issues/25)

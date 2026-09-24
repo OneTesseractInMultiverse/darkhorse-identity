@@ -15,7 +15,7 @@ pub(super) fn invocation(options: Options) -> Result<Invocation, Failure> {
     }
     let account = matches!(
         command,
-        Command::Account(_) | Command::Accounts(_) | Command::Change { .. }
+        Command::Account(_) | Command::Accounts(_) | Command::Catalog(_) | Command::Change { .. }
     );
     if (options.auth_stdin && !account)
         || (account && options.output == Format::Json && !options.auth_stdin)
@@ -37,6 +37,14 @@ fn operator(value: Operator) -> Result<Command, Failure> {
         }) => Command::MigrationInspect(id),
         Operator::Bootstrap(value) => Command::Bootstrap { stdin: value.stdin },
         Operator::Account(value) => account(value)?,
+        Operator::Application(Application::List(query)) => catalog(
+            darkhorse_domain::operator_catalog::Target::Applications,
+            query,
+        )?,
+        Operator::Client(Client::List { application, query }) => catalog(
+            darkhorse_domain::operator_catalog::Target::Clients(application),
+            query,
+        )?,
         Operator::Signing(value) => Command::Signing(signing(value)),
         Operator::Limiter(Limiter::Status) => Command::LimiterStatus,
         Operator::Limiter(Limiter::Inspect { id }) => Command::LimiterInspect(id),
@@ -111,5 +119,22 @@ fn list(value: List) -> Result<darkhorse_domain::operator_directory::Request, Fa
         after: value.after,
         limit: value.limit,
     })
+    .map_err(|_| Failure::usage())
+}
+
+fn catalog(
+    target: darkhorse_domain::operator_catalog::Target,
+    value: CatalogList,
+) -> Result<Command, Failure> {
+    darkhorse_domain::operator_catalog::Request::new(
+        target,
+        darkhorse_domain::admin_catalog::Query {
+            search: value.search,
+            active: value.status.map(|s| matches!(s, Status::Active)),
+            after: value.after,
+            limit: value.limit,
+        },
+    )
+    .map(Command::Catalog)
     .map_err(|_| Failure::usage())
 }

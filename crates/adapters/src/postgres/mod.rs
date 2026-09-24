@@ -125,3 +125,5 @@ mod limiter_activation;
 mod signing_operations;
 
 pub mod migrations;
+
+mod operator_catalog;
