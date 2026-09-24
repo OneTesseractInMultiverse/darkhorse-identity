@@ -127,7 +127,7 @@ fn limiter_inspection_is_a_read_with_a_typed_operation_identifier() {
         parse(&args(&["operator", "limiter", "inspect", id])),
         Ok(Command::LimiterInspect(operation))
     );
-    assert!(!requires_confirmation(Command::LimiterInspect(operation)));
+    assert!(!requires_confirmation(&Command::LimiterInspect(operation)));
     for id in ["bad", "00000000-0000-0000-0000-000000000000", "--force"] {
         assert!(parse(&args(&["operator", "limiter", "inspect", id])).is_err());
     }
@@ -139,9 +139,9 @@ fn signing_inspection_is_read_only_and_accepts_only_an_operation_id() {
     let command = Command::Signing(Operation::Inspect(OperationId::from_u128(1).unwrap()));
     assert_eq!(
         parse(&args(&["operator", "signing", "inspect", id])),
-        Ok(command)
+        Ok(command.clone())
     );
-    assert!(!requires_confirmation(command));
+    assert!(!requires_confirmation(&command));
     for bad in ["invalid", "00000000-0000-0000-0000-000000000000", "--force"] {
         assert!(parse(&args(&["operator", "signing", "inspect", bad])).is_err());
     }

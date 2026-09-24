@@ -226,7 +226,7 @@ replacement controller or command retry. The existing namespace quota and
 connection envelope are unchanged. The runbook describes deadlines, uncertain
 outcomes, and the remaining temporary-credential and production-assurance work.
 
-The disposable suite stops both serving replicas, exercises all four one-shot
+The disposable suite stops both serving replicas, exercises one-shot lifecycle and directory
 commands and their audit records, rejects lost administrator authority and database
 access, verifies denied cache connections and secret isolation, and checks cleanup.
 These checks use the existing runtime role and do not qualify emergency access.

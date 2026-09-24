@@ -4,8 +4,8 @@ use darkhorse_domain::{AccountStatus, directory::AccountAction};
 pub(super) fn invocation(options: Options) -> Result<Invocation, Failure> {
     let command = match options.command {
         None | Some(Root::Serve) => Command::Serve,
-        Some(Root::Operator(value)) => operator(value),
-        Some(Root::Legacy(value)) => legacy(value),
+        Some(Root::Operator(value)) => operator(value)?,
+        Some(Root::Legacy(value)) => legacy(value)?,
     };
     if command == Command::Serve && (options.output != Format::Human || options.yes) {
         return Err(Failure::usage());
@@ -13,7 +13,10 @@ pub(super) fn invocation(options: Options) -> Result<Invocation, Failure> {
     if options.output == Format::Json && matches!(command, Command::Bootstrap { stdin: false }) {
         return Err(Failure::usage());
     }
-    let account = matches!(command, Command::Account(_) | Command::Change { .. });
+    let account = matches!(
+        command,
+        Command::Account(_) | Command::Accounts(_) | Command::Change { .. }
+    );
     if (options.auth_stdin && !account)
         || (account && options.output == Format::Json && !options.auth_stdin)
     {
@@ -26,24 +29,25 @@ pub(super) fn invocation(options: Options) -> Result<Invocation, Failure> {
         auth_stdin: options.auth_stdin,
     })
 }
-fn operator(value: Operator) -> Command {
-    match value {
+fn operator(value: Operator) -> Result<Command, Failure> {
+    Ok(match value {
         Operator::Migrate(Migration { command: None }) => Command::Migrate,
         Operator::Migrate(Migration {
             command: Some(MigrationCommand::Inspect { id }),
         }) => Command::MigrationInspect(id),
         Operator::Bootstrap(value) => Command::Bootstrap { stdin: value.stdin },
-        Operator::Account(value) => account(value),
+        Operator::Account(value) => account(value)?,
         Operator::Signing(value) => Command::Signing(signing(value)),
         Operator::Limiter(Limiter::Status) => Command::LimiterStatus,
         Operator::Limiter(Limiter::Inspect { id }) => Command::LimiterInspect(id),
         Operator::Limiter(Limiter::Fence) => Command::LimiterFence,
         Operator::Limiter(Limiter::Activate) => Command::LimiterActivate,
         Operator::Redis(Redis::Status) => Command::RedisStatus,
-    }
+    })
 }
-fn account(value: Account) -> Command {
-    match value {
+fn account(value: Account) -> Result<Command, Failure> {
+    Ok(match value {
+        Account::List(value) => Command::Accounts(list(value)?),
         Account::Show(value) => Command::Account(value.id),
         Account::Deactivate(value) => {
             change(value, AccountAction::SetStatus(AccountStatus::Inactive))
@@ -52,7 +56,7 @@ fn account(value: Account) -> Command {
             change(value, AccountAction::SetStatus(AccountStatus::Active))
         }
         Account::RevokeAll(value) => change(value, AccountAction::RevokeAll),
-    }
+    })
 }
 fn change(value: Change, action: AccountAction) -> Command {
     Command::Change {
@@ -77,7 +81,7 @@ fn signing(value: Signing) -> Operation {
         },
     }
 }
-fn legacy(value: Legacy) -> Command {
+fn legacy(value: Legacy) -> Result<Command, Failure> {
     operator(match value {
         Legacy::Migrate => Operator::Migrate(Migration { command: None }),
         Legacy::Bootstrap(v) => Operator::Bootstrap(v),
@@ -95,4 +99,17 @@ fn legacy(value: Legacy) -> Command {
         Legacy::LimiterActivate => Operator::Limiter(Limiter::Activate),
         Legacy::RedisStatus => Operator::Redis(Redis::Status),
     })
+}
+
+fn list(value: List) -> Result<darkhorse_domain::operator_directory::Request, Failure> {
+    darkhorse_domain::operator_directory::Request::new(darkhorse_domain::admin_directory::Query {
+        search: value.search,
+        status: value.status.map(|s| match s {
+            Status::Active => AccountStatus::Active,
+            Status::Inactive => AccountStatus::Inactive,
+        }),
+        after: value.after,
+        limit: value.limit,
+    })
+    .map_err(|_| Failure::usage())
 }

@@ -150,3 +150,71 @@ test("exit status preserves explicit child failure and rejects ambiguous termina
   ])
     assert.equal(exitCode(result), 1);
 });
+
+test("list launchers preserve literal filters, bound pages and reject stale single-target selectors", () => {
+  const base = { ACCOUNT_OPERATION: "list" };
+  assert.deepEqual(accountOptions(base, false), [
+    "--auth-stdin",
+    "--output",
+    "json",
+    "operator",
+    "account",
+    "list",
+    "--limit",
+    "25",
+  ]);
+  assert.deepEqual(
+    accountOptions(
+      {
+        ...base,
+        ACCOUNT_SEARCH: "literal $(text)",
+        ACCOUNT_STATUS: "inactive",
+        ACCOUNT_AFTER: id,
+        ACCOUNT_LIMIT: "2",
+      },
+      false,
+    ).slice(5),
+    [
+      "list",
+      "--limit",
+      "2",
+      "--search=literal $(text)",
+      "--status",
+      "inactive",
+      "--after",
+      id,
+    ],
+  );
+  assert.ok(
+    accountOptions(
+      {
+        ...base,
+        ACCOUNT_SEARCH: "--help",
+        ACCOUNT_CONFIRM: "yes",
+        ACCOUNT_LIMIT: "1",
+      },
+      false,
+    ).includes("--search=--help"),
+  );
+  for (const change of [
+    { ACCOUNT_ID: id },
+    { ACCOUNT_REVISION: "0" },
+    { ACCOUNT_LIMIT: "26" },
+    { ACCOUNT_LIMIT: "0" },
+    { ACCOUNT_LIMIT: "01" },
+    { ACCOUNT_AFTER: "bad" },
+    { ACCOUNT_AFTER: "00000000-0000-0000-0000-000000000000" },
+    { ACCOUNT_CONFIRM: "invalid" },
+    { ACCOUNT_STATUS: "all" },
+    { ACCOUNT_SEARCH: "x\n" },
+    { ACCOUNT_SEARCH: "x".repeat(101) },
+    { ACCOUNT_SEARCH: " trim" },
+  ])
+    assert.throws(
+      () => accountOptions({ ...base, ...change }, false),
+      UsageError,
+    );
+  assert.throws(() =>
+    accountOptions({ ...options, ACCOUNT_SEARCH: "filter" }, false),
+  );
+});

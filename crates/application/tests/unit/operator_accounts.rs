@@ -60,6 +60,8 @@ impl PasswordVerification for Dependencies {
     }
 }
 impl Store for Dependencies {
+    type Request = Request;
+    type Outcome = Outcome;
     async fn candidate(&self, _: &str) -> Result<Option<CandidateAt>, Error> {
         self.call("candidate")?;
         Ok(self.exists.then(|| CandidateAt {

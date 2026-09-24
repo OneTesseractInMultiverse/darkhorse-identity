@@ -140,10 +140,61 @@ fn migration_inspection_is_read_only_and_uses_a_typed_operation_id() {
         "00000000-0000-0000-0000-000000000001",
     ]);
     assert!(!crate::operator::command::requires_confirmation(
-        invocation.command
+        &invocation.command
     ));
     for value in ["invalid", "00000000-0000-0000-0000-000000000000"] {
         assert!(parse(&["operator", "migrate", "inspect", value]).is_err());
     }
     assert!(parse(&["operator", "migrate", "inspect"]).is_err());
+}
+
+#[test]
+fn account_listing_is_authenticated_bounded_and_read_only() {
+    use crate::operator::command::requires_confirmation;
+    let parsed = run(&["operator", "account", "list"]);
+    assert!(!requires_confirmation(&parsed.command));
+    let Command::Accounts(query) = parsed.command else {
+        panic!("expected directory query")
+    };
+    assert_eq!(query.query().limit, 25);
+    assert_eq!(query.query().search, "");
+    let parsed = run(&[
+        "--auth-stdin",
+        "--output",
+        "json",
+        "operator",
+        "account",
+        "list",
+        "--search",
+        "Ada",
+        "--status",
+        "inactive",
+        "--limit",
+        "1",
+        "--after",
+        "00000000-0000-0000-0000-000000000001",
+    ]);
+    let Command::Accounts(query) = parsed.command else {
+        panic!("expected directory query")
+    };
+    assert_eq!(query.query().search, "Ada");
+    assert_eq!(
+        query.query().status,
+        Some(darkhorse_domain::AccountStatus::Inactive)
+    );
+    assert_eq!(query.query().after.unwrap().as_u128(), 1);
+    for args in [
+        vec!["--limit", "0"],
+        vec!["--limit", "26"],
+        vec!["--status", "unknown"],
+        vec!["--after", "00000000-0000-0000-0000-000000000000"],
+        vec!["--search", "trim me "],
+        vec!["--limit", "2", "--limit", "3"],
+        vec!["--output", "json"],
+    ] {
+        let mut command = vec!["operator", "account", "list"];
+        command.extend(args);
+        assert!(parse(&command).is_err());
+    }
+    assert!(parse(&["operator", "account", "list", "--search", &"x".repeat(101)]).is_err());
 }

@@ -31,7 +31,7 @@ pub(super) fn identifier(value: &str) -> Result<[u8; 32], &'static str> {
 }
 pub async fn run(operation: Operation) -> Result<Output, Failure> {
     if let Operation::Inspect(id) = operation {
-        let store = super::connect().await?;
+        let store = super::connect(32).await?;
         let result = store.inspect_signing(id).await;
         store.close().await;
         return result
@@ -45,7 +45,7 @@ pub async fn run(operation: Operation) -> Result<Output, Failure> {
         .map_err(message)?
         .ok_or("Provider must be explicitly enabled.")?;
     let issuer = http.public_origin.origin().ascii_serialization();
-    let store = super::connect().await?;
+    let store = super::connect(32).await?;
     let result = execute(&store, &issuer, &wrap, operation).await;
     store.close().await;
     result.map(Output::record)

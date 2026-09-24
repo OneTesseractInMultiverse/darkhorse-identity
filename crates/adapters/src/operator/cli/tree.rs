@@ -89,6 +89,8 @@ pub(super) struct Key {
 }
 #[derive(Subcommand)]
 pub(super) enum Account {
+    /// Read one authenticated page; repeat explicitly with the returned cursor.
+    List(List),
     Show(Principal),
     Deactivate(Change),
     Reactivate(Change),
@@ -169,4 +171,21 @@ pub(super) enum MigrationCommand {
         #[arg(value_parser=crate::operator::command::operation_identifier)]
         id: darkhorse_domain::identity::OperationId,
     },
+}
+
+#[derive(Args)]
+pub(super) struct List {
+    #[arg(long, default_value = "")]
+    pub search: String,
+    #[arg(long, value_enum)]
+    pub status: Option<Status>,
+    #[arg(long, value_parser=identifier)]
+    pub after: Option<PrincipalId>,
+    #[arg(long, default_value_t=25, value_parser=clap::value_parser!(u16).range(1..=25))]
+    pub limit: u16,
+}
+#[derive(Clone, Copy, clap::ValueEnum)]
+pub(super) enum Status {
+    Active,
+    Inactive,
 }

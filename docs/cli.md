@@ -38,24 +38,25 @@ settings, prompting or connecting to services. Operator dispatch starts no HTTP
 listener or unrelated server worker. Output is always uncolored. `--no-color`
 is accepted. Neither `NO_COLOR` nor any terminal setting activates color.
 
-| Canonical command                          | Compatibility spelling                                |
-| ------------------------------------------ | ----------------------------------------------------- |
-| `operator migrate`                         | `migrate`                                             |
-| `operator migrate inspect OPERATION_ID`    | None                                                  |
-| `operator bootstrap [--stdin]`             | `bootstrap [--stdin]`                                 |
-| `operator account show ID`                 | `account ID`                                          |
-| `operator account deactivate ID REVISION`  | `deactivate ID REVISION`                              |
-| `operator account reactivate ID REVISION`  | `reactivate ID REVISION`                              |
-| `operator account revoke-all ID REVISION`  | `revoke-all ID REVISION`                              |
-| `operator signing status`                  | `signing-status`                                      |
-| `operator signing generate REVISION`       | `signing-generate REVISION`                           |
-| `operator signing import --stdin REVISION` | `signing-import --stdin REVISION`                     |
-| `operator signing activate KID REVISION`   | `signing-activate KID REVISION`                       |
-| `operator signing retire KID REVISION`     | `signing-retire KID REVISION`                         |
-| `operator signing inspect OPERATION_ID`    | None                                                  |
-| `operator limiter status/fence/activate`   | `limiter-status`, `limiter-fence`, `limiter-activate` |
-| `operator limiter inspect OPERATION_ID`    | None                                                  |
-| `operator redis status`                    | `redis-status`                                        |
+| Canonical command                                                                      | Compatibility spelling                                |
+| -------------------------------------------------------------------------------------- | ----------------------------------------------------- |
+| `operator migrate`                                                                     | `migrate`                                             |
+| `operator migrate inspect OPERATION_ID`                                                | None                                                  |
+| `operator bootstrap [--stdin]`                                                         | `bootstrap [--stdin]`                                 |
+| `operator account list [--search PREFIX] [--status STATUS] [--after UUID] [--limit N]` | None                                                  |
+| `operator account show ID`                                                             | `account ID`                                          |
+| `operator account deactivate ID REVISION`                                              | `deactivate ID REVISION`                              |
+| `operator account reactivate ID REVISION`                                              | `reactivate ID REVISION`                              |
+| `operator account revoke-all ID REVISION`                                              | `revoke-all ID REVISION`                              |
+| `operator signing status`                                                              | `signing-status`                                      |
+| `operator signing generate REVISION`                                                   | `signing-generate REVISION`                           |
+| `operator signing import --stdin REVISION`                                             | `signing-import --stdin REVISION`                     |
+| `operator signing activate KID REVISION`                                               | `signing-activate KID REVISION`                       |
+| `operator signing retire KID REVISION`                                                 | `signing-retire KID REVISION`                         |
+| `operator signing inspect OPERATION_ID`                                                | None                                                  |
+| `operator limiter status/fence/activate`                                               | `limiter-status`, `limiter-fence`, `limiter-activate` |
+| `operator limiter inspect OPERATION_ID`                                                | None                                                  |
+| `operator redis status`                                                                | `redis-status`                                        |
 
 `ID` is a nonzero principal UUID, `KID` a public URL-safe unpadded 32-byte key ID,
 and `REVISION` a nonnegative integer no larger than PostgreSQL's signed bigint.
@@ -65,11 +66,14 @@ increment, so the largest signed bigint is not a valid expected mutation revisio
 Service/domain checks still validate current state. Legacy spellings are hidden
 from top-level help and use the same typed conversion and dispatch.
 
+Directory listing accepts a 1–25 page limit and uses fresh authentication for
+each page. See [listing fields, filters and audit](operator-accounts.md#bounded-directory-listing).
+
 ## Confirmations and compatibility
 
 Mutations require `--yes` for automation, or an interactive `yes` response on a
 terminal. Refusal/EOF cancels before settings or service access. Protected-stdin
-operations always require `--yes`, so a confirmation cannot consume secret input.
+mutations always require `--yes`, so a confirmation cannot consume secret input.
 Signing inspection requires no confirmation or wrapping key. Migration inspection requires
 database-owner credentials and no confirmation.
 Signing status requires confirmation. The implementation can initialize the provider binding before reading its inventory.

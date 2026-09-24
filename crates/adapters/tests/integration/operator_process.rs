@@ -304,3 +304,48 @@ async fn operator_database_role_supports_account_commands_and_atomic_audit_failu
         .bind(target).fetch_one(&f.pool).await.unwrap();
     assert_eq!(count, 4);
 }
+
+#[tokio::test]
+async fn directory_cli_uses_runtime_grants_fresh_authentication_and_shared_admission() {
+    let _serial = SERIAL.lock().await;
+    let f = Fixture::new().await;
+    f.activate().await;
+    restrict_database(&f).await;
+    let (id, email) = actor(&f).await;
+    let credential = || json!({"email":email,"password":PASSWORD});
+    let args = [
+        "operator", "account", "list", "--search", &email, "--limit", "1",
+    ];
+    let (code, page) = invoke(&args, credential());
+    assert_eq!(code, 0, "{page}");
+    assert_eq!(page["data"]["items"].as_array().unwrap().len(), 1);
+    assert_eq!(page["data"]["items"][0]["id"], id.to_string());
+    assert!(page["data"]["next"].is_null());
+    let record:(String,i32,bool)=sqlx::query_as("SELECT database_role,returned_count,searched FROM operator_directory_audit WHERE operation_id=$1")
+        .bind(Uuid::parse_str(page["data"]["operation_id"].as_str().unwrap()).unwrap()).fetch_one(&f.pool).await.unwrap();
+    assert_eq!(record, ("darkhorse_runtime".into(), 1, true));
+    sqlx::query("REVOKE INSERT ON operator_directory_audit FROM darkhorse_runtime")
+        .execute(&f.pool)
+        .await
+        .unwrap();
+    assert_eq!(invoke(&args, credential()).0, 1);
+    sqlx::query("GRANT INSERT ON operator_directory_audit TO darkhorse_runtime")
+        .execute(&f.pool)
+        .await
+        .unwrap();
+    assert_eq!(
+        invoke(&args, json!({"email":email,"password":"incorrect"})).0,
+        1
+    );
+    sqlx::query("DELETE FROM platform_administrators WHERE principal_id=$1")
+        .bind(id)
+        .execute(&f.pool)
+        .await
+        .unwrap();
+    assert_eq!(invoke(&args, credential()).0, 1);
+    let http = SharedLoginAdmission::new(f.limiter(), [7; 32]);
+    assert_eq!(http.admit(&email).await, Ok(()));
+    let limited = invoke(&args, credential());
+    assert_eq!(limited.0, 1);
+    assert!(limited.1["data"]["retry_after_ms"].as_u64().unwrap() > 0);
+}

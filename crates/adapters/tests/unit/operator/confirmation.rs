@@ -25,7 +25,7 @@ fn every_mutation_requires_confirmation_including_stdin_and_legacy_operations() 
             action: darkhorse_domain::directory::AccountAction::RevokeAll,
         },
     ] {
-        assert!(requires_confirmation(command));
+        assert!(requires_confirmation(&command));
     }
     for command in [
         Command::Serve,
@@ -33,11 +33,11 @@ fn every_mutation_requires_confirmation_including_stdin_and_legacy_operations() 
         Command::LimiterStatus,
         Command::Account(darkhorse_domain::identity::PrincipalId::from_u128(1).unwrap()),
     ] {
-        assert!(!requires_confirmation(command));
+        assert!(!requires_confirmation(&command));
     }
-    assert!(consumes_stdin(Command::Bootstrap { stdin: true }));
-    assert!(consumes_stdin(Command::Signing(Operation::Import(0))));
-    assert!(!consumes_stdin(Command::Migrate));
+    assert!(consumes_stdin(&Command::Bootstrap { stdin: true }));
+    assert!(consumes_stdin(&Command::Signing(Operation::Import(0))));
+    assert!(!consumes_stdin(&Command::Migrate));
 }
 #[test]
 fn explicit_confirmation_rejects_eof_partial_words_and_forged_lines() {
@@ -50,20 +50,20 @@ fn explicit_confirmation_rejects_eof_partial_words_and_forged_lines() {
 #[test]
 fn automation_never_prompts_or_consumes_protected_input_for_confirmation() {
     assert_eq!(
-        decision(Command::Migrate, false, true, Format::Human),
+        decision(&Command::Migrate, false, true, Format::Human),
         Decision::Prompt
     );
     assert_eq!(
-        decision(Command::Migrate, false, false, Format::Human),
+        decision(&Command::Migrate, false, false, Format::Human),
         Decision::Deny
     );
     assert_eq!(
-        decision(Command::Migrate, false, true, Format::Json),
+        decision(&Command::Migrate, false, true, Format::Json),
         Decision::Deny
     );
     assert_eq!(
         decision(
-            Command::Bootstrap { stdin: true },
+            &Command::Bootstrap { stdin: true },
             false,
             true,
             Format::Human
@@ -71,12 +71,12 @@ fn automation_never_prompts_or_consumes_protected_input_for_confirmation() {
         Decision::Deny
     );
     assert_eq!(
-        decision(Command::Migrate, true, false, Format::Json),
+        decision(&Command::Migrate, true, false, Format::Json),
         Decision::Proceed
     );
     assert_eq!(
         decision(
-            Command::Account(darkhorse_domain::identity::PrincipalId::from_u128(1).unwrap()),
+            &Command::Account(darkhorse_domain::identity::PrincipalId::from_u128(1).unwrap()),
             false,
             false,
             Format::Json

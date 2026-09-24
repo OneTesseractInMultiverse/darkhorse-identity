@@ -117,6 +117,7 @@ mod profiles;
 mod media;
 
 mod operator_accounts;
+mod operator_directory;
 mod readiness;
 
 mod limiter_activation;

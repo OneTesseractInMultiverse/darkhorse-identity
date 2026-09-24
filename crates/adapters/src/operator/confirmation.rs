@@ -9,7 +9,7 @@ enum Decision {
     Prompt,
     Deny,
 }
-fn decision(command: Command, confirmed: bool, terminal: bool, format: Format) -> Decision {
+fn decision(command: &Command, confirmed: bool, terminal: bool, format: Format) -> Decision {
     if !requires_confirmation(command) || confirmed {
         return Decision::Proceed;
     }
@@ -19,7 +19,7 @@ fn decision(command: Command, confirmed: bool, terminal: bool, format: Format) -
     Decision::Prompt
 }
 pub fn confirm(
-    command: Command,
+    command: &Command,
     confirmed: bool,
     format: Format,
     auth_stdin: bool,
@@ -48,7 +48,7 @@ fn prompt() -> Result<(), Failure> {
         .map_err(|_| Failure::confirmation())?;
     accept(&line)
 }
-fn consumes_stdin(command: Command) -> bool {
+fn consumes_stdin(command: &Command) -> bool {
     matches!(
         command,
         Command::Bootstrap { stdin: true } | Command::Signing(super::signing::Operation::Import(_))

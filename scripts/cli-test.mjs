@@ -50,6 +50,7 @@ async function information() {
     ["operator", "migrate", "--help"],
     ["operator", "migrate", "inspect", "--help"],
     ["operator", "account", "--help"],
+    ["operator", "account", "list", "--help"],
     ["operator", "signing", "import", "--help"],
     ["operator", "signing", "activate", "--help"],
     ["operator", "signing", "retire", "--help"],
@@ -100,6 +101,8 @@ async function failures() {
     ["bootstrap", "--password", marker],
     ["account", marker],
     ["operator", "unknown", marker],
+    ["operator", "account", "list", "--limit", "26"],
+    ["--output", "json", "operator", "account", "list"],
     ["operator", "signing", "activate", marker, "0"],
     ["serve", marker],
     ["migrate;echo", marker],
@@ -148,6 +151,15 @@ async function failures() {
     assert.match(result.stderr, /bootstrap input/i);
     assert.ok(!result.stderr.includes(marker));
   }
+  const listing = await invoke(
+    ["--auth-stdin", "--output", "json", "operator", "account", "list"],
+    JSON.stringify({ email: "a@b.com", password: marker }),
+  );
+  assert.equal(listing.code, 1);
+  assert.equal(listing.stdout, "");
+  assert.equal(JSON.parse(listing.stderr).error.code, "operation_failed");
+  assert.ok(!listing.stderr.includes(marker));
+  assert.ok(!listing.stderr.includes(environment.DARKHORSE_DATABASE_URL));
   const interactive = await invoke(["bootstrap", "--yes"]);
   assert.equal(interactive.code, 1);
   assert.match(interactive.stderr, /requires a terminal/);

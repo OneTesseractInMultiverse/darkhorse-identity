@@ -30,14 +30,14 @@ pub async fn run(command: Command, auth_stdin: bool) -> Result<Output, Failure> 
         Command::Serve => Err("Use the HTTP composition root for serve.".into()),
         Command::Bootstrap { stdin: false } => cancellation::run(run_bootstrap(false)).await,
         Command::Bootstrap { stdin: true } => run_bootstrap(true).await,
-        Command::Account(_) | Command::Change { .. } if auth_stdin => {
+        Command::Account(_) | Command::Accounts(_) | Command::Change { .. } if auth_stdin => {
             accounts::run(command, true).await
         }
-        Command::Account(_) | Command::Change { .. } => {
+        Command::Account(_) | Command::Accounts(_) | Command::Change { .. } => {
             cancellation::run(accounts::run(command, false)).await
         }
         command => {
-            let store = connect().await?;
+            let store = connect(32).await?;
             let result = run_database_command(&store, command).await;
             store.close().await;
             result
@@ -45,11 +45,11 @@ pub async fn run(command: Command, auth_stdin: bool) -> Result<Output, Failure> 
     }
 }
 
-async fn connect() -> Result<PostgresStore, &'static str> {
+async fn connect(max_connections: u32) -> Result<PostgresStore, &'static str> {
     let settings =
         database_configuration::load(crate::deployment_environment::DeploymentEnvironment)
             .map_err(|_| "Invalid database configuration; check DARKHORSE_DATABASE_* settings.")?;
-    PostgresStore::connect(settings)
+    PostgresStore::connect(connection_limit(settings, max_connections))
         .await
         .map_err(directory_message)
 }
@@ -60,7 +60,7 @@ async fn run_bootstrap(stdin: bool) -> Result<Output, Failure> {
     } else {
         input::interactive().await?
     };
-    let store = connect().await?;
+    let store = connect(32).await?;
     let preparation = PasswordPreparation::default();
     let result = bootstrap::bootstrap(
         &store,
@@ -136,4 +136,12 @@ pub(super) fn operation_id() -> Result<darkhorse_domain::identity::OperationId, 
             .as_u128(),
     )
     .map_err(|_| "Cannot generate operation correlation.".into())
+}
+
+fn connection_limit(
+    mut settings: database_configuration::DatabaseSettings,
+    limit: u32,
+) -> database_configuration::DatabaseSettings {
+    settings.max_connections = settings.max_connections.min(limit);
+    settings
 }

@@ -29,7 +29,7 @@ impl envbind::Environment for RecoveryEnvironment {
     }
 }
 pub(super) async fn run(command: Operation) -> Result<Output, Failure> {
-    let store = super::connect().await?;
+    let store = super::connect(32).await?;
     let result = execute(&store, command).await;
     store.close().await;
     result

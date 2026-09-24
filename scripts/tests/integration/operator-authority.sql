@@ -47,6 +47,9 @@ BEGIN
   'SELECT * FROM personal_key_verifiers',
   'UPDATE invitations SET digest=digest WHERE false',
   'TRUNCATE provider_audit',
+  'SELECT * FROM operator_directory_audit',
+  'INSERT INTO operator_directory_audit(operation_id) SELECT operation_id FROM operator_directory_audit WHERE false',
+  'TRUNCATE operator_directory_audit',
   'ALTER TABLE provider_audit DISABLE TRIGGER ALL',
   'DROP TABLE provider_audit',
   'SELECT setval(''security_audit_id_seq'', 1)'

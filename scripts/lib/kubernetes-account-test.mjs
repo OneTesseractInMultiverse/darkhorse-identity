@@ -1,6 +1,10 @@
 import assert from "node:assert/strict";
 import { randomUUID } from "node:crypto";
-import { accountCommand, accountResult } from "./container-account-test.mjs";
+import {
+  accountCommand,
+  accountResult,
+  directoryPage,
+} from "./container-account-test.mjs";
 import { accountPod, removal } from "./kubernetes-account-plan.mjs";
 import { databaseSignal } from "./kubernetes-isolation-test.mjs";
 
@@ -50,6 +54,15 @@ export async function stoppedKubernetesAccounts({
   await rejectedAccounts(accountFor(rejected.auth), rejected.auth);
   const changes = await fixtureAdministrator(sql, user, auth);
   await changedAccounts(accountFor(changes.auth), target, sql);
+  await directoryPage(
+    command,
+    "kube-run",
+    settings,
+    changes.auth,
+    target,
+    "one-shot@example.com",
+    sql,
+  );
   const operator = await fixtureAdministrator(sql, user, auth);
   const account = accountFor(operator.auth);
   const made = await command(
@@ -93,7 +106,7 @@ export async function stoppedKubernetesAccounts({
     ),
   );
   console.log(
-    "One-shot Kubernetes account commands passed with zero serving Pods: lifecycle mutations/audit, authority and dependency failures, secret/network isolation and UID-conditioned cleanup.",
+    "One-shot Kubernetes account commands passed with zero serving Pods: lifecycle mutations and directory-read audit, authority and dependency failures, secret/network isolation and UID-conditioned cleanup.",
   );
 }
 async function rejectedAccounts(account, auth) {

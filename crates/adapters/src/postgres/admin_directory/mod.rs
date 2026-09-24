@@ -11,13 +11,20 @@ use uuid::Uuid;
 mod reads;
 mod writes;
 type Tx<'a> = Transaction<'a, Postgres>;
+pub(super) async fn list_current(
+    tx: &mut Tx<'_>,
+    actor: PrincipalId,
+    query: &Query,
+) -> Result<Page, Error> {
+    reads::list(tx, actor, query).await
+}
 impl AdminDirectory for PostgresStore {
     async fn users(&self, actor: [u8; 32], query: Query) -> Result<Page, Error> {
         query.validate()?;
         let mut tx = self.pool.begin().await.map_err(storage)?;
         lock(&mut tx, false).await?;
         let (actor_id, _) = authorize(&mut tx, actor, false).await?;
-        let page = reads::list(&mut tx, actor_id, &query).await?;
+        let page = list_current(&mut tx, actor_id, &query).await?;
         authorize(&mut tx, actor, false).await?;
         tx.commit().await.map_err(storage)?;
         Ok(page)

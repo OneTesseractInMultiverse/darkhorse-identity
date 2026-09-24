@@ -20,6 +20,7 @@ import {
 import {
   accountCommand,
   accountResult,
+  directoryPage,
 } from "./lib/container-account-test.mjs";
 import { httpsCall } from "./lib/deployment-client.mjs";
 import { validateIdToken, validateCallback } from "./lib/reference-client.mjs";
@@ -526,7 +527,7 @@ async function accounts(user) {
   await runningAccountChecks(exec, user, input);
   await stoppedAccountChecks(settings, input, exec);
   console.log(
-    "Account launchers: runtime authentication, confirmation/revision/invariant failures, limiter refusal and all four commands with HTTP stopped passed.",
+    "Account launchers: runtime authentication, confirmation/revision/invariant failures, limiter refusal and lifecycle and directory commands with HTTP stopped passed.",
   );
 }
 async function runningAccountChecks(exec, user, input) {
@@ -642,6 +643,15 @@ async function stoppedAccountChecks(settings, input, exec) {
   );
   assert.equal(after.active, true);
   assert.equal(after.revision, 3);
+  await directoryPage(
+    command,
+    "compose-run",
+    settings,
+    input,
+    target,
+    "target@example.com",
+    sql,
+  );
   const running = (
     await compose(stack, ["ps", "--services", "--status", "running"], captured)
   ).stdout.split("\n");

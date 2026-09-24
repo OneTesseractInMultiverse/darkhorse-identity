@@ -32,7 +32,11 @@ fn change(action: AccountAction, revision: u64) -> Operation {
         action,
     }
 }
-async fn execute(store: &impl Store, email: &str, operation: Operation) -> Result<Outcome, Error> {
+async fn execute(
+    store: &impl Store<Request = Request, Outcome = Outcome>,
+    email: &str,
+    operation: Operation,
+) -> Result<Outcome, Error> {
     operator_accounts::run(
         store,
         &Allow,
@@ -170,6 +174,8 @@ async fn operator_denies_nonadministrators_and_wrong_passwords_and_retains_direc
 }
 struct Aged<'a>(&'a PostgresStore);
 impl Store for Aged<'_> {
+    type Request = Request;
+    type Outcome = Outcome;
     async fn candidate(&self, email: &str) -> Result<Option<CandidateAt>, Error> {
         let mut candidate = Store::candidate(self.0, email).await?;
         if let Some(c) = &mut candidate {
@@ -213,6 +219,8 @@ struct Paused<'a> {
     resume: tokio::sync::Notify,
 }
 impl Store for Paused<'_> {
+    type Request = Request;
+    type Outcome = Outcome;
     async fn candidate(&self, email: &str) -> Result<Option<CandidateAt>, Error> {
         let candidate = Store::candidate(self.inner, email).await?;
         self.ready.notify_one();
@@ -405,4 +413,20 @@ async fn an_operator_waiting_at_the_security_fence_observes_committed_demotion()
         execute(&db.store, "admin@example.com", Operation::Show(id(2))).await,
         Err(Error::Denied)
     ));
+}
+
+#[tokio::test]
+async fn suppressed_account_audit_rolls_back_mutation() {
+    let db = fixture().await;
+    sqlx::raw_sql("CREATE FUNCTION suppress_account_audit() RETURNS trigger LANGUAGE plpgsql AS $$ BEGIN RETURN NULL; END $$; CREATE TRIGGER suppress_account_audit BEFORE INSERT ON operator_account_audit FOR EACH ROW EXECUTE FUNCTION suppress_account_audit();").execute(&db.pool).await.unwrap();
+    assert!(matches!(
+        execute(
+            &db.store,
+            "admin@example.com",
+            change(AccountAction::RevokeAll, 0)
+        )
+        .await,
+        Err(Error::Unavailable)
+    ));
+    assert_eq!(db.store.account(id(2)).await.unwrap().credential_epoch, 0);
 }

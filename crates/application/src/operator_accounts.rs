@@ -16,19 +16,19 @@ pub struct CandidateAt {
 }
 /// Only successful password verification constructs this nonserializable proof.
 /// Persistence must still revalidate its credential, age and current grants.
-pub struct Verified {
+pub struct Verified<R = Request> {
     candidate: CandidateAt,
     id: OperationId,
-    request: Request,
+    request: R,
 }
-impl Verified {
+impl<R> Verified<R> {
     pub fn candidate(&self) -> &CandidateAt {
         &self.candidate
     }
     pub fn id(&self) -> OperationId {
         self.id
     }
-    pub fn request(&self) -> &Request {
+    pub fn request(&self) -> &R {
         &self.request
     }
 }
@@ -37,6 +37,8 @@ pub struct Outcome {
     pub changed: bool,
 }
 pub trait Store: Sync {
+    type Request: Send + Sync;
+    type Outcome: Send;
     fn candidate(
         &self,
         email: &str,
@@ -44,20 +46,23 @@ pub trait Store: Sync {
     fn denied(
         &self,
         id: OperationId,
-        request: &Request,
+        request: &Self::Request,
     ) -> impl Future<Output = Result<(), Error>> + Send;
-    fn execute(&self, proof: Verified) -> impl Future<Output = Result<Outcome, Error>> + Send;
+    fn execute(
+        &self,
+        proof: Verified<Self::Request>,
+    ) -> impl Future<Output = Result<Self::Outcome, Error>> + Send;
 }
 
-pub async fn run(
-    store: &impl Store,
+pub async fn run<S: Store>(
+    store: &S,
     admission: &impl LoginAdmission,
     passwords: &impl PasswordVerification,
     id: OperationId,
-    request: Request,
+    request: S::Request,
     email: &str,
     password: &str,
-) -> Result<Outcome, Error> {
+) -> Result<S::Outcome, Error> {
     let email = login_email(email).map_err(|_| Error::Denied)?;
     login_password(password).map_err(|_| Error::Denied)?;
     admission.admit(&email).await.map_err(auth_error)?;

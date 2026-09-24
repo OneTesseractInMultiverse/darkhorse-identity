@@ -18,6 +18,7 @@ or service connections.
 | Command                                                         | Required authority                                        | Commit or observation boundary                                           |
 | --------------------------------------------------------------- | --------------------------------------------------------- | ------------------------------------------------------------------------ |
 | `serve`                                                         | Configured runtime features and credentials               | Per-request HTTP authentication and authorization                        |
+| `operator account list`                                         | Database, active limiter, fresh administrator password    | Shared directory query and read audit commit before releasing the page   |
 | `operator account show ID`                                      | Database, active limiter, fresh administrator password    | Verified read and actor audit commit together                            |
 | `operator account deactivate/reactivate/revoke-all ID REVISION` | Same account authority, expected revision, bounded reason | Account change and actor audit commit together                           |
 | `operator bootstrap`                                            | Nonowner operator database login, unused bootstrap        | Initial account, credential, membership, flag, and audit commit together |
@@ -48,7 +49,7 @@ Canonical and compatibility spellings share one dispatch path and confirmation
 policy. No command grants application roles, impersonates users, or bypasses the
 domain authorization evaluator. Administrator membership and application-resource
 access remain separate concepts. Active platform administrators may perform only
-the four implemented account operations. This grants no application-resource
+the implemented account operations. This grants no application-resource
 authority. Deployments must restrict database credential access.
 
 ## Credential separation and limits

@@ -12,6 +12,14 @@ export function accountOptions(values, stdinIsTTY) {
     id = values.ACCOUNT_ID ?? "",
     revision = values.ACCOUNT_REVISION ?? "",
     confirm = values.ACCOUNT_CONFIRM ?? "no";
+  if (operation === "list") return listOptions(values);
+  if (
+    [values.ACCOUNT_SEARCH, values.ACCOUNT_STATUS, values.ACCOUNT_AFTER].some(
+      Boolean,
+    ) ||
+    ![undefined, "", "25"].includes(values.ACCOUNT_LIMIT)
+  )
+    throw invalid();
   if (
     !["show", "deactivate", "reactivate", "revoke-all"].includes(operation) ||
     !/^[a-f0-9]{8}(?:-[a-f0-9]{4}){3}-[a-f0-9]{12}$/i.test(id) ||
@@ -108,4 +116,40 @@ export function interrupted(reason) {
     code: reason === "SIGTERM" ? 143 : reason === "SIGHUP" ? 129 : 130,
     uncertain: true,
   };
+}
+
+function listOptions(values) {
+  const search = values.ACCOUNT_SEARCH ?? "",
+    status = values.ACCOUNT_STATUS ?? "",
+    after = values.ACCOUNT_AFTER ?? "",
+    limit = values.ACCOUNT_LIMIT ?? "25",
+    confirm = values.ACCOUNT_CONFIRM ?? "no";
+  if (
+    values.ACCOUNT_ID ||
+    values.ACCOUNT_REVISION ||
+    !["yes", "no"].includes(confirm) ||
+    !["", "active", "inactive"].includes(status) ||
+    !/^(?:[1-9]|1[0-9]|2[0-5])$/.test(limit) ||
+    search !== search.trim() ||
+    Array.from(search).length > 100 ||
+    /[\p{Cc}]/u.test(search) ||
+    (after &&
+      (!/^[a-f0-9]{8}(?:-[a-f0-9]{4}){3}-[a-f0-9]{12}$/i.test(after) ||
+        after === "00000000-0000-0000-0000-000000000000"))
+  )
+    throw invalid();
+  return [
+    "--auth-stdin",
+    "--output",
+    "json",
+    ...(confirm === "yes" ? ["--yes"] : []),
+    "operator",
+    "account",
+    "list",
+    "--limit",
+    limit,
+    ...(search ? [`--search=${search}`] : []),
+    ...(status ? ["--status", status] : []),
+    ...(after ? ["--after", after] : []),
+  ];
 }

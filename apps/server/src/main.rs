@@ -47,7 +47,7 @@ fn execute(
     format: operator::output::Format,
     auth_stdin: bool,
 ) -> Result<(), operator::output::Failure> {
-    operator::confirmation::confirm(command, confirmed, format, auth_stdin)?;
+    operator::confirmation::confirm(&command, confirmed, format, auth_stdin)?;
     let runtime = tokio::runtime::Builder::new_multi_thread()
         .enable_all()
         .build()

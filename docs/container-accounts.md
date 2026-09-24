@@ -1,7 +1,7 @@
 # Container account commands
 
 The host-side launchers run the existing Rust `operator account` commands inside
-the selected deployment: `show`, `deactivate`, `reactivate` and `revoke-all`.
+the selected deployment: `list`, `show`, `deactivate`, `reactivate` and `revoke-all`.
 They require a fresh platform-administrator password on every invocation. Container
 access alone does not identify or authenticate an application actor. Read the
 [account authority and audit contract](operator-accounts.md) first.
@@ -25,18 +25,38 @@ input. Output can contain profile data and must be protected.
 
 Only nonsecret command selectors are accepted:
 
-| Setting             | Meaning                                                         |
-| ------------------- | --------------------------------------------------------------- |
-| `ACCOUNT_OPERATION` | `show` (default), `deactivate`, `reactivate`, `revoke-all`      |
-| `ACCOUNT_ID`        | Required nonzero, hyphenated principal UUID                     |
-| `ACCOUNT_REVISION`  | Required current revision for changes. Omit for `show`          |
-| `ACCOUNT_CONFIRM`   | `yes` explicitly confirms a reviewed mutation. Defaults to `no` |
+| Setting             | Meaning                                                            |
+| ------------------- | ------------------------------------------------------------------ |
+| `ACCOUNT_OPERATION` | `show` (default), `list`, `deactivate`, `reactivate`, `revoke-all` |
+| `ACCOUNT_ID`        | Nonzero, hyphenated principal UUID; omit for `list`                |
+| `ACCOUNT_REVISION`  | Required current revision for changes. Omit for `show` and `list`  |
+| `ACCOUNT_CONFIRM`   | `yes` explicitly confirms a reviewed mutation. Defaults to `no`    |
 
 Read the target first and review its current revision, intended operation and
 reason. Do not automatically confirm or fetch a newer revision to retry a failed
 mutation. `--yes` is confirmation, not authorization. A protected input file is
 represented below by `/private/path/account-input.json`. The commands do not
 create it. Replace the UUID/revision placeholders with observed values.
+
+### Directory listing
+
+For `list`, also accept `ACCOUNT_SEARCH` (literal prefix, up to 100 characters),
+`ACCOUNT_STATUS` (`active` or `inactive`), `ACCOUNT_AFTER` (continuation UUID) and
+`ACCOUNT_LIMIT` (1–25, default 25). Omit `ACCOUNT_ID` and `ACCOUNT_REVISION` and
+provide protected JSON with only `email` and `password`, without `reason`.
+The launcher rejects conflicting single-target and listing options.
+
+```sh
+make stack-account-run STACK=trial ACCOUNT_OPERATION=list ACCOUNT_LIMIT=25 ACCOUNT_STATUS=active < /private/path/list-input.json
+make kube-account-run KUBE_CONFIG=/absolute/path/identity.json KUBE_ACCESS=/absolute/path/access.yaml KUBE_CONTEXT=reviewed-context ACCOUNT_OPERATION=list ACCOUNT_LIMIT=25 < /private/path/list-input.json
+```
+
+The same options work with `stack-account-exec` and `kube-account-exec` (with an
+explicit `ACCOUNT_POD`). Consume `data.next` as `ACCOUNT_AFTER` on a subsequent
+freshly authenticated invocation. There is no automatic pagination. Arguments
+may appear in process lists or orchestration audit metadata, so a search value
+must never contain credentials. Application read audits omit the search text.
+See [directory read semantics](operator-accounts.md#bounded-directory-listing).
 
 ### Running Compose application
 
@@ -218,19 +238,18 @@ selectors. Daemons, kubelets, credential plugins and session-recording infrastru
 can observe the stream. Protected stdin avoids arguments/manifests. It does not
 hide credentials from those trusted components.
 
-The Compose one-shot service limits its database pool to two and limiter pool to
-one connection, with 512 MiB memory, two CPUs and 128 processes. Running-container
-exec inherits the server configuration, creates additional pools (currently five
-database and four limiter connections per command), and shares the server's
-container resource limits. Kubernetes has the same per-command pools with the
-current manifest. The Kubernetes one-shot Pod instead uses two database and one
-limiter connection, 512 MiB memory, one CPU and a 16 MiB memory-backed temporary
+Every account command caps its own database pool at two connections and its
+limiter pool at one, including running-container exec. A configured database
+limit of one remains one. Exec processes create additional pools and share the
+serving container's resource limits. The Compose one-shot service has 512 MiB
+memory, two CPUs and 128 processes. The Kubernetes one-shot Pod has 512 MiB
+memory, one CPU and a 16 MiB memory-backed temporary
 directory. It consumes one of the namespace quota's four Pod slots. The existing
 connection envelope remains conservative for mixtures of serving and one-shot
 Pods, but extra processes started through exec must be budgeted separately.
-Account commands take the shared security fence, including
-reads, so contention can delay other security operations. Existing database
-query/lock and authentication-proof limits still apply.
+Account commands take the security fence in exclusive mode for single-target
+operations and shared mode for listing. Both can delay waiting security writes.
+Existing database query/lock and authentication-proof limits still apply.
 
 Run one administrative operation at a time and reserve backend/container capacity.
 There is no distributed operator-concurrency limit in these launchers. Shared
@@ -248,23 +267,23 @@ public launcher entrypoint, without changing developer stacks or ambient cluster
 contexts. They exercise the current image, schema and runtime grants. See their
 prerequisites and remaining deployment limits in the linked guides.
 
-| Mode / scenario                                                              | Required authority                                                  | State and audit expectation                                                                           | Exit / evidence                                               |
-| ---------------------------------------------------------------------------- | ------------------------------------------------------------------- | ----------------------------------------------------------------------------------------------------- | ------------------------------------------------------------- |
-| Protected stdin transport, no TTY                                            | Host test process only                                              | Exact stdin forwarded. Marker absent from arguments, environment and diagnostics                      | Process suite preserves `0/1/2/3/74/125`                      |
-| Invalid selectors                                                            | None                                                                | No remote launch or target access                                                                     | `2`. Pure and process suites                                  |
-| Compose exec / Kubernetes exec, authenticated show                           | Deployment exec plus active administrator password                  | Read with verified actor and runtime-role audit                                                       | JSON, `0`. Both deployment suites                             |
-| Wrong password / stale revision                                              | Exec plus supplied credentials                                      | Generic authentication denial or audited conflict. No target change                                   | `1`. Both suites                                              |
-| Missing mutation confirmation                                                | Exec. Confirmation absent                                           | No mutation                                                                                           | `3`. Both suites                                              |
-| Last administrator deactivation                                              | Exec plus administrator password                                    | Directory invariant rejects change                                                                    | `1`. Compose suite                                            |
-| Compose exec with stopped API                                                | Deployment exec                                                     | No application start                                                                                  | Nonzero. Compose suite                                        |
-| Compose one-shot show/deactivate/reactivate/revoke-all, HTTP stopped         | Workload creation, runtime secrets and administrator password       | Expected revisions and runtime-role audit. No HTTP listener. Ordinary container removed               | JSON, `0`. Compose suite                                      |
-| Lost limiter continuity                                                      | Exec/run plus valid password                                        | Reject account access until separate recovery                                                         | `1`. Both suites                                              |
-| Kubernetes revoke-all across serving replicas                                | Exec plus administrator password and observed revision              | Committed revocation immediately invalidates token checks on both replicas                            | `0`. Kubernetes suite                                         |
-| Local timeout / signal                                                       | Host process control                                                | Stop owned child/descendant processes, preserve unrelated process. No retry. Remote outcome uncertain | `124` / `143`. Process suite, other signal mapping unit tests |
-| Backup/migration during account run                                          | Deployment operations                                               | Reject maintenance during an active account command                                                   | Nonzero. Compose suite                                        |
-| Kubernetes one-shot show/deactivate/reactivate/revoke-all, zero serving Pods | Workload creation, exec, runtime secrets and administrator password | Expected revisions and runtime-role audit. No serving workload. Owned Pod removed                     | JSON, `0`. Kubernetes suite                                   |
-| One-shot Kubernetes authority loss / database network outage                 | Same deployment permissions, revoked actor or unavailable database  | No target mutation. Fresh authority and required dependency checks reject access                      | `1`. Kubernetes suite                                         |
-| One-shot creation/replacement/cleanup failure                                | Host fixture or controlled cluster                                  | No command retry, no execution after failed preflight, UID-conditional deletion                       | Process suite and actual wrong-UID deletion rejection         |
+| Mode / scenario                                                                   | Required authority                                                  | State and audit expectation                                                                           | Exit / evidence                                               |
+| --------------------------------------------------------------------------------- | ------------------------------------------------------------------- | ----------------------------------------------------------------------------------------------------- | ------------------------------------------------------------- |
+| Protected stdin transport, no TTY                                                 | Host test process only                                              | Exact stdin forwarded. Marker absent from arguments, environment and diagnostics                      | Process suite preserves `0/1/2/3/74/125`                      |
+| Invalid selectors                                                                 | None                                                                | No remote launch or target access                                                                     | `2`. Pure and process suites                                  |
+| Compose exec / Kubernetes exec, authenticated show                                | Deployment exec plus active administrator password                  | Read with verified actor and runtime-role audit                                                       | JSON, `0`. Both deployment suites                             |
+| Wrong password / stale revision                                                   | Exec plus supplied credentials                                      | Generic authentication denial or audited conflict. No target change                                   | `1`. Both suites                                              |
+| Missing mutation confirmation                                                     | Exec. Confirmation absent                                           | No mutation                                                                                           | `3`. Both suites                                              |
+| Last administrator deactivation                                                   | Exec plus administrator password                                    | Directory invariant rejects change                                                                    | `1`. Compose suite                                            |
+| Compose exec with stopped API                                                     | Deployment exec                                                     | No application start                                                                                  | Nonzero. Compose suite                                        |
+| Compose one-shot list/show/deactivate/reactivate/revoke-all, HTTP stopped         | Workload creation, runtime secrets and administrator password       | Expected revisions and runtime-role audit. No HTTP listener. Ordinary container removed               | JSON, `0`. Compose suite                                      |
+| Lost limiter continuity                                                           | Exec/run plus valid password                                        | Reject account access until separate recovery                                                         | `1`. Both suites                                              |
+| Kubernetes revoke-all across serving replicas                                     | Exec plus administrator password and observed revision              | Committed revocation immediately invalidates token checks on both replicas                            | `0`. Kubernetes suite                                         |
+| Local timeout / signal                                                            | Host process control                                                | Stop owned child/descendant processes, preserve unrelated process. No retry. Remote outcome uncertain | `124` / `143`. Process suite, other signal mapping unit tests |
+| Backup/migration during account run                                               | Deployment operations                                               | Reject maintenance during an active account command                                                   | Nonzero. Compose suite                                        |
+| Kubernetes one-shot list/show/deactivate/reactivate/revoke-all, zero serving Pods | Workload creation, exec, runtime secrets and administrator password | Expected revisions and runtime-role audit. No serving workload. Owned Pod removed                     | JSON, `0`. Kubernetes suite                                   |
+| One-shot Kubernetes authority loss / database network outage                      | Same deployment permissions, revoked actor or unavailable database  | No target mutation. Fresh authority and required dependency checks reject access                      | `1`. Kubernetes suite                                         |
+| One-shot creation/replacement/cleanup failure                                     | Host fixture or controlled cluster                                  | No command retry, no execution after failed preflight, UID-conditional deletion                       | Process suite and actual wrong-UID deletion rejection         |
 
 Native interactive commands inside a running container can use
 `docker exec --interactive --tty --user 10001:10001 <reviewed-api-container-id> /usr/local/bin/darkhorse-server operator account show <principal-uuid>`

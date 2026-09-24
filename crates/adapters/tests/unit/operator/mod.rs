@@ -37,3 +37,18 @@ fn projection_and_errors_expose_only_intended_operator_data() {
         assert!(!directory_message(error).is_empty());
     }
 }
+
+#[test]
+fn account_pool_respects_smaller_configuration_and_caps_larger_pools() {
+    for (configured, expected) in [("1", 1), ("2", 2), ("32", 2)] {
+        let settings = database_configuration::load(envbind::MapEnvironment::from_pairs([
+            (
+                "DARKHORSE_DATABASE_URL",
+                "postgres://unit:fixture@localhost/directory",
+            ),
+            ("DARKHORSE_DATABASE_POOL_SIZE", configured),
+        ]))
+        .unwrap();
+        assert_eq!(connection_limit(settings, 2).max_connections, expected);
+    }
+}

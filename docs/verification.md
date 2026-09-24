@@ -97,6 +97,33 @@ cargo install cargo-mutants --version 27.1.0 --locked
 Mutation targets run an unmodified baseline first, then test selected source mutations.
 A missed mutation requires investigation. A passing coverage percentage cannot clear it.
 
+## Authenticated CLI directory increment
+
+The directory increment in [#25](https://github.com/OneTesseractInMultiverse/darkhorse-identity/issues/25)
+adds bounded list/search through the existing account authentication service and
+console query. Verification on **2026-09-24** includes 554 isolated tests
+(180 adapter, 35 application, 106 domain, 143 frontend and 90 tooling), 193
+PostgreSQL scenarios, five Redis infrastructure scenarios and 21 limiter/operator
+scenarios. The Redis child-process helper remains intentionally ignored as a
+standalone test and runs through its parent scenario.
+
+The new cases exercise pagination parity, literal wildcard handling, current
+administrator checks after lock waits, expired proofs, anonymous denials, audit
+errors, trigger-suppressed inserts, failed commits and loss of an actual committed
+response. Real CLI processes use restricted runtime grants and share the HTTP
+password-attempt budget. Existing terminal, launcher, release, formatting, lint,
+type and architecture checks also pass. Full Compose and Kubernetes fixtures
+exercise directory listing with HTTP stopped and verify the committed runtime-role
+read audit. See [account commands](operator-accounts.md)
+for the released interface and required migration `0025`.
+
+A fresh instrumentation directory for `make coverage-core` reports **2029/2029
+lines**, **320/320 functions** and **2798/2804 regions** (99.79%). It measures only
+the domain and application crates. Targeted Node coverage for `account-plan.mjs`
+reports 100% lines/functions and 96.34% branches. These results do not establish
+whole-system coverage; no new combined Rust-effects percentage is claimed. The
+100% authored-logic target and remaining qualification work in #2 stay unchanged.
+
 ## Recorded implementation baseline
 
 This historical consolidated baseline covers

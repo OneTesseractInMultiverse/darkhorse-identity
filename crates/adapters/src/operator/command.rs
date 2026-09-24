@@ -3,7 +3,7 @@ use darkhorse_domain::{
     identity::{OperationId, PrincipalId},
 };
 
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub enum Command {
     Serve,
     Migrate,
@@ -18,6 +18,7 @@ pub enum Command {
         stdin: bool,
     },
     Account(PrincipalId),
+    Accounts(darkhorse_domain::operator_directory::Request),
     Change {
         id: PrincipalId,
         revision: u64,
@@ -38,12 +39,13 @@ pub(super) fn counter(value: &str) -> Result<u64, &'static str> {
         .ok_or("Invalid expected revision.")
 }
 
-pub fn requires_confirmation(command: Command) -> bool {
+pub fn requires_confirmation(command: &Command) -> bool {
     !matches!(
         command,
         Command::Serve
             | Command::MigrationInspect(_)
             | Command::Account(_)
+            | Command::Accounts(_)
             | Command::RedisStatus
             | Command::LimiterStatus
             | Command::LimiterInspect(_)

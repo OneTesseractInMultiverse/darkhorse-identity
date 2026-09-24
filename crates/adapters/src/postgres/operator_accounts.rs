@@ -13,6 +13,8 @@ use uuid::Uuid;
 mod audit;
 type Tx<'a> = Transaction<'a, Postgres>;
 impl Store for PostgresStore {
+    type Request = Request;
+    type Outcome = Outcome;
     async fn candidate(&self, email: &str) -> Result<Option<CandidateAt>, Error> {
         authentication::candidate_record(&self.pool, email)
             .await
@@ -60,7 +62,7 @@ fn candidate(row: &sqlx::postgres::PgRow) -> Result<CandidateAt, Error> {
             .map_err(storage)?,
     })
 }
-async fn authority(tx: &mut Tx<'_>, proof: &Verified) -> Result<(), Error> {
+pub(super) async fn authority<R>(tx: &mut Tx<'_>, proof: &Verified<R>) -> Result<(), Error> {
     let candidate = proof.candidate();
     let current = match authentication::recheck(tx, &candidate.credential).await {
         Ok(_) => true,

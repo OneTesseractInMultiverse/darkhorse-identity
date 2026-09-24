@@ -61,6 +61,12 @@ or dependent grants abort the transaction. An interrupted connection can
 leave the commit outcome unknown: inspect privileges and reapply the reviewed
 script before restarting. Never infer successful application from a lost reply.
 
+Directory listing also requires SELECT/INSERT on `operator_directory_audit` from
+migration `0025`. Reapply the reviewed grants after migration. Runtime cannot
+update, delete or truncate this append-only read audit. The nonowner deployment
+operator role receives no access to this new table; use the runtime account-command
+configuration with fresh administrator authentication.
+
 ## Operator and migration boundary
 
 `darkhorse_operator` is a nonowner login with no memberships. It receives only

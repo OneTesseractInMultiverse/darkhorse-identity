@@ -13,26 +13,37 @@ use darkhorse_domain::{
     operator_accounts::{Error, Operation, Request},
 };
 mod input;
+mod listing;
+enum AccountRequest {
+    Account(Request),
+    Directory(darkhorse_domain::operator_directory::Request),
+}
 
 pub(super) async fn run(command: Command, stdin: bool) -> Result<Output, Failure> {
-    let operation = operation(command)?;
+    let mutation = matches!(command, Command::Change { .. });
     let input = if stdin {
         input::read(std::io::stdin().lock())?
     } else {
-        input::interactive(matches!(operation, Operation::Change { .. })).await?
+        input::interactive(mutation).await?
     };
-    let request = Request::new(operation, input.reason.as_deref()).map_err(message)?;
+    let request = request(command, input.reason.as_deref())?;
     let id = operation_id()?;
     perform(id, request, &input)
         .await
         .map_err(|error| failure(error, id))
 }
-async fn perform(id: OperationId, request: Request, input: &input::Input) -> Result<Output, Error> {
+async fn perform(
+    id: OperationId,
+    request: AccountRequest,
+    input: &input::Input,
+) -> Result<Output, Error> {
     let authentication = authentication_configuration::load(DeploymentEnvironment)
         .map_err(|_| Error::Unavailable)?
         .ok_or(Error::Unavailable)?;
-    let redis = redis_configuration::load(DeploymentEnvironment).map_err(|_| Error::Unavailable)?;
-    let store = super::connect().await.map_err(|_| Error::Unavailable)?;
+    let redis = listing::limit_redis(
+        redis_configuration::load(DeploymentEnvironment).map_err(|_| Error::Unavailable)?,
+    );
+    let store = super::connect(2).await.map_err(|_| Error::Unavailable)?;
     let result = execute(&store, authentication, redis, id, request, input).await;
     store.close().await;
     result
@@ -42,7 +53,7 @@ async fn execute(
     authentication: authentication_configuration::AuthenticationSettings,
     redis: redis_configuration::RedisSettings,
     id: OperationId,
-    request: Request,
+    request: AccountRequest,
     input: &input::Input,
 ) -> Result<Output, Error> {
     store
@@ -51,19 +62,45 @@ async fn execute(
         .map_err(|_| Error::Unavailable)?;
     let limiter = RedisLimiter::new(store.clone(), redis).map_err(|_| Error::Unavailable)?;
     let admission = SharedLoginAdmission::new(limiter, authentication.key);
-    let operation = request.operation();
-    let result = operator_accounts::run(
-        store,
-        &admission,
-        &PasswordPreparation::default(),
-        id,
-        request,
-        &input.email,
-        &input.password,
-    )
-    .await?;
-    Ok(output(id, operation, result))
+    match request {
+        AccountRequest::Account(request) => {
+            let operation = request.operation();
+            let result = operator_accounts::run(
+                store,
+                &admission,
+                &PasswordPreparation::default(),
+                id,
+                request,
+                &input.email,
+                &input.password,
+            )
+            .await?;
+            Ok(output(id, operation, result))
+        }
+        AccountRequest::Directory(request) => {
+            let result = operator_accounts::run(
+                &store.operator_directory(),
+                &admission,
+                &PasswordPreparation::default(),
+                id,
+                request,
+                &input.email,
+                &input.password,
+            )
+            .await?;
+            Ok(listing::output(id, result))
+        }
+    }
 }
+fn request(command: Command, reason: Option<&str>) -> Result<AccountRequest, Failure> {
+    match command {
+        Command::Accounts(query) if reason.is_none() => Ok(AccountRequest::Directory(query)),
+        command => Ok(AccountRequest::Account(
+            Request::new(operation(command)?, reason).map_err(message)?,
+        )),
+    }
+}
+
 fn operation(command: Command) -> Result<Operation, Failure> {
     match command {
         Command::Account(id) => Ok(Operation::Show(id)),

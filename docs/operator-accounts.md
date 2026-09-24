@@ -1,6 +1,6 @@
 # Authenticated account commands
 
-The four `operator account` commands require a fresh administrator password for
+The `operator account` commands require a fresh administrator password for
 every invocation. There is no saved CLI session, token file or login/logout
 command. Canonical and legacy spellings use the same application service. HTTP
 may be stopped. The CLI starts no listener or maintenance worker.
@@ -34,6 +34,55 @@ arguments, shell history, committed files or reason text. The raw input buffer a
 successfully parsed password are cleared on drop. JSON output requires
 `--auth-stdin` and never prompts.
 
+## Bounded directory listing
+
+```sh
+darkhorse-server --auth-stdin --output json operator account list --status active --search 'Ada' --limit 25 < protected-account.json
+```
+
+For `list`, the protected input contains only `email` and `password`; omit
+`reason`. This is a read and needs no confirmation. `--status` accepts `active`
+or `inactive`; omitting it includes both. Search is a case-insensitive, literal
+prefix of email, full name or last name, using the console's existing query.
+Percent, underscore and backslash are ordinary search characters. Search permits
+up to 100 Unicode characters, without controls or surrounding whitespace.
+Search arguments may be visible in process listings and orchestration metadata;
+never use credential material as a search value.
+
+`--limit` accepts 1–25 and defaults to 25. The success envelope's `data` contains
+`operation_id`, `items` and `next`. Each item contains `id`, `email`, `first_name`,
+`last_name`, `active`, `administrator`, `email_verified` and `revision`.
+Revision is a decimal string to preserve its full integer range in JSON clients.
+No credential epoch, password verifier or extended profile is projected.
+The maximum valid page fits the CLI's 64 KiB escaped-output limit.
+
+Pass a non-null `next` UUID as `--after` for the following page, preserving the
+same filters. Each invocation authenticates and consumes a login attempt again;
+there is no automatic traversal. Results use the console's `(created_at, id)`
+keyset ordering. Pages are live reads, not a point-in-time export: changes between
+invocations can change membership. An unknown cursor produces an empty page.
+
+All account commands cap their process-local PostgreSQL pool at two connections
+(or the smaller configured limit) and their limiter pool at one. They create no
+cache client. Input collection finishes before connecting. Query, lock and proof
+lifetime limits still apply; bounded output alone does not guarantee a fast query
+at every directory size. Load and query-plan qualification remain required.
+
+```mermaid
+sequenceDiagram
+    participant C as Directory command
+    participant A as Shared authentication use case
+    participant P as PostgreSQL primary
+    C->>A: Protected credentials and validated page request
+    A->>A: Shared admission and password verification
+    A->>P: Acquire shared security fence
+    P->>P: Recheck current administrator and proof age
+    P->>P: Run the console directory query
+    P->>P: Recheck proof age and append bounded read audit
+    P-->>C: Commit acknowledgement
+    C-->>C: Release projected page and continuation UUID
+```
+
 ## Authentication and authority
 
 The CLI uses the same Argon2id verifier and `SharedLoginAdmission` policy as HTTP:
@@ -48,13 +97,13 @@ successful authentication, current authority checks and audit commit.
 The application constructs a private, single-operation proof after password
 verification. It captures the database time and credential facts before hashing.
 Its lifetime is **60 seconds**, including hashing and waits. Inside the operation
-transaction, the adapter takes the exclusive security fence and rechecks the
+transaction, the adapter takes the security fence and rechecks the
 exact credential/verifier, current credential epoch, nonrevoked credential,
 active principal and platform-administrator membership against the primary.
 Expired proofs and clock rollback deny access. No positive authorization decision
 is cached.
 
-An active platform administrator can show, deactivate, reactivate or revoke all
+An active platform administrator can list or show accounts, deactivate, reactivate or revoke all
 sessions/issued credentials for a selected principal. Expected revisions and the
 last eligible administrator invariant still apply. Revoke-all advances the
 credential epoch. It does not remove the password, so a later fresh password
@@ -62,7 +111,8 @@ proof may authenticate. No membership assignment, impersonation or application
 resource access is granted. Committed demotion or credential changes invalidate
 older proofs. Supported concurrent security operations serialize at the shared
 fence. An operation that wins the fence may complete before a waiting revocation.
-Account reads take this fence for coherent actor/audit ordering. Keep this
+Single-target operations take the exclusive fence; listing takes its shared mode
+and checks proof freshness again after the query. Both preserve actor/audit ordering. Keep this
 low-volume administrative path out of high-frequency authorization checks.
 
 ```mermaid
@@ -102,7 +152,17 @@ using protected owner access before deciding whether to retry. Cancellation or a
 failed output pipe may lose the correlation response. They are not proof of
 rollback. No general audit export or automatic retention/deletion is added.
 
-Runtime may append/read this audit table but cannot update/delete/truncate it.
+Migration `0025` adds the separate `operator_directory_audit` table. Apply the
+migration and updated runtime grants with serving stopped before enabling listing.
+A listing audit records correlation, verified actor/credential/epoch, proof time,
+limit, optional status/cursor, whether search was used, outcome, returned count,
+time and database role. It stores neither raw search text nor returned profiles.
+Invalid authentication produces a denial with no verified actor. Audit insertion
+must persist exactly one row; an error or trigger-suppressed insert releases no
+page. A lost commit acknowledgement reports an unknown outcome even when the
+read audit committed. There is no automatic retry or unaudited fallback.
+
+Runtime may append/read these audit tables but cannot update/delete/truncate it.
 Database owners remain trusted, and broad runtime DML still permits misleading
 audit insertion outside the application. Per-command authentication does not
 contain a compromised server or database credential. Migration, bootstrap,
@@ -116,7 +176,7 @@ remain open in #1/#23. There is no emergency password or audit-bypass switch.
 `make test-operator-accounts` runs disposable PostgreSQL and Redis suites plus real
 CLI/terminal checks. Real command processes use the reviewed grants with a
 nonowner runtime database login, including denied audit INSERT rollback.
-It covers all four commands, generic denials, independent
+It covers listing and the four single-target commands, generic denials, independent
 processes sharing HTTP admission budgets, membership and credential reductions,
 expired proofs, revision/last-administrator rules, audit rollback, commit failure,
 and loss of an actual committed PostgreSQL response. Unit tests remain
@@ -130,4 +190,5 @@ and [OWASP authorization guidance](https://cheatsheetseries.owasp.org/cheatsheet
 ## Source reference
 
 [account use case](../crates/application/src/operator_accounts.rs),
-[transaction authority](../crates/adapters/src/postgres/operator_accounts.rs).
+[transaction authority](../crates/adapters/src/postgres/operator_accounts.rs),
+[directory transaction](../crates/adapters/src/postgres/operator_directory.rs).
