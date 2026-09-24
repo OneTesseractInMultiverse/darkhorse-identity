@@ -1,3 +1,4 @@
+import { applicationCommands } from "./application-command-test.mjs";
 // Actual container/process evidence; excluded from isolated unit suites.
 import assert from "node:assert/strict";
 import { randomUUID } from "node:crypto";
@@ -27,6 +28,7 @@ INSERT INTO applications(id,name,owner_id,active) VALUES('${app}','${name}','${a
 INSERT INTO oauth_clients(id,application_id,name,active) VALUES('${client}','${app}','Catalog client',true);
 INSERT INTO client_redirects(client_id,uri) VALUES('${client}','https://client.example/callback?fixed=1');
 COMMIT;`);
+  await applicationCommands(invoke, sql, source, password);
   const input = JSON.stringify({ email, password });
   for (const [args, id, fields] of [
     [
@@ -142,6 +144,8 @@ async function catalogCommand(command, target, settings, input) {
       CATALOG_LIMIT: "",
       CATALOG_CONFIRM: "",
       CATALOG_REVISION: "",
+      CATALOG_NAME: "",
+      CATALOG_OWNER_ID: "",
       ...settings,
     },
     input,

@@ -36,4 +36,5 @@ pub mod media;
 pub mod operator_accounts;
 pub mod operator_directory;
 
+pub mod operator_applications;
 pub mod operator_catalog;

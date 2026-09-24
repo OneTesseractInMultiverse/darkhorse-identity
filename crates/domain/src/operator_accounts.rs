@@ -61,7 +61,7 @@ pub fn authorize(authority: Authority, now: u64) -> Result<(), Error> {
     }
     Ok(())
 }
-fn checked_reason(value: &str) -> Result<String, Error> {
+pub(crate) fn checked_reason(value: &str) -> Result<String, Error> {
     let value = value.trim();
     if value.is_empty() || value.len() > 512 || value.chars().count() > 200
         || value.chars().any(|c| c.is_control() || matches!(c,'\u{2028}'..='\u{202e}'|'\u{2066}'..='\u{2069}'|'\u{061c}'|'\u{200e}'|'\u{200f}')) {

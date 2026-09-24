@@ -208,6 +208,43 @@ async function failures() {
     assert.equal(reasonOnRead.stdout, "");
     assert.ok(!reasonOnRead.stderr.includes(marker));
   }
+  for (const operation of ["create", "update"]) {
+    const args = [
+      "--auth-stdin",
+      "--output",
+      "json",
+      "operator",
+      "application",
+      operation,
+      ...(operation === "update"
+        ? ["00000000-0000-0000-0000-000000000001", "0"]
+        : []),
+      "--name",
+      "Fixture",
+      "--owner",
+      "00000000-0000-0000-0000-000000000001",
+      "--status",
+      "active",
+    ];
+    const unconfirmed = await invoke(
+      args,
+      JSON.stringify({
+        email: "a@b.com",
+        password: marker,
+        reason: "Approved fixture",
+      }),
+    );
+    assert.equal(unconfirmed.code, 3);
+    assert.equal(unconfirmed.stdout, "");
+    assert.ok(!unconfirmed.stderr.includes(marker));
+    const missingReason = await invoke(
+      [...args, "--yes"],
+      JSON.stringify({ email: "a@b.com", password: marker }),
+    );
+    assert.equal(missingReason.code, 2);
+    assert.equal(missingReason.stdout, "");
+    assert.ok(!missingReason.stderr.includes(marker));
+  }
   const interactive = await invoke(["bootstrap", "--yes"]);
   assert.equal(interactive.code, 1);
   assert.match(interactive.stderr, /requires a terminal/);

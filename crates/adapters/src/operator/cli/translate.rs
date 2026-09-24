@@ -19,6 +19,7 @@ pub(super) fn invocation(options: Options) -> Result<Invocation, Failure> {
             | Command::Accounts(_)
             | Command::Catalog(_)
             | Command::CatalogShow(_)
+            | Command::ApplicationMutation(_)
             | Command::Change { .. }
     );
     if (options.auth_stdin && !account)
@@ -41,6 +42,20 @@ fn operator(value: Operator) -> Result<Command, Failure> {
         }) => Command::MigrationInspect(id),
         Operator::Bootstrap(value) => Command::Bootstrap { stdin: value.stdin },
         Operator::Account(value) => account(value)?,
+        Operator::Application(Application::Create(spec)) => Command::ApplicationMutation(
+            darkhorse_domain::operator_applications::Operation::Create(application_spec(spec)),
+        ),
+        Operator::Application(Application::Update {
+            application,
+            revision,
+            spec,
+        }) => Command::ApplicationMutation(
+            darkhorse_domain::operator_applications::Operation::Update {
+                application,
+                revision,
+                spec: application_spec(spec),
+            },
+        ),
         Operator::Application(Application::Show { application }) => Command::CatalogShow(
             darkhorse_application::registration::ReadTarget::Application(application),
         ),
@@ -66,6 +81,13 @@ fn operator(value: Operator) -> Result<Command, Failure> {
         Operator::Limiter(Limiter::Activate) => Command::LimiterActivate,
         Operator::Redis(Redis::Status) => Command::RedisStatus,
     })
+}
+fn application_spec(spec: ApplicationSpec) -> darkhorse_domain::registration::ApplicationSpec {
+    darkhorse_domain::registration::ApplicationSpec {
+        name: spec.name,
+        owner: spec.owner,
+        active: matches!(spec.status, Status::Active),
+    }
 }
 fn account(value: Account) -> Result<Command, Failure> {
     Ok(match value {

@@ -65,6 +65,9 @@ fn invoke(args: &[&str], input: Value) -> (i32, Value) {
     invoke_as("runtime", args, input)
 }
 fn invoke_as(role: &str, args: &[&str], input: Value) -> (i32, Value) {
+    invoke_output(role, args, input, false)
+}
+fn invoke_output(role: &str, args: &[&str], input: Value, closed_stdout: bool) -> (i32, Value) {
     let mut command = Command::new(variable("DARKHORSE_TEST_SERVER_PATH"));
     command.env_clear().env("PATH", variable("PATH"));
     for name in [
@@ -102,6 +105,9 @@ fn invoke_as(role: &str, args: &[&str], input: Value) -> (i32, Value) {
         .unwrap()
         .write_all(input.to_string().as_bytes())
         .unwrap();
+    if closed_stdout {
+        drop(child.stdout.take());
+    }
     let result = child.wait_with_output().unwrap();
     for bytes in [&result.stdout, &result.stderr] {
         assert!(!String::from_utf8_lossy(bytes).contains(PASSWORD));
@@ -516,5 +522,149 @@ async fn catalog_detail_cli_uses_runtime_grants_without_client_secret_table_acce
     assert_eq!(
         value["error"]["message"],
         "Administrator authentication or authority denied."
+    );
+}
+
+#[tokio::test]
+async fn application_commands_use_runtime_authority_revision_checks_and_transactional_audit() {
+    let _serial = SERIAL.lock().await;
+    let f = Fixture::new().await;
+    f.activate().await;
+    restrict_database(&f).await;
+    let (owner, email) = actor(&f).await;
+    let owner = owner.to_string();
+    let create = [
+        "operator",
+        "application",
+        "create",
+        "--name",
+        "CLI application",
+        "--owner",
+        &owner,
+        "--status",
+        "active",
+    ];
+    let created = succeeds(&create, &email);
+    assert_eq!(created.as_object().unwrap().len(), 4);
+    assert_eq!(created["revision"], "0");
+    let app = created["application_id"].as_str().unwrap();
+    let update = [
+        "operator",
+        "application",
+        "update",
+        app,
+        "0",
+        "--name",
+        "Updated application",
+        "--owner",
+        &owner,
+        "--status",
+        "inactive",
+    ];
+    let changed = succeeds(&update, &email);
+    assert_eq!(changed["revision"], "1");
+    let active: bool = sqlx::query_scalar("SELECT active FROM applications WHERE id=$1")
+        .bind(Uuid::parse_str(app).unwrap())
+        .fetch_one(&f.pool)
+        .await
+        .unwrap();
+    assert!(!active);
+    assert_eq!(invoke(&update, input(&email)).0, 1);
+    assert_eq!(
+        invoke(&create, json!({"email":email,"password":PASSWORD})).0,
+        2
+    );
+    assert_eq!(invoke_as("operator", &create, input(&email)).0, 1);
+    sqlx::query("REVOKE INSERT ON operator_application_audit FROM darkhorse_runtime")
+        .execute(&f.pool)
+        .await
+        .unwrap();
+    assert_eq!(invoke(&create, input(&email)).0, 1);
+    sqlx::query("GRANT INSERT ON operator_application_audit TO darkhorse_runtime")
+        .execute(&f.pool)
+        .await
+        .unwrap();
+    assert_eq!(
+        sqlx::query_scalar::<_, i64>("SELECT count(*) FROM applications WHERE owner_id=$1")
+            .bind(Uuid::parse_str(&owner).unwrap())
+            .fetch_one(&f.pool)
+            .await
+            .unwrap(),
+        1
+    );
+    let (other, other_email) = actor(&f).await;
+    sqlx::query("DELETE FROM platform_administrators WHERE principal_id=$1")
+        .bind(other)
+        .execute(&f.pool)
+        .await
+        .unwrap();
+    let denied = invoke(&create, input(&other_email));
+    assert_eq!(denied.0, 1);
+    assert!(
+        denied.1["error"]["message"]
+            .as_str()
+            .unwrap()
+            .contains("denied")
+    );
+    assert_eq!(sqlx::query_scalar::<_,i64>("SELECT count(*) FROM operator_application_audit WHERE actor_id=$1 AND result='written' AND database_role='darkhorse_runtime'").bind(Uuid::parse_str(&owner).unwrap()).fetch_one(&f.pool).await.unwrap(),2);
+    let audits: Vec<String> =
+        sqlx::query_scalar("SELECT row_to_json(a)::text FROM operator_application_audit a")
+            .fetch_all(&f.pool)
+            .await
+            .unwrap();
+    assert!(
+        audits.iter().all(|a| !a.contains(PASSWORD)
+            && !a.contains(&email)
+            && !a.contains("CLI application"))
+    );
+    assert_eq!(
+        sqlx::query_scalar::<_, i64>("SELECT count(*) FROM browser_sessions WHERE principal_id=$1")
+            .bind(Uuid::parse_str(&owner).unwrap())
+            .fetch_one(&f.pool)
+            .await
+            .unwrap(),
+        0
+    );
+}
+
+#[tokio::test]
+async fn committed_application_creation_with_closed_output_is_not_repeated() {
+    let _serial = SERIAL.lock().await;
+    let f = Fixture::new().await;
+    f.activate().await;
+    restrict_database(&f).await;
+    let (owner, email) = actor(&f).await;
+    let owner_text = owner.to_string();
+    let args = [
+        "operator",
+        "application",
+        "create",
+        "--name",
+        "Output failure fixture",
+        "--owner",
+        &owner_text,
+        "--status",
+        "active",
+    ];
+    let (code, response) = invoke_output("runtime", &args, input(&email), true);
+    assert_eq!(code, 74);
+    assert_eq!(response["error"]["code"], "output_failed");
+    assert_eq!(
+        sqlx::query_scalar::<_, i64>("SELECT count(*) FROM applications WHERE owner_id=$1")
+            .bind(owner)
+            .fetch_one(&f.pool)
+            .await
+            .unwrap(),
+        1
+    );
+    assert_eq!(
+        sqlx::query_scalar::<_, i64>(
+            "SELECT count(*) FROM operator_application_audit WHERE actor_id=$1 AND result='written'"
+        )
+        .bind(owner)
+        .fetch_one(&f.pool)
+        .await
+        .unwrap(),
+        1
     );
 }

@@ -196,6 +196,17 @@ pub(super) enum Status {
 
 #[derive(Subcommand)]
 pub(super) enum Application {
+    /// Create an application after fresh administrator authentication and confirmation.
+    Create(ApplicationSpec),
+    /// Replace the name, owner and activation status at an expected revision.
+    Update {
+        #[arg(value_parser=crate::operator::command::application_identifier)]
+        application: darkhorse_domain::identity::ApplicationId,
+        #[arg(value_parser=counter)]
+        revision: u64,
+        #[command(flatten)]
+        spec: ApplicationSpec,
+    },
     /// Read one application's configuration after fresh administrator authentication.
     Show {
         #[arg(value_parser=crate::operator::command::application_identifier)]
@@ -203,6 +214,18 @@ pub(super) enum Application {
     },
     /// Read one authenticated page of applications.
     List(CatalogList),
+}
+#[derive(Args)]
+pub(super) struct ApplicationSpec {
+    #[arg(long, value_parser=application_name)]
+    pub name: darkhorse_domain::registration::Label,
+    #[arg(long, value_parser=identifier)]
+    pub owner: PrincipalId,
+    #[arg(long, value_enum)]
+    pub status: Status,
+}
+fn application_name(value: &str) -> Result<darkhorse_domain::registration::Label, &'static str> {
+    darkhorse_domain::registration::Label::new(value).map_err(|_| "Invalid application name.")
 }
 #[derive(Subcommand)]
 pub(super) enum Client {

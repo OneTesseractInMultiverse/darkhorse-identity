@@ -48,5 +48,7 @@ export function hasCatalogSelectors(values) {
     "CATALOG_LIMIT",
     "CATALOG_CONFIRM",
     "CATALOG_REVISION",
+    "CATALOG_NAME",
+    "CATALOG_OWNER_ID",
   ].some((key) => Boolean(values[key]));
 }

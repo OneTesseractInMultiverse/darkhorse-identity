@@ -1,4 +1,5 @@
 mod accounts;
+mod applications;
 mod authenticated;
 mod cancellation;
 mod catalog;
@@ -24,6 +25,12 @@ pub mod confirmation;
 
 pub async fn run(command: Command, auth_stdin: bool) -> Result<Output, Failure> {
     match command {
+        Command::ApplicationMutation(operation) if auth_stdin => {
+            applications::run(operation, true).await
+        }
+        Command::ApplicationMutation(operation) => {
+            cancellation::run(applications::run(operation, false)).await
+        }
         Command::CatalogShow(target) if auth_stdin => catalog_details::run(target, true).await,
         Command::CatalogShow(target) => {
             cancellation::run(catalog_details::run(target, false)).await

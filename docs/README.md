@@ -39,6 +39,8 @@ can still require load testing, protocol conformance, or an independent security
 - [CLI](cli.md) specifies parsing, protected input, output, confirmation, and process behavior.
 - [Operator authority](operator-authority.md) identifies the authority required by each command.
 - [Operator accounts](operator-accounts.md) defines per-command administrator authentication.
+- [Operator catalog reads](operator-catalog.md) specifies bounded application and client inspection.
+- [Operator application writes](operator-applications.md) defines complete specifications, revision checks and transactional audit.
 - [Container account launchers](container-accounts.md) documents protected stdin and remote outcome uncertainty.
 
 ## Storage, deployment, and recovery

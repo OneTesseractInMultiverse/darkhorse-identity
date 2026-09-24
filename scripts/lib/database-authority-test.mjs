@@ -139,7 +139,7 @@ GRANT CONNECT ON DATABASE darkhorse_authority TO darkhorse_runtime,darkhorse_own
     ).stdout,
   ).data;
   assert.equal(absent.recorded_outcome, "absent");
-  assert.equal(inspected.steps.length, 27);
+  assert.equal(inspected.steps.length, 28);
   assert.ok(
     inspected.steps.every(
       (v) => v.completed_ms !== null && !v.already_applied && v.current_matches,

@@ -6,7 +6,7 @@ import {
 } from "./operator-options.mjs";
 const invalid = () =>
   new UsageError(
-    "Select an application/client list or show operation with the required scoped identifiers. Show rejects listing selectors. Omit account, revision and confirmation selectors. See docs/operator-catalog.md.",
+    "Select a supported catalog operation with its required identifiers and selectors. Application writes require name, owner, status, confirmation and an expected revision for updates. See docs/operator-catalog.md.",
   );
 export function catalogOptions(values, stdinIsTTY) {
   protectedStdin(stdinIsTTY);
@@ -14,7 +14,7 @@ export function catalogOptions(values, stdinIsTTY) {
     operation = values.CATALOG_OPERATION || "list";
   if (
     !["application", "client"].includes(target) ||
-    !["list", "show"].includes(operation) ||
+    !["list", "show", "create", "update"].includes(operation) ||
     [
       "ACCOUNT_OPERATION",
       "ACCOUNT_ID",
@@ -24,8 +24,17 @@ export function catalogOptions(values, stdinIsTTY) {
       "ACCOUNT_STATUS",
       "ACCOUNT_AFTER",
       "ACCOUNT_LIMIT",
+    ].some((key) => Boolean(values[key]))
+  )
+    throw invalid();
+  if (["create", "update"].includes(operation))
+    return mutationOptions(values, target, operation);
+  if (
+    [
       "CATALOG_CONFIRM",
       "CATALOG_REVISION",
+      "CATALOG_NAME",
+      "CATALOG_OWNER_ID",
     ].some((key) => Boolean(values[key]))
   )
     throw invalid();
@@ -41,6 +50,49 @@ export function catalogOptions(values, stdinIsTTY) {
     target,
     operation,
     ...selectors,
+  ];
+}
+function mutationOptions(values, target, operation) {
+  const name = values.CATALOG_NAME ?? "",
+    owner = values.CATALOG_OWNER_ID,
+    application = values.CATALOG_APPLICATION_ID ?? "",
+    revision = values.CATALOG_REVISION ?? "";
+  if (
+    target !== "application" ||
+    values.CATALOG_CONFIRM !== "yes" ||
+    !name.trim() ||
+    Array.from(name.trim()).length > 100 ||
+    /[\p{Cc}]/u.test(name.trim()) ||
+    Buffer.byteLength(name) > 1024 ||
+    !nonzeroUuid(owner) ||
+    !["active", "inactive"].includes(values.CATALOG_STATUS) ||
+    [
+      "CATALOG_CLIENT_ID",
+      "CATALOG_SEARCH",
+      "CATALOG_AFTER",
+      "CATALOG_LIMIT",
+    ].some((key) => Boolean(values[key])) ||
+    (operation === "create"
+      ? application !== "" || revision !== ""
+      : !nonzeroUuid(application) ||
+        !/^(0|[1-9][0-9]{0,18})$/.test(revision) ||
+        BigInt(revision) > 9223372036854775807n)
+  )
+    throw invalid();
+  return [
+    "--auth-stdin",
+    "--output",
+    "json",
+    "--yes",
+    "operator",
+    target,
+    operation,
+    ...(operation === "update" ? [application, revision] : []),
+    `--name=${name}`,
+    "--owner",
+    owner,
+    "--status",
+    values.CATALOG_STATUS,
   ];
 }
 function detailOptions(values, target) {

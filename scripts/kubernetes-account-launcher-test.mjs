@@ -68,7 +68,9 @@ if (phase === "create") {
 }
 function invoke(mode, override = {}, script = "scripts/account.mjs", makeMode) {
   const group = script === "scripts/catalog.mjs" ? "catalog" : "account";
-  const searchKey = `${group.toUpperCase()}_SEARCH`;
+  const searchKey = override.CATALOG_NAME
+    ? "CATALOG_NAME"
+    : `${group.toUpperCase()}_SEARCH`;
   return new Promise((done, reject) => {
     const child = spawn(
       makeMode ? "make" : process.execPath,
@@ -190,6 +192,53 @@ async function scenarios(script = "scripts/account.mjs") {
       );
     }
   }
+  if (catalog)
+    for (const operation of ["create", "update"])
+      for (const makeMode of ["environment", "arguments"]) {
+        await writeFile(events, "");
+        const name = "--$(shell printf EXPANDED) `literal` %_\\";
+        const owner = "00000000-0000-0000-0000-000000000123";
+        const result = await invoke(
+          "success",
+          {
+            ...settings,
+            CATALOG_TARGET: "application",
+            CATALOG_OPERATION: operation,
+            CATALOG_APPLICATION_ID: operation === "update" ? owner : "",
+            CATALOG_REVISION: operation === "update" ? "0" : "",
+            CATALOG_SEARCH: "",
+            CATALOG_NAME: name,
+            CATALOG_OWNER_ID: owner,
+            CATALOG_STATUS: "inactive",
+            CATALOG_CONFIRM: "yes",
+          },
+          script,
+          makeMode,
+        );
+        assert.equal(result.code, 0, result.stderr);
+        const calls = (await readFile(events, "utf8"))
+          .trim()
+          .split("\n")
+          .map(JSON.parse);
+        const args = calls.find((c) => c.phase === "exec").args;
+        assert.ok(args.includes(`--name=${name}`));
+        assert.ok(args.includes("--yes"));
+        assert.deepEqual(args.slice(args.indexOf("operator")), [
+          "operator",
+          "application",
+          operation,
+          ...(operation === "update" ? [owner, "0"] : []),
+          `--name=${name}`,
+          "--owner",
+          owner,
+          "--status",
+          "inactive",
+        ]);
+        assert.equal(calls.filter((c) => c.phase === "exec").length, 1);
+        assert.ok(
+          !result.stdout.includes(marker) && !result.stderr.includes(marker),
+        );
+      }
   for (const makeMode of ["environment", "arguments"]) {
     await writeFile(events, "");
     const search = "--$(shell printf EXPANDED) `literal` %_\\";

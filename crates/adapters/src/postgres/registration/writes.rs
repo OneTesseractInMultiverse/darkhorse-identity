@@ -62,14 +62,18 @@ async fn create_application(
     raw: u128,
 ) -> Result<Record, Error> {
     let id = ApplicationId::from_u128(raw).map_err(storage)?;
-    sqlx::query("INSERT INTO applications (id,name,owner_id,active) VALUES ($1,$2,$3,$4)")
-        .bind(uuid(raw))
-        .bind(spec.name.as_str())
-        .bind(uuid(spec.owner.as_u128()))
-        .bind(spec.active)
-        .execute(&mut **tx)
-        .await
-        .map_err(constraint)?;
+    let inserted =
+        sqlx::query("INSERT INTO applications (id,name,owner_id,active) VALUES ($1,$2,$3,$4)")
+            .bind(uuid(raw))
+            .bind(spec.name.as_str())
+            .bind(uuid(spec.owner.as_u128()))
+            .bind(spec.active)
+            .execute(&mut **tx)
+            .await
+            .map_err(constraint)?;
+    if inserted.rows_affected() != 1 {
+        return Err(Error::Unavailable);
+    }
     records::application(tx, id).await.map(Record::Application)
 }
 async fn update_application(
@@ -78,15 +82,19 @@ async fn update_application(
     revision: u64,
     spec: &ApplicationSpec,
 ) -> Result<Record, Error> {
-    sqlx::query("UPDATE applications SET name=$2,owner_id=$3,active=$4,revision=$5 WHERE id=$1")
+    let updated = sqlx::query("UPDATE applications SET name=$2,owner_id=$3,active=$4,revision=$5 WHERE id=$1 AND revision=$6")
         .bind(uuid(application.as_u128()))
         .bind(spec.name.as_str())
         .bind(uuid(spec.owner.as_u128()))
         .bind(spec.active)
         .bind(integer(next_revision(revision, revision)?)?)
+        .bind(integer(revision)?)
         .execute(&mut **tx)
         .await
         .map_err(constraint)?;
+    if updated.rows_affected() != 1 {
+        return Err(Error::Unavailable);
+    }
     records::application(tx, application)
         .await
         .map(Record::Application)

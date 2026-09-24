@@ -8,9 +8,10 @@ required for every invocation. Application ownership is contact metadata and gra
 administrative authority.
 
 This implements catalog inspection in [#26](https://github.com/OneTesseractInMultiverse/darkhorse-identity/issues/26).
-Creation, editing, disabling, secret rotation and access-catalog writes remain
-separate work. These commands never query client credentials, including their
-nonsecret lifecycle metadata.
+[Application create/update](operator-applications.md) supports owner and lifecycle changes
+through the same command group and launchers. Client writes, secret rotation and
+access-catalog writes remain separate work. The reads described here never query
+client credentials, including their nonsecret lifecycle metadata.
 
 ## Invocation and page contract
 
@@ -149,6 +150,7 @@ are not tamper-proof and runtime-compromise containment remains open in #23.
 
 ## Make launchers
 
+For application creation and updates, use the [write selectors and confirmation contract](operator-applications.md#compose-and-kubernetes).
 The four catalog targets reuse the account launcher's deployment selection,
 protected stdin, bounded supervision and one-shot workload lifecycle. The native Rust command validates protected input and performs authentication
 and catalog operations.
@@ -166,6 +168,9 @@ paths, required manifests, credentials, network policy, deadlines, cleanup and
 trusted deployment permissions. The account workload name and resource limits
 remain the same for catalog commands.
 
+The following selectors describe read commands. Application mutations use the
+separate [write specification](operator-applications.md#compose-and-kubernetes).
+
 | Catalog selector         | Contract                                                                                        |
 | ------------------------ | ----------------------------------------------------------------------------------------------- |
 | `CATALOG_TARGET`         | Required: `application` or `client`                                                             |
@@ -177,13 +182,13 @@ remain the same for catalog commands.
 | `CATALOG_AFTER`          | Optional nonzero UUID from `data.next`                                                          |
 | `CATALOG_LIMIT`          | 1–25; omitted or empty defaults to 25                                                           |
 
-`CATALOG_SEARCH`, `CATALOG_STATUS`, `CATALOG_AFTER` and `CATALOG_LIMIT` apply
-only to `list`; omit them for `show`, including an explicit default limit.
+For read commands, `CATALOG_SEARCH`, `CATALOG_STATUS`, `CATALOG_AFTER` and
+`CATALOG_LIMIT` apply only to `list`; omit them for `show`, including an explicit default limit.
 
 These selectors contain no credentials. Make preserves their values literally;
 search strings are not expanded as Make expressions or shell commands. Quote
-values for the invoking shell. Omit account-operation selectors, revisions and
-confirmations. Conflicting settings fail before configuration is read or a remote
+values for the invoking shell. Reads reject account-operation selectors, revisions,
+confirmations, names and owner selectors. Conflicting settings fail before configuration is read or a remote
 process starts. Account launchers likewise reject catalog selectors. Unknown or
 unsupported native command groups cannot be passed through these targets.
 
@@ -195,7 +200,7 @@ make kube-catalog-run KUBE_CONFIG=/absolute/path/identity.json KUBE_ACCESS=/abso
 ```
 
 All four targets require noninteractive protected stdin and produce JSON. No TTY
-is allocated. Each invocation authenticates a current administrator and reads one
+is allocated. Each read invocation authenticates a current administrator and reads one
 page or record; the launcher neither traverses subsequent pages nor retries. Search
 arguments remain visible to trusted process and orchestration infrastructure.
 Protect output, which can contain owner emails, callbacks and allowance identifiers.

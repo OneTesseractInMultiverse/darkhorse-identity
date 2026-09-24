@@ -74,6 +74,11 @@ SELECT/INSERT grants on `operator_catalog_detail_audit` from migration `0027`.
 Apply the migration and refreshed grants with serving stopped. Neither ledger
 permits runtime updates, deletes or truncation. See [catalog reads](operator-catalog.md).
 
+Application writes add SELECT/INSERT on `operator_application_audit` from migration
+`0028`, and reuse the existing application and registration-audit grants. The
+nonowner deployment operator receives no access. Reapply the grant policy with
+serving stopped. See [application writes](operator-applications.md).
+
 ## Operator and migration boundary
 
 `darkhorse_operator` is a nonowner login with no memberships. It receives only

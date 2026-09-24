@@ -3,7 +3,7 @@ import assert from "node:assert/strict";
 import { catalogOptions } from "../../lib/catalog-plan.mjs";
 import { UsageError } from "../../lib/account-plan.mjs";
 const id = "00000000-0000-0000-0000-000000000123";
-test("catalog launchers require an explicit target and only expose existing read commands", () => {
+test("catalog launchers require an explicit target and reject incomplete or unsupported commands", () => {
   for (const target of ["application", "client"]) {
     const values = {
       CATALOG_TARGET: target,
@@ -194,4 +194,119 @@ test("catalog show requires exact scoped identifiers and rejects every listing s
       ),
     UsageError,
   );
+});
+
+test("application mutations require a complete literal specification and explicit confirmation", () => {
+  const name = "--$(touch /tmp/unwanted) `echo x` %_\\";
+  const base = {
+    CATALOG_TARGET: "application",
+    CATALOG_NAME: name,
+    CATALOG_OWNER_ID: id,
+    CATALOG_STATUS: "inactive",
+    CATALOG_CONFIRM: "yes",
+  };
+  for (const operation of ["create", "update"]) {
+    const values = {
+      ...base,
+      CATALOG_OPERATION: operation,
+      ...(operation === "update"
+        ? {
+            CATALOG_APPLICATION_ID: id,
+            CATALOG_REVISION: "9223372036854775807",
+          }
+        : {}),
+    };
+    assert.deepEqual(catalogOptions(values, false), [
+      "--auth-stdin",
+      "--output",
+      "json",
+      "--yes",
+      "operator",
+      "application",
+      operation,
+      ...(operation === "update" ? [id, "9223372036854775807"] : []),
+      `--name=${name}`,
+      "--owner",
+      id,
+      "--status",
+      "inactive",
+    ]);
+    for (const field of [
+      "CATALOG_NAME",
+      "CATALOG_OWNER_ID",
+      "CATALOG_STATUS",
+      "CATALOG_CONFIRM",
+    ]) {
+      assert.throws(
+        () => catalogOptions({ ...values, [field]: "" }, false),
+        UsageError,
+      );
+    }
+    for (const change of [
+      { CATALOG_CONFIRM: "no" },
+      { CATALOG_NAME: "x".repeat(101) },
+      { CATALOG_NAME: "private\nmarker" },
+      { CATALOG_OWNER_ID: "bad" },
+      { CATALOG_STATUS: "all" },
+      { CATALOG_CLIENT_ID: id },
+      { CATALOG_SEARCH: "x" },
+      { CATALOG_LIMIT: "25" },
+      { CATALOG_AFTER: id },
+      { CATALOG_TARGET: "client" },
+      { ACCOUNT_CONFIRM: "yes" },
+    ]) {
+      assert.throws(
+        () => catalogOptions({ ...values, ...change }, false),
+        UsageError,
+      );
+    }
+    assert.throws(() => catalogOptions(values, true), /protected stdin/);
+  }
+  assert.throws(
+    () =>
+      catalogOptions(
+        { ...base, CATALOG_OPERATION: "create", CATALOG_APPLICATION_ID: id },
+        false,
+      ),
+    UsageError,
+  );
+  assert.throws(
+    () =>
+      catalogOptions(
+        { ...base, CATALOG_OPERATION: "create", CATALOG_REVISION: "0" },
+        false,
+      ),
+    UsageError,
+  );
+  for (const revision of ["", "-1", "01", "9223372036854775808"]) {
+    assert.throws(
+      () =>
+        catalogOptions(
+          {
+            ...base,
+            CATALOG_OPERATION: "update",
+            CATALOG_APPLICATION_ID: id,
+            CATALOG_REVISION: revision,
+          },
+          false,
+        ),
+      UsageError,
+    );
+  }
+  for (const operation of ["list", "show"])
+    for (const key of ["CATALOG_NAME", "CATALOG_OWNER_ID"]) {
+      assert.throws(
+        () =>
+          catalogOptions(
+            {
+              CATALOG_TARGET: "application",
+              CATALOG_OPERATION: operation,
+              ...(operation === "show" ? { CATALOG_APPLICATION_ID: id } : {}),
+              [key]: "private",
+            },
+            false,
+          ),
+        UsageError,
+      );
+    }
 });

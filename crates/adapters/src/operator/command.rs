@@ -21,6 +21,7 @@ pub enum Command {
     Accounts(darkhorse_domain::operator_directory::Request),
     Catalog(darkhorse_domain::operator_catalog::Request),
     CatalogShow(darkhorse_application::registration::ReadTarget),
+    ApplicationMutation(darkhorse_domain::operator_applications::Operation),
     Change {
         id: PrincipalId,
         revision: u64,

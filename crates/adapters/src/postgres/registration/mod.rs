@@ -28,8 +28,7 @@ impl RegistrationStore for PostgresStore {
         let (_, now) = authority::actor(&mut tx, actor, true).await?;
         authority::command(&mut tx, command, now).await?;
         let (principal, now) = authority::actor(&mut tx, actor, true).await?;
-        let record = writes::apply(&mut tx, command, prepared, now).await?;
-        audit(&mut tx, principal, command, &record, now).await?;
+        let record = write_current(&mut tx, principal, command, prepared, now).await?;
         tx.commit().await.map_err(storage)?;
         Ok(record)
     }
@@ -81,9 +80,26 @@ async fn audit(
     now: u64,
 ) -> Result<(), Error> {
     let (target, event) = audit_values(command, record);
-    sqlx::query("INSERT INTO registration_audit (actor_id,target_id,event,occurred_ms) VALUES ($1,$2,$3,$4)")
+    let inserted = sqlx::query("INSERT INTO registration_audit (actor_id,target_id,event,occurred_ms) VALUES ($1,$2,$3,$4)")
         .bind(uuid(actor.as_u128())).bind(uuid(target)).bind(event).bind(integer(now)?).execute(&mut **tx).await.map_err(storage)?;
+    if inserted.rows_affected() != 1 {
+        return Err(Error::Unavailable);
+    }
     Ok(())
+}
+
+// Caller holds the exclusive security fence and has validated current actor and command.
+// Transaction ownership remains with the authenticated HTTP or operator boundary.
+pub(super) async fn write_current(
+    tx: &mut Tx<'_>,
+    actor: PrincipalId,
+    command: &Command,
+    prepared: Prepared,
+    now: u64,
+) -> Result<Record, Error> {
+    let record = writes::apply(tx, command, prepared, now).await?;
+    audit(tx, actor, command, &record, now).await?;
+    Ok(record)
 }
 fn audit_values(command: &Command, record: &Record) -> (u128, &'static str) {
     let target = match record {

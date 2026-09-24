@@ -336,3 +336,57 @@ fn catalog_details_require_typed_targets_and_protected_json_without_list_selecto
         assert!(parse(&parts).is_err());
     }
 }
+
+#[test]
+fn application_writes_require_complete_explicit_specs_and_scoped_revisions() {
+    let owner = "00000000-0000-0000-0000-000000000001";
+    let app = "00000000-0000-0000-0000-000000000010";
+    for operation in [vec!["create"], vec!["update", app, "7"]] {
+        let mut args = vec![
+            "--auth-stdin",
+            "--output",
+            "json",
+            "--yes",
+            "operator",
+            "application",
+        ];
+        args.extend(operation);
+        args.extend(["--name", "Portal", "--owner", owner, "--status", "active"]);
+        let invocation = parse(&args);
+        assert!(
+            invocation.is_ok(),
+            "complete application write must be accepted"
+        );
+        let command = run(&args);
+        assert!(command.confirmed && command.auth_stdin);
+        assert!(crate::operator::command::requires_confirmation(
+            &command.command
+        ));
+        for bad in ["", "\nprivate-value", "--not-a-command"] {
+            let mut invalid = args.clone();
+            let index = invalid.iter().position(|value| *value == owner).unwrap();
+            invalid[index] = bad;
+            assert!(parse(&invalid).is_err());
+        }
+        for flag in ["--name", "--owner", "--status"] {
+            let mut missing = args.clone();
+            let index = missing.iter().position(|value| *value == flag).unwrap();
+            missing.drain(index..index + 2);
+            assert!(parse(&missing).is_err());
+        }
+    }
+    for args in [
+        vec!["operator", "application", "create", app],
+        vec!["operator", "application", "update", app],
+        vec![
+            "operator",
+            "application",
+            "update",
+            app,
+            "9223372036854775808",
+        ],
+        vec!["operator", "client", "create"],
+    ] {
+        assert!(parse(&args).is_err());
+    }
+}

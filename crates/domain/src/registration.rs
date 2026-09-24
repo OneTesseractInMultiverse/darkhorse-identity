@@ -83,7 +83,7 @@ impl Redirects {
         self.0.iter().any(|uri| uri == candidate)
     }
 }
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub struct ApplicationSpec {
     pub name: Label,
     pub owner: PrincipalId,

@@ -53,6 +53,7 @@ BEGIN
   'TRUNCATE operator_directory_audit',
   'TRUNCATE operator_catalog_audit',
   'TRUNCATE operator_catalog_detail_audit',
+  'TRUNCATE operator_application_audit',
   'ALTER TABLE security_audit DISABLE TRIGGER ALL',
   'DROP TABLE security_audit',
   'SELECT setval(''security_audit_id_seq'', 1)'

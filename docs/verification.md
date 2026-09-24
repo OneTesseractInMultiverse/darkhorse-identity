@@ -97,6 +97,64 @@ cargo install cargo-mutants --version 27.1.0 --locked
 Mutation targets run an unmodified baseline first, then test selected source mutations.
 A missed mutation requires investigation. A passing coverage percentage cannot clear it.
 
+## Authenticated CLI application writes
+
+The application-write increment in [#26](https://github.com/OneTesseractInMultiverse/darkhorse-identity/issues/26)
+adds complete create/update commands and extends all four catalog Make launchers.
+Verification on **2026-09-24** passed 588 isolated tests: 195 adapter, 35 application,
+108 domain, 143 frontend and 107 tooling checks. `make ci` also passed formatting,
+strict linting, type and architecture checks, and release/static builds. The full
+HTTPS browser, native CLI, terminal, launcher and release-tool suites passed.
+
+The combined instrumentation run passed 216 PostgreSQL cases, five Redis
+infrastructure cases and 25 limiter/operator cases. The ignored child-worker entry
+is executed by its parent multiprocess scenario. Tests exercise shared HTTP/CLI
+registration rules, concurrent edits at one revision, inactive/missing owners,
+owner-only denial, proof expiry and demotion during lock waits, authority loss
+during writes and audit insertion, entropy failure/collision, suppressed writes,
+both audit failures and actual lost commit replies. Application deactivation
+rejects previously issued tokens and client authentication after commit. Real
+runtime/operator grants and migration `0028` preserve the authority separation and
+historical configuration/audit records.
+
+A real Rust subprocess verifies that closing stdout after creation returns exit
+`74` with one committed application and one successful operator audit, without a
+retry. Restricted-role process tests require rollback when audit INSERT is denied
+and rejection after administrator demotion. Output checks exclude credentials,
+application names, owner emails and reasons from mutation results. Separate launcher
+process tests preserve literal Make environment and command-line selectors for
+both create and update.
+
+The full Compose and Kubernetes fixtures passed against the rebuilt application
+image. All four catalog Make targets create an application, update its owner and
+status, reject a stale revision and deny a demoted administrator. Both required
+audits commit with each successful mutation. One-shot commands work with HTTP
+stopped. Compose's quarantined restore retains six fixture principals, four listing
+audits, six detail audits and eight application mutation audits. Kubernetes also
+passes its existing two-replica, outage, rolling-replacement and network-policy
+checks. These deployment fixtures do not qualify remote interruption, production
+capacity or independent security review.
+
+`make coverage-integration` **failed the unchanged 100% line gate** after the
+behavioral suites passed. Its combined Rust scope records 15,330/16,140 lines
+(94.98%), 2,135/2,207 functions (96.74%) and 25,445/28,438 regions (89.48%).
+Server entrypoints and unexecuted coordination paths remain in the denominator.
+The new domain request reports 100% lines/functions/regions; the CLI mutation
+module reports 100% lines/functions and 96.77% regions. PostgreSQL mutation and
+audit modules report 98.29%/98.39% lines, 100% functions and 93.22%/94.12% regions,
+respectively. These are measured file scopes, not a whole-system coverage claim.
+Stable Rust provides no branch report here. The global qualification gate remains
+open in #2.
+
+Focused Node unit coverage reports 100% lines, branches and functions for the
+catalog selector and shared operator-options modules. The account selector reports
+100% lines/functions and 95.31% branches in the same selected run. Host supervision
+and deployment effects are outside that denominator. See the
+[application-write contract](operator-applications.md) for migration, grants,
+authority, output and manual reconciliation requirements. Client writes, secret
+delivery/recovery, access catalogs, delegated management permissions and broader
+qualification remain open in #26/#27.
+
 ## Authenticated CLI configuration details
 
 The detail-read increment in [#26](https://github.com/OneTesseractInMultiverse/darkhorse-identity/issues/26)

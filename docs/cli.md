@@ -4,7 +4,7 @@ The same `darkhorse-server` binary serves HTTP and runs local operator commands.
 Clap handles syntax in the adapter layer. Existing application use cases retain
 their transaction ownership and domain invariants. Read the
 [authority matrix](operator-authority.md) before granting access: this interface
-uses deployment credentials and, for account operations, a fresh administrator
+uses deployment credentials and, for account and catalog operations, a fresh administrator
 password. See [account authentication](operator-accounts.md). Further account and catalog administration remains tracked in #25/#26.
 
 ```mermaid
@@ -13,7 +13,7 @@ flowchart TD
     Parse --> Help["Help, version, or syntax result"]
     Parse --> Confirm["Required confirmation"]
     Confirm --> Config["Command-specific configuration"]
-    Config --> Account["Account: fresh administrator authentication"]
+    Config --> Account["Account and catalog: fresh administrator authentication"]
     Config --> Operator["Other commands: deployment authority"]
     Account --> Execute["Shared use case and transaction"]
     Operator --> Execute
@@ -37,29 +37,31 @@ settings, prompting or connecting to services. Operator dispatch starts no HTTP
 listener or unrelated server worker. Output is always uncolored. `--no-color`
 is accepted. Neither `NO_COLOR` nor any terminal setting activates color.
 
-| Canonical command                                                                      | Compatibility spelling                                |
-| -------------------------------------------------------------------------------------- | ----------------------------------------------------- |
-| `operator migrate`                                                                     | `migrate`                                             |
-| `operator migrate inspect OPERATION_ID`                                                | None                                                  |
-| `operator bootstrap [--stdin]`                                                         | `bootstrap [--stdin]`                                 |
-| `operator account list [--search PREFIX] [--status STATUS] [--after UUID] [--limit N]` | None                                                  |
-| `operator application list [OPTIONS]`                                                  | None                                                  |
-| `operator client list APPLICATION_ID [OPTIONS]`                                        | None                                                  |
-| `operator application show APPLICATION_ID`                                             | None                                                  |
-| `operator client show APPLICATION_ID CLIENT_ID`                                        | None                                                  |
-| `operator account show ID`                                                             | `account ID`                                          |
-| `operator account deactivate ID REVISION`                                              | `deactivate ID REVISION`                              |
-| `operator account reactivate ID REVISION`                                              | `reactivate ID REVISION`                              |
-| `operator account revoke-all ID REVISION`                                              | `revoke-all ID REVISION`                              |
-| `operator signing status`                                                              | `signing-status`                                      |
-| `operator signing generate REVISION`                                                   | `signing-generate REVISION`                           |
-| `operator signing import --stdin REVISION`                                             | `signing-import --stdin REVISION`                     |
-| `operator signing activate KID REVISION`                                               | `signing-activate KID REVISION`                       |
-| `operator signing retire KID REVISION`                                                 | `signing-retire KID REVISION`                         |
-| `operator signing inspect OPERATION_ID`                                                | None                                                  |
-| `operator limiter status/fence/activate`                                               | `limiter-status`, `limiter-fence`, `limiter-activate` |
-| `operator limiter inspect OPERATION_ID`                                                | None                                                  |
-| `operator redis status`                                                                | `redis-status`                                        |
+| Canonical command                                                                            | Compatibility spelling                                |
+| -------------------------------------------------------------------------------------------- | ----------------------------------------------------- |
+| `operator migrate`                                                                           | `migrate`                                             |
+| `operator migrate inspect OPERATION_ID`                                                      | None                                                  |
+| `operator bootstrap [--stdin]`                                                               | `bootstrap [--stdin]`                                 |
+| `operator account list [--search PREFIX] [--status STATUS] [--after UUID] [--limit N]`       | None                                                  |
+| `operator application list [OPTIONS]`                                                        | None                                                  |
+| `operator client list APPLICATION_ID [OPTIONS]`                                              | None                                                  |
+| `operator application show APPLICATION_ID`                                                   | None                                                  |
+| `operator client show APPLICATION_ID CLIENT_ID`                                              | None                                                  |
+| `operator application create --name NAME --owner ID --status STATUS`                         | None                                                  |
+| `operator application update APPLICATION_ID REVISION --name NAME --owner ID --status STATUS` | None                                                  |
+| `operator account show ID`                                                                   | `account ID`                                          |
+| `operator account deactivate ID REVISION`                                                    | `deactivate ID REVISION`                              |
+| `operator account reactivate ID REVISION`                                                    | `reactivate ID REVISION`                              |
+| `operator account revoke-all ID REVISION`                                                    | `revoke-all ID REVISION`                              |
+| `operator signing status`                                                                    | `signing-status`                                      |
+| `operator signing generate REVISION`                                                         | `signing-generate REVISION`                           |
+| `operator signing import --stdin REVISION`                                                   | `signing-import --stdin REVISION`                     |
+| `operator signing activate KID REVISION`                                                     | `signing-activate KID REVISION`                       |
+| `operator signing retire KID REVISION`                                                       | `signing-retire KID REVISION`                         |
+| `operator signing inspect OPERATION_ID`                                                      | None                                                  |
+| `operator limiter status/fence/activate`                                                     | `limiter-status`, `limiter-fence`, `limiter-activate` |
+| `operator limiter inspect OPERATION_ID`                                                      | None                                                  |
+| `operator redis status`                                                                      | `redis-status`                                        |
 
 `ID` is a nonzero principal UUID, `KID` a public URL-safe unpadded 32-byte key ID,
 and `REVISION` a nonnegative integer no larger than PostgreSQL's signed bigint.
@@ -75,6 +77,8 @@ each page. See [listing fields, filters and audit](operator-accounts.md#bounded-
 Application and client `list` and `show` use fresh administrator authentication.
 Listing accepts bounded catalog filters; detail reads require explicit scoped UUIDs
 and exclude client credential metadata. See [catalog read commands](operator-catalog.md).
+Application `create` and `update` require a complete specification, confirmation
+and a protected reason. See [application writes](operator-applications.md).
 
 ## Confirmations and compatibility
 

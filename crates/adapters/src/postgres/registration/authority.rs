@@ -41,7 +41,11 @@ fn checked_actor(row: &PgRow, now: u64, mutation: bool) -> Result<(PrincipalId, 
         now,
     ))
 }
-pub(super) async fn command(tx: &mut Tx<'_>, command: &Command, now: u64) -> Result<(), Error> {
+pub(in crate::postgres) async fn command(
+    tx: &mut Tx<'_>,
+    command: &Command,
+    now: u64,
+) -> Result<(), Error> {
     match command {
         Command::CreateApplication(spec) => owner(tx, spec.owner).await,
         Command::UpdateApplication {
