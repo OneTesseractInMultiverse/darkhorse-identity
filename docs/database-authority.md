@@ -74,7 +74,9 @@ these existing command requirements:
   required columns. Password-verifier replacement and credential revocation are
   not granted. Fixed `kind` columns permit credential row locks.
 - Signing: provider binding, revision/time changes, key insertion and lifecycle
-  updates. Provider audit INSERT/SELECT.
+  updates. Provider audit INSERT/SELECT. [Operation journal](signing-operations.md)
+  SELECT and column-scoped INSERT, with database-owned role and timestamps.
+  Runtime receives no signing journal grants.
 - Limiter: authority insertion/updates and limiter audit INSERT/SELECT.
   [Activation journal](limiter-activation.md): SELECT and column-scoped INSERT.
   Database role and timestamps are supplied by PostgreSQL. Runtime receives no
@@ -129,7 +131,8 @@ Runtime-compromise containment, protected emergency
 credentials, independent audit evidence, and broader recovery reconciliation
 remain in [#23](https://github.com/OneTesseractInMultiverse/darkhorse-identity/issues/23).
 Limiter activation has a [durable intent and receipt](limiter-activation.md).
-Migration and signing reconciliation remain incomplete. No audit-bypass or
+Signing mutations have [correlated intent and completion](signing-operations.md).
+Migration reconciliation remains incomplete. No audit-bypass or
 emergency-access mechanism is implemented.
 
 ## Verification

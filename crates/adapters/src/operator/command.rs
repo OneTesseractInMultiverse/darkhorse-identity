@@ -45,6 +45,7 @@ pub fn requires_confirmation(command: Command) -> bool {
             | Command::RedisStatus
             | Command::LimiterStatus
             | Command::LimiterInspect(_)
+            | Command::Signing(super::signing::Operation::Inspect(_))
     )
 }
 

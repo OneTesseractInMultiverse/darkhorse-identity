@@ -5,14 +5,9 @@ use sqlx::{Postgres, Row, Transaction, postgres::PgRow};
 type Tx<'a> = Transaction<'a, Postgres>;
 impl SigningStore for PostgresStore {
     async fn bind_provider(&self, issuer: &str, wrap_digest: [u8; 32]) -> Result<(), KeyError> {
-        sqlx::query("INSERT INTO provider_state(issuer,wrap_digest,last_ms) VALUES($1,$2,floor(extract(epoch FROM clock_timestamp())*1000)::bigint) ON CONFLICT(singleton) DO NOTHING")
-            .bind(issuer).bind(wrap_digest.as_slice()).execute(&self.pool).await.map_err(storage)?;
-        let exists:bool=sqlx::query_scalar("SELECT EXISTS(SELECT 1 FROM provider_state WHERE issuer=$1 AND wrap_digest=$2 AND NOT pg_is_in_recovery())")
-            .bind(issuer).bind(wrap_digest.as_slice()).fetch_one(&self.pool).await.map_err(storage)?;
-        if !exists {
-            return Err(KeyError::Conflict);
-        }
-        Ok(())
+        let mut tx = self.pool.begin().await.map_err(storage)?;
+        bind_transaction(&mut tx, issuer, wrap_digest).await?;
+        tx.commit().await.map_err(storage)
     }
     async fn inventory(&self, issuer: &str) -> Result<KeyInventory, KeyError> {
         let mut tx = self.pool.begin().await.map_err(storage)?;
@@ -34,60 +29,21 @@ impl SigningStore for PostgresStore {
         key: WrappedKey,
     ) -> Result<u64, KeyError> {
         let mut tx = self.pool.begin().await.map_err(storage)?;
-        let (_, now) = lock(&mut tx, issuer, Some(expected)).await?;
-        check_wrap(&mut tx, wrap_digest).await?;
-        let count: i64 =
-            sqlx::query_scalar("SELECT count(*) FROM signing_keys WHERE phase<>'retired'")
-                .fetch_one(&mut *tx)
-                .await
-                .map_err(storage)?;
-        if count >= signing::MAX_PUBLISHED_KEYS as i64 {
-            return Err(KeyError::Conflict);
-        }
-        advance(&mut tx, expected, now).await?;
-        sqlx::query("INSERT INTO signing_keys(kid,n,e,nonce,ciphertext,phase,created_ms) VALUES($1,$2,$3,$4,$5,'staged',$6)")
-            .bind(&key.public.kid).bind(&key.public.n).bind(&key.public.e).bind(key.nonce.as_slice()).bind(&key.ciphertext).bind(integer(now)?).execute(&mut *tx).await.map_err(constraint)?;
-        audit(&mut tx, "key_staged", &key.public.kid, expected, now).await?;
+        let result = stage_transaction(&mut tx, issuer, wrap_digest, expected, key).await?;
         tx.commit().await.map_err(storage)?;
-        next(expected)
+        Ok(result.revision)
     }
     async fn activate(&self, issuer: &str, kid: &str, expected: u64) -> Result<u64, KeyError> {
         let mut tx = self.pool.begin().await.map_err(storage)?;
-        let (_, now) = lock(&mut tx, issuer, Some(expected)).await?;
-        let key = load(&mut tx, kid).await?;
-        signing::activate(key.state, now)?;
-        advance(&mut tx, expected, now).await?;
-        sqlx::query(
-            "UPDATE signing_keys SET phase='retiring',verify_until_ms=$1 WHERE phase='active'",
-        )
-        .bind(integer(signing::overlap_end(now)?)?)
-        .execute(&mut *tx)
-        .await
-        .map_err(storage)?;
-        sqlx::query("UPDATE signing_keys SET phase='active',activated_ms=$2 WHERE kid=$1")
-            .bind(kid)
-            .bind(integer(now)?)
-            .execute(&mut *tx)
-            .await
-            .map_err(storage)?;
-        audit(&mut tx, "key_activated", kid, expected, now).await?;
+        let result = activate_transaction(&mut tx, issuer, kid, expected).await?;
         tx.commit().await.map_err(storage)?;
-        next(expected)
+        Ok(result.revision)
     }
     async fn retire(&self, issuer: &str, kid: &str, expected: u64) -> Result<u64, KeyError> {
         let mut tx = self.pool.begin().await.map_err(storage)?;
-        let (_, now) = lock(&mut tx, issuer, Some(expected)).await?;
-        let key = load(&mut tx, kid).await?;
-        signing::retire(key.state, now)?;
-        advance(&mut tx, expected, now).await?;
-        sqlx::query("UPDATE signing_keys SET phase='retired',ciphertext=NULL WHERE kid=$1")
-            .bind(kid)
-            .execute(&mut *tx)
-            .await
-            .map_err(storage)?;
-        audit(&mut tx, "key_retired", kid, expected, now).await?;
+        let result = retire_transaction(&mut tx, issuer, kid, expected).await?;
         tx.commit().await.map_err(storage)?;
-        next(expected)
+        Ok(result.revision)
     }
     async fn published(&self, issuer: &str) -> Result<Vec<PublicKey>, KeyError> {
         let rows=sqlx::query("SELECT k.kid,k.n,k.e,k.phase,k.created_ms,k.activated_ms,k.verify_until_ms,floor(extract(epoch FROM clock_timestamp())*1000)::bigint AS now_ms,s.last_ms FROM provider_state s CROSS JOIN signing_keys k WHERE s.issuer=$1 AND k.phase<>'retired' AND NOT pg_is_in_recovery() ORDER BY k.created_ms,k.kid LIMIT 5")
@@ -163,16 +119,15 @@ async fn audit(
     kid: &str,
     revision: u64,
     now: u64,
-) -> Result<(), KeyError> {
-    sqlx::query("INSERT INTO provider_audit(event,kid,revision,occurred_ms) VALUES($1,$2,$3,$4)")
+) -> Result<i64, KeyError> {
+    sqlx::query_scalar("INSERT INTO provider_audit(event,kid,revision,occurred_ms) VALUES($1,$2,$3,$4) RETURNING id")
         .bind(event)
         .bind(kid)
         .bind(integer(next(revision)?)?)
         .bind(integer(now)?)
-        .execute(&mut **tx)
+        .fetch_one(&mut **tx)
         .await
-        .map_err(storage)?;
-    Ok(())
+        .map_err(storage)
 }
 fn record(row: &PgRow) -> Result<KeyRecord, KeyError> {
     let phase = match row.try_get::<String, _>("phase").map_err(storage)?.as_str() {
@@ -248,4 +203,96 @@ fn constraint(error: sqlx::Error) -> KeyError {
     } else {
         KeyError::Unavailable
     }
+}
+
+pub(super) struct Mutation {
+    pub revision: u64,
+    pub audit_id: i64,
+}
+pub(super) async fn stage_transaction(
+    tx: &mut Tx<'_>,
+    issuer: &str,
+    wrap_digest: [u8; 32],
+    expected: u64,
+    key: WrappedKey,
+) -> Result<Mutation, KeyError> {
+    let (_, now) = lock(tx, issuer, Some(expected)).await?;
+    check_wrap(tx, wrap_digest).await?;
+    let count: i64 = sqlx::query_scalar("SELECT count(*) FROM signing_keys WHERE phase<>'retired'")
+        .fetch_one(&mut **tx)
+        .await
+        .map_err(storage)?;
+    if count >= signing::MAX_PUBLISHED_KEYS as i64 {
+        return Err(KeyError::Conflict);
+    }
+    advance(tx, expected, now).await?;
+    sqlx::query("INSERT INTO signing_keys(kid,n,e,nonce,ciphertext,phase,created_ms) VALUES($1,$2,$3,$4,$5,'staged',$6)")
+            .bind(&key.public.kid).bind(&key.public.n).bind(&key.public.e).bind(key.nonce.as_slice()).bind(&key.ciphertext).bind(integer(now)?).execute(&mut **tx).await.map_err(constraint)?;
+    let audit_id = audit(tx, "key_staged", &key.public.kid, expected, now).await?;
+    Ok(Mutation {
+        revision: next(expected)?,
+        audit_id,
+    })
+}
+pub(super) async fn activate_transaction(
+    tx: &mut Tx<'_>,
+    issuer: &str,
+    kid: &str,
+    expected: u64,
+) -> Result<Mutation, KeyError> {
+    let (_, now) = lock(tx, issuer, Some(expected)).await?;
+    let key = load(tx, kid).await?;
+    signing::activate(key.state, now)?;
+    advance(tx, expected, now).await?;
+    sqlx::query("UPDATE signing_keys SET phase='retiring',verify_until_ms=$1 WHERE phase='active'")
+        .bind(integer(signing::overlap_end(now)?)?)
+        .execute(&mut **tx)
+        .await
+        .map_err(storage)?;
+    sqlx::query("UPDATE signing_keys SET phase='active',activated_ms=$2 WHERE kid=$1")
+        .bind(kid)
+        .bind(integer(now)?)
+        .execute(&mut **tx)
+        .await
+        .map_err(storage)?;
+    let audit_id = audit(tx, "key_activated", kid, expected, now).await?;
+    Ok(Mutation {
+        revision: next(expected)?,
+        audit_id,
+    })
+}
+pub(super) async fn retire_transaction(
+    tx: &mut Tx<'_>,
+    issuer: &str,
+    kid: &str,
+    expected: u64,
+) -> Result<Mutation, KeyError> {
+    let (_, now) = lock(tx, issuer, Some(expected)).await?;
+    let key = load(tx, kid).await?;
+    signing::retire(key.state, now)?;
+    advance(tx, expected, now).await?;
+    sqlx::query("UPDATE signing_keys SET phase='retired',ciphertext=NULL WHERE kid=$1")
+        .bind(kid)
+        .execute(&mut **tx)
+        .await
+        .map_err(storage)?;
+    let audit_id = audit(tx, "key_retired", kid, expected, now).await?;
+    Ok(Mutation {
+        revision: next(expected)?,
+        audit_id,
+    })
+}
+pub(super) async fn bind_transaction(
+    tx: &mut Tx<'_>,
+    issuer: &str,
+    wrap_digest: [u8; 32],
+) -> Result<(), KeyError> {
+    sqlx::query("INSERT INTO provider_state(issuer,wrap_digest,last_ms) VALUES($1,$2,floor(extract(epoch FROM clock_timestamp())*1000)::bigint) ON CONFLICT(singleton) DO NOTHING")
+        .bind(issuer).bind(wrap_digest.as_slice()).execute(&mut **tx).await.map_err(storage)?;
+    let exists:bool=sqlx::query_scalar("SELECT EXISTS(SELECT 1 FROM provider_state WHERE issuer=$1 AND wrap_digest=$2 AND NOT pg_is_in_recovery())")
+        .bind(issuer).bind(wrap_digest.as_slice()).fetch_one(&mut **tx).await.map_err(storage)?;
+    if !exists {
+        return Err(KeyError::Conflict);
+    }
+    Ok(())
 }

@@ -1,8 +1,14 @@
 import { randomBytes } from "node:crypto";
 import { mkdir, lstat, readFile, writeFile } from "node:fs/promises";
 import { run } from "./lib/command.mjs";
+import { operatorArgs } from "./lib/deployment-plan.mjs";
 async function main() {
   const [mode, ...args] = process.argv.slice(2);
+  if (mode === "inspect" && !args.length) {
+    const command = operatorArgs("signing-inspect", [process.env.OPERATION_ID]);
+    await run(process.execPath, ["scripts/database.mjs", "run", ...command]);
+    return;
+  }
   const path = ".local/signing-wrap.key";
   if (mode === "setup") {
     process.umask(0o077);

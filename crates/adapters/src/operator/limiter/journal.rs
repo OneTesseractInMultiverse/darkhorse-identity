@@ -1,16 +1,8 @@
+pub(super) use crate::operator::operation_id;
 use crate::operator::output::Failure;
 use darkhorse_application::limiter_activation::{Attempt, Error};
 use darkhorse_domain::identity::OperationId;
-pub(super) fn operation_id() -> Result<OperationId, Failure> {
-    let mut bytes = [0; 16];
-    getrandom::fill(&mut bytes).map_err(|_| "Cannot generate operation correlation.")?;
-    OperationId::from_u128(
-        uuid::Builder::from_random_bytes(bytes)
-            .into_uuid()
-            .as_u128(),
-    )
-    .map_err(|_| "Cannot generate operation correlation.".into())
-}
+
 pub(super) fn failure(error: Error, id: OperationId) -> Failure {
     let message = match error {
         Error::NotReady => {

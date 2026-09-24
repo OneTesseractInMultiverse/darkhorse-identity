@@ -132,3 +132,18 @@ fn limiter_inspection_is_a_read_with_a_typed_operation_identifier() {
         assert!(parse(&args(&["operator", "limiter", "inspect", id])).is_err());
     }
 }
+#[test]
+fn signing_inspection_is_read_only_and_accepts_only_an_operation_id() {
+    use crate::operator::signing::Operation;
+    let id = "00000000-0000-0000-0000-000000000001";
+    let command = Command::Signing(Operation::Inspect(OperationId::from_u128(1).unwrap()));
+    assert_eq!(
+        parse(&args(&["operator", "signing", "inspect", id])),
+        Ok(command)
+    );
+    assert!(!requires_confirmation(command));
+    for bad in ["invalid", "00000000-0000-0000-0000-000000000000", "--force"] {
+        assert!(parse(&args(&["operator", "signing", "inspect", bad])).is_err());
+    }
+    assert!(parse(&args(&["operator", "signing", "inspect", id, "extra"])).is_err());
+}

@@ -1,8 +1,7 @@
 # Implementation status
 
-This inventory describes the source through commit
-[`9e34da4`](https://github.com/OneTesseractInMultiverse/darkhorse-identity/commit/9e34da49cd38e79dfa8cf2095bfba099690dfcf1),
-reviewed on **2026-09-23**. The documentation rewrite changes no application behavior.
+This inventory describes the current source, reviewed on **2026-09-23**. It includes
+the signing-operation journal under [#23](https://github.com/OneTesseractInMultiverse/darkhorse-identity/issues/23).
 Darkhorse has no qualified production release and no selected project license.
 
 ## Status vocabulary
@@ -15,31 +14,31 @@ conformance, fault tolerance, capacity, or security.
 
 ## Feature inventory
 
-| Area                      | State       | Implemented boundary                                                                       | Remaining work                                                                        |
-| ------------------------- | ----------- | ------------------------------------------------------------------------------------------ | ------------------------------------------------------------------------------------- |
-| Deployment model          | Implemented | One organization per deployment                                                            | Shared multi-organization hosting has no isolation model                              |
-| Architecture              | Implemented | Rust domain/application/adapters, static SvelteKit TypeScript console                      | Continued boundary review and full authored-code coverage                             |
-| Password authentication   | Implemented | Argon2id, opaque sessions, shared Redis attempt budgets                                    | Password screening, privileged MFA or step-up, recovery assurance                     |
-| OIDC code flow            | Implemented | Confidential clients, Basic authentication, S256 PKCE, discovery, JWKS, RS256 ID tokens    | Full provider conformance and broader client interoperability                         |
-| Resource authorization    | Implemented | Explicit role assignments, capabilities, scope bounds, immutable ceilings                  | Delegated administration and production scale qualification                           |
-| Access tokens             | Implemented | Opaque identity and single-resource tokens, five-minute maximum lifetime                   | Further fault, retention, and load qualification                                      |
-| Refresh tokens            | Implemented | Explicit client opt-in, rotation, family replay revocation, bounded cleanup                | Offline access, public clients, and remaining operational qualification               |
-| Token checks              | Implemented | Scoped UserInfo, client introspection, dedicated resource introspection, revocation        | Distributed token-route abuse controls and sustained-load qualification               |
-| Personal API keys         | Implemented | User-owned application keys, selected resource ceilings, optional expiry                   | Independent service identities, usage summaries, retention policy UI                  |
-| Session management        | Implemented | Owner history and individual termination, local logout, epoch revocation                   | Broader administrator session commands and retention                                  |
-| Back-channel logout       | Partial     | Persisted relying-party references and signed `sid` ID-token claim                         | Destination registration, Logout Tokens, outbox, delivery, receiver qualification     |
-| Email verification        | Implemented | Current-address proof and authenticated implicit-TLS SMTP delivery                         | Email change, key/origin migration, operational retention                             |
-| Invitations               | Implemented | Administrator-issued links for new ordinary accounts                                       | Broader onboarding policy and delivery qualification                                  |
-| Password recovery         | Planned     | No supported reset or change workflow                                                      | Recovery policy, proof lifecycle, notifications, assurance                            |
-| Console                   | Implemented | User directory, application/client/resource/scope/role/capability pages                    | Audit browser, delegated administration, full accessibility review                    |
-| Profiles and media        | Implemented | Extended fields, private S3 images, public login branding                                  | Extra OIDC claims, storage migration, fuzzing and restore qualification               |
-| CLI                       | Partial     | Bootstrap, migration, signing, limiter, diagnostics, four authenticated account operations | Scoped emergency authority and broader account/catalog commands                       |
-| Database roles            | Implemented | Independent runtime, nonowner operator, and schema-owner credentials                       | Stronger compromise containment and exceptional-credential lifecycle                  |
-| Limiter journal           | Implemented | Intent before Redis, atomic PostgreSQL completion, read-only inspection                    | Protected evidence export/retention and broader recovery reconciliation               |
-| Redis authorization cache | Planned     | Separate cache deployment exists                                                           | Versioned computation caching with fresh primary checks                               |
-| Compose                   | Implemented | Packaged HTTPS, private services, reviewed grants, backup and isolated recovery tests      | Production topology, certificate lifecycle, coordinated disaster recovery             |
-| Kubernetes                | Implemented | Explicit namespace/context, two-replica tests, network policies, operator/migrator Jobs    | Multi-host faults, production CNI/storage qualification, operational readiness        |
-| Passkeys                  | Planned     | No WebAuthn authentication or authenticator lifecycle                                      | [Issue #22](https://github.com/OneTesseractInMultiverse/darkhorse-identity/issues/22) |
+| Area                      | State       | Implemented boundary                                                                               | Remaining work                                                                        |
+| ------------------------- | ----------- | -------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------- |
+| Deployment model          | Implemented | One organization per deployment                                                                    | Shared multi-organization hosting has no isolation model                              |
+| Architecture              | Implemented | Rust domain/application/adapters, static SvelteKit TypeScript console                              | Continued boundary review and full authored-code coverage                             |
+| Password authentication   | Implemented | Argon2id, opaque sessions, shared Redis attempt budgets                                            | Password screening, privileged MFA or step-up, recovery assurance                     |
+| OIDC code flow            | Implemented | Confidential clients, Basic authentication, S256 PKCE, discovery, JWKS, RS256 ID tokens            | Full provider conformance and broader client interoperability                         |
+| Resource authorization    | Implemented | Explicit role assignments, capabilities, scope bounds, immutable ceilings                          | Delegated administration and production scale qualification                           |
+| Access tokens             | Implemented | Opaque identity and single-resource tokens, five-minute maximum lifetime                           | Further fault, retention, and load qualification                                      |
+| Refresh tokens            | Implemented | Explicit client opt-in, rotation, family replay revocation, bounded cleanup                        | Offline access, public clients, and remaining operational qualification               |
+| Token checks              | Implemented | Scoped UserInfo, client introspection, dedicated resource introspection, revocation                | Distributed token-route abuse controls and sustained-load qualification               |
+| Personal API keys         | Implemented | User-owned application keys, selected resource ceilings, optional expiry                           | Independent service identities, usage summaries, retention policy UI                  |
+| Session management        | Implemented | Owner history and individual termination, local logout, epoch revocation                           | Broader administrator session commands and retention                                  |
+| Back-channel logout       | Partial     | Persisted relying-party references and signed `sid` ID-token claim                                 | Destination registration, Logout Tokens, outbox, delivery, receiver qualification     |
+| Email verification        | Implemented | Current-address proof and authenticated implicit-TLS SMTP delivery                                 | Email change, key/origin migration, operational retention                             |
+| Invitations               | Implemented | Administrator-issued links for new ordinary accounts                                               | Broader onboarding policy and delivery qualification                                  |
+| Password recovery         | Planned     | No supported reset or change workflow                                                              | Recovery policy, proof lifecycle, notifications, assurance                            |
+| Console                   | Implemented | User directory, application/client/resource/scope/role/capability pages                            | Audit browser, delegated administration, full accessibility review                    |
+| Profiles and media        | Implemented | Extended fields, private S3 images, public login branding                                          | Extra OIDC claims, storage migration, fuzzing and restore qualification               |
+| CLI                       | Partial     | Bootstrap, migration, signing/limiter journals, diagnostics, four authenticated account operations | Scoped emergency authority and broader account/catalog commands                       |
+| Database roles            | Implemented | Independent runtime, nonowner operator, and schema-owner credentials                               | Stronger compromise containment and exceptional-credential lifecycle                  |
+| Limiter journal           | Implemented | Intent before Redis, atomic PostgreSQL completion, read-only inspection                            | Protected evidence export/retention and broader recovery reconciliation               |
+| Redis authorization cache | Planned     | Separate cache deployment exists                                                                   | Versioned computation caching with fresh primary checks                               |
+| Compose                   | Implemented | Packaged HTTPS, private services, reviewed grants, backup and isolated recovery tests              | Production topology, certificate lifecycle, coordinated disaster recovery             |
+| Kubernetes                | Implemented | Explicit namespace/context, two-replica tests, network policies, operator/migrator Jobs            | Multi-host faults, production CNI/storage qualification, operational readiness        |
+| Passkeys                  | Planned     | No WebAuthn authentication or authenticator lifecycle                                              | [Issue #22](https://github.com/OneTesseractInMultiverse/darkhorse-identity/issues/22) |
 
 ## Important distinctions
 
@@ -75,7 +74,7 @@ and grant review with writers stopped.
 | `0013`–`0016` | Session management, email verification, invitations, relying-party session references |
 | `0017`–`0019` | User directory audit, catalog administration, personal keys                           |
 | `0020`–`0021` | Extended profiles and media assets                                                    |
-| `0022`–`0023` | Authenticated account-command audit and limiter activation journal                    |
+| `0022`–`0024` | Account-command audit, limiter activation journal, signing operation journal          |
 
 A migration's existence does not certify an upgrade for every data volume or
 mixed-version deployment. Each operational guide states its transition requirements.

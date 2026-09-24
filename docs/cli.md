@@ -51,13 +51,16 @@ is accepted. Neither `NO_COLOR` nor any terminal setting activates color.
 | `operator signing import --stdin REVISION` | `signing-import --stdin REVISION`                     |
 | `operator signing activate KID REVISION`   | `signing-activate KID REVISION`                       |
 | `operator signing retire KID REVISION`     | `signing-retire KID REVISION`                         |
+| `operator signing inspect OPERATION_ID`    | None                                                  |
 | `operator limiter status/fence/activate`   | `limiter-status`, `limiter-fence`, `limiter-activate` |
 | `operator limiter inspect OPERATION_ID`    | None                                                  |
 | `operator redis status`                    | `redis-status`                                        |
 
 `ID` is a nonzero principal UUID, `KID` a public URL-safe unpadded 32-byte key ID,
 and `REVISION` a nonnegative integer no larger than PostgreSQL's signed bigint.
-`OPERATION_ID` is a nonzero activation UUID. See [activation inspection](limiter-activation.md).
+`OPERATION_ID` is a nonzero operation UUID. See [activation inspection](limiter-activation.md)
+and [signing inspection](signing-operations.md). Signing mutations reserve one revision
+increment, so the largest signed bigint is not a valid expected mutation revision.
 Service/domain checks still validate current state. Legacy spellings are hidden
 from top-level help and use the same typed conversion and dispatch.
 
@@ -66,6 +69,7 @@ from top-level help and use the same typed conversion and dispatch.
 Mutations require `--yes` for automation, or an interactive `yes` response on a
 terminal. Refusal/EOF cancels before settings or service access. Protected-stdin
 operations always require `--yes`, so a confirmation cannot consume secret input.
+Signing inspection requires no confirmation or wrapping key.
 Signing status requires confirmation. The implementation can initialize the provider binding before reading its inventory.
 
 JSON mode never prompts: mutations require `--yes`, and bootstrap requires `--stdin`. Account operations require `--auth-stdin`. This keeps its stdout/stderr records machine-readable even

@@ -8,6 +8,15 @@ BEGIN
  END IF;
  FOREACH statement IN ARRAY ARRAY[
   'SELECT * FROM future_operator_state',
+  'UPDATE signing_operation_intents SET operation_id=operation_id WHERE false',
+  'DELETE FROM signing_operation_intents WHERE false',
+  'TRUNCATE signing_operation_intents',
+  'UPDATE signing_operation_receipts SET operation_id=operation_id WHERE false',
+  'DELETE FROM signing_operation_receipts WHERE false',
+  'TRUNCATE signing_operation_receipts',
+  'INSERT INTO signing_operation_intents(database_role) SELECT database_role FROM signing_operation_intents WHERE false',
+  'INSERT INTO signing_operation_intents(prepared_ms) SELECT prepared_ms FROM signing_operation_intents WHERE false',
+  'INSERT INTO signing_operation_receipts(completed_ms) SELECT completed_ms FROM signing_operation_receipts WHERE false',
   'UPDATE limiter_activation_intents SET operation_id=operation_id WHERE false',
   'DELETE FROM limiter_activation_intents WHERE false',
   'TRUNCATE limiter_activation_intents',

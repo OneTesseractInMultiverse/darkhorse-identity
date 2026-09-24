@@ -61,6 +61,7 @@ fn change(value: Change, action: AccountAction) -> Command {
 fn signing(value: Signing) -> Operation {
     match value {
         Signing::Status => Operation::Status,
+        Signing::Inspect { id } => Operation::Inspect(id),
         Signing::Generate(value) => Operation::Generate(value.revision),
         Signing::Import(value) => Operation::Import(value.revision),
         Signing::Activate(value) => Operation::Activate {

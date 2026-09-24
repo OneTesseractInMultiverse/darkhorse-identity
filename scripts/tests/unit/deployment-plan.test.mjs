@@ -119,3 +119,23 @@ test("activation inspection accepts one nonzero UUID and uses nonowner authority
   ])
     assert.throws(() => operatorArgs("limiter-inspect", args));
 });
+
+test("signing inspection accepts one nonzero UUID and uses nonowner authority", () => {
+  const id = "00000000-0000-0000-0000-000000000123";
+  assert.deepEqual(operatorArgs("signing-inspect", [id]), [
+    "operator",
+    "signing",
+    "inspect",
+    id,
+  ]);
+  assert.equal(operatorWorkload("signing-inspect", [id]), "operator");
+  for (const args of [
+    [],
+    [id, id],
+    ["--force"],
+    ["00000000-0000-0000-0000-000000000000"],
+    [id + "\n"],
+    ["$(touch unexpected)"],
+  ])
+    assert.throws(() => operatorArgs("signing-inspect", args));
+});

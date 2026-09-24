@@ -96,6 +96,7 @@ async function verifyCommands({ sql, invoke }, grants) {
   await sql("darkhorse_owner", grants);
   const staged = JSON.parse((await operator(["signing-generate", "0"])).stdout);
   assert.equal(staged.revision, 1);
+  await verifySigningJournal({ sql, invoke }, staged, operator, grants);
   assert.notEqual(
     (await operator(["signing-activate", staged.kid, "1"], true)).code,
     0,
@@ -246,4 +247,55 @@ async function verifyActivationJournal({ sql, invoke }) {
   assert.equal(completed.current_phase, "active");
   assert.ok(completed.completed_ms >= record.prepared_ms);
   assert.notEqual((await sql("darkhorse_operator", receipt, true)).code, 0);
+}
+
+async function verifySigningJournal({ sql, invoke }, staged, operator, grants) {
+  const inspect = [
+    "--output",
+    "json",
+    "operator",
+    "signing",
+    "inspect",
+    staged.operation_id,
+  ];
+  // No provider origin, wrapping material or Redis settings are supplied here.
+  const completed = JSON.parse(
+    (await invoke("darkhorse_operator", inspect)).stdout,
+  ).data;
+  assert.equal(completed.recorded_outcome, "completed");
+  assert.equal(completed.database_role, "darkhorse_operator");
+  assert.equal(completed.completed_revision, 1);
+  assert.equal(completed.current_phase, "staged");
+  assert.notEqual((await invoke("darkhorse_runtime", inspect, true)).code, 0);
+  await sql(
+    "darkhorse_owner",
+    "REVOKE INSERT(audit_id,operation_id) ON signing_operation_receipts FROM darkhorse_operator;",
+  );
+  const failed = await operator(
+    ["--output", "json", "signing-retire", staged.kid, "1"],
+    true,
+  );
+  assert.notEqual(failed.code, 0);
+  const pendingId = JSON.parse(failed.stderr).data.operation_id;
+  const pending = JSON.parse(
+    (await invoke("darkhorse_operator", [...inspect.slice(0, -1), pendingId]))
+      .stdout,
+  ).data;
+  assert.equal(pending.recorded_outcome, "pending");
+  assert.equal(pending.current_revision, 1);
+  assert.equal(pending.current_phase, "staged");
+  assert.equal(
+    (
+      await sql(
+        "darkhorse_owner",
+        "SELECT count(*) FROM provider_audit WHERE event='key_retired';",
+      )
+    ).stdout.trim(),
+    "0",
+  );
+  await sql("darkhorse_owner", grants);
+  // An unrelated login cannot complete a pending operation using an existing audit.
+  const forged = `INSERT INTO signing_operation_receipts(operation_id,audit_id) SELECT '${pendingId}',id FROM provider_audit WHERE revision=1;`;
+  assert.notEqual((await sql("darkhorse_owner", forged, true)).code, 0);
+  assert.notEqual((await sql("darkhorse_operator", forged, true)).code, 0);
 }

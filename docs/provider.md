@@ -61,7 +61,7 @@ make dev-provider
 ```
 
 `provider-setup` creates `.local/signing-wrap.key` with owner-only permissions and
-preserves an existing file. The operator targets read that file and the local
+preserves an existing file. The mutation and status targets read that file and the local
 protected database configuration. `dev-provider` starts the HTTPS proxy, frontend
 and Rust server with login and the code flow active. Ordinary `make dev`
 and `make dev-login` retain their prior behavior. Existing local deployments are
@@ -79,6 +79,11 @@ Changing the issuer or wrapping key requires a future explicit migration/recover
 workflow. Replacing an environment value cannot silently change either.
 `Forwarded` and `X-Forwarded-*` headers never establish issuer trust. The HTTPS
 proxy must forward the canonical Host header and restrict direct backend access.
+
+Signing mutations return an operation ID and commit an audit-linked receipt.
+Use [signing inspection](signing-operations.md) after a lost reply. Its local target,
+`make signing-inspect OPERATION_ID=<id>`, needs only the database configuration.
+Provider binding and key changes commit together for these journaled mutations.
 
 ## Signing keys
 

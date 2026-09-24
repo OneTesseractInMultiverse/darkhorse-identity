@@ -196,6 +196,11 @@ record enough state to detect uncertainty or retry a defined effect. A transport
 failure after commit does not prove rollback. Administrative clients must reread
 state before choosing another mutation.
 
+Signing-key generation/import prepare material in memory. A durable intent then
+precedes the atomic binding, lifecycle change, audit, and receipt transaction.
+[Signing inspection](signing-operations.md) reports historical completion and current
+state from one primary snapshot. A missing receipt cannot exclude an in-flight commit.
+
 ## Resource bounds and overload
 
 Each transport defines limits for bytes, fields, concurrency, and time. Expensive

@@ -103,4 +103,7 @@ GRANT UPDATE(epoch,generation,active,not_before_ms,run_id,replication_id) ON lim
 GRANT SELECT ON limiter_activation_intents,limiter_activation_receipts TO darkhorse_operator;
 GRANT INSERT(operation_id,epoch,generation,not_before_ms) ON limiter_activation_intents TO darkhorse_operator;
 GRANT INSERT(operation_id,run_id,replication_id) ON limiter_activation_receipts TO darkhorse_operator;
+GRANT SELECT ON signing_operation_intents,signing_operation_receipts TO darkhorse_operator;
+GRANT INSERT(operation_id,operation,issuer,kid,expected_revision) ON signing_operation_intents TO darkhorse_operator;
+GRANT INSERT(operation_id,audit_id) ON signing_operation_receipts TO darkhorse_operator;
 COMMIT;

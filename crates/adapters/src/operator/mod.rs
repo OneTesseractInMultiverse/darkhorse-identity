@@ -130,3 +130,14 @@ mod tests;
 
 mod limiter;
 mod redis_status;
+
+pub(super) fn operation_id() -> Result<darkhorse_domain::identity::OperationId, Failure> {
+    let mut bytes = [0; 16];
+    getrandom::fill(&mut bytes).map_err(|_| "Cannot generate operation correlation.")?;
+    darkhorse_domain::identity::OperationId::from_u128(
+        uuid::Builder::from_random_bytes(bytes)
+            .into_uuid()
+            .as_u128(),
+    )
+    .map_err(|_| "Cannot generate operation correlation.".into())
+}

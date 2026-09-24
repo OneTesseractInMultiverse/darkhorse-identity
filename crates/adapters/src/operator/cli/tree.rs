@@ -97,6 +97,11 @@ pub(super) enum Account {
 #[derive(Subcommand)]
 pub(super) enum Signing {
     Status,
+    /// Inspect one signing operation using only the primary database.
+    Inspect {
+        #[arg(value_parser=crate::operator::command::operation_identifier)]
+        id: darkhorse_domain::identity::OperationId,
+    },
     Generate(Revision),
     Import(Import),
     Activate(Key),

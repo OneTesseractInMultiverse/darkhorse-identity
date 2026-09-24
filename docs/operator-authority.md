@@ -22,20 +22,22 @@ or service connections.
 | `operator account deactivate/reactivate/revoke-all ID REVISION` | Same account authority, expected revision, bounded reason | Account change and actor audit commit together                           |
 | `operator bootstrap`                                            | Nonowner operator database login, unused bootstrap        | Initial account, credential, membership, flag, and audit commit together |
 | `operator migrate`                                              | Schema owner                                              | Checksummed SQLx migration history                                       |
-| `operator signing status/generate/import/activate/retire`       | Operator database login, canonical origin, wrapping key   | Binding validation, revision checks, lifecycle audit                     |
+| `operator signing status`                                       | Operator database login, canonical origin, wrapping key   | Binding creation or validation, then inventory                           |
+| `operator signing generate/import/activate/retire`              | Same signing authority and expected revision              | Durable intent, atomic binding/change/audit/receipt                      |
+| `operator signing inspect OPERATION_ID`                         | Operator journal read privileges                          | Read-only primary snapshot, database configuration only                  |
 | `operator limiter status`                                       | Database and runtime Redis access for active state        | Point-in-time enforcement observation                                    |
 | `operator limiter fence`                                        | Protected database mutation authority                     | Inactive generation, wait, and audit commit together                     |
 | `operator limiter activate`                                     | Database and Redis recovery credential                    | Durable intent, Redis effect, atomic completion receipt                  |
 | `operator limiter inspect OPERATION_ID`                         | Operator journal read privileges                          | Read-only primary snapshot, no Redis dependency                          |
 | `operator redis status`                                         | Cache and limiter diagnostic credentials                  | Reachability and configuration, no admission decision                    |
 
-Signing commands validate or initially create the issuer and wrapping-key binding.
-That includes `status`, so it requires confirmation. Binding creation precedes the
-key-lifecycle transaction. The group has no complete operator intent/result journal.
-Publication and verification-retention waits remain mandatory.
+Signing mutations record [durable intent and completion](signing-operations.md).
+Provider binding, revision checks, lifecycle audit, and receipt share the mutation
+transaction. `status` can initialize the binding outside this journal, so it
+requires confirmation. Publication and verification-retention waits remain mandatory.
 
 Migration history does not provide individually authenticated operator attribution.
-Limiter inspection has no human authentication or per-read audit. Its durable
+Signing and limiter inspection have no human authentication or per-read audit. The limiter
 [activation receipt](limiter-activation.md) records the database credential boundary.
 A repeated fence starts another wait. Activation cannot reset an active generation
 or skip the wait. All operator commands remain subject to their documented grants.

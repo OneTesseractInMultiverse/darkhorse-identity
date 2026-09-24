@@ -229,7 +229,7 @@ async fn actual_lost_commit_responses_preserve_inspectable_intent_or_completed_r
         db.store.close().await;
     }
 }
-async fn lost_commit(pool: &PgPool) -> (PostgresStore, tokio::task::JoinHandle<()>) {
+pub(super) async fn lost_commit(pool: &PgPool) -> (PostgresStore, tokio::task::JoinHandle<()>) {
     use tokio::{
         io::AsyncWriteExt,
         net::{TcpListener, TcpStream},

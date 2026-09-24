@@ -487,3 +487,10 @@ limiter-inspect: ## Limiter: inspect an activation record by OPERATION_ID using 
 
 stack-limiter-inspect: ## Compose: inspect a durable activation record by OPERATION_ID
 	$(NODE) scripts/deployment.mjs limiter-inspect
+
+.PHONY: signing-inspect stack-signing-inspect
+signing-inspect: ## Provider: inspect a signing operation by OPERATION_ID using PostgreSQL only
+	$(NODE) scripts/provider.mjs inspect
+
+stack-signing-inspect: ## Compose: inspect a durable signing operation by OPERATION_ID
+	$(NODE) scripts/deployment.mjs signing-inspect

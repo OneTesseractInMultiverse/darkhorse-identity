@@ -2,7 +2,7 @@ use super::Database;
 use darkhorse_application::signing::*;
 use darkhorse_domain::signing::KeyError;
 const ISSUER: &str = "https://issuer.example";
-fn key(n: u8) -> WrappedKey {
+pub(super) fn key(n: u8) -> WrappedKey {
     WrappedKey {
         public: PublicKey {
             kid: format!("{}{}", char::from(b'A' + n), "A".repeat(42)),
@@ -16,7 +16,7 @@ fn key(n: u8) -> WrappedKey {
 async fn bind(db: &Database) {
     db.store.bind_provider(ISSUER, [1; 32]).await.unwrap();
 }
-async fn elapsed(db: &Database, kid: &str) {
+pub(super) async fn elapsed(db: &Database, kid: &str) {
     // Only the disposable database owner advances lifecycle fixture times.
     sqlx::raw_sql("ALTER TABLE signing_keys DISABLE TRIGGER signing_transition")
         .execute(&db.pool)

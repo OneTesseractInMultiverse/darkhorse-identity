@@ -191,6 +191,22 @@ async function prepare() {
   });
   const principal = boot.stdout.match(/[a-f0-9-]{36}/)[0];
   const stage = JSON.parse((await operation("signing-generate", ["0"])).stdout);
+  const inspectedSigning = await run(
+    "make",
+    ["--no-print-directory", "--silent", "stack-signing-inspect"],
+    {
+      env: {
+        ...stack.env,
+        STACK: stack.settings.name,
+        OPERATION_ID: stage.operation_id,
+      },
+      capture: true,
+    },
+  );
+  const signingRecord = JSON.parse(inspectedSigning.stdout);
+  assert.equal(signingRecord.recorded_outcome, "completed");
+  assert.equal(signingRecord.database_role, "darkhorse_operator");
+  assert.equal(signingRecord.current_phase, "staged");
   assert.notEqual(
     (
       await operation("signing-activate", [stage.kid, "1"], {

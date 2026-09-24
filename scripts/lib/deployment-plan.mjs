@@ -74,7 +74,7 @@ export function secretFiles(values) {
 }
 export function operatorArgs(command, args) {
   if (
-    command === "limiter-inspect" &&
+    ["limiter-inspect", "signing-inspect"].includes(command) &&
     args.length === 1 &&
     typeof args[0] === "string" &&
     /^[a-f0-9]{8}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{12}$/i.test(
@@ -83,7 +83,12 @@ export function operatorArgs(command, args) {
     args[0].length === 36 &&
     args[0] !== "00000000-0000-0000-0000-000000000000"
   )
-    return ["operator", "limiter", "inspect", args[0]];
+    return [
+      "operator",
+      command === "limiter-inspect" ? "limiter" : "signing",
+      "inspect",
+      args[0],
+    ];
   if (
     [
       "migrate",

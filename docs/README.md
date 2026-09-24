@@ -19,6 +19,7 @@ can still require load testing, protocol conformance, or an independent security
 - [Password authentication](authentication.md) defines session cookies, hashing, and shared attempt limits.
 - [Authorization](authorization.md) defines roles, capabilities, scopes, and immutable credential ceilings.
 - [Client registration](registration.md) defines applications, callbacks, client secrets, and resource allowances.
+- [Signing reconciliation](signing-operations.md) explains operation receipts and recovery after lost replies.
 - [OIDC provider](provider.md) covers signing keys, consent, authorization codes, and ID tokens.
 - [Resource issuance](resource-issuance.md) binds user authority to a single protected resource.
 - [Identity checks](token-checks.md) covers UserInfo, client introspection, and revocation.

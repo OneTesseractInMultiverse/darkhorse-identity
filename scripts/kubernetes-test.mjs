@@ -245,6 +245,13 @@ async function initializeIdentity() {
   });
   const principal = boot.stdout.match(/[a-f0-9-]{36}/)[0];
   const key = JSON.parse((await operator(["signing-generate", "0"])).stdout);
+  const signingRecord = JSON.parse(
+    (await operator(["operator", "signing", "inspect", key.operation_id]))
+      .stdout,
+  );
+  assert.equal(signingRecord.recorded_outcome, "completed");
+  assert.equal(signingRecord.database_role, "darkhorse_operator");
+  assert.equal(signingRecord.current_phase, "staged");
   assert.notEqual(
     (
       await operator(["signing-activate", key.kid, "1"], {
