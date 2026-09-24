@@ -20,6 +20,7 @@ import {
   accountResult,
 } from "./lib/container-account-test.mjs";
 import { httpsCall } from "./lib/deployment-client.mjs";
+import { stoppedKubernetesAccounts } from "./lib/kubernetes-account-test.mjs";
 import {
   replicaProtocol,
   sharedBudgets,
@@ -536,6 +537,16 @@ async function main() {
   console.log(
     "Cross-replica shared limiting and strict post-commit account revocation passed.",
   );
+  await stoppedKubernetesAccounts({
+    c,
+    kube,
+    apply,
+    sql,
+    command,
+    settings,
+    auth,
+    user,
+  });
 }
 async function accountChecks(account, settings, auth, user) {
   assert.equal(accountResult(await account(), 0).id, user.principal);

@@ -94,6 +94,83 @@ the cluster, namespace and workload/image before execution. Namespace and
 kubeconfig administrators remain trusted. Stopped-container Kubernetes account
 recovery is not provided by this target.
 
+### Kubernetes with HTTP stopped
+
+Prepare the namespace with the current `make kube-prepare` manifests before using
+this path. This installs the account service account and network policy without
+starting the serving Deployment. Existing runtime secrets, database grants and an
+active shared limiter must already be provisioned. Both serving replicas may remain
+stopped throughout the operation.
+
+```sh
+make kube-account-run KUBE_CONFIG=/absolute/path/identity.json KUBE_ACCESS=/absolute/path/access.yaml KUBE_CONTEXT=reviewed-context ACCOUNT_ID=<principal-uuid> < /private/path/account-input.json
+```
+
+The launcher creates a randomly named, standalone Pod using the deployment's
+immutable application image. Its only container waits for up to 180 seconds. After
+a bounded readiness wait and UID/image/state check, the launcher executes the Rust
+account command once in `api`, forwarding protected stdin without a TTY. The Pod
+has `restartPolicy: Never`, a 180-second active deadline and a five-second
+termination grace period. It has no replacement controller, HTTP process, proxy,
+ports or service-account token. The host starts no dependency or serving workload.
+See [Pod lifecycle](https://kubernetes.io/docs/concepts/workloads/pods/pod-lifecycle/)
+and the [Pod API](https://kubernetes.io/docs/reference/kubernetes-api/core/pod-v1/).
+
+The account workload projects only `runtime-db`, `login-key`, `cache-url`,
+`limiter-url` and `ca` from `darkhorse-runtime-secrets`. It receives no signing-wrap,
+owner, operator or limiter-recovery credential. Its network policy permits DNS,
+PostgreSQL and the limiter, with no ingress or cache egress. The cache URL remains
+required configuration, but account operations do not open a cache connection.
+These credentials are the existing deployment credentials. Creating a short-lived
+Pod does not make its database credential temporary or narrowly scoped.
+The local kind fixture has admitted cache connections briefly after Pod creation.
+Its checks establish eventual policy denial, not isolation from the first packet.
+The [network-policy lifecycle](https://kubernetes.io/docs/concepts/services-networking/network-policies/#pod-lifecycle)
+depends on the network plugin. Production startup and failure isolation remain
+qualification gates in #20. Account operations themselves open no cache connection.
+
+```mermaid
+sequenceDiagram
+    participant Host as Operator launcher
+    participant API as Kubernetes API
+    participant Pod as Account Pod
+    participant Rust as Rust account command
+    participant State as Primary database and limiter
+    Host->>API: Create one bounded Pod
+    API-->>Host: Pod name and UID
+    Host->>API: Wait and verify Pod identity and state
+    Host->>Pod: One exec with protected stdin
+    Pod->>Rust: Authenticate administrator and run command
+    Rust->>State: Fresh authority checks and atomic mutation/audit
+    Rust-->>Host: Result and operation ID, if delivered
+    Host->>API: Graceful deletion with UID precondition
+    Note over Host,State: Lost responses require reconciliation before any retry
+```
+
+The Pod name and validated UID are printed on stderr. Normal completion or a
+handled interruption requests graceful deletion with a UID precondition and waits
+up to 15 seconds for deletion. A replacement Pod with the same name cannot satisfy
+that deletion precondition. A creation response that is lost or malformed supplies
+no verified UID, so the launcher does not adopt or delete an object by name.
+Inspect the printed name in that case. Cleanup failures are reported explicitly.
+The [kubectl deletion API](https://kubernetes.io/docs/reference/kubectl/generated/kubectl_delete/)
+is used without force deletion.
+
+Readiness waits up to 25 seconds. Each setup/cleanup subprocess has a 35-second
+host deadline and 30-second API request timeout. The command attachment retains its
+120-second deadline. Captured control responses are limited to 1 MiB. Cancellation
+terminates the owned subprocess group, with up to two additional seconds before
+forced termination. These phases are separate, so the entire launcher can take
+longer than 120 seconds. A node partition, killed launcher or unavailable control
+plane can leave a Pod or process behind. Reconcile its outcome before deleting
+remaining resources. Neither cleanup nor the active deadline proves rollback.
+
+Kubernetes exec addresses a Pod by name. The UID/image check is a preflight check,
+and an authorized cluster administrator could replace the Pod between that check
+and exec. The control plane, kubelet, admission controllers and namespace
+administrators remain trusted. No exactly-once or compromised-cluster guarantee is
+claimed. The launcher does not install RBAC grants or mint emergency credentials.
+
 ## Exit behavior and uncertain outcomes
 
 Invoke the launcher directly when automation needs the child's exact exit code:
@@ -102,7 +179,7 @@ Invoke the launcher directly when automation needs the child's exact exit code:
 STACK=trial ACCOUNT_ID=<principal-uuid> node scripts/account.mjs compose-exec < /private/path/account-input.json
 ```
 
-The other modes are `compose-run` and `kube-exec`, with the same environment
+The other modes are `compose-run`, `kube-exec` and `kube-run`, with the same environment
 selectors. Successful Rust results are JSON on stdout. Application failures are
 JSON on stderr. Docker/kubectl and launcher diagnostics can appear on stderr,
 so do not parse the entire stderr stream as one JSON document.
@@ -111,7 +188,11 @@ The launcher preserves normal transport exit codes, including Rust's `0` success
 `1` operation/input failure, `2` invalid arguments, `3` missing confirmation and
 `74` output failure when the transport forwards them. Docker/kubectl can return their own failure codes. A status alone cannot prove remote rollback.
 Make reports a failed recipe using its own nonzero status (normally `2`). Make does
-**not** preserve the recipe's exact code. No operation is retried by either path.
+**not** preserve the recipe's exact code. No operation is retried by any path.
+For `kube-run`, cleanup failure after command success changes the launcher status
+to `1`, with a separate diagnostic. A nonzero command status is preserved when
+cleanup also fails. A successful account JSON result can therefore accompany a
+nonzero launcher status. Reconcile the reported operation instead of retrying it.
 
 The host attachment has a 120-second deadline. Timeout returns `124`. Host `SIGINT`,
 `SIGTERM` and `SIGHUP` return `130`, `143` and `129`. The launcher terminates only its
@@ -139,7 +220,12 @@ one connection, with 512 MiB memory, two CPUs and 128 processes. Running-contain
 exec inherits the server configuration, creates additional pools (currently five
 database and four limiter connections per command), and shares the server's
 container resource limits. Kubernetes has the same per-command pools with the
-current manifest. Account commands take the shared security fence, including
+current manifest. The Kubernetes one-shot Pod instead uses two database and one
+limiter connection, 512 MiB memory, one CPU and a 16 MiB memory-backed temporary
+directory. It consumes one of the namespace quota's four Pod slots. The existing
+connection envelope remains conservative for mixtures of serving and one-shot
+Pods, but extra processes started through exec must be budgeted separately.
+Account commands take the shared security fence, including
 reads, so contention can delay other security operations. Existing database
 query/lock and authentication-proof limits still apply.
 
@@ -159,20 +245,23 @@ public launcher entrypoint, without changing developer stacks or ambient cluster
 contexts. They exercise the current image, schema and runtime grants. See their
 prerequisites and remaining deployment limits in the linked guides.
 
-| Mode / scenario                                                      | Required authority                                            | State and audit expectation                                                                           | Exit / evidence                                               |
-| -------------------------------------------------------------------- | ------------------------------------------------------------- | ----------------------------------------------------------------------------------------------------- | ------------------------------------------------------------- |
-| Protected stdin transport, no TTY                                    | Host test process only                                        | Exact stdin forwarded. Marker absent from arguments, environment and diagnostics                      | Process suite preserves `0/1/2/3/74/125`                      |
-| Invalid selectors                                                    | None                                                          | No remote launch or target access                                                                     | `2`. Pure and process suites                                  |
-| Compose exec / Kubernetes exec, authenticated show                   | Deployment exec plus active administrator password            | Read with verified actor and runtime-role audit                                                       | JSON, `0`. Both deployment suites                             |
-| Wrong password / stale revision                                      | Exec plus supplied credentials                                | Generic authentication denial or audited conflict. No target change                                   | `1`. Both suites                                              |
-| Missing mutation confirmation                                        | Exec. Confirmation absent                                     | No mutation                                                                                           | `3`. Both suites                                              |
-| Last administrator deactivation                                      | Exec plus administrator password                              | Directory invariant rejects change                                                                    | `1`. Compose suite                                            |
-| Compose exec with stopped API                                        | Deployment exec                                               | No application start                                                                                  | Nonzero. Compose suite                                        |
-| Compose one-shot show/deactivate/reactivate/revoke-all, HTTP stopped | Workload creation, runtime secrets and administrator password | Expected revisions and runtime-role audit. No HTTP listener. Ordinary container removed               | JSON, `0`. Compose suite                                      |
-| Lost limiter continuity                                              | Exec/run plus valid password                                  | Reject account access until separate recovery                                                         | `1`. Both suites                                              |
-| Kubernetes revoke-all across serving replicas                        | Exec plus administrator password and observed revision        | Committed revocation immediately invalidates token checks on both replicas                            | `0`. Kubernetes suite                                         |
-| Local timeout / signal                                               | Host process control                                          | Stop owned child/descendant processes, preserve unrelated process. No retry. Remote outcome uncertain | `124` / `143`. Process suite, other signal mapping unit tests |
-| Backup/migration during account run                                  | Deployment operations                                         | Reject maintenance during an active account command                                                   | Nonzero. Compose suite                                        |
+| Mode / scenario                                                              | Required authority                                                  | State and audit expectation                                                                           | Exit / evidence                                               |
+| ---------------------------------------------------------------------------- | ------------------------------------------------------------------- | ----------------------------------------------------------------------------------------------------- | ------------------------------------------------------------- |
+| Protected stdin transport, no TTY                                            | Host test process only                                              | Exact stdin forwarded. Marker absent from arguments, environment and diagnostics                      | Process suite preserves `0/1/2/3/74/125`                      |
+| Invalid selectors                                                            | None                                                                | No remote launch or target access                                                                     | `2`. Pure and process suites                                  |
+| Compose exec / Kubernetes exec, authenticated show                           | Deployment exec plus active administrator password                  | Read with verified actor and runtime-role audit                                                       | JSON, `0`. Both deployment suites                             |
+| Wrong password / stale revision                                              | Exec plus supplied credentials                                      | Generic authentication denial or audited conflict. No target change                                   | `1`. Both suites                                              |
+| Missing mutation confirmation                                                | Exec. Confirmation absent                                           | No mutation                                                                                           | `3`. Both suites                                              |
+| Last administrator deactivation                                              | Exec plus administrator password                                    | Directory invariant rejects change                                                                    | `1`. Compose suite                                            |
+| Compose exec with stopped API                                                | Deployment exec                                                     | No application start                                                                                  | Nonzero. Compose suite                                        |
+| Compose one-shot show/deactivate/reactivate/revoke-all, HTTP stopped         | Workload creation, runtime secrets and administrator password       | Expected revisions and runtime-role audit. No HTTP listener. Ordinary container removed               | JSON, `0`. Compose suite                                      |
+| Lost limiter continuity                                                      | Exec/run plus valid password                                        | Reject account access until separate recovery                                                         | `1`. Both suites                                              |
+| Kubernetes revoke-all across serving replicas                                | Exec plus administrator password and observed revision              | Committed revocation immediately invalidates token checks on both replicas                            | `0`. Kubernetes suite                                         |
+| Local timeout / signal                                                       | Host process control                                                | Stop owned child/descendant processes, preserve unrelated process. No retry. Remote outcome uncertain | `124` / `143`. Process suite, other signal mapping unit tests |
+| Backup/migration during account run                                          | Deployment operations                                               | Reject maintenance during an active account command                                                   | Nonzero. Compose suite                                        |
+| Kubernetes one-shot show/deactivate/reactivate/revoke-all, zero serving Pods | Workload creation, exec, runtime secrets and administrator password | Expected revisions and runtime-role audit. No serving workload. Owned Pod removed                     | JSON, `0`. Kubernetes suite                                   |
+| One-shot Kubernetes authority loss / database network outage                 | Same deployment permissions, revoked actor or unavailable database  | No target mutation. Fresh authority and required dependency checks reject access                      | `1`. Kubernetes suite                                         |
+| One-shot creation/replacement/cleanup failure                                | Host fixture or controlled cluster                                  | No command retry, no execution after failed preflight, UID-conditional deletion                       | Process suite and actual wrong-UID deletion rejection         |
 
 Native interactive commands inside a running container can use
 `docker exec --interactive --tty --user 10001:10001 <reviewed-api-container-id> /usr/local/bin/darkhorse-server operator account show <principal-uuid>`
@@ -190,7 +279,7 @@ suite alone does not establish remote PTY behavior.
 The broader account suite covers transaction/audit failures, actor reductions and
 lost commit responses at the database boundary. Container-specific termination
 mid-transaction, interrupted output, simultaneous operators/SSO load, incompatible
-binary/schema versions, stopped-container Kubernetes recovery with temporary
+binary/schema versions, temporary-credential Kubernetes recovery,
 credentials, independent security review and release artifact qualification remain
 open. This increment does not complete #27 or establish production readiness.
 Full authored-code coverage remains open in #2.

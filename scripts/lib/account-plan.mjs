@@ -56,25 +56,15 @@ export function composeAccount(mode, args, name) {
     throw invalid();
   return ["run", "--rm", "--no-deps", "-T", "--name", name, "account", ...args];
 }
-export function kubernetesAccount(namespace, values, args) {
-  const {
-    KUBE_ACCESS: access,
-    KUBE_CONTEXT: context,
-    ACCOUNT_POD: pod,
-  } = values;
+export function kubernetesAccess(namespace, values) {
+  const { KUBE_ACCESS: access, KUBE_CONTEXT: context } = values;
   if (
     !access?.startsWith("/") ||
     !context ||
-    [access, context].some(
-      (v) => v.length > 4096 || /[\x00-\x1f\x7f]/.test(v),
-    ) ||
-    !/^[a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?(?:\.[a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?)*$/.test(
-      pod ?? "",
-    ) ||
-    pod.length > 253
+    [access, context].some((v) => v.length > 4096 || /[\x00-\x1f\x7f]/.test(v))
   )
     throw new UsageError(
-      "Kubernetes account execution requires an absolute KUBE_ACCESS, explicit KUBE_CONTEXT and a single ACCOUNT_POD name.",
+      "Kubernetes account execution requires an absolute KUBE_ACCESS and explicit KUBE_CONTEXT.",
     );
   return [
     "--kubeconfig",
@@ -84,6 +74,21 @@ export function kubernetesAccount(namespace, values, args) {
     "--namespace",
     namespace,
     "--request-timeout=30s",
+  ];
+}
+export function kubernetesAccount(namespace, values, args) {
+  const pod = values.ACCOUNT_POD;
+  if (
+    !/^[a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?(?:\.[a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?)*$/.test(
+      pod ?? "",
+    ) ||
+    pod.length > 253
+  )
+    throw new UsageError(
+      "Kubernetes execution requires a single ACCOUNT_POD name.",
+    );
+  return [
+    ...kubernetesAccess(namespace, values),
     "exec",
     "--pod-running-timeout=15s",
     "-i",

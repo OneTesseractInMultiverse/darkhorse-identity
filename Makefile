@@ -469,15 +469,18 @@ ACCOUNT_CONFIRM ?= no
 ACCOUNT_POD ?=
 export ACCOUNT_OPERATION ACCOUNT_ID ACCOUNT_REVISION ACCOUNT_CONFIRM ACCOUNT_POD
 export STACK KUBE_CONFIG KUBE_ACCESS KUBE_CONTEXT
-.PHONY: stack-account-exec stack-account-run kube-account-exec test-account-launcher
+.PHONY: stack-account-exec stack-account-run kube-account-exec kube-account-run test-account-launcher
 stack-account-exec: ## Account: protected-stdin administration in the running Compose api container
 	@$(NODE) scripts/account.mjs compose-exec
 stack-account-run: ## Account: protected-stdin one-shot administration while Compose HTTP is stopped
 	@$(NODE) scripts/account.mjs compose-run
 kube-account-exec: ## Account: protected-stdin administration in explicit ACCOUNT_POD/api; requires KUBE_CONFIG/KUBE_ACCESS/KUBE_CONTEXT
 	@$(NODE) scripts/account.mjs kube-exec
+kube-account-run: ## Account: protected-stdin one-shot Pod while Kubernetes HTTP is stopped; requires KUBE_CONFIG/KUBE_ACCESS/KUBE_CONTEXT
+	@$(NODE) scripts/account.mjs kube-run
 test-account-launcher: ## Test: real launcher subprocess stdin, status, deadlines and owned process cleanup
 	$(NODE) scripts/account-launcher-test.mjs
+	$(NODE) scripts/kubernetes-account-launcher-test.mjs
 
 OPERATION_ID ?=
 export OPERATION_ID

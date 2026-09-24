@@ -68,6 +68,13 @@ The ClusterIP service accepts 443 and forwards to each Pod's TLS proxy on 8443. 
 
 The local kind test verifies normal policy enforcement. Its pinned kindnet policy controller is configured to fail open on policy-evaluation errors. This test **does not qualify isolation during CNI/controller failure**. Select and test the production CNI's failure behavior before exposing this topology.
 
+One-shot account tests also observed cache connections admitted immediately after
+Pod creation. The suite records successful probes before requiring consecutive
+denials. This establishes eventual policy enforcement only. Isolation from Pod
+startup, including reuse of Pod addresses and policy-controller convergence, remains
+a production qualification gate. An API readiness result is not a network-policy
+enforcement acknowledgement.
+
 ## Configuration and secret contract
 
 Copy `deploy/kubernetes/example.json` to an operator-controlled location and replace every value. It contains exactly `namespace`, `origin`, `image`, `edgeImage`, `backendNamespace` and `ingressNamespace`. All three namespaces must be dedicated and distinct. The origin must be a canonical HTTPS DNS origin. Both image references must use the actual published repository and immutable `@sha256:` digest. The repeated-letter example digests are placeholders. Build the application with `make docker-build` and proxy with `make stack-edge-build`, then publish and verify their actual registry digests through your release process.
@@ -138,7 +145,7 @@ The suite exercises shared sessions and consent, cross-Pod authorization-code an
 
 Multi-node partitions, CNI failures, database promotion and old-primary fencing, policy revision races, limiter failover/lost state, pool exhaustion under sustained load, outbox concurrency, image/schema upgrades, complete draining and disaster recovery still require evidence. Production stateful topology, RPO/RTO and capacity SLOs remain undecided. Keep #20 open until those criteria and the full install/upgrade/restore contract are met. The unchanged 100% authored-code coverage target is separately tracked in [#2](https://github.com/OneTesseractInMultiverse/darkhorse-identity/issues/2).
 
-## Authenticated account exec
+## Authenticated account commands
 
 `make kube-account-exec` runs the existing account commands in an explicitly
 selected running Pod and its `api` container. It uses runtime credentials and a
@@ -146,3 +153,17 @@ fresh administrator password on protected stdin. See the [container account
 runbook](container-accounts.md) for cluster selection, capacity, exit behavior and
 uncertain outcomes. It does not create a recovery Pod or copy operator secrets
 into a serving replica.
+
+`make kube-account-run` creates one bounded account Pod and runs the same commands
+while serving Pods are stopped. Run `make kube-prepare` with the current manifests
+first to install its service account and network policy. It projects a subset of
+runtime secrets, connects only to PostgreSQL and the shared limiter, authenticates
+the administrator afresh, and requests UID-conditional cleanup. It uses no
+replacement controller or command retry. The existing namespace quota and
+connection envelope are unchanged. The runbook describes deadlines, uncertain
+outcomes, and the remaining temporary-credential and production-assurance work.
+
+The disposable suite stops both serving replicas, exercises all four one-shot
+commands and their audit records, rejects lost administrator authority and database
+access, verifies blocked cache egress and secret isolation, and checks cleanup.
+These checks use the existing runtime role and do not qualify emergency access.

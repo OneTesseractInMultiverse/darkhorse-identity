@@ -1,18 +1,34 @@
 import { spawn } from "node:child_process";
 import { setTimeout as delay } from "node:timers/promises";
 
-export function startProcess({ command, args, env = process.env, stdout }) {
+export function startProcess({
+  command,
+  args,
+  env = process.env,
+  stdout,
+  stderr,
+  input,
+}) {
   const child = spawn(command, args, {
     env,
-    stdio: stdout ? ["inherit", "pipe", "inherit"] : "inherit",
+    stdio: [
+      input === undefined ? "inherit" : "pipe",
+      stdout ? "pipe" : "inherit",
+      stderr ? "pipe" : "inherit",
+    ],
     detached: true,
   });
   if (stdout) child.stdout.on("data", stdout);
+  if (stderr) child.stderr.on("data", stderr);
+  if (input !== undefined) {
+    child.stdin.on("error", () => {});
+    child.stdin.end(input);
+  }
   const done = new Promise((resolve, reject) => {
     child.once("error", () =>
       reject(new Error(`Cannot start ${command}; install it or check PATH.`)),
     );
-    child.once("exit", (code, signal) => resolve({ code, signal }));
+    child.once("close", (code, signal) => resolve({ code, signal }));
   });
   // Attach a handler immediately; supervisors still receive the original rejection.
   void done.catch(() => {});

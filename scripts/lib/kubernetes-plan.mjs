@@ -87,7 +87,7 @@ export function application(input) {
           },
         },
       },
-      ...["runtime", "operator", "migrator"].map((role) => ({
+      ...["runtime", "operator", "migrator", "account"].map((role) => ({
         apiVersion: "v1",
         kind: "ServiceAccount",
         metadata: metadata(`darkhorse-${role}`),

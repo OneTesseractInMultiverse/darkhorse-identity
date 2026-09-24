@@ -54,5 +54,11 @@ export function policies(c) {
       ingress: [],
       egress: dependencies,
     }),
+    make("darkhorse-account", {
+      podSelector: { matchLabels: labels("account") },
+      policyTypes: ["Ingress", "Egress"],
+      ingress: [],
+      egress: [dependencies[0], dependencies[1], dependencies[3]],
+    }),
   ];
 }

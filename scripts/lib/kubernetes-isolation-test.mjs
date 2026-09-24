@@ -104,7 +104,7 @@ export async function isolation({ c, kube, apply }, pods, ca) {
     "Actual network policies reject unapproved namespaces and direct API ingress; runtime secret/authority isolation passed.",
   );
 }
-async function databaseSignal({ c, kube }, signal) {
+export async function databaseSignal({ c, kube }, signal) {
   assert.ok(["STOP", "CONT"].includes(signal));
   await kube(
     [

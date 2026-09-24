@@ -14,6 +14,8 @@ export const security = () => ({
 const env = (name, value) => ({ name, value });
 export function secretKeys(role) {
   if (role === "migrator") return ["owner-db", "ca"];
+  if (role === "account")
+    return ["runtime-db", "login-key", "cache-url", "limiter-url", "ca"];
   if (!["runtime", "operator"].includes(role))
     throw new Error("Unknown database workload.");
   return [
@@ -38,12 +40,12 @@ export function runtimeEnvironment(c, role = "runtime") {
     ...common,
     env("DARKHORSE_PUBLIC_ORIGIN", c.origin),
     env("DARKHORSE_LOGIN_ENABLED", "true"),
-    env("DARKHORSE_PROVIDER_ENABLED", "true"),
-    env("DARKHORSE_REDIS_CACHE_CONNECTIONS", "2"),
-    env("DARKHORSE_REDIS_LIMITER_CONNECTIONS", role === "operator" ? "1" : "4"),
+    env("DARKHORSE_PROVIDER_ENABLED", role === "account" ? "false" : "true"),
+    env("DARKHORSE_REDIS_CACHE_CONNECTIONS", role === "account" ? "1" : "2"),
+    env("DARKHORSE_REDIS_LIMITER_CONNECTIONS", role === "runtime" ? "4" : "1"),
     ...[
       ["LOGIN_LIMIT_KEY", "login-key"],
-      ["SIGNING_WRAP_KEY", "wrap-key"],
+      ...(role === "account" ? [] : [["SIGNING_WRAP_KEY", "wrap-key"]]),
       ["REDIS_CACHE_URL", "cache-url"],
       ["REDIS_LIMITER_URL", "limiter-url"],
       ["REDIS_CACHE_CA_PEM", "ca"],
@@ -91,7 +93,7 @@ export function pod(c, role = "runtime") {
       {
         name: "identity",
         secret: {
-          secretName: `darkhorse-${role}-secrets`,
+          secretName: `darkhorse-${role === "account" ? "runtime" : role}-secrets`,
           items: secretKeys(role).map((key) => ({ key, path: key })),
           defaultMode: 0o440,
         },
