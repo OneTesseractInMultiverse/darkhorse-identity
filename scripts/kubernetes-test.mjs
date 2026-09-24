@@ -21,6 +21,7 @@ import {
 } from "./lib/container-account-test.mjs";
 import { httpsCall } from "./lib/deployment-client.mjs";
 import { stoppedKubernetesAccounts } from "./lib/kubernetes-account-test.mjs";
+import { startupIsolation } from "./lib/kubernetes-network-test.mjs";
 import {
   replicaProtocol,
   sharedBudgets,
@@ -163,7 +164,14 @@ async function prepareNamespace() {
     );
     assert.notEqual(result.code, 0, "never select ambient cluster context");
   }
-  await apply(await backendFixture(c, stack.directory));
+  const backend = await command("make", [
+    "--no-print-directory",
+    "kube-backend-render",
+    `KUBE_CONFIG=${join(directory, "configuration.json")}`,
+  ]);
+  await apply(
+    await backendFixture(c, stack.directory, JSON.parse(backend.stdout).items),
+  );
   await waitPods(c.backendNamespace, "app.kubernetes.io/name=darkhorse");
   console.log(
     "Isolated TLS PostgreSQL/Redis and restricted application namespace prepared.",
@@ -331,6 +339,7 @@ async function prepare() {
   await prepareOperator();
   const user = await initializeIdentity();
   await recovery();
+  await startupIsolation({ c, kube, apply });
   await publicCommand("apply");
   await publicCommand("status");
   await kube([

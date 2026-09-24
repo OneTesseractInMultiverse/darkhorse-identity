@@ -442,9 +442,11 @@ KUBE_CONTEXT ?=
 KIND ?= kind
 JOB_COMMAND ?=
 JOB_NAME ?=
-.PHONY: kube-render kube-budgets kube-prepare kube-validate kube-apply kube-status kube-job-render test-kubernetes
+.PHONY: kube-render kube-backend-render kube-budgets kube-prepare kube-validate kube-apply kube-status kube-job-render test-kubernetes
 kube-render: ## Kubernetes: render nonsecret manifests from an explicit KUBE_CONFIG
 	@$(NODE) scripts/kubernetes.mjs render "$(KUBE_CONFIG)"
+kube-backend-render: ## Kubernetes: render backend ingress policies for separate operator review/application
+	@$(NODE) scripts/kubernetes.mjs backend-render "$(KUBE_CONFIG)"
 kube-budgets: ## Kubernetes: report conservative namespace connection budgets
 	@$(NODE) scripts/kubernetes.mjs budgets "$(KUBE_CONFIG)"
 kube-prepare: ## Kubernetes: prepare namespace/policies; requires KUBE_ACCESS and KUBE_CONTEXT

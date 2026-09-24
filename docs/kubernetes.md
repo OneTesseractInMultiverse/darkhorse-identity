@@ -62,18 +62,80 @@ The application namespace starts with default-deny ingress and egress. Server Po
 - `app.kubernetes.io/name=darkhorse`.
 - `app.kubernetes.io/component=postgres`, `cache` or `limiter`, respectively.
 
-PostgreSQL uses port 5432. Cache and limiter use 6379. The namespace selector and Pod selector are conjunctive. Backend namespace administration is trusted. No general internet, SMTP or object-service egress is active. Provision dependency services and their own network controls separately. These manifests do not secure the backend namespace.
+PostgreSQL uses port 5432. Cache and limiter use 6379. The namespace selector and Pod selector are conjunctive. Backend namespace administration is trusted. No general internet, SMTP or object-service egress is active. Provision dependency services and their network controls separately. The application manifest never adopts the backend namespace. A separate ingress-policy renderer supports the dependency contract below.
 
 The ClusterIP service accepts 443 and forwards to each Pod's TLS proxy on 8443. Use a gateway with qualified TLS passthrough and canonical DNS routing. Supply a certificate valid for the one canonical public HTTPS hostname. Rust receives the original host and port, without trusted forwarded identity headers. Port 3001 is not an ingress route. It is used by the local proxy and kubelet health probes. Node traffic, host-network gateways, source NAT and NodeLocal DNS have CNI-specific behavior and require separate qualification. Do not assume a manifest alone enforces isolation. [NetworkPolicy requires a supporting network plugin](https://kubernetes.io/docs/concepts/services-networking/network-policies/).
 
-The local kind test verifies normal policy enforcement. Its pinned kindnet policy controller is configured to fail open on policy-evaluation errors. This test **does not qualify isolation during CNI/controller failure**. Select and test the production CNI's failure behavior before exposing this topology.
+### Backend ingress policies
 
-One-shot account tests also observed cache connections admitted immediately after
-Pod creation. The suite records successful probes before requiring consecutive
-denials. This establishes eventual policy enforcement only. Isolation from Pod
-startup, including reuse of Pod addresses and policy-controller convergence, remains
-a production qualification gate. An API readiness result is not a network-policy
-enforcement acknowledgement.
+`make kube-backend-render KUBE_CONFIG=/absolute/path/identity.json` prints three
+NetworkPolicies for separate review by the backend operator. It makes no cluster
+calls. Each policy selects one labelled backend component and permits only these
+source components in the configured application namespace:
+
+| Destination | TCP port | Permitted source components                 |
+| ----------- | -------- | ------------------------------------------- |
+| PostgreSQL  | 5432     | `server`, `operator`, `migrator`, `account` |
+| Cache       | 6379     | `server`, `operator`                        |
+| Limiter     | 6379     | `server`, `operator`, `account`             |
+
+Each source must carry both `app.kubernetes.io/name=darkhorse` and the listed
+component label. The namespace and Pod selectors appear in the same peer, so both
+must match. An account Pod therefore needs permission at the source and at the
+PostgreSQL or limiter destination. A cache Pod has no account ingress rule.
+
+```mermaid
+flowchart LR
+    Account["New account Pod"] --> Egress["Application egress policy"]
+    Egress --> PG["PostgreSQL ingress: account allowed"]
+    Egress --> Limiter["Limiter ingress: account allowed"]
+    Account -. "If source enforcement has not converged" .-> Cache["Cache ingress: account denied"]
+    PG --> Auth["TLS, credentials and fresh application authority checks"]
+    Limiter --> Auth
+```
+
+The output contains only ingress policies. It creates no namespace, backend,
+credential or RBAC grant, and does not restrict backend egress or unselected Pods.
+Application `prepare`, `validate` and `apply` do not install it. Review existing
+policy names and ownership, selectors, replication, monitoring, backup and operator
+paths before applying it: those additional clients are absent from this initial
+single-primary fixture. Add narrowly scoped rules for the actual stateful topology.
+Kubernetes policies are additive; an existing broad allow policy can defeat these
+restrictions. [NetworkPolicy isolation and allowed traffic](https://kubernetes.io/docs/concepts/services-networking/network-policies/#the-two-sorts-of-pod-isolation).
+
+Render and inspect the output, then let the backend operator validate and apply
+it to the already provisioned namespace with an explicit context:
+
+```sh
+make kube-backend-render KUBE_CONFIG=/absolute/path/identity.json > /absolute/path/backend-ingress.json
+kubectl --kubeconfig /absolute/path/access.yaml --context reviewed-context apply --dry-run=server -f /absolute/path/backend-ingress.json
+kubectl --kubeconfig /absolute/path/access.yaml --context reviewed-context apply -f /absolute/path/backend-ingress.json
+```
+
+### Startup findings and remaining CNI qualification
+
+An isolated investigation reproduced 12 of 12 new account Pods connecting to
+cache when only application egress policy protected that path. With cache ingress
+already enforced, all 12 equivalent probes timed out. The regression now requires
+18 fresh-Pod first-connection denials, including account-to-cache,
+migrator-to-Redis, and correctly labelled clients from an unauthorized namespace.
+Allowed operator connections verify all three targets before and after the probes.
+A forbidden connection fails the suite immediately; later denial cannot erase it.
+
+The pinned kindnet implementation learns selected Pod addresses asynchronously
+and uses fail-open packet evaluation. These mechanisms are consistent with the
+observed startup gap; the experiment does not establish which controller event
+caused the original admission. See the pinned [kindnet configuration](https://github.com/kubernetes-sigs/kind/blob/v0.33.0/images/kindnetd/cmd/kindnetd/main.go)
+and its [policy data plane](https://github.com/kubernetes-sigs/kube-network-policies/blob/f67f0fb35e2b/pkg/dataplane/controller.go).
+
+Backend ingress adds a second enforcement point, but shares the same CNI failure
+domain. The fixture tests new clients against already running, protected backends.
+It does not qualify backend startup/replacement, reused Pod addresses, established
+connections after policy changes, controller outage or node partitions. Readiness
+and successful manifest application are not policy-enforcement acknowledgements.
+Select and qualify the production CNI before exposure. The [Pod policy lifecycle](https://kubernetes.io/docs/concepts/services-networking/network-policies/#pod-lifecycle)
+explains the asynchronous API boundary. TLS, dependency credentials, primary-state
+authorization and application revocation checks remain required independently.
 
 ## Configuration and secret contract
 
@@ -100,7 +162,7 @@ make kube-budgets KUBE_CONFIG=/absolute/path/identity.json
 make kube-prepare KUBE_CONFIG=/absolute/path/identity.json KUBE_ACCESS=/absolute/path/access.yaml KUBE_CONTEXT=reviewed-context
 ```
 
-`prepare` creates namespace/security policy/configuration, without a serving Deployment, Service or disruption budget. It does not initialize identity state. Next, the trusted operator provisions backend services and secrets, confirms TLS, prepares the database roles, and initializes identity state with HTTP serving stopped. Existing [database](persistence.md), [signing](provider.md) and [limiter recovery](redis.md) invariants still apply. Provision independent `darkhorse_owner`, `darkhorse_runtime` and `darkhorse_operator` logins first. The atomic runtime/operator grants from `deploy/grant-runtime.sql` must follow reviewed migrations. Existing databases need explicit role provisioning. Initialization on an empty volume does not upgrade them. Preserve the real publication delay and full 904-second limiter recovery wait. Bootstrap must use protected interactive/stdin input. No password belongs in arguments, Job manifests or logs.
+`prepare` creates namespace/security policy/configuration, without a serving Deployment, Service or disruption budget. It does not initialize identity state. Next, the trusted operator provisions backend services and secrets, reviews and installs backend ingress controls, confirms permitted and denied network paths and TLS, prepares the database roles, and initializes identity state with HTTP serving stopped. Existing [database](persistence.md), [signing](provider.md) and [limiter recovery](redis.md) invariants still apply. Provision independent `darkhorse_owner`, `darkhorse_runtime` and `darkhorse_operator` logins first. The atomic runtime/operator grants from `deploy/grant-runtime.sql` must follow reviewed migrations. Existing databases need explicit role provisioning. Initialization on an empty volume does not upgrade them. Preserve the real publication delay and full 904-second limiter recovery wait. Bootstrap must use protected interactive/stdin input. No password belongs in arguments, Job manifests or logs.
 
 A narrow renderer supports `migrate`, `limiter-status`, `limiter-fence`, `limiter-activate`, `signing-status` and `redis-status`:
 
@@ -139,7 +201,7 @@ make docker-build
 make test-kubernetes KIND=/absolute/path/kind
 ```
 
-The test creates a random, disposable single-node kind cluster with a private kubeconfig and pinned Kubernetes 1.36.4 node image. Every command names that file and context. It uses generated test-only credentials, TLS PostgreSQL and separate cache/limiter fixtures, runs the real migration Job, and starts two restricted application Pods. It removes only its owned cluster, temporary credentials and fixture files. It does not use a developer's current context, volumes, accounts or host certificate trust.
+The test creates a random, disposable single-node kind cluster with a private kubeconfig and pinned Kubernetes 1.36.4 node image. Every command names that file and context. It uses generated test-only credentials, TLS PostgreSQL and separate cache/limiter fixtures, installs the separately rendered backend ingress policies before backend Pods, runs the real migration Job, and starts two restricted application Pods. It removes only its owned cluster, temporary credentials and fixture files. It does not use a developer's current context, volumes, accounts or host certificate trust.
 
 The suite exercises shared sessions and consent, cross-Pod authorization-code and refresh races, independent ID-token verification, replay revocation, shared login budgets, committed account revocation, actual denied network paths, runtime/operator/migrator secret separation and operator migration refusal, database-outage readiness without liveness restarts, same-version rolling replacement, and conservative limiter restart/recovery on both replicas. The publication and limiter recovery setup first verifies premature activation fails, then advances disposable database clock fixtures. This is not an elapsed-wall-clock recovery soak. Two Pods on one node establish process replication, not node-failure tolerance.
 
@@ -156,7 +218,8 @@ into a serving replica.
 
 `make kube-account-run` creates one bounded account Pod and runs the same commands
 while serving Pods are stopped. Run `make kube-prepare` with the current manifests
-first to install its service account and network policy. It projects a subset of
+first to install its service account and application network policy. Review and apply
+the separate backend ingress policies as described above. It projects a subset of
 runtime secrets, connects only to PostgreSQL and the shared limiter, authenticates
 the administrator afresh, and requests UID-conditional cleanup. It uses no
 replacement controller or command retry. The existing namespace quota and
@@ -165,5 +228,5 @@ outcomes, and the remaining temporary-credential and production-assurance work.
 
 The disposable suite stops both serving replicas, exercises all four one-shot
 commands and their audit records, rejects lost administrator authority and database
-access, verifies blocked cache egress and secret isolation, and checks cleanup.
+access, verifies denied cache connections and secret isolation, and checks cleanup.
 These checks use the existing runtime role and do not qualify emergency access.

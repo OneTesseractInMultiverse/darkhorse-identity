@@ -1,6 +1,5 @@
 import assert from "node:assert/strict";
 import { randomUUID } from "node:crypto";
-import { setTimeout as delay } from "node:timers/promises";
 import { accountCommand, accountResult } from "./container-account-test.mjs";
 import { accountPod, removal } from "./kubernetes-account-plan.mjs";
 import { databaseSignal } from "./kubernetes-isolation-test.mjs";
@@ -219,7 +218,15 @@ async function accountPodIsolation({ c, kube, apply }) {
       );
       assert.equal(r.code, 0, r.stderr);
     }
-    await steadyCacheDenial(exec);
+    const denied = await exec(
+      ["timeout", "3", "bash", "-c", "exec 3<>/dev/tcp/cache/6379"],
+      { acceptFailure: true },
+    );
+    assert.equal(
+      denied.code,
+      124,
+      "account cache connection must time out without retry",
+    );
     const wrong = removal(manifest, "00000000-0000-0000-0000-000000000001");
     const rejected = await kube(
       ["-n", c.namespace, "delete", "--raw", wrong.path, "-f", "-"],
@@ -238,26 +245,4 @@ async function accountPodIsolation({ c, kube, apply }) {
       "--timeout=30s",
     ]);
   }
-}
-async function steadyCacheDenial(exec) {
-  // Observe policy convergence with read-only TCP probes. Never retry an account command.
-  let admitted = 0,
-    denied = 0;
-  for (let n = 0; n < 30 && denied < 2; n++) {
-    const r = await exec(
-      ["timeout", "3", "bash", "-c", "exec 3<>/dev/tcp/cache/6379"],
-      { acceptFailure: true },
-    );
-    assert.ok([0, 124].includes(r.code), r.stderr);
-    if (r.code === 124) denied++;
-    else {
-      admitted++;
-      denied = 0;
-    }
-    if (denied < 2) await delay(500);
-  }
-  console.log(
-    `Account policy probe: ${admitted} connections admitted before two consecutive denials. Startup isolation is not qualified.`,
-  );
-  assert.equal(denied, 2, "account policy must converge to cache denial");
 }

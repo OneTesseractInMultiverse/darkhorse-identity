@@ -7,6 +7,7 @@ import {
   budgets,
 } from "./lib/kubernetes-plan.mjs";
 import { run } from "./lib/command.mjs";
+import { backendPolicies } from "./lib/kubernetes-network.mjs";
 process.chdir(resolve(import.meta.dirname, ".."));
 async function main() {
   const [mode, path, ...args] = process.argv.slice(2);
@@ -21,6 +22,14 @@ async function main() {
     manifest = application(c);
   if (mode === "render" && !args.length)
     return console.log(JSON.stringify(manifest, null, 2));
+  if (mode === "backend-render" && !args.length)
+    return console.log(
+      JSON.stringify(
+        { apiVersion: "v1", kind: "List", items: backendPolicies(c) },
+        null,
+        2,
+      ),
+    );
   if (mode === "budgets" && !args.length)
     return console.log(JSON.stringify(budgets(), null, 2));
   if (mode === "job" && (args.length === 2 || args.length === 3))

@@ -123,11 +123,14 @@ PostgreSQL and the limiter, with no ingress or cache egress. The cache URL remai
 required configuration, but account operations do not open a cache connection.
 These credentials are the existing deployment credentials. Creating a short-lived
 Pod does not make its database credential temporary or narrowly scoped.
-The local kind fixture has admitted cache connections briefly after Pod creation.
-Its checks establish eventual policy denial, not isolation from the first packet.
-The [network-policy lifecycle](https://kubernetes.io/docs/concepts/services-networking/network-policies/#pod-lifecycle)
-depends on the network plugin. Production startup and failure isolation remain
-qualification gates in #20. Account operations themselves open no cache connection.
+The local kind fixture previously admitted cache connections briefly after Pod
+creation with application egress policy alone. It now installs the separate
+[backend ingress policies](kubernetes.md#backend-ingress-policies) and requires
+forbidden connections to time out from the first attempt. Review and install those
+policies with the backend operator before using this topology. The regression
+covers new clients against already protected backends; reused addresses, backend
+startup and CNI failures remain qualification gates in #20. Account operations
+themselves open no cache connection.
 
 ```mermaid
 sequenceDiagram

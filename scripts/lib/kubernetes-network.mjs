@@ -7,6 +7,30 @@ const peer = (name, component) => ({
   podSelector: { matchLabels: labels(component) },
 });
 const port = (port, protocol = "TCP") => ({ port, protocol });
+export function backendPolicies(c) {
+  return [
+    ["postgres", 5432, ["server", "operator", "migrator", "account"]],
+    ["cache", 6379, ["server", "operator"]],
+    ["limiter", 6379, ["server", "operator", "account"]],
+  ].map(([component, number, clients]) => ({
+    apiVersion: "networking.k8s.io/v1",
+    kind: "NetworkPolicy",
+    metadata: {
+      name: `darkhorse-${component}-ingress`,
+      namespace: c.backendNamespace,
+    },
+    spec: {
+      podSelector: { matchLabels: labels(component) },
+      policyTypes: ["Ingress"],
+      ingress: [
+        {
+          from: clients.map((role) => peer(c.namespace, role)),
+          ports: [port(number)],
+        },
+      ],
+    },
+  }));
+}
 export function policies(c) {
   const make = (name, spec) => ({
     apiVersion: "networking.k8s.io/v1",
