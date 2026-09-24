@@ -510,3 +510,5 @@ mod operator_catalog;
 mod operator_catalog_details;
 
 mod operator_applications;
+
+mod operator_clients;

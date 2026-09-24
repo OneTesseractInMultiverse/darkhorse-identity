@@ -38,3 +38,4 @@ pub mod operator_directory;
 
 pub mod operator_applications;
 pub mod operator_catalog;
+pub mod operator_clients;

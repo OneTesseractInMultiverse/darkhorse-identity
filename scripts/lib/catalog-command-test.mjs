@@ -1,4 +1,5 @@
 import { applicationCommands } from "./application-command-test.mjs";
+import { clientCommands } from "./client-command-test.mjs";
 // Actual container/process evidence; excluded from isolated unit suites.
 import assert from "node:assert/strict";
 import { randomUUID } from "node:crypto";
@@ -98,6 +99,7 @@ COMMIT;`);
       "1",
     );
   }
+  await clientCommands(invoke, sql, source, password, app);
   await sql(
     `DELETE FROM platform_administrators WHERE principal_id='${actor}';`,
   );

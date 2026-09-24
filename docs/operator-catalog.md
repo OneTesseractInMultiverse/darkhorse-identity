@@ -9,7 +9,8 @@ administrative authority.
 
 This implements catalog inspection in [#26](https://github.com/OneTesseractInMultiverse/darkhorse-identity/issues/26).
 [Application create/update](operator-applications.md) supports owner and lifecycle changes
-through the same command group and launchers. Client writes, secret rotation and
+through the same command group and launchers. [Client configuration updates](operator-clients.md)
+are also available. Client creation, secret rotation and
 access-catalog writes remain separate work. The reads described here never query
 client credentials, including their nonsecret lifecycle metadata.
 
@@ -151,6 +152,7 @@ are not tamper-proof and runtime-compromise containment remains open in #23.
 ## Make launchers
 
 For application creation and updates, use the [write selectors and confirmation contract](operator-applications.md#compose-and-kubernetes).
+For client configuration updates, use the [complete-input and revision contract](operator-clients.md#compose-and-kubernetes).
 The four catalog targets reuse the account launcher's deployment selection,
 protected stdin, bounded supervision and one-shot workload lifecycle. The native Rust command validates protected input and performs authentication
 and catalog operations.

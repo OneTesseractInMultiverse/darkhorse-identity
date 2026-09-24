@@ -106,21 +106,33 @@ async fn update_client(
     revision: u64,
     spec: &ClientSpec,
 ) -> Result<Record, Error> {
-    sqlx::query(
-        "UPDATE oauth_clients SET name=$2,active=$3,revision=$4,refresh_tokens=$5 WHERE id=$1",
+    update_client_configuration(tx, application, client, revision, spec).await?;
+    records::client(tx, application, client)
+        .await
+        .map(Record::Client)
+}
+pub(super) async fn update_client_configuration(
+    tx: &mut Tx<'_>,
+    application: ApplicationId,
+    client: ClientId,
+    revision: u64,
+    spec: &ClientSpec,
+) -> Result<(), Error> {
+    let updated = sqlx::query(
+        "UPDATE oauth_clients SET name=$2,active=$3,revision=$4,refresh_tokens=$5 WHERE id=$1 AND application_id=$6 AND revision=$7",
     )
     .bind(uuid(client.as_u128()))
     .bind(spec.name.as_str())
     .bind(spec.active)
     .bind(integer(next_revision(revision, revision)?)?)
     .bind(spec.refresh_tokens)
+    .bind(uuid(application.as_u128()))
+    .bind(integer(revision)?)
     .execute(&mut **tx)
     .await
     .map_err(constraint)?;
-    replace_grants(tx, application, client, spec).await?;
-    records::client(tx, application, client)
-        .await
-        .map(Record::Client)
+    affected(updated.rows_affected(), 1)?;
+    replace_grants(tx, application, client, spec).await
 }
 async fn updated_client(
     tx: &mut Tx<'_>,
@@ -228,17 +240,30 @@ async fn replace_grants(
     spec: &ClientSpec,
 ) -> Result<(), Error> {
     clear_grants(tx, client).await?;
-    sqlx::query("INSERT INTO client_redirects (client_id,uri) SELECT $1,unnest($2::text[])")
-        .bind(uuid(client.as_u128()))
-        .bind(spec.redirects.values())
-        .execute(&mut **tx)
-        .await
-        .map_err(constraint)?;
-    sqlx::query("INSERT INTO client_resources (application_id,client_id,resource_id) SELECT $1,$2,unnest($3::uuid[])")
+    let redirects =
+        sqlx::query("INSERT INTO client_redirects (client_id,uri) SELECT $1,unnest($2::text[])")
+            .bind(uuid(client.as_u128()))
+            .bind(spec.redirects.values())
+            .execute(&mut **tx)
+            .await
+            .map_err(constraint)?;
+    affected(
+        redirects.rows_affected(),
+        spec.redirects.values().len() as u64,
+    )?;
+    let resources = sqlx::query("INSERT INTO client_resources (application_id,client_id,resource_id) SELECT $1,$2,unnest($3::uuid[])")
         .bind(uuid(application.as_u128())).bind(uuid(client.as_u128())).bind(spec.resources.iter().map(|r|uuid(r.as_u128())).collect::<Vec<_>>()).execute(&mut **tx).await.map_err(constraint)?;
-    sqlx::query("INSERT INTO client_scopes (application_id,client_id,resource_id,scope_id) SELECT $1,$2,resource_id,id FROM resource_scopes WHERE id=ANY($3)")
+    affected(resources.rows_affected(), spec.resources.len() as u64)?;
+    let scopes = sqlx::query("INSERT INTO client_scopes (application_id,client_id,resource_id,scope_id) SELECT $1,$2,resource_id,id FROM resource_scopes WHERE id=ANY($3)")
         .bind(uuid(application.as_u128())).bind(uuid(client.as_u128())).bind(spec.scopes.iter().map(|s|uuid(s.as_u128())).collect::<Vec<_>>()).execute(&mut **tx).await.map_err(constraint)?;
-    Ok(())
+    affected(scopes.rows_affected(), spec.scopes.len() as u64)
+}
+fn affected(actual: u64, expected: u64) -> Result<(), Error> {
+    if actual == expected {
+        Ok(())
+    } else {
+        Err(Error::Unavailable)
+    }
 }
 async fn clear_grants(tx: &mut Tx<'_>, client: ClientId) -> Result<(), Error> {
     sqlx::query("DELETE FROM client_scopes WHERE client_id=$1")
@@ -256,6 +281,11 @@ async fn clear_grants(tx: &mut Tx<'_>, client: ClientId) -> Result<(), Error> {
         .execute(&mut **tx)
         .await
         .map_err(storage)?;
+    let remaining: bool = sqlx::query_scalar("SELECT EXISTS(SELECT 1 FROM client_scopes WHERE client_id=$1 UNION ALL SELECT 1 FROM client_resources WHERE client_id=$1 UNION ALL SELECT 1 FROM client_redirects WHERE client_id=$1)")
+        .bind(uuid(client.as_u128())).fetch_one(&mut **tx).await.map_err(storage)?;
+    if remaining {
+        return Err(Error::Unavailable);
+    }
     Ok(())
 }
 async fn insert_secret(

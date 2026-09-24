@@ -229,6 +229,15 @@ fn application_name(value: &str) -> Result<darkhorse_domain::registration::Label
 }
 #[derive(Subcommand)]
 pub(super) enum Client {
+    /// Replace a scoped client's complete configuration from protected authentication/configuration JSON.
+    Update {
+        #[arg(value_parser=crate::operator::command::application_identifier)]
+        application: darkhorse_domain::identity::ApplicationId,
+        #[arg(value_parser=crate::operator::command::client_identifier)]
+        client: darkhorse_domain::identity::ClientId,
+        #[arg(value_parser=counter)]
+        revision: u64,
+    },
     /// Read one client's configuration within its application; excludes credentials.
     Show {
         #[arg(value_parser=crate::operator::command::application_identifier)]

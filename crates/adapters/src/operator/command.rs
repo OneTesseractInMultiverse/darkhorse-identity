@@ -22,6 +22,11 @@ pub enum Command {
     Catalog(darkhorse_domain::operator_catalog::Request),
     CatalogShow(darkhorse_application::registration::ReadTarget),
     ApplicationMutation(darkhorse_domain::operator_applications::Operation),
+    ClientUpdate {
+        application: darkhorse_domain::identity::ApplicationId,
+        client: darkhorse_domain::identity::ClientId,
+        revision: u64,
+    },
     Change {
         id: PrincipalId,
         revision: u64,

@@ -49,6 +49,7 @@ is accepted. Neither `NO_COLOR` nor any terminal setting activates color.
 | `operator client show APPLICATION_ID CLIENT_ID`                                              | None                                                  |
 | `operator application create --name NAME --owner ID --status STATUS`                         | None                                                  |
 | `operator application update APPLICATION_ID REVISION --name NAME --owner ID --status STATUS` | None                                                  |
+| `operator client update APPLICATION_ID CLIENT_ID REVISION`                                   | None                                                  |
 | `operator account show ID`                                                                   | `account ID`                                          |
 | `operator account deactivate ID REVISION`                                                    | `deactivate ID REVISION`                              |
 | `operator account reactivate ID REVISION`                                                    | `reactivate ID REVISION`                              |
@@ -79,6 +80,8 @@ Listing accepts bounded catalog filters; detail reads require explicit scoped UU
 and exclude client credential metadata. See [catalog read commands](operator-catalog.md).
 Application `create` and `update` require a complete specification, confirmation
 and a protected reason. See [application writes](operator-applications.md).
+Client `update` requires a complete 32 KiB protected configuration document,
+`--auth-stdin` and `--yes` in every output mode. See [client updates](operator-clients.md).
 
 ## Confirmations and compatibility
 
@@ -215,7 +218,8 @@ remain separate gates. These tests do not establish production readiness.
 The [container account runbook](container-accounts.md) provides Compose exec,
 Compose one-shot, explicitly selected Kubernetes exec and one-shot Pod targets
 for protected stdin and JSON output. The [catalog targets](operator-catalog.md#make-launchers)
-use the same lifecycle for application/client listing. Use `make test-account-launcher`
+use the same lifecycle for application/client reads, application create/update and
+client configuration updates. Use `make test-account-launcher`
 or its `make test-catalog-launcher` alias for both groups' service-free process
 checks. Deployment checks run separately.
 

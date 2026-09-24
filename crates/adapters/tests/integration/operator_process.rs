@@ -668,3 +668,162 @@ async fn committed_application_creation_with_closed_output_is_not_repeated() {
         1
     );
 }
+
+async fn client_fixture(f: &Fixture, owner: Uuid) -> (String, String) {
+    let app = Uuid::new_v4();
+    let client = Uuid::new_v4();
+    sqlx::query(
+        "INSERT INTO applications(id,name,owner_id,active) VALUES($1,'Client fixture',$2,true)",
+    )
+    .bind(app)
+    .bind(owner)
+    .execute(&f.pool)
+    .await
+    .unwrap();
+    sqlx::query(
+        "INSERT INTO oauth_clients(id,application_id,name,active) VALUES($1,$2,'Client',true)",
+    )
+    .bind(client)
+    .bind(app)
+    .execute(&f.pool)
+    .await
+    .unwrap();
+    sqlx::query("INSERT INTO client_redirects VALUES($1,'https://client.example/callback')")
+        .bind(client)
+        .execute(&f.pool)
+        .await
+        .unwrap();
+    (app.to_string(), client.to_string())
+}
+fn client_input(email: &str) -> Value {
+    json!({"authentication":input(email),"client":{
+        "name":"Private client configuration","active":true,"refresh_tokens":true,
+        "redirect_uris":["https://client.example/new?fixed=%2F"],
+        "resource_ids":[],"scope_ids":[],"token_endpoint_auth_method":"client_secret_basic"
+    }})
+}
+#[tokio::test]
+async fn client_updates_use_runtime_grants_without_secret_reads_and_roll_back_without_audit() {
+    let _serial = SERIAL.lock().await;
+    let f = Fixture::new().await;
+    f.activate().await;
+    restrict_database(&f).await;
+    let (owner, email) = actor(&f).await;
+    let (app, client) = client_fixture(&f, owner).await;
+    sqlx::query("REVOKE SELECT ON oauth_client_secrets FROM darkhorse_runtime")
+        .execute(&f.pool)
+        .await
+        .unwrap();
+    let args = |revision| {
+        vec![
+            "operator",
+            "client",
+            "update",
+            app.as_str(),
+            client.as_str(),
+            revision,
+        ]
+    };
+    let (code, response) = invoke(&args("0"), client_input(&email));
+    assert_eq!(code, 0, "{response}");
+    assert_eq!(response["data"].as_object().unwrap().len(), 5);
+    assert_eq!(response["data"]["revision"], "1");
+    for hidden in [
+        email.as_str(),
+        "Private client configuration",
+        "https://client.example",
+        PASSWORD,
+    ] {
+        assert!(!response.to_string().contains(hidden));
+    }
+    assert_eq!(invoke(&args("0"), client_input(&email)).0, 1);
+    let mut missing = client_input(&email);
+    missing["client"]
+        .as_object_mut()
+        .unwrap()
+        .remove("refresh_tokens");
+    assert_eq!(invoke(&args("1"), missing).0, 2);
+    sqlx::query("REVOKE INSERT ON operator_client_audit FROM darkhorse_runtime")
+        .execute(&f.pool)
+        .await
+        .unwrap();
+    assert_eq!(invoke(&args("1"), client_input(&email)).0, 1);
+    sqlx::query("GRANT INSERT ON operator_client_audit TO darkhorse_runtime")
+        .execute(&f.pool)
+        .await
+        .unwrap();
+    assert_eq!(
+        sqlx::query_scalar::<_, i64>("SELECT revision FROM oauth_clients WHERE id=$1")
+            .bind(Uuid::parse_str(&client).unwrap())
+            .fetch_one(&f.pool)
+            .await
+            .unwrap(),
+        1
+    );
+    assert_eq!(
+        sqlx::query_scalar::<_, i64>("SELECT count(*) FROM registration_audit WHERE actor_id=$1")
+            .bind(owner)
+            .fetch_one(&f.pool)
+            .await
+            .unwrap(),
+        1
+    );
+    assert_eq!(sqlx::query_scalar::<_,i64>("SELECT count(*) FROM operator_client_audit WHERE actor_id=$1 AND database_role='darkhorse_runtime'").bind(owner).fetch_one(&f.pool).await.unwrap(),2);
+    sqlx::query("DELETE FROM platform_administrators WHERE principal_id=$1")
+        .bind(owner)
+        .execute(&f.pool)
+        .await
+        .unwrap();
+    let denied = invoke(&args("1"), client_input(&email));
+    assert_eq!(denied.0, 1);
+    assert_eq!(
+        denied.1["error"]["message"],
+        "Administrator authentication or authority denied."
+    );
+    assert_eq!(
+        sqlx::query_scalar::<_, i64>("SELECT count(*) FROM browser_sessions WHERE principal_id=$1")
+            .bind(owner)
+            .fetch_one(&f.pool)
+            .await
+            .unwrap(),
+        0
+    );
+}
+#[tokio::test]
+async fn committed_client_update_with_closed_output_is_not_repeated() {
+    let _serial = SERIAL.lock().await;
+    let f = Fixture::new().await;
+    f.activate().await;
+    restrict_database(&f).await;
+    let (owner, email) = actor(&f).await;
+    let (app, client) = client_fixture(&f, owner).await;
+    let args = [
+        "operator",
+        "client",
+        "update",
+        app.as_str(),
+        client.as_str(),
+        "0",
+    ];
+    let (code, response) = invoke_output("runtime", &args, client_input(&email), true);
+    assert_eq!(code, 74);
+    assert_eq!(response["error"]["code"], "output_failed");
+    assert_eq!(
+        sqlx::query_scalar::<_, i64>("SELECT revision FROM oauth_clients WHERE id=$1")
+            .bind(Uuid::parse_str(&client).unwrap())
+            .fetch_one(&f.pool)
+            .await
+            .unwrap(),
+        1
+    );
+    assert_eq!(
+        sqlx::query_scalar::<_, i64>(
+            "SELECT count(*) FROM operator_client_audit WHERE actor_id=$1 AND result='written'"
+        )
+        .bind(owner)
+        .fetch_one(&f.pool)
+        .await
+        .unwrap(),
+        1
+    );
+}

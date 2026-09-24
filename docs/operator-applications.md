@@ -8,7 +8,8 @@ administrative or application-resource authority.
 
 This is the application-write increment of
 [#26](https://github.com/OneTesseractInMultiverse/darkhorse-identity/issues/26).
-Client writes, secret delivery, access-catalog commands and delegated management
+[Client configuration updates](operator-clients.md) are also available. Client
+creation, secret delivery, access-catalog commands and delegated management
 permissions remain separate work. Inspect existing configuration with
 [application list/show](operator-catalog.md).
 

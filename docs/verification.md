@@ -97,6 +97,72 @@ cargo install cargo-mutants --version 27.1.0 --locked
 Mutation targets run an unmodified baseline first, then test selected source mutations.
 A missed mutation requires investigation. A passing coverage percentage cannot clear it.
 
+## Authenticated CLI client configuration updates
+
+The client-update increment in [#26](https://github.com/OneTesseractInMultiverse/darkhorse-identity/issues/26)
+adds complete configuration replacement through protected stdin and the four
+catalog Make launchers. Verification on **2026-09-24** passed **598 isolated
+tests**: 203 adapter, 35 application, 109 domain, 143 frontend and 108 tooling
+checks. `make ci` passed formatting, strict linting, type/architecture checks and
+release/static builds. Native CLI, terminal, launcher and release-tool checks passed.
+
+The combined instrumentation run passed **224 PostgreSQL**, **five Redis
+infrastructure** and **27 limiter/operator** cases. The separately invoked child
+worker remains exercised by its parent multiprocess test. Cases verify shared
+HTTP/CLI configuration rules, exact callback encoding, explicit refresh settings,
+foreign/missing targets and allowances, owner-only denial, stale and competing
+revisions, expiry/demotion during fence waits, authority loss during writes/audit,
+suppressed parent/binding/audit writes, failed and actually lost commit replies,
+and immediate rejection after client deactivation or allowance reduction.
+Migration `0029` preserves earlier configuration and application audit history;
+real runtime/operator grant checks preserve the privilege boundary.
+
+Restricted-role native processes succeed after client-secret SELECT is revoked,
+roll back when client-audit INSERT is denied and reject a demoted administrator.
+Closing stdout after a successful update returns exit `74` with exactly one
+revision increment and one successful operator audit. Default output excludes
+configuration, credentials and secret metadata. Process tests also reject malformed,
+oversized, incomplete and unconfirmed input before service access, and preserve
+exact launcher arguments through both Make entry paths.
+
+The rebuilt image passed the full Compose and Kubernetes fixtures. All four catalog
+Make targets passed running-container and stopped-HTTP one-shot updates,
+stale-revision rejection, administrator demotion and both committed audits.
+Compose's quarantined restore retains eight fixture principals, four listing audits, six
+detail audits, eight application mutation audits and six client mutation audits.
+Kubernetes also passed its two-replica, outage, rolling-replacement and network-policy
+checks. These fixtures do not establish production capacity or remote interruption
+qualification.
+
+The initial Redis run timed out during fault-fixture setup while builds ran in
+parallel; subsequent runs passed without changing production limits. An earlier
+browser run stopped on a boolean assertion in the directory checks; the traced
+rerun passed the full HTTPS/browser suite without changing assertions or production code.
+
+`make coverage-integration` **failed the unchanged 100% line gate** after all
+behavioral suites passed. Combined Rust scope reports **15,666/16,484 lines
+(95.04%)**, **2,190/2,263 functions (96.77%)** and **25,942/28,944 regions
+(89.63%)**. Server entrypoints and unexecuted coordination/failure paths remain in
+the denominator. Stable Rust supplies no branch report here.
+
+| Measured new or extracted file         | Lines | Functions | Regions |
+| -------------------------------------- | ----- | --------- | ------- |
+| Domain client request                  | 22/22 | 3/3       | 30/30   |
+| CLI client command                     | 68/68 | 11/11     | 106/107 |
+| CLI protected input                    | 14/14 | 2/2       | 20/21   |
+| Shared client input                    | 39/39 | 6/6       | 48/49   |
+| PostgreSQL client mutation             | 72/74 | 15/15     | 90/94   |
+| PostgreSQL client audit                | 37/38 | 8/8       | 88/95   |
+| Shared catalog transaction coordinator | 54/57 | 6/7       | 83/92   |
+
+These are measured file scopes, not complete subsystem coverage. Focused Node
+unit coverage reports 100% lines, branches and functions for `catalog-plan.mjs`
+and `operator-options.mjs`; process supervision and deployment effects are outside
+that denominator. The global coverage gate remains open in #2. Client creation,
+secret delivery/recovery and rotation, access catalogs, delegated permissions,
+remote interruption, production capacity and independent security qualification
+remain outside this increment. See the [client update contract](operator-clients.md).
+
 ## Authenticated CLI application writes
 
 The application-write increment in [#26](https://github.com/OneTesseractInMultiverse/darkhorse-identity/issues/26)
@@ -151,8 +217,8 @@ catalog selector and shared operator-options modules. The account selector repor
 100% lines/functions and 95.31% branches in the same selected run. Host supervision
 and deployment effects are outside that denominator. See the
 [application-write contract](operator-applications.md) for migration, grants,
-authority, output and manual reconciliation requirements. Client writes, secret
-delivery/recovery, access catalogs, delegated management permissions and broader
+authority, output and manual reconciliation requirements. At this checkpoint, client
+writes, secret delivery/recovery, access catalogs, delegated management permissions and broader
 qualification remain open in #26/#27.
 
 ## Authenticated CLI configuration details
@@ -199,7 +265,7 @@ Focused Node unit coverage records 100% lines, branches and functions in the cat
 selector module. The shared operator-options module records 100% lines/functions
 and 95.65% branches in that selected run. Host supervision and deployment effects
 are outside this report. See [catalog reads](operator-catalog.md) for the authority,
-output, query-bound and migration contracts. Application/client writes, secret
+output, query-bound and migration contracts. At this checkpoint, application/client writes, secret
 delivery and delegated management permissions remain open in #26.
 
 ## Catalog container launcher increment

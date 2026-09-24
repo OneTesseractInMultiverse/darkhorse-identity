@@ -5,6 +5,7 @@ mod cancellation;
 mod catalog;
 mod catalog_details;
 pub mod cli;
+mod clients;
 pub mod command;
 pub mod input;
 mod migrations;
@@ -25,6 +26,11 @@ pub mod confirmation;
 
 pub async fn run(command: Command, auth_stdin: bool) -> Result<Output, Failure> {
     match command {
+        Command::ClientUpdate {
+            application,
+            client,
+            revision,
+        } => clients::run(application, client, revision).await,
         Command::ApplicationMutation(operation) if auth_stdin => {
             applications::run(operation, true).await
         }

@@ -239,6 +239,45 @@ async function scenarios(script = "scripts/account.mjs") {
           !result.stdout.includes(marker) && !result.stderr.includes(marker),
         );
       }
+  if (catalog)
+    for (const makeMode of ["environment", "arguments"]) {
+      await writeFile(events, "");
+      const client = "00000000-0000-0000-0000-000000000002";
+      const result = await invoke(
+        "success",
+        {
+          ...settings,
+          CATALOG_OPERATION: "update",
+          CATALOG_SEARCH: "",
+          CATALOG_CLIENT_ID: client,
+          CATALOG_REVISION: "0",
+          CATALOG_CONFIRM: "yes",
+        },
+        script,
+        makeMode,
+      );
+      assert.equal(result.code, 0, result.stderr);
+      const calls = (await readFile(events, "utf8"))
+        .trim()
+        .split("\n")
+        .map(JSON.parse);
+      const execution = calls.filter((c) => c.phase === "exec");
+      assert.equal(execution.length, 1);
+      const args = execution[0].args;
+      assert.deepEqual(args.slice(args.indexOf("operator")), [
+        "operator",
+        "client",
+        "update",
+        settings.CATALOG_APPLICATION_ID,
+        client,
+        "0",
+      ]);
+      assert.ok(args.includes("--auth-stdin") && args.includes("--yes"));
+      assert.equal(calls.filter((c) => c.phase === "delete").length, 1);
+      assert.ok(
+        !result.stdout.includes(marker) && !result.stderr.includes(marker),
+      );
+    }
   for (const makeMode of ["environment", "arguments"]) {
     await writeFile(events, "");
     const search = "--$(shell printf EXPANDED) `literal` %_\\";

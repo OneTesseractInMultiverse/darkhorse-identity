@@ -390,3 +390,54 @@ fn application_writes_require_complete_explicit_specs_and_scoped_revisions() {
         assert!(parse(&args).is_err());
     }
 }
+#[test]
+fn client_updates_require_scoped_revision_and_protected_configuration_input() {
+    let args = [
+        "--auth-stdin",
+        "--output",
+        "json",
+        "operator",
+        "client",
+        "update",
+        "00000000-0000-0000-0000-000000000001",
+        "00000000-0000-0000-0000-000000000002",
+        "0",
+    ];
+    assert!(
+        parse(&args).is_ok(),
+        "scoped client update must be supported"
+    );
+    let invocation = run(&args);
+    assert!(crate::operator::command::requires_confirmation(
+        &invocation.command
+    ));
+    for args in [
+        vec![
+            "operator",
+            "client",
+            "update",
+            "00000000-0000-0000-0000-000000000001",
+            "00000000-0000-0000-0000-000000000002",
+            "0",
+        ],
+        vec![
+            "--auth-stdin",
+            "operator",
+            "client",
+            "update",
+            "00000000-0000-0000-0000-000000000001",
+            "00000000-0000-0000-0000-000000000002",
+        ],
+        vec![
+            "--auth-stdin",
+            "operator",
+            "client",
+            "update",
+            "00000000-0000-0000-0000-000000000001",
+            "00000000-0000-0000-0000-000000000002",
+            "9223372036854775808",
+        ],
+    ] {
+        assert!(parse(&args).is_err());
+    }
+}

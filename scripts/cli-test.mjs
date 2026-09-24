@@ -53,6 +53,7 @@ async function information() {
     ["operator", "account", "list", "--help"],
     ["operator", "application", "list", "--help"],
     ["operator", "client", "list", "--help"],
+    ["operator", "client", "update", "--help"],
     ["operator", "signing", "import", "--help"],
     ["operator", "signing", "activate", "--help"],
     ["operator", "signing", "retire", "--help"],
@@ -278,6 +279,73 @@ async function failures() {
 }
 await information();
 await failures();
+await clientInput();
 console.log(
   "CLI subprocess checks passed: service-free help/version, redacted parsing, bounded stdin, confirmations, noninteractive refusal and JSON failures.",
 );
+
+async function clientInput() {
+  const command = [
+    "operator",
+    "client",
+    "update",
+    "00000000-0000-0000-0000-000000000001",
+    "00000000-0000-0000-0000-000000000002",
+    "0",
+  ];
+  const marker = "source-only-secret-do-not-echo";
+  const input = {
+    authentication: {
+      email: "a@b.com",
+      password: marker,
+      reason: "Approved update",
+    },
+    client: {
+      name: "Client",
+      active: true,
+      refresh_tokens: false,
+      redirect_uris: ["https://client.example/callback"],
+      resource_ids: [],
+      scope_ids: [],
+      token_endpoint_auth_method: "client_secret_basic",
+    },
+  };
+  for (const [args, code] of [
+    [["--yes", ...command], 2],
+    [["--auth-stdin", ...command], 3],
+  ]) {
+    const result = await invoke(args, JSON.stringify(input));
+    assert.equal(result.code, code);
+    assert.equal(result.stdout, "");
+    assert.ok(!result.stderr.includes(marker));
+  }
+  const missingRefresh = structuredClone(input);
+  delete missingRefresh.client.refresh_tokens;
+  const missingReason = structuredClone(input);
+  delete missingReason.authentication.reason;
+  for (const data of [
+    "{}",
+    "x".repeat(32769),
+    JSON.stringify(missingRefresh),
+    JSON.stringify(missingReason),
+    JSON.stringify({ ...input, unexpected: marker }),
+    JSON.stringify({ ...input, client: { ...input.client, secret: marker } }),
+  ]) {
+    const result = await invoke(
+      ["--yes", "--auth-stdin", "--output", "json", ...command],
+      data,
+    );
+    assert.equal(result.code, 2);
+    assert.equal(result.stdout, "");
+    assert.ok(!result.stderr.includes(marker));
+    assert.ok(!result.stderr.includes(environment.DARKHORSE_DATABASE_URL));
+  }
+  const valid = await invoke(
+    ["--yes", "--auth-stdin", "--output", "json", ...command],
+    JSON.stringify(input),
+  );
+  assert.equal(valid.code, 1);
+  assert.equal(valid.stdout, "");
+  assert.ok(!valid.stderr.includes(marker));
+  assert.ok(!valid.stderr.includes(environment.DARKHORSE_DATABASE_URL));
+}

@@ -89,7 +89,7 @@ pub struct ApplicationSpec {
     pub owner: PrincipalId,
     pub active: bool,
 }
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub struct ClientSpec {
     pub name: Label,
     pub active: bool,

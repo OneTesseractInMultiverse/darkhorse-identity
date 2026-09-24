@@ -20,9 +20,11 @@ pub(super) fn invocation(options: Options) -> Result<Invocation, Failure> {
             | Command::Catalog(_)
             | Command::CatalogShow(_)
             | Command::ApplicationMutation(_)
+            | Command::ClientUpdate { .. }
             | Command::Change { .. }
     );
-    if (options.auth_stdin && !account)
+    if (matches!(command, Command::ClientUpdate { .. }) && !options.auth_stdin)
+        || (options.auth_stdin && !account)
         || (account && options.output == Format::Json && !options.auth_stdin)
     {
         return Err(Failure::usage());
@@ -36,6 +38,15 @@ pub(super) fn invocation(options: Options) -> Result<Invocation, Failure> {
 }
 fn operator(value: Operator) -> Result<Command, Failure> {
     Ok(match value {
+        Operator::Client(Client::Update {
+            application,
+            client,
+            revision,
+        }) => Command::ClientUpdate {
+            application,
+            client,
+            revision,
+        },
         Operator::Migrate(Migration { command: None }) => Command::Migrate,
         Operator::Migrate(Migration {
             command: Some(MigrationCommand::Inspect { id }),

@@ -86,3 +86,6 @@ fn valid_escapes(value: &str) -> bool {
 #[cfg(test)]
 #[path = "../tests/unit/registration.rs"]
 mod tests;
+
+mod client_input;
+pub(crate) use client_input::ClientInput;

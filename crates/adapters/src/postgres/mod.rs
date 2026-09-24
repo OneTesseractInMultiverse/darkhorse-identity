@@ -129,3 +129,5 @@ pub mod migrations;
 mod operator_applications;
 mod operator_catalog;
 mod operator_catalog_details;
+mod operator_clients;
+mod operator_mutations;

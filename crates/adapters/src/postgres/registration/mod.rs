@@ -101,6 +101,34 @@ pub(super) async fn write_current(
     audit(tx, actor, command, &record, now).await?;
     Ok(record)
 }
+// Same authority/fence preconditions as write_current; configuration updates never read credentials.
+pub(super) async fn write_configuration_current(
+    tx: &mut Tx<'_>,
+    actor: PrincipalId,
+    command: &Command,
+    now: u64,
+) -> Result<Record, Error> {
+    let Command::UpdateClient {
+        application,
+        client,
+        revision,
+        spec,
+    } = command
+    else {
+        return Err(Error::Invalid);
+    };
+    writes::update_client_configuration(tx, *application, *client, *revision, spec).await?;
+    let record = records::configuration(
+        tx,
+        ReadTarget::Client {
+            application: *application,
+            client: *client,
+        },
+    )
+    .await?;
+    audit(tx, actor, command, &record, now).await?;
+    Ok(record)
+}
 fn audit_values(command: &Command, record: &Record) -> (u128, &'static str) {
     let target = match record {
         Record::Application(r) => r.id.as_u128(),

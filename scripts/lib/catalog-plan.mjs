@@ -6,7 +6,7 @@ import {
 } from "./operator-options.mjs";
 const invalid = () =>
   new UsageError(
-    "Select a supported catalog operation with its required identifiers and selectors. Application writes require name, owner, status, confirmation and an expected revision for updates. See docs/operator-catalog.md.",
+    "Select a supported catalog operation with its required identifiers and selectors. Application writes require a complete specification. Client updates require scoped identifiers, revision and confirmation, with configuration in protected stdin. See docs/operator-catalog.md.",
   );
 export function catalogOptions(values, stdinIsTTY) {
   protectedStdin(stdinIsTTY);
@@ -27,6 +27,8 @@ export function catalogOptions(values, stdinIsTTY) {
     ].some((key) => Boolean(values[key]))
   )
     throw invalid();
+  if (target === "client" && ["create", "update"].includes(operation))
+    return clientUpdateOptions(values, operation);
   if (["create", "update"].includes(operation))
     return mutationOptions(values, target, operation);
   if (
@@ -50,6 +52,40 @@ export function catalogOptions(values, stdinIsTTY) {
     target,
     operation,
     ...selectors,
+  ];
+}
+function clientUpdateOptions(values, operation) {
+  const application = values.CATALOG_APPLICATION_ID,
+    client = values.CATALOG_CLIENT_ID,
+    revision = values.CATALOG_REVISION ?? "";
+  if (
+    operation !== "update" ||
+    !nonzeroUuid(application) ||
+    !nonzeroUuid(client) ||
+    values.CATALOG_CONFIRM !== "yes" ||
+    !/^(0|[1-9][0-9]{0,18})$/.test(revision) ||
+    BigInt(revision) > 9223372036854775807n ||
+    [
+      "CATALOG_NAME",
+      "CATALOG_OWNER_ID",
+      "CATALOG_STATUS",
+      "CATALOG_SEARCH",
+      "CATALOG_AFTER",
+      "CATALOG_LIMIT",
+    ].some((key) => Boolean(values[key]))
+  )
+    throw invalid();
+  return [
+    "--auth-stdin",
+    "--output",
+    "json",
+    "--yes",
+    "operator",
+    "client",
+    "update",
+    application,
+    client,
+    revision,
   ];
 }
 function mutationOptions(values, target, operation) {

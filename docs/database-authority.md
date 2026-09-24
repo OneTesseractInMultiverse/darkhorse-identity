@@ -78,6 +78,10 @@ Application writes add SELECT/INSERT on `operator_application_audit` from migrat
 `0028`, and reuse the existing application and registration-audit grants. The
 nonowner deployment operator receives no access. Reapply the grant policy with
 serving stopped. See [application writes](operator-applications.md).
+Client configuration updates add SELECT/INSERT on `operator_client_audit` in
+migration `0029`; the nonowner operator receives no access. Reapply grants after
+migrating. The command reuses client/binding DML and requires no client-secret
+reads. See [client updates](operator-clients.md).
 
 ## Operator and migration boundary
 

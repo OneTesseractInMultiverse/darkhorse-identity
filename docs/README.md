@@ -41,6 +41,7 @@ can still require load testing, protocol conformance, or an independent security
 - [Operator accounts](operator-accounts.md) defines per-command administrator authentication.
 - [Operator catalog reads](operator-catalog.md) specifies bounded application and client inspection.
 - [Operator application writes](operator-applications.md) defines complete specifications, revision checks and transactional audit.
+- [Operator client updates](operator-clients.md) defines complete configuration input, current authority and atomic audit.
 - [Container account launchers](container-accounts.md) documents protected stdin and remote outcome uncertainty.
 
 ## Storage, deployment, and recovery

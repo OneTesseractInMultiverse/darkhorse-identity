@@ -1,4 +1,5 @@
 use super::*;
+use crate::registration::ClientInput;
 #[derive(Deserialize)]
 #[serde(tag = "operation", rename_all = "snake_case", deny_unknown_fields)]
 pub(crate) enum Input {
@@ -60,38 +61,6 @@ impl ApplicationInput {
             owner: id(&self.owner_id, PrincipalId::from_u128)?,
             active: self.active,
         })
-    }
-}
-#[derive(Deserialize)]
-#[serde(deny_unknown_fields)]
-pub(crate) struct ClientInput {
-    name: String,
-    active: bool,
-    #[serde(default)]
-    refresh_tokens: bool,
-    redirect_uris: Vec<String>,
-    resource_ids: Vec<String>,
-    scope_ids: Vec<String>,
-    token_endpoint_auth_method: String,
-}
-impl ClientInput {
-    fn spec(self) -> Result<ClientSpec, RegistrationError> {
-        let mut spec = ClientSpec::new(
-            Label::new(&self.name)?,
-            self.active,
-            crate::registration::redirects(self.redirect_uris)?,
-            self.resource_ids
-                .iter()
-                .map(|s| id(s, ResourceId::from_u128))
-                .collect::<Result<_, _>>()?,
-            self.scope_ids
-                .iter()
-                .map(|s| id(s, ScopeId::from_u128))
-                .collect::<Result<_, _>>()?,
-            &self.token_endpoint_auth_method,
-        )?;
-        spec.refresh_tokens = self.refresh_tokens;
-        Ok(spec)
     }
 }
 impl Input {

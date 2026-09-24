@@ -310,3 +310,58 @@ test("application mutations require a complete literal specification and explici
       );
     }
 });
+
+test("client updates require scoped IDs revision confirmation and leave configuration in protected stdin", () => {
+  const values = {
+    CATALOG_TARGET: "client",
+    CATALOG_OPERATION: "update",
+    CATALOG_APPLICATION_ID: id,
+    CATALOG_CLIENT_ID: id,
+    CATALOG_REVISION: "0",
+    CATALOG_CONFIRM: "yes",
+  };
+  assert.deepEqual(catalogOptions(values, false), [
+    "--auth-stdin",
+    "--output",
+    "json",
+    "--yes",
+    "operator",
+    "client",
+    "update",
+    id,
+    id,
+    "0",
+  ]);
+  for (const key of [
+    "CATALOG_APPLICATION_ID",
+    "CATALOG_CLIENT_ID",
+    "CATALOG_REVISION",
+    "CATALOG_CONFIRM",
+  ])
+    assert.throws(
+      () => catalogOptions({ ...values, [key]: "" }, false),
+      UsageError,
+    );
+  for (const change of [
+    { CATALOG_OPERATION: "create" },
+    { CATALOG_REVISION: "01" },
+    { CATALOG_REVISION: "9223372036854775808" },
+    { CATALOG_CLIENT_ID: "bad" },
+    ...[
+      "CATALOG_NAME",
+      "CATALOG_OWNER_ID",
+      "CATALOG_STATUS",
+      "CATALOG_SEARCH",
+      "CATALOG_AFTER",
+      "CATALOG_LIMIT",
+    ].map((key) => ({ [key]: "private-marker" })),
+  ]) {
+    assert.throws(
+      () => catalogOptions({ ...values, ...change }, false),
+      (error) =>
+        error instanceof UsageError &&
+        !error.message.includes("private-marker"),
+    );
+  }
+  assert.throws(() => catalogOptions(values, true), UsageError);
+});
