@@ -21,6 +21,7 @@ pub(super) fn invocation(options: Options) -> Result<Invocation, Failure> {
             | Command::CatalogShow(_)
             | Command::ApplicationMutation(_)
             | Command::ClientUpdate { .. }
+            | Command::ClientSecret { .. }
             | Command::Change { .. }
     );
     if (matches!(command, Command::ClientUpdate { .. }) && !options.auth_stdin)
@@ -38,6 +39,7 @@ pub(super) fn invocation(options: Options) -> Result<Invocation, Failure> {
 }
 fn operator(value: Operator) -> Result<Command, Failure> {
     Ok(match value {
+        Operator::Client(Client::Secret(value)) => secret(value),
         Operator::Client(Client::Update {
             application,
             client,
@@ -184,4 +186,27 @@ fn catalog(
     )
     .map(Command::Catalog)
     .map_err(|_| Failure::usage())
+}
+
+fn secret(value: ClientSecret) -> Command {
+    use darkhorse_domain::operator_client_secrets::{Operation, Target};
+    let (target, operation) = match value {
+        ClientSecret::List {
+            target,
+            after,
+            limit,
+        } => (target, Operation::List { after, limit }),
+        ClientSecret::Retire {
+            target,
+            secret,
+            revision,
+        } => (target, Operation::Retire { secret, revision }),
+    };
+    Command::ClientSecret {
+        target: Target {
+            application: target.application,
+            client: target.client,
+        },
+        operation,
+    }
 }

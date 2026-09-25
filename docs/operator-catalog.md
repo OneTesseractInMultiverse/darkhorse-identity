@@ -267,3 +267,12 @@ Source: [listing policy](../crates/domain/src/operator_catalog.rs),
 [detail projection](../crates/adapters/src/operator/catalog_details.rs),
 [detail transaction](../crates/adapters/src/postgres/operator_catalog_details.rs),
 and [shared configuration reader](../crates/adapters/src/postgres/registration/records.rs).
+
+## Client-secret lifecycle commands
+
+[Client-secret inventory and retirement](operator-client-secrets.md) use an explicit
+`operator client secret` subgroup and `CATALOG_TARGET=client-secret` in all four
+launchers. Inventory selects only bounded lifecycle metadata, including historical
+credentials. Retirement requires scoped identifiers, current revision, confirmation
+and reason, and shares the HTTP registration transaction rules. Neither ordinary
+client list/show nor configuration update acquires secret retrieval behavior.

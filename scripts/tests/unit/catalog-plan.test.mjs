@@ -365,3 +365,87 @@ test("client updates require scoped IDs revision confirmation and leave configur
   }
   assert.throws(() => catalogOptions(values, true), UsageError);
 });
+
+test("client secret inventory and retirement preserve scope and reject conflicting selectors", () => {
+  const base = {
+    CATALOG_TARGET: "client-secret",
+    CATALOG_APPLICATION_ID: id,
+    CATALOG_CLIENT_ID: id,
+  };
+  assert.deepEqual(
+    catalogOptions({ ...base, CATALOG_AFTER: id, CATALOG_LIMIT: "2" }, false),
+    [
+      "--auth-stdin",
+      "--output",
+      "json",
+      "operator",
+      "client",
+      "secret",
+      "list",
+      id,
+      id,
+      "--limit",
+      "2",
+      "--after",
+      id,
+    ],
+  );
+  const retire = {
+    ...base,
+    CATALOG_OPERATION: "retire",
+    CATALOG_SECRET_ID: id,
+    CATALOG_REVISION: "7",
+    CATALOG_CONFIRM: "yes",
+  };
+  assert.deepEqual(catalogOptions(retire, false), [
+    "--auth-stdin",
+    "--output",
+    "json",
+    "--yes",
+    "operator",
+    "client",
+    "secret",
+    "retire",
+    id,
+    id,
+    id,
+    "7",
+  ]);
+  for (const bad of [
+    { CATALOG_APPLICATION_ID: "" },
+    { CATALOG_CLIENT_ID: "" },
+    { CATALOG_SECRET_ID: "" },
+    { CATALOG_REVISION: "" },
+    { CATALOG_REVISION: "9223372036854775808" },
+    { CATALOG_CONFIRM: "no" },
+    { CATALOG_AFTER: id },
+    { CATALOG_LIMIT: "25" },
+    { CATALOG_NAME: "Name" },
+    { CATALOG_OWNER_ID: id },
+    { CATALOG_SEARCH: "query" },
+    { CATALOG_STATUS: "active" },
+  ])
+    assert.throws(
+      () => catalogOptions({ ...retire, ...bad }, false),
+      UsageError,
+    );
+  for (const bad of [
+    { CATALOG_SECRET_ID: id },
+    { CATALOG_REVISION: "0" },
+    { CATALOG_CONFIRM: "yes" },
+    { CATALOG_SEARCH: "x" },
+    { CATALOG_LIMIT: "26" },
+    { CATALOG_AFTER: "bad" },
+    { CATALOG_OPERATION: "create" },
+  ])
+    assert.throws(() => catalogOptions({ ...base, ...bad }, false), UsageError);
+  for (const target of ["application", "client"])
+    assert.throws(
+      () =>
+        catalogOptions(
+          { ...base, CATALOG_TARGET: target, CATALOG_SECRET_ID: id },
+          false,
+        ),
+      UsageError,
+    );
+});

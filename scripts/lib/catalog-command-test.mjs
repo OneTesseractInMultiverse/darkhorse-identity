@@ -1,3 +1,4 @@
+import { clientSecretCommands } from "./client-secret-command-test.mjs";
 import { applicationCommands } from "./application-command-test.mjs";
 import { clientCommands } from "./client-command-test.mjs";
 // Actual container/process evidence; excluded from isolated unit suites.
@@ -100,6 +101,7 @@ COMMIT;`);
     );
   }
   await clientCommands(invoke, sql, source, password, app);
+  await clientSecretCommands(invoke, sql, source, password, app);
   await sql(
     `DELETE FROM platform_administrators WHERE principal_id='${actor}';`,
   );
@@ -140,6 +142,7 @@ async function catalogCommand(command, target, settings, input) {
       CATALOG_OPERATION: "list",
       CATALOG_APPLICATION_ID: "",
       CATALOG_CLIENT_ID: "",
+      CATALOG_SECRET_ID: "",
       CATALOG_SEARCH: "",
       CATALOG_STATUS: "",
       CATALOG_AFTER: "",

@@ -827,3 +827,142 @@ async fn committed_client_update_with_closed_output_is_not_repeated() {
         1
     );
 }
+
+async fn secret_fixture(f: &Fixture, client: &str) -> String {
+    let id = Uuid::new_v4();
+    sqlx::query(
+        "INSERT INTO oauth_client_secrets(id,client_id,verifier,created_ms) VALUES($1,$2,$3,0)",
+    )
+    .bind(id)
+    .bind(Uuid::parse_str(client).unwrap())
+    .bind(id.as_bytes().repeat(2))
+    .execute(&f.pool)
+    .await
+    .unwrap();
+    id.to_string()
+}
+#[tokio::test]
+async fn secret_cli_requires_only_metadata_reads_and_rolls_back_without_audit() {
+    let _serial = SERIAL.lock().await;
+    let f = Fixture::new().await;
+    f.activate().await;
+    restrict_database(&f).await;
+    let (owner, email) = actor(&f).await;
+    let (app, client) = client_fixture(&f, owner).await;
+    let secret = secret_fixture(&f, &client).await;
+    sqlx::raw_sql("REVOKE SELECT ON oauth_client_secrets FROM darkhorse_runtime; GRANT SELECT(id,client_id,created_ms,expires_ms,retired) ON oauth_client_secrets TO darkhorse_runtime;").execute(&f.pool).await.unwrap();
+    let mut tx = f.pool.begin().await.unwrap();
+    sqlx::query("SET LOCAL ROLE darkhorse_runtime")
+        .execute(&mut *tx)
+        .await
+        .unwrap();
+    assert!(
+        sqlx::query("SELECT verifier FROM oauth_client_secrets")
+            .execute(&mut *tx)
+            .await
+            .is_err()
+    );
+    tx.rollback().await.unwrap();
+    let listing = ["operator", "client", "secret", "list", &app, &client];
+    let retirement = [
+        "operator", "client", "secret", "retire", &app, &client, &secret, "0",
+    ];
+    let (code, response) = invoke(&listing, json!({"email":email,"password":PASSWORD}));
+    assert_eq!(code, 0, "{response}");
+    assert_eq!(response["data"]["items"][0].as_object().unwrap().len(), 4);
+    assert_eq!(response["data"]["items"][0]["id"], secret);
+    sqlx::query("REVOKE INSERT ON operator_client_secret_audit FROM darkhorse_runtime")
+        .execute(&f.pool)
+        .await
+        .unwrap();
+    assert_eq!(invoke(&retirement, input(&email)).0, 1);
+    assert!(
+        !sqlx::query_scalar::<_, bool>("SELECT retired FROM oauth_client_secrets WHERE id=$1")
+            .bind(Uuid::parse_str(&secret).unwrap())
+            .fetch_one(&f.pool)
+            .await
+            .unwrap()
+    );
+    assert_eq!(
+        sqlx::query_scalar::<_, i64>("SELECT revision FROM oauth_clients WHERE id=$1")
+            .bind(Uuid::parse_str(&client).unwrap())
+            .fetch_one(&f.pool)
+            .await
+            .unwrap(),
+        0
+    );
+    sqlx::query("GRANT INSERT ON operator_client_secret_audit TO darkhorse_runtime")
+        .execute(&f.pool)
+        .await
+        .unwrap();
+    let (code, response) = invoke(&retirement, input(&email));
+    assert_eq!(code, 0, "{response}");
+    assert_eq!(response["data"]["revision"], "1");
+    assert_eq!(response["data"]["completed"], true);
+    assert_eq!(invoke(&retirement, input(&email)).0, 1);
+    sqlx::query("DELETE FROM platform_administrators WHERE principal_id=$1")
+        .bind(owner)
+        .execute(&f.pool)
+        .await
+        .unwrap();
+    let (code, response) = invoke(&listing, json!({"email":email,"password":PASSWORD}));
+    assert_eq!(code, 1);
+    assert_eq!(
+        response["error"]["message"],
+        "Administrator authentication or authority denied."
+    );
+    let admission = SharedLoginAdmission::new(f.limiter(), [7; 32]);
+    assert!(matches!(
+        admission.admit(&email).await,
+        Err(AuthError::Limited { .. })
+    ));
+    let (code, response) = invoke(&retirement, input(&email));
+    assert_eq!(code, 1);
+    assert!(response["data"]["retry_after_ms"].as_u64().unwrap() > 0);
+    assert_eq!(sqlx::query_scalar::<_,i64>("SELECT count(*) FROM operator_client_secret_audit WHERE actor_id=$1 AND database_role='darkhorse_runtime'").bind(owner).fetch_one(&f.pool).await.unwrap(),4);
+    assert_eq!(
+        sqlx::query_scalar::<_, i64>("SELECT count(*) FROM registration_audit WHERE actor_id=$1")
+            .bind(owner)
+            .fetch_one(&f.pool)
+            .await
+            .unwrap(),
+        1
+    );
+    assert_eq!(
+        sqlx::query_scalar::<_, i64>("SELECT count(*) FROM browser_sessions WHERE principal_id=$1")
+            .bind(owner)
+            .fetch_one(&f.pool)
+            .await
+            .unwrap(),
+        0
+    );
+}
+#[tokio::test]
+async fn committed_secret_retirement_with_closed_output_is_not_repeated() {
+    let _serial = SERIAL.lock().await;
+    let f = Fixture::new().await;
+    f.activate().await;
+    restrict_database(&f).await;
+    let (owner, email) = actor(&f).await;
+    let (app, client) = client_fixture(&f, owner).await;
+    let secret = secret_fixture(&f, &client).await;
+    let (code, response) = invoke_output(
+        "runtime",
+        &[
+            "operator", "client", "secret", "retire", &app, &client, &secret, "0",
+        ],
+        input(&email),
+        true,
+    );
+    assert_eq!(code, 74);
+    assert_eq!(response["error"]["code"], "output_failed");
+    assert_eq!(
+        sqlx::query_scalar::<_, i64>("SELECT revision FROM oauth_clients WHERE id=$1")
+            .bind(Uuid::parse_str(&client).unwrap())
+            .fetch_one(&f.pool)
+            .await
+            .unwrap(),
+        1
+    );
+    assert_eq!(sqlx::query_scalar::<_,i64>("SELECT count(*) FROM operator_client_secret_audit WHERE actor_id=$1 AND result='written'").bind(owner).fetch_one(&f.pool).await.unwrap(),1);
+}

@@ -54,6 +54,8 @@ async function information() {
     ["operator", "application", "list", "--help"],
     ["operator", "client", "list", "--help"],
     ["operator", "client", "update", "--help"],
+    ["operator", "client", "secret", "list", "--help"],
+    ["operator", "client", "secret", "retire", "--help"],
     ["operator", "signing", "import", "--help"],
     ["operator", "signing", "activate", "--help"],
     ["operator", "signing", "retire", "--help"],
@@ -155,6 +157,48 @@ async function failures() {
     assert.equal(result.stdout, "");
     assert.match(result.stderr, /bootstrap input/i);
     assert.ok(!result.stderr.includes(marker));
+  }
+  const secretIds = [
+    "00000000-0000-0000-0000-000000000001",
+    "00000000-0000-0000-0000-000000000002",
+  ];
+  for (const operation of ["list", "retire"]) {
+    const args = [
+      "--auth-stdin",
+      "--output",
+      "json",
+      "operator",
+      "client",
+      "secret",
+      operation,
+      ...secretIds,
+      ...(operation === "retire"
+        ? ["00000000-0000-0000-0000-000000000003", "0"]
+        : []),
+    ];
+    const auth = { email: "a@b.com", password: marker };
+    const badReason = await invoke(
+      [...args, "--yes"],
+      JSON.stringify({
+        ...auth,
+        ...(operation === "list" ? { reason: "not accepted" } : {}),
+      }),
+    );
+    assert.equal(badReason.code, 2);
+    const valid = {
+      ...auth,
+      ...(operation === "retire" ? { reason: "Fixture retirement" } : {}),
+    };
+    if (operation === "retire")
+      assert.equal((await invoke(args, JSON.stringify(valid))).code, 3);
+    const unavailable = await invoke([...args, "--yes"], JSON.stringify(valid));
+    assert.equal(unavailable.code, 1);
+    assert.equal(unavailable.stdout, "");
+    assert.ok(!unavailable.stderr.includes(marker));
+    assert.ok(!unavailable.stderr.includes(environment.DARKHORSE_DATABASE_URL));
+    const oversized = await invoke([...args, "--yes"], "x".repeat(16385));
+    assert.equal(oversized.code, 1);
+    assert.equal(oversized.stdout, "");
   }
   const listing = await invoke(
     ["--auth-stdin", "--output", "json", "operator", "account", "list"],

@@ -16,6 +16,7 @@ test("account launchers reject catalog selectors rather than running an inherite
     "CATALOG_OPERATION",
     "CATALOG_APPLICATION_ID",
     "CATALOG_CLIENT_ID",
+    "CATALOG_SECRET_ID",
     "CATALOG_SEARCH",
     "CATALOG_STATUS",
     "CATALOG_AFTER",

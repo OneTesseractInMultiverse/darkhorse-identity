@@ -181,3 +181,9 @@ from Rust/frontend line coverage. It does not complete the authored-coverage gat
 The policy follows PostgreSQL's [privilege model](https://www.postgresql.org/docs/18/ddl-priv.html)
 and [revocation rules](https://www.postgresql.org/docs/18/sql-revoke.html), and
 OWASP's [logging protection guidance](https://cheatsheetseries.owasp.org/cheatsheets/Logging_Cheat_Sheet.html).
+
+Migration `0030` adds the [client-secret operation ledger](operator-client-secrets.md).
+Runtime receives explicit SELECT/INSERT and no update/delete/truncate privileges;
+the nonowner operator receives no access. Refresh grants after the migration with
+serving stopped. The commands select lifecycle columns only, while the broader
+runtime role still needs verifier access for client authentication.

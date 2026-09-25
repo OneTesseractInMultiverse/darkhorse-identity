@@ -441,3 +441,68 @@ fn client_updates_require_scoped_revision_and_protected_configuration_input() {
         assert!(parse(&args).is_err());
     }
 }
+
+#[test]
+fn client_secret_inventory_and_retirement_are_scoped_and_have_distinct_confirmation_contracts() {
+    let app = "00000000-0000-0000-0000-000000000001";
+    let client = "00000000-0000-0000-0000-000000000002";
+    let secret = "00000000-0000-0000-0000-000000000003";
+    let inventory = run(&[
+        "--auth-stdin",
+        "--output",
+        "json",
+        "operator",
+        "client",
+        "secret",
+        "list",
+        app,
+        client,
+        "--after",
+        secret,
+        "--limit",
+        "2",
+    ]);
+    assert!(!crate::operator::command::requires_confirmation(
+        &inventory.command
+    ));
+    let retirement = run(&[
+        "--auth-stdin",
+        "--output",
+        "json",
+        "--yes",
+        "operator",
+        "client",
+        "secret",
+        "retire",
+        app,
+        client,
+        secret,
+        "7",
+    ]);
+    assert!(crate::operator::command::requires_confirmation(
+        &retirement.command
+    ));
+    for tail in [
+        vec!["list", app, client, "--limit", "26"],
+        vec!["list", app, client, "--after", "0"],
+        vec!["retire", app, client, secret],
+        vec!["retire", app, client, secret, "9223372036854775808"],
+        vec![
+            "retire",
+            app,
+            client,
+            "00000000-0000-0000-0000-000000000000",
+            "0",
+        ],
+    ] {
+        let mut parts = vec!["operator", "client", "secret"];
+        parts.extend(tail);
+        assert!(parse(&parts).is_err());
+    }
+    assert!(
+        parse(&[
+            "--output", "json", "operator", "client", "secret", "list", app, client
+        ])
+        .is_err()
+    );
+}

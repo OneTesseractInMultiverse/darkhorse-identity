@@ -145,14 +145,20 @@ async fn updated_client(
         .await
         .map(Record::Client)
 }
-async fn retire(tx: &mut Tx<'_>, client: ClientId, secret: ClientSecretId) -> Result<(), Error> {
-    sqlx::query("UPDATE oauth_client_secrets SET retired=true WHERE id=$1 AND client_id=$2")
-        .bind(uuid(secret.as_u128()))
-        .bind(uuid(client.as_u128()))
-        .execute(&mut **tx)
-        .await
-        .map_err(storage)?;
-    Ok(())
+pub(super) async fn retire(
+    tx: &mut Tx<'_>,
+    client: ClientId,
+    secret: ClientSecretId,
+) -> Result<(), Error> {
+    let updated = sqlx::query(
+        "UPDATE oauth_client_secrets SET retired=true WHERE id=$1 AND client_id=$2 AND NOT retired",
+    )
+    .bind(uuid(secret.as_u128()))
+    .bind(uuid(client.as_u128()))
+    .execute(&mut **tx)
+    .await
+    .map_err(storage)?;
+    affected(updated.rows_affected(), 1)
 }
 fn new_id(prepared: &Prepared) -> Result<u128, Error> {
     prepared
@@ -319,12 +325,13 @@ async fn rotate(
         .bind(uuid(client.as_u128())).bind(integer(overlap_deadline(now,overlap)?)?).execute(&mut **tx).await.map_err(constraint)?;
     insert_secret(tx, client, secret, now).await
 }
-async fn bump(tx: &mut Tx<'_>, client: ClientId, revision: u64) -> Result<(), Error> {
-    sqlx::query("UPDATE oauth_clients SET revision=$2 WHERE id=$1")
+pub(super) async fn bump(tx: &mut Tx<'_>, client: ClientId, revision: u64) -> Result<(), Error> {
+    let updated = sqlx::query("UPDATE oauth_clients SET revision=$2 WHERE id=$1 AND revision=$3")
         .bind(uuid(client.as_u128()))
         .bind(integer(next_revision(revision, revision)?)?)
+        .bind(integer(revision)?)
         .execute(&mut **tx)
         .await
         .map_err(constraint)?;
-    Ok(())
+    affected(updated.rows_affected(), 1)
 }

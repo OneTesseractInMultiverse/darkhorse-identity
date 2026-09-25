@@ -9,7 +9,8 @@ alone grants no authority.
 This is a focused increment of
 [#26](https://github.com/OneTesseractInMultiverse/darkhorse-identity/issues/26).
 Client creation, secret issuance/rotation and recovery of secret delivery remain
-separate work. This command neither reads client secrets nor changes their verifiers.
+separate work. [Secret inventory and retirement](operator-client-secrets.md) are
+available through distinct commands. This command neither reads client secrets nor changes their verifiers.
 
 ## Invocation and complete input
 

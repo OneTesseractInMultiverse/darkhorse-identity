@@ -40,4 +40,5 @@ pub mod limiter_activation;
 pub mod media;
 pub mod operator_accounts;
 
+pub mod operator_client_secrets;
 pub mod signing_operations;

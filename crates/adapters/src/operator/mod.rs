@@ -5,6 +5,7 @@ mod cancellation;
 mod catalog;
 mod catalog_details;
 pub mod cli;
+mod client_secrets;
 mod clients;
 pub mod command;
 pub mod input;
@@ -26,6 +27,9 @@ pub mod confirmation;
 
 pub async fn run(command: Command, auth_stdin: bool) -> Result<Output, Failure> {
     match command {
+        Command::ClientSecret { target, operation } => {
+            client_secrets::run(target, operation, auth_stdin).await
+        }
         Command::ClientUpdate {
             application,
             client,

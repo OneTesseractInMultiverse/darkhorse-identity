@@ -278,6 +278,57 @@ async function scenarios(script = "scripts/account.mjs") {
         !result.stdout.includes(marker) && !result.stderr.includes(marker),
       );
     }
+  if (catalog)
+    for (const operation of ["list", "retire"])
+      for (const makeMode of ["environment", "arguments"]) {
+        await writeFile(events, "");
+        const client = "00000000-0000-0000-0000-000000000002",
+          secret = "00000000-0000-0000-0000-000000000003";
+        const result = await invoke(
+          "success",
+          {
+            ...settings,
+            CATALOG_TARGET: "client-secret",
+            CATALOG_OPERATION: operation,
+            CATALOG_SEARCH: "",
+            CATALOG_CLIENT_ID: client,
+            ...(operation === "retire"
+              ? {
+                  CATALOG_SECRET_ID: secret,
+                  CATALOG_REVISION: "0",
+                  CATALOG_CONFIRM: "yes",
+                }
+              : { CATALOG_LIMIT: "2", CATALOG_AFTER: secret }),
+          },
+          script,
+          makeMode,
+        );
+        assert.equal(result.code, 0, result.stderr);
+        const calls = (await readFile(events, "utf8"))
+          .trim()
+          .split("\n")
+          .map(JSON.parse);
+        const execution = calls.filter((c) => c.phase === "exec");
+        assert.equal(execution.length, 1);
+        const args = execution[0].args;
+        assert.deepEqual(args.slice(args.indexOf("operator")), [
+          "operator",
+          "client",
+          "secret",
+          operation,
+          settings.CATALOG_APPLICATION_ID,
+          client,
+          ...(operation === "retire"
+            ? [secret, "0"]
+            : ["--limit", "2", "--after", secret]),
+        ]);
+        assert.equal(args.includes("--yes"), operation === "retire");
+        assert.ok(args.includes("--auth-stdin"));
+        assert.equal(calls.filter((c) => c.phase === "delete").length, 1);
+        assert.ok(
+          !result.stdout.includes(marker) && !result.stderr.includes(marker),
+        );
+      }
   for (const makeMode of ["environment", "arguments"]) {
     await writeFile(events, "");
     const search = "--$(shell printf EXPANDED) `literal` %_\\";

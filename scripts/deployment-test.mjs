@@ -754,11 +754,11 @@ async function archive() {
       "-d",
       "quarantine",
       "-Atc",
-      "SELECT (SELECT count(*) FROM principals),(SELECT count(*) FROM operator_catalog_audit),(SELECT count(*) FROM operator_catalog_detail_audit),(SELECT count(*) FROM operator_application_audit),(SELECT count(*) FROM operator_client_audit)",
+      "SELECT (SELECT count(*) FROM principals),(SELECT count(*) FROM operator_catalog_audit),(SELECT count(*) FROM operator_catalog_detail_audit),(SELECT count(*) FROM operator_application_audit),(SELECT count(*) FROM operator_client_audit),(SELECT count(*) FROM operator_client_secret_audit)",
     ],
     captured,
   );
-  assert.equal(restored.stdout.trim(), "8|4|6|8|6");
+  assert.equal(restored.stdout.trim(), "10|4|6|8|6|10");
   console.log(
     "Cache degradation, restrictive limiter restart/recovery, database outage, durable restart and quarantined archive restore passed.",
   );

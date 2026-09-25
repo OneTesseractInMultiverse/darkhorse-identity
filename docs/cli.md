@@ -50,6 +50,8 @@ is accepted. Neither `NO_COLOR` nor any terminal setting activates color.
 | `operator application create --name NAME --owner ID --status STATUS`                         | None                                                  |
 | `operator application update APPLICATION_ID REVISION --name NAME --owner ID --status STATUS` | None                                                  |
 | `operator client update APPLICATION_ID CLIENT_ID REVISION`                                   | None                                                  |
+| `operator client secret list APPLICATION_ID CLIENT_ID [--after UUID] [--limit N]`            | None                                                  |
+| `operator client secret retire APPLICATION_ID CLIENT_ID SECRET_ID REVISION`                  | None                                                  |
 | `operator account show ID`                                                                   | `account ID`                                          |
 | `operator account deactivate ID REVISION`                                                    | `deactivate ID REVISION`                              |
 | `operator account reactivate ID REVISION`                                                    | `reactivate ID REVISION`                              |
@@ -115,6 +117,14 @@ Kubernetes Jobs supply that flag as part of their named operation. Invoking such
 a target or applying the reviewed Job is the caller's confirmation. Inspect its
 target, credentials and revisions first. Server startup still uses `serve`
 without that flag. Raw aliases do not bypass confirmation.
+
+## Client-secret lifecycle
+
+`operator client secret list APPLICATION_ID CLIENT_ID` returns a bounded lifecycle
+page. `operator client secret retire APPLICATION_ID CLIENT_ID SECRET_ID REVISION`
+requires confirmation and reason. Both use fresh current-administrator authentication;
+JSON output requires `--auth-stdin`. See [credential operations](operator-client-secrets.md)
+for metadata, authority, terminal retirement and reconciliation.
 
 ## Output and exit contract
 

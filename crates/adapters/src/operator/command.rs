@@ -22,6 +22,10 @@ pub enum Command {
     Catalog(darkhorse_domain::operator_catalog::Request),
     CatalogShow(darkhorse_application::registration::ReadTarget),
     ApplicationMutation(darkhorse_domain::operator_applications::Operation),
+    ClientSecret {
+        target: darkhorse_domain::operator_client_secrets::Target,
+        operation: darkhorse_domain::operator_client_secrets::Operation,
+    },
     ClientUpdate {
         application: darkhorse_domain::identity::ApplicationId,
         client: darkhorse_domain::identity::ClientId,
@@ -56,6 +60,10 @@ pub fn requires_confirmation(command: &Command) -> bool {
             | Command::Accounts(_)
             | Command::Catalog(_)
             | Command::CatalogShow(_)
+            | Command::ClientSecret {
+                operation: darkhorse_domain::operator_client_secrets::Operation::List { .. },
+                ..
+            }
             | Command::RedisStatus
             | Command::LimiterStatus
             | Command::LimiterInspect(_)
@@ -86,4 +94,12 @@ pub(super) fn client_identifier(
     let value = uuid::Uuid::parse_str(value).map_err(|_| "Invalid client identifier.")?;
     darkhorse_domain::identity::ClientId::from_u128(value.as_u128())
         .map_err(|_| "Invalid client identifier.")
+}
+
+pub(super) fn client_secret_identifier(
+    value: &str,
+) -> Result<darkhorse_domain::identity::ClientSecretId, &'static str> {
+    let id = uuid::Uuid::parse_str(value).map_err(|_| "Invalid client secret identifier.")?;
+    darkhorse_domain::identity::ClientSecretId::from_u128(id.as_u128())
+        .map_err(|_| "Invalid client secret identifier.")
 }

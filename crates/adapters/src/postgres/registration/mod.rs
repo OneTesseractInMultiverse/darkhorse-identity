@@ -187,3 +187,34 @@ pub(super) async fn configuration_current(
 ) -> Result<Record, Error> {
     records::configuration(tx, target).await
 }
+
+// Caller owns the exclusive fence and has checked current actor and command.
+// The HTTP path shares the exact retirement and revision writes.
+pub(super) async fn retire_current(
+    tx: &mut Tx<'_>,
+    actor: PrincipalId,
+    command: &Command,
+    now: u64,
+) -> Result<Record, Error> {
+    let Command::RetireSecret {
+        application,
+        client,
+        secret,
+        revision,
+    } = command
+    else {
+        return Err(Error::Invalid);
+    };
+    writes::retire(tx, *client, *secret).await?;
+    writes::bump(tx, *client, *revision).await?;
+    let record = records::configuration(
+        tx,
+        ReadTarget::Client {
+            application: *application,
+            client: *client,
+        },
+    )
+    .await?;
+    audit(tx, actor, command, &record, now).await?;
+    Ok(record)
+}

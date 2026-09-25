@@ -229,6 +229,8 @@ fn application_name(value: &str) -> Result<darkhorse_domain::registration::Label
 }
 #[derive(Subcommand)]
 pub(super) enum Client {
+    #[command(subcommand)]
+    Secret(ClientSecret),
     /// Replace a scoped client's complete configuration from protected authentication/configuration JSON.
     Update {
         #[arg(value_parser=crate::operator::command::application_identifier)]
@@ -270,4 +272,33 @@ fn catalog_cursor(value: &str) -> Result<std::num::NonZeroU128, &'static str> {
         .ok()
         .and_then(|v| std::num::NonZeroU128::new(v.as_u128()))
         .ok_or("Invalid catalog continuation.")
+}
+
+#[derive(Subcommand)]
+pub(super) enum ClientSecret {
+    /// Read one page of credential lifecycle metadata; never reads secret values or verifiers.
+    List {
+        #[command(flatten)]
+        target: SecretTarget,
+        #[arg(long,value_parser=crate::operator::command::client_secret_identifier)]
+        after: Option<darkhorse_domain::identity::ClientSecretId>,
+        #[arg(long,default_value_t=25,value_parser=clap::value_parser!(u16).range(1..=25))]
+        limit: u16,
+    },
+    /// Permanently retire one scoped secret at an expected client revision.
+    Retire {
+        #[command(flatten)]
+        target: SecretTarget,
+        #[arg(value_parser=crate::operator::command::client_secret_identifier)]
+        secret: darkhorse_domain::identity::ClientSecretId,
+        #[arg(value_parser=counter)]
+        revision: u64,
+    },
+}
+#[derive(Args)]
+pub(super) struct SecretTarget {
+    #[arg(value_parser=crate::operator::command::application_identifier)]
+    pub application: darkhorse_domain::identity::ApplicationId,
+    #[arg(value_parser=crate::operator::command::client_identifier)]
+    pub client: darkhorse_domain::identity::ClientId,
 }

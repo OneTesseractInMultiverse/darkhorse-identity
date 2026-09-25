@@ -97,6 +97,66 @@ cargo install cargo-mutants --version 27.1.0 --locked
 Mutation targets run an unmodified baseline first, then test selected source mutations.
 A missed mutation requires investigation. A passing coverage percentage cannot clear it.
 
+## Authenticated CLI client-secret inventory and retirement
+
+The next [#26](https://github.com/OneTesseractInMultiverse/darkhorse-identity/issues/26)
+increment adds explicit lifecycle inventory and revision-checked retirement, with
+all four catalog Make launchers. On **2026-09-24**, isolated suites passed **608
+tests**: 211 adapter, 35 application, 110 domain, 143 frontend and 109 tooling cases.
+
+The combined instrumentation run passed **234 PostgreSQL**, **five Redis
+infrastructure** and **29 limiter/operator** cases. The separately invoked child
+worker is exercised by its parent multiprocess scenario. Tests cover historical
+keyset pages, exact scope, current administrator authority, exhausted/stale and
+competing HTTP/CLI revisions, terminal retirement, remaining-secret authentication,
+proof expiry and demotion during fence waits, late authority loss, failed/suppressed
+credential/revision/audit writes, deferred commit errors and actual lost commit
+acknowledgements without retry. Migration `0030` preserves credential and prior
+audit history; database checks reject incoherent actor/query/result facts.
+
+Restricted-role native processes successfully list and retire with only lifecycle
+columns readable from the client-secret table; an explicit verifier SELECT fails.
+Denied audit INSERT rolls back retirement. The shared admission budget, demotion,
+absence of browser-session creation and closed output after exactly one committed
+retirement are exercised. CLI/terminal and launcher process suites pass bounded
+input, confirmations, secret redaction, single execution, cleanup and both Make
+argument-entry paths. Release-tool checks pass. Initial test fixtures violated
+existing current-secret and verifier uniqueness constraints; corrected fixtures
+preserve those production constraints and pass the combined run.
+
+`make ci` passes formatting, strict lint, type/architecture checks and release/static
+builds. The full HTTPS browser suite and rebuilt Docker image pass. Full Compose
+and Kubernetes fixtures exercise inventory, retirement, stale revisions, observed
+terminal status and administrator demotion through all four catalog Make targets,
+including one-shot operation with HTTP stopped. Compose's quarantined restore
+preserves ten fixture principals, four listing audits, six detail audits, eight
+application mutation audits, six client mutation audits and ten client-secret
+operation audits. Kubernetes also passes its two-replica, backend isolation,
+outage, rolling-replacement and conditional-cleanup checks. These are local
+fixture results, not production capacity or remote interruption qualification.
+
+`make coverage-integration` **fails the unchanged 100% line gate** after its
+behavioral suites pass. Combined Rust scope reports **16,055/16,880 lines
+(95.11%)**, **2,244/2,318 functions (96.81%)** and **26,604/29,637 regions
+(89.77%)**. Entrypoints and unexecuted coordination/failure paths remain in the
+denominator; stable Rust provides no branch report here.
+
+| New file scope       | Lines  | Functions | Regions |
+| -------------------- | ------ | --------- | ------- |
+| Domain request       | 27/27  | 4/4       | 32/32   |
+| Application outcome  | 5/5    | 1/1       | 7/7     |
+| Native command       | 88/89  | 11/12     | 148/152 |
+| PostgreSQL operation | 98/103 | 19/19     | 148/159 |
+| PostgreSQL audit     | 59/59  | 10/10     | 139/145 |
+| PostgreSQL inventory | 51/52  | 5/5       | 108/120 |
+
+These are measured file scopes, not complete subsystem qualification. Focused Node
+unit coverage reports 100% lines, branches and functions for `catalog-plan.mjs`,
+`client-secret-plan.mjs` and `operator-options.mjs`; it excludes deployment and
+process effects. The global coverage gate remains open in #2. See
+[client-secret operations](operator-client-secrets.md) for exact command, authority,
+audit, migration and reconciliation contracts.
+
 ## Authenticated CLI client configuration updates
 
 The client-update increment in [#26](https://github.com/OneTesseractInMultiverse/darkhorse-identity/issues/26)
