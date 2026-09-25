@@ -30,6 +30,105 @@ async fn show(
     )
     .await
 }
+fn detail_targets() -> [ReadTarget; 4] {
+    [
+        ReadTarget::Application(ApplicationId::from_u128(16).unwrap()),
+        target(),
+        ReadTarget::Application(ApplicationId::from_u128(999).unwrap()),
+        ReadTarget::Client {
+            application: ApplicationId::from_u128(16).unwrap(),
+            client: ClientId::from_u128(999).unwrap(),
+        },
+    ]
+}
+#[tokio::test]
+async fn detail_audit_time_authority_loss_rolls_back_without_disclosing_target_existence() {
+    for change in [
+        "DELETE FROM platform_administrators WHERE principal_id=NEW.actor_id;",
+        "UPDATE credentials SET revoked=true WHERE id=NEW.actor_credential_id;",
+        "UPDATE principals SET credential_epoch=credential_epoch+1,revision=revision+1 WHERE id=NEW.actor_id;",
+        "UPDATE principals SET active=false,credential_epoch=credential_epoch+1,revision=revision+1 WHERE id=NEW.actor_id;",
+    ] {
+        let db = oidc::fixture().await;
+        insert_principal(&db, 3, true).await;
+        sqlx::raw_sql(sqlx::AssertSqlSafe(format!(
+            "CREATE FUNCTION reduce_detail_actor() RETURNS trigger LANGUAGE plpgsql AS $$ BEGIN {change} RETURN NEW; END $$; CREATE TRIGGER reduce_detail_actor AFTER INSERT ON operator_catalog_detail_audit FOR EACH ROW EXECUTE FUNCTION reduce_detail_actor();"
+        )))
+        .execute(&db.pool)
+        .await
+        .unwrap();
+        for target in detail_targets() {
+            assert!(
+                matches!(
+                    show(
+                        &db.store.operator_catalog_details(),
+                        "one@example.com",
+                        target
+                    )
+                    .await,
+                    Err(Error::Denied)
+                ),
+                "audit-time reduction must deny existing and missing targets: {change}"
+            );
+            assert_eq!(
+                sqlx::query_scalar::<_, i64>("SELECT count(*) FROM operator_catalog_detail_audit")
+                    .fetch_one(&db.pool)
+                    .await
+                    .unwrap(),
+                0
+            );
+            assert!(sqlx::query_scalar::<_, bool>("SELECT p.active AND p.credential_epoch=0 AND NOT c.revoked AND EXISTS(SELECT 1 FROM platform_administrators WHERE principal_id=p.id) FROM principals p JOIN credentials c ON c.principal_id=p.id WHERE p.id='00000000-0000-0000-0000-000000000001'").fetch_one(&db.pool).await.unwrap());
+        }
+        // A rollback must leave the credential usable once the injected fault is removed.
+        sqlx::query("DROP TRIGGER reduce_detail_actor ON operator_catalog_detail_audit")
+            .execute(&db.pool)
+            .await
+            .unwrap();
+        assert!(
+            show(
+                &db.store.operator_catalog_details(),
+                "one@example.com",
+                target()
+            )
+            .await
+            .is_ok()
+        );
+    }
+}
+#[tokio::test]
+async fn detail_proof_expiring_during_audit_releases_neither_record_nor_not_found() {
+    let db = oidc::fixture().await;
+    // The sequence survives rollback and proves the successful/missing read reached its audit.
+    sqlx::raw_sql("CREATE SEQUENCE detail_audit_reached; CREATE FUNCTION expire_detail_proof() RETURNS trigger LANGUAGE plpgsql AS $$ DECLARE remaining double precision; BEGIN remaining := (NEW.authentication_observed_ms+60000)/1000.0-extract(epoch FROM clock_timestamp()); IF NEW.result NOT IN ('read','not_found') OR remaining<=0 THEN RAISE EXCEPTION 'fixture did not reach audit with a live proof'; END IF; PERFORM nextval('detail_audit_reached'); PERFORM pg_sleep(remaining+0.025); RETURN NEW; END $$; CREATE TRIGGER expire_detail_proof BEFORE INSERT ON operator_catalog_detail_audit FOR EACH ROW EXECUTE FUNCTION expire_detail_proof();").execute(&db.pool).await.unwrap();
+    for (index, target) in detail_targets().into_iter().enumerate() {
+        let held = Held {
+            inner: db.store.operator_catalog_details(),
+            ready: tokio::sync::Notify::new(),
+            resume: tokio::sync::Notify::new(),
+            age: 58_000,
+        };
+        let resume = async {
+            held.ready.notified().await;
+            held.resume.notify_one();
+        };
+        let (result, ()) = tokio::join!(show(&held, "one@example.com", target), resume);
+        assert!(matches!(result, Err(Error::Denied)));
+        assert_eq!(
+            sqlx::query_scalar::<_, i64>("SELECT last_value FROM detail_audit_reached")
+                .fetch_one(&db.pool)
+                .await
+                .unwrap(),
+            index as i64 + 1
+        );
+        assert_eq!(
+            sqlx::query_scalar::<_, i64>("SELECT count(*) FROM operator_catalog_detail_audit")
+                .fetch_one(&db.pool)
+                .await
+                .unwrap(),
+            0
+        );
+    }
+}
 #[tokio::test]
 async fn details_reuse_http_configuration_without_reading_secret_metadata_or_changing_state() {
     let db = oidc::fixture().await;

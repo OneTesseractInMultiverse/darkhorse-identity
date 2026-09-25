@@ -39,6 +39,9 @@ impl Store for CatalogDetails<'_> {
             &result,
         )
         .await?;
+        if matches!(result, Ok(_) | Err(Error::NotFound)) {
+            operator_accounts::authority(&mut tx, &proof).await?;
+        }
         tx.commit().await.map_err(|_| Error::Uncertain)?;
         result
     }

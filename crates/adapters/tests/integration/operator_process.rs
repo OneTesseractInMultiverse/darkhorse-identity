@@ -526,6 +526,67 @@ async fn catalog_detail_cli_uses_runtime_grants_without_client_secret_table_acce
 }
 
 #[tokio::test]
+async fn catalog_detail_cli_discloses_no_record_after_audit_time_credential_revocation() {
+    let _serial = SERIAL.lock().await;
+    let f = Fixture::new().await;
+    f.activate().await;
+    restrict_database(&f).await;
+    let (principal, email) = actor(&f).await;
+    let app = Uuid::new_v4();
+    let client = Uuid::new_v4();
+    sqlx::query("INSERT INTO applications(id,name,owner_id,active) VALUES($1,'Private detail fixture',$2,true)")
+        .bind(app).bind(principal).execute(&f.pool).await.unwrap();
+    sqlx::query("INSERT INTO oauth_clients(id,application_id,name,active) VALUES($1,$2,'Private client fixture',true)")
+        .bind(client).bind(app).execute(&f.pool).await.unwrap();
+    sqlx::query("INSERT INTO client_redirects VALUES($1,'https://client.example/callback')")
+        .bind(client)
+        .execute(&f.pool)
+        .await
+        .unwrap();
+    sqlx::raw_sql("CREATE FUNCTION revoke_detail_actor() RETURNS trigger LANGUAGE plpgsql AS $$ BEGIN UPDATE credentials SET revoked=true WHERE id=NEW.actor_credential_id; RETURN NEW; END $$; CREATE TRIGGER revoke_detail_actor AFTER INSERT ON operator_catalog_detail_audit FOR EACH ROW EXECUTE FUNCTION revoke_detail_actor();")
+        .execute(&f.pool).await.unwrap();
+    let application = app.to_string();
+    let client = client.to_string();
+    let missing = Uuid::new_v4().to_string();
+    for args in [
+        vec!["operator", "application", "show", &application],
+        vec!["operator", "client", "show", &application, &client],
+        vec!["operator", "application", "show", &missing],
+        vec!["operator", "client", "show", &application, &missing],
+    ] {
+        let (code, value) = invoke(&args, json!({"email":email,"password":PASSWORD}));
+        assert_eq!(code, 1, "{value}");
+        assert_eq!(
+            value["error"]["message"],
+            "Administrator authentication or authority denied."
+        );
+        assert!(value["data"].get("record").is_none());
+        assert!(!value.to_string().contains("Private"));
+        assert_eq!(
+            sqlx::query_scalar::<_, i64>(
+                "SELECT count(*) FROM operator_catalog_detail_audit WHERE actor_id=$1"
+            )
+            .bind(principal)
+            .fetch_one(&f.pool)
+            .await
+            .unwrap(),
+            0
+        );
+        assert!(
+            !sqlx::query_scalar::<_, bool>("SELECT revoked FROM credentials WHERE principal_id=$1")
+                .bind(principal)
+                .fetch_one(&f.pool)
+                .await
+                .unwrap()
+        );
+    }
+    sqlx::query("DROP TRIGGER revoke_detail_actor ON operator_catalog_detail_audit")
+        .execute(&f.pool)
+        .await
+        .unwrap();
+}
+
+#[tokio::test]
 async fn application_commands_use_runtime_authority_revision_checks_and_transactional_audit() {
     let _serial = SERIAL.lock().await;
     let f = Fixture::new().await;

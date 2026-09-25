@@ -97,6 +97,42 @@ cargo install cargo-mutants --version 27.1.0 --locked
 Mutation targets run an unmodified baseline first, then test selected source mutations.
 A missed mutation requires investigation. A passing coverage percentage cannot clear it.
 
+## Catalog detail authority after audit
+
+A focused correction in [#26](https://github.com/OneTesseractInMultiverse/darkhorse-identity/issues/26)
+adds a final current-authority check after audit insertion for application/client
+`show`. Both a returned record and an authenticated not-found response require
+that check. Failure rolls back the detail audit and returns a fixed denial.
+No schema, grants, command syntax or launcher change is required.
+
+On **2026-09-25**, `make ci` passed **614 isolated tests**, formatting, strict lint,
+type and architecture checks, and release/static builds. The instrumented boundary
+suites passed **241 PostgreSQL**, **5 Redis infrastructure**, and **31 limiter/native
+operator** tests. The process-worker entry remains separately invoked and intentionally
+ignored in ordinary enumeration. CLI subprocess and terminal checks also passed.
+
+Two new PostgreSQL regressions failed before the correction. They now verify
+membership removal, credential revocation, credential-epoch advancement, account
+deactivation and proof expiry during audit execution. Each covers existing and
+missing application/client targets. The expiry fixture starts with a live proof
+and uses a nontransactional sequence to prove that audit execution was reached.
+The native executable also rejects audit-time credential revocation under the
+runtime role, without exposing a record or retaining a success/not-found audit.
+Existing denial, suppressed-audit and lost-commit tests remain passing.
+
+Combined Rust coverage is **16,131/16,956 lines (95.13%)**,
+**2,251/2,324 functions (96.86%)**, and **26,742/29,775 regions (89.81%)**.
+The unchanged **100% line gate fails**. Entrypoints and unexecuted coordination
+remain in the denominator; stable Rust provides no branch report here. The detail
+transaction module covers 87/87 lines, 18/18 functions and 165/173 regions. These
+are combined execution measurements, not isolated unit or complete branch coverage.
+
+The unchanged Compose/Kubernetes launchers were not requalified in this focused
+correction; their preceding evidence is dated below. Persistent development data
+is outside the disposable test fixtures. See the [catalog transaction contract](operator-catalog.md#authority-transaction-and-audit)
+for output, rollback and uncertainty semantics. Broader catalog administration and
+independent security/release qualification remain open.
+
 ## Authenticated CLI access-catalog listing
 
 The next increment in [#26](https://github.com/OneTesseractInMultiverse/darkhorse-identity/issues/26)

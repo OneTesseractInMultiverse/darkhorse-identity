@@ -107,6 +107,13 @@ security writers take the exclusive fence. A read that acquired the fence first
 may complete before a waiting revocation; checks beginning after committed
 revocation or demotion reject access. No positive decision is cached in Redis.
 
+Application and client detail commands also perform the final authority check for
+an authenticated not-found result. Audit work can consume the remaining proof
+lifetime. If authority is lost at this final check, the transaction rolls back its
+detail audit and returns the fixed authentication/authority denial, without a
+record or a target-existence result. The command does not retry. An earlier
+authentication denial retains its existing denial-audit path.
+
 ```mermaid
 sequenceDiagram
     participant C as Catalog command
@@ -251,6 +258,13 @@ expiry, audit refusal/suppression and uncertain commits. `make test-redis` runs
 real CLI processes with restricted runtime grants and shared HTTP attempt budgets.
 The detail fixture removes SELECT on client secrets and still requires successful
 application/client inspection, then removes detail-audit INSERT and requires failure.
+
+Detail fault-injection cases reduce each current-authority fact during audit work
+and let a live proof expire inside the audit statement. Existing and missing
+targets both return a denial, with the detail audit rolled back. A native process
+case verifies the denial and absent record after audit-time credential revocation
+using the runtime database role.
+
 `make test-cli` covers service-free help, parsing and redacted configuration failures.
 `make test-catalog-launcher` exercises both launcher entrypoints and shared
 process supervision, including selector redaction, literal Make values, protected
