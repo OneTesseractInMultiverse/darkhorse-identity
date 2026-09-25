@@ -30,7 +30,7 @@ async fn show(
     )
     .await
 }
-fn detail_targets() -> [ReadTarget; 4] {
+fn detail_targets() -> [ReadTarget; 5] {
     [
         ReadTarget::Application(ApplicationId::from_u128(16).unwrap()),
         target(),
@@ -39,6 +39,10 @@ fn detail_targets() -> [ReadTarget; 4] {
             application: ApplicationId::from_u128(16).unwrap(),
             client: ClientId::from_u128(999).unwrap(),
         },
+        ReadTarget::Client {
+            application: ApplicationId::from_u128(999).unwrap(),
+            client: ClientId::from_u128(32).unwrap(),
+        },
     ]
 }
 #[tokio::test]
@@ -46,6 +50,7 @@ async fn detail_audit_time_authority_loss_rolls_back_without_disclosing_target_e
     for change in [
         "DELETE FROM platform_administrators WHERE principal_id=NEW.actor_id;",
         "UPDATE credentials SET revoked=true WHERE id=NEW.actor_credential_id;",
+        "UPDATE password_credentials SET verifier=verifier||'changed' WHERE credential_id=NEW.actor_credential_id;",
         "UPDATE principals SET credential_epoch=credential_epoch+1,revision=revision+1 WHERE id=NEW.actor_id;",
         "UPDATE principals SET active=false,credential_epoch=credential_epoch+1,revision=revision+1 WHERE id=NEW.actor_id;",
     ] {

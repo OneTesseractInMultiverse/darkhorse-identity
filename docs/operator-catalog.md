@@ -102,15 +102,15 @@ The application creates a private proof after password verification. Its 60-seco
 lifetime includes hashing and waits. The adapter takes the shared primary security
 fence and checks the exact credential, credential epoch, active principal,
 administrator membership and proof age before and after querying, and again after
-inserting a successful read audit. Supported
+inserting a read or authenticated not-found audit. Supported
 security writers take the exclusive fence. A read that acquired the fence first
 may complete before a waiting revocation; checks beginning after committed
 revocation or demotion reject access. No positive decision is cached in Redis.
 
-Application and client detail commands also perform the final authority check for
-an authenticated not-found result. Audit work can consume the remaining proof
+Listing, detail and credential-inventory commands perform the final authority
+check for authenticated not-found results as well as successful reads. Audit work can consume the remaining proof
 lifetime. If authority is lost at this final check, the transaction rolls back its
-detail audit and returns the fixed authentication/authority denial, without a
+read audit and returns the fixed authentication/authority denial, without a
 record or a target-existence result. The command does not retry. An earlier
 authentication denial retains its existing denial-audit path.
 
@@ -125,7 +125,7 @@ sequenceDiagram
     P->>P: Recheck current administrator and proof lifetime
     P->>P: Read bounded catalog page or registration configuration
     P->>P: Recheck authority and append the matching read audit
-    P->>P: Recheck authority before releasing a successful result
+    P->>P: Recheck authority for success or not found before commit
     P-->>C: Commit acknowledgement
     C->>C: Render bounded public fields
 ```
@@ -158,6 +158,10 @@ the authoritative audit before deciding to repeat the read. Invalid input,
 configuration or admission failures happen before catalog access and are not
 transactional read-audit records. Database owners remain trusted; these records
 are not tamper-proof and runtime-compromise containment remains open in #23.
+
+The [operator authority matrix](authenticated-operator-authority.md) defines the shared completion
+contract for successful reads, authenticated state-dependent errors and mutations,
+including intentional account self-changes and the cost of additional checks.
 
 ## Make launchers
 

@@ -45,6 +45,20 @@ pub(super) async fn change_locked(
     expected_revision: u64,
     action: AccountAction,
 ) -> Result<Option<AccountChange>, DirectoryFailure> {
+    let change = prepare_change(tx, id, expected_revision, action).await?;
+    if let Some(change) = change {
+        persist(tx, id, change, action).await.map_err(unavailable)?;
+    }
+    Ok(change)
+}
+
+/// Keep target locks until the caller has rechecked authority and persisted the plan.
+pub(super) async fn prepare_change(
+    tx: &mut Transaction<'_, Postgres>,
+    id: PrincipalId,
+    expected_revision: u64,
+    action: AccountAction,
+) -> Result<Option<AccountChange>, DirectoryFailure> {
     let current = locked_account(tx, id).await?;
     if current.revision != expected_revision {
         return Err(DirectoryFailure::Conflict);
@@ -54,11 +68,7 @@ pub(super) async fn change_locked(
         .await
         .map_err(unavailable)?;
     let snapshot = snapshot(&current, administrators);
-    let change = plan_change(snapshot, action).map_err(DirectoryFailure::Policy)?;
-    if let Some(change) = change {
-        persist(tx, id, change, action).await.map_err(unavailable)?;
-    }
-    Ok(change)
+    plan_change(snapshot, action).map_err(DirectoryFailure::Policy)
 }
 
 pub(super) async fn locked_account(
@@ -80,22 +90,30 @@ fn snapshot(record: &AccountRecord, administrators: i64) -> AccountSnapshot {
     }
 }
 
-async fn persist(
+pub(super) async fn persist(
     tx: &mut Transaction<'_, Postgres>,
     id: PrincipalId,
     change: AccountChange,
     action: AccountAction,
 ) -> Result<(), sqlx::Error> {
     let principal = Uuid::from_u128(id.as_u128());
-    sqlx::query("UPDATE principals SET active=$2, credential_epoch=$3, revision=$4 WHERE id=$1")
-        .bind(principal)
-        .bind(change.status == AccountStatus::Active)
-        .bind(change.credential_epoch as i64)
-        .bind(change.revision as i64)
-        .execute(&mut **tx)
-        .await?;
-    sqlx::query("INSERT INTO security_audit (event, principal_id, principal_revision, credential_epoch) VALUES ($1, $2, $3, $4)")
+    let updated = sqlx::query(
+        "UPDATE principals SET active=$2, credential_epoch=$3, revision=$4 WHERE id=$1",
+    )
+    .bind(principal)
+    .bind(change.status == AccountStatus::Active)
+    .bind(change.credential_epoch as i64)
+    .bind(change.revision as i64)
+    .execute(&mut **tx)
+    .await?;
+    if updated.rows_affected() != 1 {
+        return Err(sqlx::Error::RowNotFound);
+    }
+    let inserted = sqlx::query("INSERT INTO security_audit (event, principal_id, principal_revision, credential_epoch) VALUES ($1, $2, $3, $4)")
         .bind(event(action)).bind(principal).bind(change.revision as i64).bind(change.credential_epoch as i64).execute(&mut **tx).await?;
+    if inserted.rows_affected() != 1 {
+        return Err(sqlx::Error::RowNotFound);
+    }
     Ok(())
 }
 

@@ -5,7 +5,7 @@ use darkhorse_application::{
 };
 use darkhorse_domain::{
     identity::OperationId,
-    operator_accounts::Error,
+    operator_accounts::{Error, needs_current_authority},
     operator_catalog::{Request, Target},
 };
 use sqlx::{Postgres, Transaction};
@@ -43,7 +43,7 @@ impl Store for CatalogReader<'_> {
             &result,
         )
         .await?;
-        if result.is_ok() {
+        if needs_current_authority(&result) {
             operator_accounts::authority(&mut tx, &proof).await?;
         }
         tx.commit().await.map_err(|_| Error::Uncertain)?;

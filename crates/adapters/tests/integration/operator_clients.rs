@@ -10,6 +10,31 @@ use darkhorse_domain::{
     operator_clients::{Request, Update},
     registration::{ClientSpec, Label, Redirects, RegistrationError},
 };
+#[tokio::test]
+async fn target_dependent_client_errors_recheck_authority_after_audit() {
+    use super::operator_authority::{REDUCTIONS, inject, untouched};
+    for reduction in REDUCTIONS {
+        let db = fixture().await;
+        insert_principal(&db, 3, true).await;
+        inject(&db, "operator_client_audit", reduction).await;
+        let mut missing = update(0);
+        missing.client = ClientId::from_u128(999).unwrap();
+        let mut foreign = update(0);
+        foreign.application = ApplicationId::from_u128(999).unwrap();
+        let mut invalid = update(0);
+        invalid
+            .spec
+            .resources
+            .push(ResourceId::from_u128(999).unwrap());
+        for request in [update(99), missing, foreign, invalid] {
+            assert!(matches!(
+                write(&db.store.operator_clients(), "one@example.com", request).await,
+                Err(Error::Denied)
+            ));
+            untouched(&db, "operator_client_audit").await;
+        }
+    }
+}
 fn update(revision: u64) -> Update {
     let mut spec = ClientSpec::new(
         Label::new("Private client name").unwrap(),

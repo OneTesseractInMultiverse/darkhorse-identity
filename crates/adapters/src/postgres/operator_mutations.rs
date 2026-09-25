@@ -1,7 +1,10 @@
 //! Shared transaction boundary for authenticated catalog mutations.
 use super::{PostgresStore, operator_accounts, sessions};
 use darkhorse_application::operator_accounts::{CandidateAt, Verified};
-use darkhorse_domain::{identity::OperationId, operator_accounts::Error};
+use darkhorse_domain::{
+    identity::OperationId,
+    operator_accounts::{Error, needs_current_authority},
+};
 use sqlx::{Acquire, Postgres, Transaction};
 use std::future::Future;
 pub(super) type Tx<'a> = Transaction<'a, Postgres>;
@@ -54,7 +57,7 @@ pub(super) async fn execute<R: Send + Sync, M: Mutation<R>>(
             &result,
         )
         .await?;
-    if result.is_ok() {
+    if needs_current_authority(&result) {
         operator_accounts::authority(&mut tx, &proof).await?;
     }
     tx.commit().await.map_err(|_| Error::Uncertain)?;

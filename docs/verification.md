@@ -97,6 +97,103 @@ cargo install cargo-mutants --version 27.1.0 --locked
 Mutation targets run an unmodified baseline first, then test selected source mutations.
 A missed mutation requires investigation. A passing coverage percentage cannot clear it.
 
+## Authenticated operator outcome qualification
+
+The increment in [#31](https://github.com/OneTesseractInMultiverse/darkhorse-identity/issues/31)
+applies one completion policy to protected account and catalog outcomes. The
+[authority matrix](authenticated-operator-authority.md) links each command/outcome
+to its coordinator and executable evidence, defines intentional self-changes and
+records the additional SQL statements. Account persistence also rejects a
+suppressed principal update or security-audit insert.
+
+On **2026-09-25**, `make ci` passed **616 isolated tests**: 214 adapters,
+35 application, 113 domain, 143 frontend and 111 tooling tests, plus formatting,
+strict lint, types, architecture checks and release/static builds. Final formatting
+and all-feature Clippy checks passed after the integration matrix was completed.
+Three initial regression tests failed against the preceding implementation, then
+passed with the new guards and affected-row checks.
+
+Combined instrumented qualification passed **256 PostgreSQL**, **5 Redis
+infrastructure** and **34 limiter/native operator** cases. The process-worker entry
+is intentionally ignored in ordinary enumeration and invoked by its parent
+scenario. The final PostgreSQL run adds all five actor reductions at observed
+shared/exclusive fence waits. An intermediate test incorrectly expected a fresh
+password proof to remain denied after an epoch advance; its assertion was corrected
+to distinguish an invalidated old proof from valid fresh authentication. No
+production change was needed for that correction.
+
+The suites cover current credential identity/verifier, revocation, status, epoch
+and membership during audit and while waiting on the primary fence; proof expiry
+at a target row wait and during audit; present, missing and cross-application
+references; state-dependent errors; self-revocation/deactivation; an unrelated
+administrator's demotion; and concurrent last-administrator preservation.
+Suppressed effects and audits roll back. An actually lost self-revocation commit
+reply produces an unknown outcome with exactly one committed transition.
+Restricted-role native commands verify generic output, real password hashing and
+shared admission, audit permissions, self-deactivation, and one committed result
+after stdout closes. CLI pipe/terminal and runtime database-grant checks passed.
+
+Combined Rust coverage is **16,240/17,065 lines (95.17%)**,
+**2,262/2,335 functions (96.87%)**, and **26,859/29,892 regions (89.85%)**.
+The operator domain policy has **67/67 lines, 10/10 functions and 85/85 regions**.
+This scoped result does not replace the whole-project denominator. The unchanged
+100% line gate still fails; the coverage command therefore exits unsuccessfully
+after its tests pass. No paths or gates were removed. Full Compose/Kubernetes
+qualification was not repeated for this increment; entrypoints, manifests,
+transport selectors, schema and grants did not change. The real primary and
+restricted-runtime process suites qualify the changed boundaries. Packaged
+end-to-end evidence remains the earlier, revision-specific record below.
+
+### Comparable operator measurements
+
+Two runs at `f5ea60755e8665c8d4bf6d8f592df0c82fdcfeaa` and two runs with the completed
+implementation used `make benchmark-operators-baseline`, eight clients,
+200 scheduled HTTPS checks/s, ten-second phases and the same pool limit of five.
+Both versions retained fresh password verification, shared admission, transactional
+audit and post-commit denial. The fixture uses native release binaries and a
+disposable database owner; restricted-runtime correctness was tested separately.
+The topology, small population and limitations are in
+[the benchmark contract](performance.md#native-cli-interference).
+
+| Run      | Control-before p95 | Read-burst p95 / p99 | Control-after p95 | CLI read p95 | Single revoke-all |
+| -------- | ------------------ | -------------------- | ----------------- | ------------ | ----------------- |
+| Before 1 | 5.37 ms            | 5.87 / 10.08 ms      | 5.39 ms           | 109.40 ms    | 99.08 ms          |
+| Before 2 | 5.93 ms            | 5.82 / 9.15 ms       | 5.55 ms           | 102.20 ms    | 94.86 ms          |
+| After 1  | 6.56 ms            | 5.82 / 9.64 ms       | 5.64 ms           | 102.54 ms    | 99.05 ms          |
+| After 2  | 5.40 ms            | 6.42 / 9.85 ms       | 5.44 ms           | 103.28 ms    | 95.48 ms          |
+
+HTTP percentiles are authorized latency measured from scheduled arrival. Each
+normal phase authorized all 2,000 requests at approximately 200/s. Every run had
+zero unavailable responses, transport errors, authority violations and dropped
+arrivals; eight read audits and one revocation audit; and all 64 explicit
+post-commit checks denied. The CLI percentiles contain only eight read commands
+per run. These samples establish neither production capacity nor a reliable
+causal estimate of guard overhead; the second after-run has a higher burst p95.
+Account detail/error mixtures and larger sustained loads remain in #32.
+
+The guards add **21 source-derived top-level SQL statements** across the measured
+four account-list calls and one revoke-all call. They extend existing lock holding
+without adding transactions. Database snapshots reported zero deadlocks and zero
+temporary bytes; buffer-hit deltas were 552,531–556,909 before and 556,722–557,416
+after. The HTTP server CPU-time delta was 2.68–2.78 seconds before and 2.77–2.92
+after; it excludes separate CLI processes. Ending database-container memory was
+83.77–83.78 MiB before and 83.77–83.91 MiB after. These endpoint samples are not
+peak measurements. Background work contributes to the counters, so they cannot
+isolate SQL, lock, hashing or memory cost. The lock/SQL breakdown remains a
+requirement of #32.
+
+Both versions used Rust 1.97.1, Node 24.19.0, Percona PostgreSQL 18.6.1 and Redis
+8.10.1 with identical pinned images on the same Apple M5 host. The before source
+digest was `6a3669c7a6e8efc138343d21868aaf0bac8e773827eb630036a292130d4c4d77`;
+the measured working-source digest was
+`ac406baad03da0e2858bd385d13c36cfb9a1a10e425df7c83bd89c056a1efd7b`.
+Release binary digests were
+`ebc025cb3bd35bffe48b5bf97f84fe09ce638e590ab6eeb2509b97301629f522` before and
+`556ae8e22068153c8e8cb7462fcb1346de55afef6f986e3ecfe79e10979f33d2` after.
+The implementation was unchanged between its two measured runs; this evidence
+section was added afterward. Raw reports remain local and ignored. The issue
+records the published revision and hosted verification separately.
+
 ## Catalog detail authority after audit
 
 A focused correction in [#26](https://github.com/OneTesseractInMultiverse/darkhorse-identity/issues/26)

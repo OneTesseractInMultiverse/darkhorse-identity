@@ -17,6 +17,62 @@ use std::{
         atomic::{AtomicUsize, Ordering},
     },
 };
+#[tokio::test]
+async fn target_dependent_application_errors_recheck_authority_after_audit() {
+    use super::operator_authority::{REDUCTIONS, inject, untouched};
+    for reduction in REDUCTIONS {
+        let db = oidc::fixture().await;
+        insert_principal(&db, 3, true).await;
+        inject(&db, "operator_application_audit", reduction).await;
+        for operation in [
+            update(99, 1, true),
+            update(0, 999, true),
+            Operation::Update {
+                application: ApplicationId::from_u128(999).unwrap(),
+                revision: 0,
+                spec: spec(1, true),
+            },
+        ] {
+            assert!(matches!(
+                write(
+                    &db.store.operator_applications(Material::default()),
+                    "one@example.com",
+                    operation
+                )
+                .await,
+                Err(Error::Denied)
+            ));
+            untouched(&db, "operator_application_audit").await;
+        }
+    }
+}
+#[tokio::test]
+async fn conflict_with_proof_expiring_during_application_audit_is_denied() {
+    use super::operator_authority::{Aged, expiry, untouched};
+    let db = oidc::fixture().await;
+    sqlx::query("CREATE SEQUENCE authority_audit_reached")
+        .execute(&db.pool)
+        .await
+        .unwrap();
+    expiry(&db, "operator_application_audit").await;
+    assert!(matches!(
+        write(
+            &Aged(db.store.operator_applications(Material::default())),
+            "one@example.com",
+            update(99, 1, true)
+        )
+        .await,
+        Err(Error::Denied)
+    ));
+    untouched(&db, "operator_application_audit").await;
+    assert_eq!(
+        sqlx::query_scalar::<_, i64>("SELECT last_value FROM authority_audit_reached")
+            .fetch_one(&db.pool)
+            .await
+            .unwrap(),
+        1
+    );
+}
 #[derive(Clone, Default)]
 struct Material(Arc<AtomicUsize>);
 impl Entropy for Material {

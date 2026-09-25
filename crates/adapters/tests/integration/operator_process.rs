@@ -11,6 +11,7 @@ use std::{
 };
 use uuid::Uuid;
 const PASSWORD: &str = "source-only operator passphrase";
+mod authority;
 async fn restrict_database(f: &Fixture) {
     sqlx::raw_sql("DO $$ BEGIN IF NOT EXISTS(SELECT 1 FROM pg_roles WHERE rolname='darkhorse_runtime') THEN CREATE ROLE darkhorse_runtime LOGIN PASSWORD 'source-only-runtime-fixture'; CREATE ROLE darkhorse_owner NOLOGIN; CREATE ROLE darkhorse_operator LOGIN PASSWORD 'source-only-operator-fixture'; END IF; END $$;").execute(&f.pool).await.unwrap();
     let grants = include_str!("../../../../deploy/grant-runtime.sql")

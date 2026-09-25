@@ -8,6 +8,10 @@ operator commands still use deployment credentials. This does not complete
 Container location, Unix UID, command spelling, a supplied actor name, and `--yes`
 provide no application authority. `--yes` confirms intent only.
 
+The [authenticated command authority matrix](authenticated-operator-authority.md)
+defines final checks, state-dependent errors, intentional self-changes and failure
+outcomes for password-authenticated account and catalog commands.
+
 ## Implemented command and dependency matrix
 
 All operator commands below can run with HTTP stopped. They use configured

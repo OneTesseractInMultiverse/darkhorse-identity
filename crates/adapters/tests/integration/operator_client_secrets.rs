@@ -11,6 +11,39 @@ use darkhorse_domain::{
     operator_client_secrets::{Operation, Request, Target},
     registration::RegistrationError,
 };
+#[tokio::test]
+async fn target_dependent_retirement_errors_recheck_authority_after_audit() {
+    use super::operator_authority::{REDUCTIONS, inject, untouched};
+    for reduction in REDUCTIONS {
+        let db = fixture().await;
+        insert_principal(&db, 3, true).await;
+        inject(&db, "operator_client_secret_audit", reduction).await;
+        let foreign = Request::new(
+            Target {
+                application: ApplicationId::from_u128(999).unwrap(),
+                ..target()
+            },
+            Operation::Retire {
+                secret: ClientSecretId::from_u128(101).unwrap(),
+                revision: 0,
+            },
+            Some("fixture"),
+        )
+        .unwrap();
+        for request in [retire(101, 99), retire(999, 0), foreign] {
+            assert!(matches!(
+                run(
+                    &db.store.operator_client_secrets(),
+                    "one@example.com",
+                    request
+                )
+                .await,
+                Err(Error::Denied)
+            ));
+            untouched(&db, "operator_client_secret_audit").await;
+        }
+    }
+}
 fn target() -> Target {
     Target {
         application: ApplicationId::from_u128(16).unwrap(),

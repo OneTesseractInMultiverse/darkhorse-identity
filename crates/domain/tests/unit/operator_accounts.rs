@@ -3,6 +3,88 @@ fn target() -> PrincipalId {
     PrincipalId::from_u128(1).unwrap()
 }
 #[test]
+fn protected_outcomes_require_current_authority_including_state_dependent_errors() {
+    assert!(needs_current_authority(&Ok::<_, Error>(())));
+    for error in [
+        Error::Invalid,
+        Error::NotFound,
+        Error::Conflict,
+        Error::PolicyRejected,
+    ] {
+        assert!(needs_current_authority(&Err::<(), _>(error)));
+    }
+    for error in [
+        Error::Denied,
+        Error::Limited {
+            retry_after_ms: 1000,
+        },
+        Error::Unavailable,
+        Error::Uncertain,
+    ] {
+        assert!(!needs_current_authority(&Err::<(), _>(error)));
+    }
+}
+#[test]
+fn completion_accepts_only_the_requested_self_transition() {
+    let actor = target();
+    let other = PrincipalId::from_u128(2).unwrap();
+    let original = ActorState {
+        status: AccountStatus::Active,
+        epoch: 7,
+    };
+    for target in [actor, other] {
+        for action in [
+            AccountAction::RevokeAll,
+            AccountAction::SetStatus(AccountStatus::Inactive),
+            AccountAction::SetStatus(AccountStatus::Active),
+        ] {
+            let operation = Operation::Change {
+                target,
+                revision: 100,
+                action,
+            };
+            assert_eq!(completion_state(actor, 7, operation, false), Ok(original));
+            let expected = if target != actor {
+                Ok(original)
+            } else {
+                match action {
+                    AccountAction::RevokeAll => Ok(ActorState {
+                        epoch: 8,
+                        ..original
+                    }),
+                    AccountAction::SetStatus(AccountStatus::Inactive) => Ok(ActorState {
+                        status: AccountStatus::Inactive,
+                        epoch: 8,
+                    }),
+                    AccountAction::SetStatus(AccountStatus::Active) => Err(Error::Denied),
+                }
+            };
+            assert_eq!(completion_state(actor, 7, operation, true), expected);
+        }
+    }
+    assert_eq!(
+        completion_state(actor, 7, Operation::Show(actor), false),
+        Ok(original)
+    );
+    let revoke = Operation::Change {
+        target: actor,
+        revision: 0,
+        action: AccountAction::RevokeAll,
+    };
+    assert_eq!(
+        completion_state(actor, i64::MAX as u64 - 1, revoke, true)
+            .unwrap()
+            .epoch,
+        i64::MAX as u64
+    );
+    for epoch in [i64::MAX as u64, u64::MAX] {
+        assert_eq!(
+            completion_state(actor, epoch, revoke, true),
+            Err(Error::Denied)
+        );
+    }
+}
+#[test]
 fn all_operations_require_current_administrator_and_bounded_password_proof() {
     let valid = Authority {
         credential_current: true,

@@ -1,5 +1,5 @@
 //! Policy for a single authenticated local account operation.
-use crate::{directory::AccountAction, identity::PrincipalId};
+use crate::{AccountStatus, directory::AccountAction, identity::PrincipalId};
 
 pub const PROOF_LIFETIME_MS: u64 = 60_000;
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -60,6 +60,52 @@ pub fn authorize(authority: Authority, now: u64) -> Result<(), Error> {
         return Err(Error::Denied);
     }
     Ok(())
+}
+/// Success and target-dependent failures require authority through completion.
+pub fn needs_current_authority<T>(outcome: &Result<T, Error>) -> bool {
+    match outcome {
+        Ok(_) | Err(Error::Invalid | Error::NotFound | Error::Conflict | Error::PolicyRejected) => {
+            true
+        }
+        Err(Error::Denied | Error::Limited { .. } | Error::Unavailable | Error::Uncertain) => false,
+    }
+}
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub struct ActorState {
+    pub status: AccountStatus,
+    pub epoch: u64,
+}
+/// Derive the sole allowed actor transition from the authenticated request.
+/// Credential identity, verifier, revocation, membership and proof age still apply.
+pub fn completion_state(
+    actor: PrincipalId,
+    epoch: u64,
+    operation: Operation,
+    changed: bool,
+) -> Result<ActorState, Error> {
+    let original = ActorState {
+        status: AccountStatus::Active,
+        epoch,
+    };
+    let Operation::Change { target, action, .. } = operation else {
+        return Ok(original);
+    };
+    if !changed || target != actor {
+        return Ok(original);
+    }
+    let epoch = epoch
+        .checked_add(1)
+        .filter(|e| *e <= i64::MAX as u64)
+        .ok_or(Error::Denied)?;
+    match action {
+        AccountAction::RevokeAll => Ok(ActorState { epoch, ..original }),
+        AccountAction::SetStatus(AccountStatus::Inactive) => Ok(ActorState {
+            status: AccountStatus::Inactive,
+            epoch,
+        }),
+        // A verified actor started active; an actual self-reactivation is unexpected.
+        AccountAction::SetStatus(AccountStatus::Active) => Err(Error::Denied),
+    }
 }
 pub(crate) fn checked_reason(value: &str) -> Result<String, Error> {
     let value = value.trim();

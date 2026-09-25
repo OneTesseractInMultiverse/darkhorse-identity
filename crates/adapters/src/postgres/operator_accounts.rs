@@ -5,8 +5,12 @@ use darkhorse_application::{
     operator_accounts::{CandidateAt, Outcome, Store, Verified},
 };
 use darkhorse_domain::{
+    AccountStatus,
     identity::OperationId,
-    operator_accounts::{Authority, Error, Operation, Request, authorize},
+    operator_accounts::{
+        ActorState, Authority, Error, Operation, Request, authorize, completion_state,
+        needs_current_authority,
+    },
 };
 use sqlx::{Postgres, Row, Transaction};
 use uuid::Uuid;
@@ -34,12 +38,13 @@ impl Store for PostgresStore {
         // target locks, mutation and audit form one ordered transaction.
         sessions::lock(&mut tx, true).await.map_err(storage)?;
         let result = match authority(&mut tx, &proof).await {
-            Ok(()) => execute(&mut tx, proof.request().operation()).await,
+            Ok(()) => execute(&mut tx, &proof).await,
             Err(error) => Err(error),
         };
         if matches!(result, Err(Error::Unavailable)) {
             return result;
         }
+        completion(&mut tx, &proof, &result).await?;
         audit::insert(
             &mut tx,
             proof.id(),
@@ -48,6 +53,7 @@ impl Store for PostgresStore {
             &result,
         )
         .await?;
+        completion(&mut tx, &proof, &result).await?;
         tx.commit().await.map_err(|_| Error::Uncertain)?;
         result
     }
@@ -63,8 +69,30 @@ fn candidate(row: &sqlx::postgres::PgRow) -> Result<CandidateAt, Error> {
     })
 }
 pub(super) async fn authority<R>(tx: &mut Tx<'_>, proof: &Verified<R>) -> Result<(), Error> {
+    authority_state(
+        tx,
+        proof,
+        ActorState {
+            status: AccountStatus::Active,
+            epoch: proof.candidate().credential.epoch,
+        },
+    )
+    .await
+}
+async fn authority_state<R>(
+    tx: &mut Tx<'_>,
+    proof: &Verified<R>,
+    state: ActorState,
+) -> Result<(), Error> {
     let candidate = proof.candidate();
-    let current = match authentication::recheck(tx, &candidate.credential).await {
+    let current = match authentication::recheck_state(
+        tx,
+        &candidate.credential,
+        state.status == AccountStatus::Active,
+        state.epoch,
+    )
+    .await
+    {
         Ok(_) => true,
         Err(AuthError::Denied) => false,
         Err(_) => return Err(Error::Unavailable),
@@ -86,8 +114,25 @@ pub(super) async fn authority<R>(tx: &mut Tx<'_>, proof: &Verified<R>) -> Result
         now,
     )
 }
-async fn execute(tx: &mut Tx<'_>, operation: Operation) -> Result<Outcome, Error> {
-    match operation {
+async fn completion(
+    tx: &mut Tx<'_>,
+    proof: &Verified,
+    result: &Result<Outcome, Error>,
+) -> Result<(), Error> {
+    if !needs_current_authority(result) {
+        return Ok(());
+    }
+    let candidate = &proof.candidate().credential;
+    let state = completion_state(
+        candidate.principal,
+        candidate.epoch,
+        proof.request().operation(),
+        result.as_ref().is_ok_and(|outcome| outcome.changed),
+    )?;
+    authority_state(tx, proof, state).await
+}
+async fn execute(tx: &mut Tx<'_>, proof: &Verified) -> Result<Outcome, Error> {
+    match proof.request().operation() {
         Operation::Show(target) => Ok(Outcome {
             account: directory::locked_account(tx, target)
                 .await
@@ -99,9 +144,15 @@ async fn execute(tx: &mut Tx<'_>, operation: Operation) -> Result<Outcome, Error
             revision,
             action,
         } => {
-            let change = directory::change_locked(tx, target, revision, action)
+            let change = directory::prepare_change(tx, target, revision, action)
                 .await
                 .map_err(directory_error)?;
+            authority(tx, proof).await?;
+            if let Some(change) = change {
+                directory::persist(tx, target, change, action)
+                    .await
+                    .map_err(storage)?;
+            }
             let account = directory::locked_account(tx, target)
                 .await
                 .map_err(directory_error)?;

@@ -79,6 +79,7 @@ sequenceDiagram
     P->>P: Recheck current administrator and proof age
     P->>P: Run the console directory query
     P->>P: Recheck proof age and append bounded read audit
+    P->>P: Recheck authority after audit before commit
     P-->>C: Commit acknowledgement
     C-->>C: Release projected page and continuation UUID
 ```
@@ -112,7 +113,10 @@ resource access is granted. Committed demotion or credential changes invalidate
 older proofs. Supported concurrent security operations serialize at the shared
 fence. An operation that wins the fence may complete before a waiting revocation.
 Single-target operations take the exclusive fence; listing takes its shared mode
-and checks proof freshness again after the query. Both preserve actor/audit ordering. Keep this
+and checks proof freshness again after the query and audit. Single-target operations
+check again after target waits and before and after audit, accepting only the exact
+requested self-transition. The [authority matrix](authenticated-operator-authority.md) defines
+state-dependent errors, self-changes and rollback behavior. Both preserve actor/audit ordering. Keep this
 low-volume administrative path out of high-frequency authorization checks.
 
 ```mermaid
@@ -125,7 +129,10 @@ sequenceDiagram
     O->>O: Verify password outside transaction
     O->>P: Acquire exclusive security fence
     P->>P: Recheck 60-second proof and current administrator
-    P->>P: Apply expected-revision operation and append audit
+    P->>P: Lock target and prepare expected-revision change
+    P->>P: Recheck authority before mutation
+    P->>P: Apply operation and verify expected actor state
+    P->>P: Append audit and recheck completion authority
     P-->>O: Commit acknowledgement or unknown outcome
 ```
 

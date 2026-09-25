@@ -102,9 +102,18 @@ pub(super) async fn recheck(
     tx: &mut Transaction<'_, Postgres>,
     c: &Candidate,
 ) -> Result<SessionView, AuthError> {
-    let row = sqlx::query("SELECT p.id, p.first_name FROM principals p JOIN credentials c ON c.principal_id=p.id AND c.kind='password' JOIN password_credentials pc ON pc.credential_id=c.id WHERE p.id=$1 AND c.id=$2 AND p.active AND NOT c.revoked AND p.credential_epoch=$3 AND pc.verifier=$4 AND NOT pg_is_in_recovery() FOR SHARE OF p,c,pc")
+    recheck_state(tx, c, true, c.epoch).await
+}
+/// Account completion can expect its own exact status/epoch transition.
+pub(super) async fn recheck_state(
+    tx: &mut Transaction<'_, Postgres>,
+    c: &Candidate,
+    active: bool,
+    epoch: u64,
+) -> Result<SessionView, AuthError> {
+    let row = sqlx::query("SELECT p.id, p.first_name FROM principals p JOIN credentials c ON c.principal_id=p.id AND c.kind='password' JOIN password_credentials pc ON pc.credential_id=c.id WHERE p.id=$1 AND c.id=$2 AND p.active=$5 AND NOT c.revoked AND p.credential_epoch=$3 AND pc.verifier=$4 AND NOT pg_is_in_recovery() FOR SHARE OF p,c,pc")
         .bind(Uuid::from_u128(c.principal.as_u128())).bind(Uuid::from_u128(c.credential.as_u128()))
-        .bind(i64::try_from(c.epoch).map_err(unavailable)?).bind(&c.verifier)
+        .bind(i64::try_from(epoch).map_err(unavailable)?).bind(&c.verifier).bind(active)
         .fetch_optional(&mut **tx).await.map_err(unavailable)?.ok_or(AuthError::Denied)?;
     view(&row)
 }

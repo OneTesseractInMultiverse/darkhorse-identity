@@ -3,7 +3,10 @@ use darkhorse_application::{
     operator_accounts::{CandidateAt, Store, Verified},
     registration::{ReadTarget, Record},
 };
-use darkhorse_domain::{identity::OperationId, operator_accounts::Error};
+use darkhorse_domain::{
+    identity::OperationId,
+    operator_accounts::{Error, needs_current_authority},
+};
 use sqlx::{Postgres, Transaction};
 use uuid::Uuid;
 
@@ -39,7 +42,7 @@ impl Store for CatalogDetails<'_> {
             &result,
         )
         .await?;
-        if matches!(result, Ok(_) | Err(Error::NotFound)) {
+        if needs_current_authority(&result) {
             operator_accounts::authority(&mut tx, &proof).await?;
         }
         tx.commit().await.map_err(|_| Error::Uncertain)?;

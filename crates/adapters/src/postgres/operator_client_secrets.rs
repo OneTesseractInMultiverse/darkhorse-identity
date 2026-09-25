@@ -10,7 +10,7 @@ use darkhorse_application::{
 };
 use darkhorse_domain::{
     identity::{ClientSecretId, OperationId},
-    operator_accounts::Error,
+    operator_accounts::{Error, needs_current_authority},
     operator_client_secrets::{Operation, Request, Target},
     registration::RegistrationError,
 };
@@ -55,7 +55,7 @@ impl ClientSecrets<'_> {
             &result,
         )
         .await?;
-        if result.is_ok() {
+        if needs_current_authority(&result) {
             operator_accounts::authority(&mut tx, &proof).await?;
         }
         tx.commit().await.map_err(|_| Error::Uncertain)?;

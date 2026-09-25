@@ -4,7 +4,10 @@ use darkhorse_application::{
     operator_accounts::{CandidateAt, Store, Verified},
 };
 use darkhorse_domain::{
-    AccountStatus, identity::OperationId, operator_accounts::Error, operator_directory::Request,
+    AccountStatus,
+    identity::OperationId,
+    operator_accounts::{Error, needs_current_authority},
+    operator_directory::Request,
 };
 use sqlx::{Postgres, Transaction};
 use uuid::Uuid;
@@ -41,6 +44,9 @@ impl Store for DirectoryReader<'_> {
             result.as_ref().ok(),
         )
         .await?;
+        if needs_current_authority(&result) {
+            operator_accounts::authority(&mut tx, &proof).await?;
+        }
         tx.commit().await.map_err(|_| Error::Uncertain)?;
         result
     }

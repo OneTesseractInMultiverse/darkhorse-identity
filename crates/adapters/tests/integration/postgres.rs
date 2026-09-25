@@ -500,6 +500,7 @@ mod media;
 
 mod limiter_activation;
 mod operator_accounts;
+mod operator_authority;
 mod readiness;
 
 mod signing_operations;
