@@ -758,7 +758,7 @@ async function archive() {
     ],
     captured,
   );
-  assert.equal(restored.stdout.trim(), "10|4|6|8|6|10");
+  assert.equal(restored.stdout.trim(), "14|20|6|8|6|10");
   console.log(
     "Cache degradation, restrictive limiter restart/recovery, database outage, durable restart and quarantined archive restore passed.",
   );

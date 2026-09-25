@@ -387,7 +387,7 @@ async fn catalog_cli_uses_current_admin_authority_runtime_grants_and_shared_logi
     assert_eq!(code, 0, "{value}");
     assert_eq!(value["data"]["items"][0]["id"], client.to_string());
     assert_eq!(value["data"]["items"][0].as_object().unwrap().len(), 5);
-    assert_eq!(sqlx::query_scalar::<_,i64>("SELECT count(*) FROM operator_catalog_audit WHERE result='read' AND database_role='darkhorse_runtime'").fetch_one(&f.pool).await.unwrap(),2);
+    assert_eq!(sqlx::query_scalar::<_,i64>("SELECT count(*) FROM operator_catalog_audit WHERE actor_id=$1 AND result='read' AND database_role='darkhorse_runtime'").bind(principal).fetch_one(&f.pool).await.unwrap(),2);
     let (code, value) = invoke(
         &["operator", "client", "list", &Uuid::new_v4().to_string()],
         input(),
@@ -965,4 +965,106 @@ async fn committed_secret_retirement_with_closed_output_is_not_repeated() {
         1
     );
     assert_eq!(sqlx::query_scalar::<_,i64>("SELECT count(*) FROM operator_client_secret_audit WHERE actor_id=$1 AND result='written'").bind(owner).fetch_one(&f.pool).await.unwrap(),1);
+}
+
+#[tokio::test]
+async fn access_catalog_cli_uses_restricted_grants_shared_admission_and_current_authority() {
+    let _serial = SERIAL.lock().await;
+    let f = Fixture::new().await;
+    f.activate().await;
+    restrict_database(&f).await;
+    let _other_administrator = actor(&f).await;
+    for kind in ["resource", "scope", "role", "capability"] {
+        let (principal, email) = actor(&f).await;
+        let app = Uuid::new_v4();
+        let resource = Uuid::new_v4();
+        let scope = Uuid::new_v4();
+        let role = Uuid::new_v4();
+        let capability = Uuid::new_v4();
+        sqlx::query(
+            "INSERT INTO applications(id,name,owner_id,active) VALUES($1,'Access fixture',$2,true)",
+        )
+        .bind(app)
+        .bind(principal)
+        .execute(&f.pool)
+        .await
+        .unwrap();
+        sqlx::query("INSERT INTO protected_resources(id,application_id,name,audience) VALUES($1,$2,'API',$3)").bind(resource).bind(app).bind(format!("urn:darkhorse:resource:{resource}")).execute(&f.pool).await.unwrap();
+        sqlx::query("INSERT INTO resource_scopes(id,application_id,resource_id,name) VALUES($1,$2,$3,'read')").bind(scope).bind(app).bind(resource).execute(&f.pool).await.unwrap();
+        sqlx::query("INSERT INTO roles(id,name) VALUES($1,$2)")
+            .bind(role)
+            .bind(format!("Role {role}"))
+            .execute(&f.pool)
+            .await
+            .unwrap();
+        sqlx::query("INSERT INTO capabilities(id,permission_key,meaning) VALUES($1,$2,'private-description-marker')").bind(capability).bind(format!("capability:{capability}")).execute(&f.pool).await.unwrap();
+        sqlx::query("INSERT INTO role_applications VALUES($1,$2)")
+            .bind(app)
+            .bind(role)
+            .execute(&f.pool)
+            .await
+            .unwrap();
+        sqlx::query("INSERT INTO capability_applications VALUES($1,$2)")
+            .bind(app)
+            .bind(capability)
+            .execute(&f.pool)
+            .await
+            .unwrap();
+        // No secret-table privileges are necessary for these catalogs.
+        sqlx::query("REVOKE SELECT ON oauth_client_secrets FROM darkhorse_runtime")
+            .execute(&f.pool)
+            .await
+            .unwrap();
+        let application = app.to_string();
+        let mut args = vec!["operator", kind, "list"];
+        if ["role", "capability"].contains(&kind) {
+            args.push("--application");
+        }
+        args.push(&application);
+        let input = || json!({"email":email,"password":PASSWORD});
+        let (code, value) = invoke(&args, input());
+        assert_eq!(code, 0, "{value}");
+        let expected = match kind {
+            "resource" => resource,
+            "scope" => scope,
+            "role" => role,
+            _ => capability,
+        };
+        assert_eq!(value["data"]["items"][0]["id"], expected.to_string());
+        assert!(!value.to_string().contains("private-description-marker"));
+        assert_eq!(value["data"]["items"].as_array().unwrap().len(), 1);
+        sqlx::query("REVOKE INSERT ON operator_catalog_audit FROM darkhorse_runtime")
+            .execute(&f.pool)
+            .await
+            .unwrap();
+        let (code, value) = invoke(&args, input());
+        assert_eq!(code, 1);
+        assert!(value["data"].get("items").is_none());
+        sqlx::query("GRANT INSERT ON operator_catalog_audit TO darkhorse_runtime")
+            .execute(&f.pool)
+            .await
+            .unwrap();
+        // A broken stdout follows a committed read audit, without retry.
+        assert_eq!(invoke_output("runtime", &args, input(), true).0, 74);
+        sqlx::query("DELETE FROM platform_administrators WHERE principal_id=$1")
+            .bind(principal)
+            .execute(&f.pool)
+            .await
+            .unwrap();
+        let (code, value) = invoke(&args, input());
+        assert_eq!(code, 1);
+        assert_eq!(
+            value["error"]["message"],
+            "Administrator authentication or authority denied."
+        );
+        assert_eq!(sqlx::query_scalar::<_,i64>("SELECT count(*) FROM operator_catalog_audit WHERE actor_id=$1 AND result='read' AND database_role='darkhorse_runtime'").bind(principal).fetch_one(&f.pool).await.unwrap(),2);
+        let admission = SharedLoginAdmission::new(f.limiter(), [7; 32]);
+        admission.admit(&email).await.unwrap();
+        let (_, value) = invoke(&args, input());
+        assert!(value["data"]["retry_after_ms"].as_u64().unwrap() > 0);
+        sqlx::query("GRANT SELECT ON oauth_client_secrets TO darkhorse_runtime")
+            .execute(&f.pool)
+            .await
+            .unwrap();
+    }
 }

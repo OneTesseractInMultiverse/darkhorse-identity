@@ -4,6 +4,24 @@ use crate::{admin_catalog::Query, identity::ApplicationId, operator_accounts::Er
 pub enum Target {
     Applications,
     Clients(ApplicationId),
+    Resources(ApplicationId),
+    Scopes(ApplicationId),
+    Capabilities(Definitions),
+    Roles(Definitions),
+}
+/// All definitions includes bound and unbound definitions; it is not a grant.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum Definitions {
+    Application(ApplicationId),
+    All,
+}
+impl Definitions {
+    pub fn application(self) -> Option<ApplicationId> {
+        match self {
+            Self::Application(id) => Some(id),
+            Self::All => None,
+        }
+    }
 }
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct Request {
@@ -13,7 +31,13 @@ pub struct Request {
 impl Request {
     pub fn new(target: Target, query: Query) -> Result<Self, Error> {
         query.validate().map_err(|_| Error::Invalid)?;
-        if query.limit > 25 {
+        if query.limit > 25
+            || (query.active.is_some()
+                && matches!(
+                    target,
+                    Target::Resources(_) | Target::Scopes(_) | Target::Roles(_)
+                ))
+        {
             return Err(Error::Invalid);
         }
         Ok(Self { target, query })

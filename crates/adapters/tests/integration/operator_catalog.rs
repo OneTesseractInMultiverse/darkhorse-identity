@@ -10,7 +10,7 @@ use darkhorse_domain::{
     operator_accounts::Error,
     operator_catalog::{Request, Target},
 };
-fn query() -> Query {
+pub(super) fn query() -> Query {
     Query {
         search: String::new(),
         active: None,
@@ -18,7 +18,7 @@ fn query() -> Query {
         limit: 25,
     }
 }
-async fn list(
+pub(super) async fn list(
     store: &impl Store<Request = Request, Outcome = Page>,
     email: &str,
     target: Target,

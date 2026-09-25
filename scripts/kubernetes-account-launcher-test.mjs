@@ -278,6 +278,57 @@ async function scenarios(script = "scripts/account.mjs") {
         !result.stdout.includes(marker) && !result.stderr.includes(marker),
       );
     }
+  if (catalog) {
+    for (const [target, all] of [
+      ["resource", false],
+      ["scope", false],
+      ["role", false],
+      ["capability", false],
+      ["role", true],
+      ["capability", true],
+    ]) {
+      await writeFile(events, "");
+      const result = await invoke(
+        "success",
+        {
+          ...settings,
+          CATALOG_TARGET: target,
+          CATALOG_APPLICATION_ID: all ? "" : settings.CATALOG_APPLICATION_ID,
+          CATALOG_ALL_DEFINITIONS: all ? "yes" : "",
+          CATALOG_SEARCH: "",
+        },
+        script,
+        "environment",
+      );
+      assert.equal(result.code, 0, result.stderr);
+      const calls = (await readFile(events, "utf8"))
+        .trim()
+        .split("\n")
+        .map((line) => JSON.parse(line));
+      const executions = calls.filter((c) => c.phase === "exec");
+      assert.equal(executions.length, 1);
+      const args = executions[0].args;
+      assert.deepEqual(args.slice(args.indexOf("operator")), [
+        "operator",
+        target,
+        "list",
+        ...(all
+          ? ["--all-definitions"]
+          : [
+              ...(["role", "capability"].includes(target)
+                ? ["--application"]
+                : []),
+              settings.CATALOG_APPLICATION_ID,
+            ]),
+        "--limit",
+        "25",
+      ]);
+      assert.equal(calls.filter((c) => c.phase === "delete").length, 1);
+      assert.ok(
+        !result.stdout.includes(marker) && !result.stderr.includes(marker),
+      );
+    }
+  }
   if (catalog)
     for (const operation of ["list", "retire"])
       for (const makeMode of ["environment", "arguments"]) {

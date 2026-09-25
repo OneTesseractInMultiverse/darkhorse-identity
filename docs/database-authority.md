@@ -187,3 +187,11 @@ Runtime receives explicit SELECT/INSERT and no update/delete/truncate privileges
 the nonowner operator receives no access. Refresh grants after the migration with
 serving stopped. The commands select lifecycle columns only, while the broader
 runtime role still needs verifier access for client authentication.
+
+## Access-catalog audit extension
+
+Migration `0031` extends the existing `operator_catalog_audit` constraints for
+[resource, scope, role and capability listing](operator-access-catalog.md). Historical
+rows and append-only enforcement are preserved. Runtime keeps its existing explicit
+SELECT/INSERT grants; the nonowner deployment operator receives no new authority.
+Apply the migration with serving stopped before using the new commands.

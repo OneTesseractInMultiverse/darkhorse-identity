@@ -70,6 +70,29 @@ fn project(target: Target, item: Item) -> Result<serde_json::Value, Error> {
                 "name":client.name,"active":client.active,"revision":client.revision.to_string()
             })
         }
+        (Target::Resources(application), Item::Resource(resource))
+            if resource.application == application =>
+        {
+            serde_json::json!({
+                "id":uuid::Uuid::from_u128(resource.id.as_u128()).to_string(),
+                "application_id":uuid::Uuid::from_u128(resource.application.as_u128()).to_string(),
+                "name":resource.name,"audience":resource.audience
+            })
+        }
+        (Target::Scopes(application), Item::Scope(scope)) if scope.application == application => {
+            serde_json::json!({
+                "id":uuid::Uuid::from_u128(scope.id.as_u128()).to_string(),
+                "application_id":uuid::Uuid::from_u128(scope.application.as_u128()).to_string(),
+                "resource_id":uuid::Uuid::from_u128(scope.resource.as_u128()).to_string(),"name":scope.name
+            })
+        }
+        (Target::Capabilities(_), Item::Capability(capability)) => serde_json::json!({
+            "id":uuid::Uuid::from_u128(capability.id.as_u128()).to_string(),
+            "key":capability.key,"retired":capability.retired
+        }),
+        (Target::Roles(_), Item::Role(role)) => serde_json::json!({
+            "id":uuid::Uuid::from_u128(role.id.as_u128()).to_string(),"name":role.name
+        }),
         _ => return Err(Error::Unavailable),
     })
 }

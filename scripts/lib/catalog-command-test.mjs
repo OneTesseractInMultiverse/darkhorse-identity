@@ -1,3 +1,4 @@
+import { accessCatalogCommands } from "./access-catalog-command-test.mjs";
 import { clientSecretCommands } from "./client-secret-command-test.mjs";
 import { applicationCommands } from "./application-command-test.mjs";
 import { clientCommands } from "./client-command-test.mjs";
@@ -100,6 +101,7 @@ COMMIT;`);
       "1",
     );
   }
+  await accessCatalogCommands(invoke, sql, source, password, app);
   await clientCommands(invoke, sql, source, password, app);
   await clientSecretCommands(invoke, sql, source, password, app);
   await sql(
@@ -138,6 +140,7 @@ async function catalogCommand(command, target, settings, input) {
       ACCOUNT_STATUS: "",
       ACCOUNT_AFTER: "",
       ACCOUNT_LIMIT: "",
+      CATALOG_ALL_DEFINITIONS: "",
       CATALOG_TARGET: "",
       CATALOG_OPERATION: "list",
       CATALOG_APPLICATION_ID: "",

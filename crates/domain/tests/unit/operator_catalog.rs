@@ -57,3 +57,30 @@ fn catalog_pages_preserve_typed_target_and_validate_all_query_bounds() {
         .is_ok()
     );
 }
+
+#[test]
+fn access_catalog_selection_and_status_are_explicit() {
+    let app = ApplicationId::from_u128(7).unwrap();
+    for target in [
+        Target::Resources(app),
+        Target::Scopes(app),
+        Target::Roles(Definitions::Application(app)),
+        Target::Roles(Definitions::All),
+        Target::Capabilities(Definitions::Application(app)),
+        Target::Capabilities(Definitions::All),
+    ] {
+        for active in [None, Some(true), Some(false)] {
+            let query = Query {
+                search: "audit%_\\marker".into(),
+                active,
+                after: None,
+                limit: 25,
+            };
+            let expected = active.is_none() || matches!(target, Target::Capabilities(_));
+            assert_eq!(Request::new(target, query.clone()).is_ok(), expected);
+            if expected {
+                assert_eq!(Request::new(target, query.clone()).unwrap().query(), &query);
+            }
+        }
+    }
+}

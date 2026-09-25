@@ -506,3 +506,45 @@ fn client_secret_inventory_and_retirement_are_scoped_and_have_distinct_confirmat
         .is_err()
     );
 }
+
+#[test]
+fn access_lists_require_explicit_scope_and_reject_irrelevant_selectors() {
+    let app = "00000000-0000-0000-0000-000000000001";
+    for kind in ["resource", "scope", "role", "capability"] {
+        let scope = if ["resource", "scope"].contains(&kind) {
+            vec![app]
+        } else {
+            vec!["--application", app]
+        };
+        let mut args = vec!["--auth-stdin", "--output", "json", "operator", kind, "list"];
+        args.extend(scope);
+        assert!(matches!(run(&args).command, Command::Catalog(_)));
+        args.extend(["--limit", "26"]);
+        assert!(parse(&args).is_err());
+        assert!(parse(&["operator", kind, "list"]).is_err());
+        if kind != "capability" {
+            let mut args = vec!["operator", kind, "list"];
+            args.extend(if kind == "role" {
+                vec!["--all-definitions"]
+            } else {
+                vec![app]
+            });
+            args.extend(["--status", "active"]);
+            assert!(parse(&args).is_err());
+        }
+    }
+    for kind in ["role", "capability"] {
+        assert!(parse(&["operator", kind, "list", "--all-definitions"]).is_ok());
+        assert!(
+            parse(&[
+                "operator",
+                kind,
+                "list",
+                "--all-definitions",
+                "--application",
+                app
+            ])
+            .is_err()
+        );
+    }
+}

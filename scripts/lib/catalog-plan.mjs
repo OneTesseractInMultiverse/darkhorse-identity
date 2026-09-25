@@ -1,3 +1,4 @@
+import { accessCatalogOptions } from "./access-catalog-plan.mjs";
 import { clientSecretOptions } from "./client-secret-plan.mjs";
 import {
   UsageError,
@@ -14,7 +15,15 @@ export function catalogOptions(values, stdinIsTTY) {
   const target = values.CATALOG_TARGET,
     operation = values.CATALOG_OPERATION || "list";
   if (
-    !["application", "client", "client-secret"].includes(target) ||
+    ![
+      "application",
+      "client",
+      "client-secret",
+      "resource",
+      "scope",
+      "role",
+      "capability",
+    ].includes(target) ||
     !["list", "show", "create", "update", "retire"].includes(operation) ||
     [
       "ACCOUNT_OPERATION",
@@ -28,6 +37,9 @@ export function catalogOptions(values, stdinIsTTY) {
     ].some((key) => Boolean(values[key]))
   )
     throw invalid();
+  if (["resource", "scope", "role", "capability"].includes(target))
+    return accessCatalogOptions(values, target, operation);
+  if (values.CATALOG_ALL_DEFINITIONS) throw invalid();
   if (target === "client-secret") return clientSecretOptions(values, operation);
   if (operation === "retire" || values.CATALOG_SECRET_ID) throw invalid();
   if (target === "client" && ["create", "update"].includes(operation))

@@ -97,6 +97,72 @@ cargo install cargo-mutants --version 27.1.0 --locked
 Mutation targets run an unmodified baseline first, then test selected source mutations.
 A missed mutation requires investigation. A passing coverage percentage cannot clear it.
 
+## Authenticated CLI access-catalog listing
+
+The next increment in [#26](https://github.com/OneTesseractInMultiverse/darkhorse-identity/issues/26)
+adds resource/scope lists within an application and role/capability lists with an
+explicit application or all-definitions selection. On **2026-09-24**, `make ci`
+passed **614 isolated tests**: 214 adapters, 35 application, 111 domain, 143 frontend,
+and 111 tooling tests, together with formatting, strict linting, type and architecture
+checks and release/static builds. Tests cover invalid or ambiguous selection,
+unsupported status filters, bounded pages, terminal escaping and metadata-only output.
+
+The combined instrumented suites passed **239 PostgreSQL**, **5 Redis infrastructure**
+and **30 limiter/native operator** cases. The separately invoked process-worker entry
+remains intentionally ignored in the ordinary test enumeration. Native commands
+succeed with client-secret SELECT revoked, require read-audit INSERT, deny demoted
+application owners, share HTTP login admission and return exit `74` after a committed
+read audit when stdout is closed. No command retries automatically.
+
+PostgreSQL cases compare all six selections with the console's existing queries,
+walk multiple bounded pages, distinguish bound, foreign and unbound definitions,
+escape literal searches, filter retirement state and observe committed binding
+removal. Missing targets, audit refusal/suppression and an actually lost commit reply
+release no page. A regression case removes administrator membership during audit
+insertion and verifies rollback before output for all catalogs, including existing
+application/client lists. Migration `0031` preserves a historical ledger row,
+retains append-only enforcement and rejects incoherent command/selector combinations.
+Migration interruption/receipt expectations include the new step.
+
+CLI terminal, launcher subprocess and release-tooling checks passed. Documentation
+checks resolved **455 local links** and rendered **42 Mermaid diagrams**; the new
+selection diagram was inspected. The focused Node unit report records 100% lines,
+branches and functions for `access-catalog-plan.mjs`, `catalog-plan.mjs` and
+`operator-options.mjs`. Transport, filesystem and orchestration effects are outside
+that isolated Node report.
+
+The rebuilt image passed full Compose and Kubernetes 1.36.4 qualification. All four
+catalog Make targets exercised the six new selections, metadata fields, runtime-role
+audits and demotion; one-shot commands succeeded with HTTP stopped. Compose's
+quarantined restore retained 14 fixture principals and 20 catalog, 6 detail,
+8 application, 6 client and 10 client-secret audit records. The Kubernetes run also
+passed replicated OIDC, primary/limiter outages, rolling replacement, 18 fresh-Pod
+backend denials with positive controls, and conditional cleanup. These local
+fixtures do not establish production capacity, multi-host fault tolerance or
+independent release/security qualification. The 792-file source archive also
+passed its inventory/private-path checks.
+
+The unchanged **100% combined Rust line gate fails**: measured scope is
+**16,128/16,960 lines (95.09%)**, **2,251/2,326 functions (96.78%)**, and
+**26,736/29,779 regions (89.78%)**. The report combines unit, PostgreSQL, Redis and
+instrumented native-command execution; entrypoints and unexecuted coordination
+remain in the denominator. Stable Rust reports no branch coverage here. The
+initial native fixture used an incorrect secret-table name; it was corrected and
+the full Redis/native suite rerun before reporting these results.
+
+| Rust module                        | Lines   | Functions | Regions |
+| ---------------------------------- | ------- | --------- | ------- |
+| Domain catalog request/selection   | 21/21   | 4/4       | 26/26   |
+| CLI catalog projection/coordinator | 91/91   | 11/11     | 184/187 |
+| PostgreSQL catalog read/audit      | 119/121 | 23/23     | 220/231 |
+| Shared CLI translation             | 196/200 | 15/15     | 232/237 |
+
+These are combined module results, not claims of complete isolated unit or branch
+coverage. Client creation, secret delivery/recovery, access-catalog detail/write and
+binding commands, delegated management permissions and broader load/security
+qualification remain open. See [access-catalog commands](operator-access-catalog.md)
+for the supported interface and failure contract.
+
 ## Authenticated CLI client-secret inventory and retirement
 
 The next [#26](https://github.com/OneTesseractInMultiverse/darkhorse-identity/issues/26)

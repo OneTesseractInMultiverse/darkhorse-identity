@@ -38,6 +38,7 @@ export function listingOptions({
 }
 export function hasCatalogSelectors(values) {
   return [
+    "CATALOG_ALL_DEFINITIONS",
     "CATALOG_TARGET",
     "CATALOG_OPERATION",
     "CATALOG_APPLICATION_ID",

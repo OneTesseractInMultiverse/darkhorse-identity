@@ -48,6 +48,14 @@ pub(super) enum Operator {
     #[command(subcommand)]
     Client(Client),
     #[command(subcommand)]
+    Resource(ApplicationCatalog),
+    #[command(subcommand)]
+    Scope(ApplicationCatalog),
+    #[command(subcommand)]
+    Role(DefinitionCatalog),
+    #[command(subcommand)]
+    Capability(DefinitionCatalog),
+    #[command(subcommand)]
     Signing(Signing),
     #[command(subcommand)]
     Limiter(Limiter),
@@ -259,6 +267,7 @@ pub(super) enum Client {
 pub(super) struct CatalogList {
     #[arg(long, default_value = "")]
     pub search: String,
+    /// Lifecycle filter for application/client/capability lists; rejected for other catalogs.
     #[arg(long, value_enum)]
     pub status: Option<Status>,
     #[arg(long, value_parser=catalog_cursor)]
@@ -301,4 +310,35 @@ pub(super) struct SecretTarget {
     pub application: darkhorse_domain::identity::ApplicationId,
     #[arg(value_parser=crate::operator::command::client_identifier)]
     pub client: darkhorse_domain::identity::ClientId,
+}
+
+#[derive(Subcommand)]
+pub(super) enum ApplicationCatalog {
+    /// Read one page within the explicitly selected application.
+    List {
+        #[arg(value_parser=crate::operator::command::application_identifier)]
+        application: darkhorse_domain::identity::ApplicationId,
+        #[command(flatten)]
+        query: CatalogList,
+    },
+}
+#[derive(Subcommand)]
+pub(super) enum DefinitionCatalog {
+    /// Read application-bound definitions or explicitly select all definitions; neither implies a grant.
+    List {
+        #[command(flatten)]
+        selection: DefinitionSelection,
+        #[command(flatten)]
+        query: CatalogList,
+    },
+}
+#[derive(Args)]
+#[group(required = true, multiple = false)]
+pub(super) struct DefinitionSelection {
+    /// Select definitions explicitly bound to this application.
+    #[arg(long,value_parser=crate::operator::command::application_identifier)]
+    pub application: Option<darkhorse_domain::identity::ApplicationId>,
+    /// Include every bound and unbound definition.
+    #[arg(long)]
+    pub all_definitions: bool,
 }

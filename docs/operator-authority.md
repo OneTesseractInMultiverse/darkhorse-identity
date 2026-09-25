@@ -36,6 +36,7 @@ or service connections.
 | `operator limiter activate`                                         | Database and Redis recovery credential                                                                                     | Durable intent, Redis effect, atomic completion receipt                                  |
 | `operator limiter inspect OPERATION_ID`                             | Operator journal read privileges                                                                                           | Read-only primary snapshot, no Redis dependency                                          |
 | `operator redis status`                                             | Cache and limiter diagnostic credentials                                                                                   | Reachability and configuration, no admission decision                                    |
+| `operator resource/scope/role/capability list`                      | Runtime database, active limiter and fresh current-administrator password                                                  | Explicit selection, primary shared fence and read audit before bounded metadata output   |
 
 Signing mutations record [durable intent and completion](signing-operations.md).
 Provider binding, revision checks, lifecycle audit, and receipt share the mutation

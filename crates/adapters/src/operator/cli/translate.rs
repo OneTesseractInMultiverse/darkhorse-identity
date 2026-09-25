@@ -39,6 +39,22 @@ pub(super) fn invocation(options: Options) -> Result<Invocation, Failure> {
 }
 fn operator(value: Operator) -> Result<Command, Failure> {
     Ok(match value {
+        Operator::Resource(ApplicationCatalog::List { application, query }) => catalog(
+            darkhorse_domain::operator_catalog::Target::Resources(application),
+            query,
+        )?,
+        Operator::Scope(ApplicationCatalog::List { application, query }) => catalog(
+            darkhorse_domain::operator_catalog::Target::Scopes(application),
+            query,
+        )?,
+        Operator::Role(DefinitionCatalog::List { selection, query }) => catalog(
+            darkhorse_domain::operator_catalog::Target::Roles(definitions(selection)),
+            query,
+        )?,
+        Operator::Capability(DefinitionCatalog::List { selection, query }) => catalog(
+            darkhorse_domain::operator_catalog::Target::Capabilities(definitions(selection)),
+            query,
+        )?,
         Operator::Client(Client::Secret(value)) => secret(value),
         Operator::Client(Client::Update {
             application,
@@ -208,5 +224,13 @@ fn secret(value: ClientSecret) -> Command {
             client: target.client,
         },
         operation,
+    }
+}
+
+fn definitions(selection: DefinitionSelection) -> darkhorse_domain::operator_catalog::Definitions {
+    use darkhorse_domain::operator_catalog::Definitions;
+    match selection.application {
+        Some(id) => Definitions::Application(id),
+        None => Definitions::All,
     }
 }

@@ -37,34 +37,36 @@ settings, prompting or connecting to services. Operator dispatch starts no HTTP
 listener or unrelated server worker. Output is always uncolored. `--no-color`
 is accepted. Neither `NO_COLOR` nor any terminal setting activates color.
 
-| Canonical command                                                                            | Compatibility spelling                                |
-| -------------------------------------------------------------------------------------------- | ----------------------------------------------------- |
-| `operator migrate`                                                                           | `migrate`                                             |
-| `operator migrate inspect OPERATION_ID`                                                      | None                                                  |
-| `operator bootstrap [--stdin]`                                                               | `bootstrap [--stdin]`                                 |
-| `operator account list [--search PREFIX] [--status STATUS] [--after UUID] [--limit N]`       | None                                                  |
-| `operator application list [OPTIONS]`                                                        | None                                                  |
-| `operator client list APPLICATION_ID [OPTIONS]`                                              | None                                                  |
-| `operator application show APPLICATION_ID`                                                   | None                                                  |
-| `operator client show APPLICATION_ID CLIENT_ID`                                              | None                                                  |
-| `operator application create --name NAME --owner ID --status STATUS`                         | None                                                  |
-| `operator application update APPLICATION_ID REVISION --name NAME --owner ID --status STATUS` | None                                                  |
-| `operator client update APPLICATION_ID CLIENT_ID REVISION`                                   | None                                                  |
-| `operator client secret list APPLICATION_ID CLIENT_ID [--after UUID] [--limit N]`            | None                                                  |
-| `operator client secret retire APPLICATION_ID CLIENT_ID SECRET_ID REVISION`                  | None                                                  |
-| `operator account show ID`                                                                   | `account ID`                                          |
-| `operator account deactivate ID REVISION`                                                    | `deactivate ID REVISION`                              |
-| `operator account reactivate ID REVISION`                                                    | `reactivate ID REVISION`                              |
-| `operator account revoke-all ID REVISION`                                                    | `revoke-all ID REVISION`                              |
-| `operator signing status`                                                                    | `signing-status`                                      |
-| `operator signing generate REVISION`                                                         | `signing-generate REVISION`                           |
-| `operator signing import --stdin REVISION`                                                   | `signing-import --stdin REVISION`                     |
-| `operator signing activate KID REVISION`                                                     | `signing-activate KID REVISION`                       |
-| `operator signing retire KID REVISION`                                                       | `signing-retire KID REVISION`                         |
-| `operator signing inspect OPERATION_ID`                                                      | None                                                  |
-| `operator limiter status/fence/activate`                                                     | `limiter-status`, `limiter-fence`, `limiter-activate` |
-| `operator limiter inspect OPERATION_ID`                                                      | None                                                  |
-| `operator redis status`                                                                      | `redis-status`                                        |
+| Canonical command                                                                                | Compatibility spelling                                |
+| ------------------------------------------------------------------------------------------------ | ----------------------------------------------------- |
+| `operator migrate`                                                                               | `migrate`                                             |
+| `operator migrate inspect OPERATION_ID`                                                          | None                                                  |
+| `operator bootstrap [--stdin]`                                                                   | `bootstrap [--stdin]`                                 |
+| `operator account list [--search PREFIX] [--status STATUS] [--after UUID] [--limit N]`           | None                                                  |
+| `operator application list [OPTIONS]`                                                            | None                                                  |
+| `operator client list APPLICATION_ID [OPTIONS]`                                                  | None                                                  |
+| `operator application show APPLICATION_ID`                                                       | None                                                  |
+| `operator client show APPLICATION_ID CLIENT_ID`                                                  | None                                                  |
+| `operator application create --name NAME --owner ID --status STATUS`                             | None                                                  |
+| `operator application update APPLICATION_ID REVISION --name NAME --owner ID --status STATUS`     | None                                                  |
+| `operator client update APPLICATION_ID CLIENT_ID REVISION`                                       | None                                                  |
+| `operator client secret list APPLICATION_ID CLIENT_ID [--after UUID] [--limit N]`                | None                                                  |
+| `operator client secret retire APPLICATION_ID CLIENT_ID SECRET_ID REVISION`                      | None                                                  |
+| `operator account show ID`                                                                       | `account ID`                                          |
+| `operator account deactivate ID REVISION`                                                        | `deactivate ID REVISION`                              |
+| `operator account reactivate ID REVISION`                                                        | `reactivate ID REVISION`                              |
+| `operator account revoke-all ID REVISION`                                                        | `revoke-all ID REVISION`                              |
+| `operator signing status`                                                                        | `signing-status`                                      |
+| `operator signing generate REVISION`                                                             | `signing-generate REVISION`                           |
+| `operator signing import --stdin REVISION`                                                       | `signing-import --stdin REVISION`                     |
+| `operator signing activate KID REVISION`                                                         | `signing-activate KID REVISION`                       |
+| `operator signing retire KID REVISION`                                                           | `signing-retire KID REVISION`                         |
+| `operator signing inspect OPERATION_ID`                                                          | None                                                  |
+| `operator limiter status/fence/activate`                                                         | `limiter-status`, `limiter-fence`, `limiter-activate` |
+| `operator limiter inspect OPERATION_ID`                                                          | None                                                  |
+| `operator redis status`                                                                          | `redis-status`                                        |
+| `operator resource list APPLICATION_ID` / `operator scope list APPLICATION_ID`                   | None                                                  |
+| `operator role list` / `operator capability list` with `--application ID` or `--all-definitions` | None                                                  |
 
 `ID` is a nonzero principal UUID, `KID` a public URL-safe unpadded 32-byte key ID,
 and `REVISION` a nonnegative integer no larger than PostgreSQL's signed bigint.
@@ -80,6 +82,8 @@ each page. See [listing fields, filters and audit](operator-accounts.md#bounded-
 Application and client `list` and `show` use fresh administrator authentication.
 Listing accepts bounded catalog filters; detail reads require explicit scoped UUIDs
 and exclude client credential metadata. See [catalog read commands](operator-catalog.md).
+[Access-catalog lists](operator-access-catalog.md) require explicit application or
+all-definition selection and return bounded resource, scope, role and capability metadata.
 Application `create` and `update` require a complete specification, confirmation
 and a protected reason. See [application writes](operator-applications.md).
 Client `update` requires a complete 32 KiB protected configuration document,

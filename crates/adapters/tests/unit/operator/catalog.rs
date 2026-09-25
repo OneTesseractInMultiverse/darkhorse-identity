@@ -117,3 +117,71 @@ fn mismatched_types_and_foreign_clients_are_not_projected() {
         }
     }
 }
+
+#[test]
+fn access_pages_use_bounded_metadata_projections_and_reject_foreign_records() {
+    use darkhorse_application::{
+        admin_catalog::CapabilitySummary,
+        registration::{ResourceRecord, ScopeRecord},
+    };
+    use darkhorse_domain::{
+        identity::{CapabilityId, ResourceId, ScopeId},
+        operator_catalog::Definitions,
+    };
+    let app = application().id;
+    let resource = ResourceRecord {
+        id: ResourceId::from_u128(3).unwrap(),
+        application: app,
+        name: "\u{202e}".repeat(100),
+        audience: "urn:darkhorse:resource:00000000-0000-0000-0000-000000000003".into(),
+    };
+    let scope = ScopeRecord {
+        id: ScopeId::from_u128(4).unwrap(),
+        application: app,
+        resource: resource.id,
+        name: "x".repeat(100),
+    };
+    for (target, item, fields) in [
+        (Target::Resources(app), Item::Resource(resource.clone()), 4),
+        (Target::Scopes(app), Item::Scope(scope.clone()), 4),
+        (
+            Target::Roles(Definitions::All),
+            Item::Role(RoleSummary {
+                id: RoleId::from_u128(5).unwrap(),
+                name: "\u{202e}".repeat(100),
+            }),
+            2,
+        ),
+        (
+            Target::Capabilities(Definitions::Application(app)),
+            Item::Capability(CapabilitySummary {
+                id: CapabilityId::from_u128(6).unwrap(),
+                key: "x".repeat(200),
+                meaning: "private-description-marker".repeat(1000),
+                retired: true,
+            }),
+            3,
+        ),
+    ] {
+        let record = output(
+            OperationId::from_u128(1).unwrap(),
+            target,
+            Page {
+                items: vec![item; 25],
+                next: None,
+                policy_revision: 0,
+            },
+        )
+        .unwrap();
+        assert_eq!(record.data["items"][0].as_object().unwrap().len(), fields);
+        for format in [Format::Human, Format::Json] {
+            let bytes = render(&record, format).unwrap();
+            assert!(bytes.len() < OUTPUT_LIMIT);
+            let text = String::from_utf8(bytes).unwrap();
+            assert!(!text.contains('\u{202e}') && !text.contains("private-description-marker"));
+        }
+    }
+    let foreign = ApplicationId::from_u128(9).unwrap();
+    assert!(project(Target::Resources(foreign), Item::Resource(resource)).is_err());
+    assert!(project(Target::Scopes(foreign), Item::Scope(scope)).is_err());
+}

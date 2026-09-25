@@ -43,6 +43,9 @@ impl Store for CatalogReader<'_> {
             &result,
         )
         .await?;
+        if result.is_ok() {
+            operator_accounts::authority(&mut tx, &proof).await?;
+        }
         tx.commit().await.map_err(|_| Error::Uncertain)?;
         result
     }
@@ -54,10 +57,7 @@ async fn read(
     operator_accounts::authority(tx, proof).await?;
     let page = admin_catalog::list_current(
         tx,
-        match proof.request().target() {
-            Target::Applications => darkhorse_application::admin_catalog::List::Applications,
-            Target::Clients(id) => darkhorse_application::admin_catalog::List::Clients(id),
-        },
+        selection(proof.request().target()),
         proof.request().query(),
     )
     .await
@@ -77,10 +77,7 @@ async fn audit(
 ) -> Result<(), Error> {
     let now = sessions::now(tx).await.map_err(storage)?;
     let query = request.query();
-    let (command, application) = match request.target() {
-        Target::Applications => ("application.list", None),
-        Target::Clients(id) => ("client.list", Some(Uuid::from_u128(id.as_u128()))),
-    };
+    let (command, application) = audit_target(request.target());
     let inserted = sqlx::query("INSERT INTO operator_catalog_audit(operation_id,command,application_id,actor_id,actor_credential_id,actor_epoch,authentication_observed_ms,query_limit,active_filter,after_id,searched,result,returned_count,occurred_ms) VALUES($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14)")
         .bind(Uuid::from_u128(id.as_u128())).bind(command).bind(application)
         .bind(actor.map(|a| Uuid::from_u128(a.credential.principal.as_u128())))
@@ -102,3 +99,42 @@ async fn audit(
 fn storage<T>(_: T) -> Error {
     Error::Unavailable
 }
+
+fn selection(target: Target) -> darkhorse_application::admin_catalog::List {
+    match target {
+        Target::Applications => darkhorse_application::admin_catalog::List::Applications,
+        Target::Clients(id) => darkhorse_application::admin_catalog::List::Clients(id),
+        Target::Resources(id) => darkhorse_application::admin_catalog::List::Resources(id),
+        Target::Scopes(id) => darkhorse_application::admin_catalog::List::Scopes(id),
+        Target::Capabilities(selection) => {
+            darkhorse_application::admin_catalog::List::Capabilities(selection.application())
+        }
+        Target::Roles(selection) => {
+            darkhorse_application::admin_catalog::List::Roles(selection.application())
+        }
+    }
+}
+fn audit_target(target: Target) -> (&'static str, Option<Uuid>) {
+    match target {
+        Target::Applications => ("application.list", None),
+        Target::Clients(id) => ("client.list", Some(Uuid::from_u128(id.as_u128()))),
+        Target::Resources(id) => ("resource.list", Some(Uuid::from_u128(id.as_u128()))),
+        Target::Scopes(id) => ("scope.list", Some(Uuid::from_u128(id.as_u128()))),
+        Target::Capabilities(selection) => (
+            "capability.list",
+            selection
+                .application()
+                .map(|id| Uuid::from_u128(id.as_u128())),
+        ),
+        Target::Roles(selection) => (
+            "role.list",
+            selection
+                .application()
+                .map(|id| Uuid::from_u128(id.as_u128())),
+        ),
+    }
+}
+
+#[cfg(test)]
+#[path = "../../tests/unit/postgres/operator_catalog.rs"]
+mod tests;
