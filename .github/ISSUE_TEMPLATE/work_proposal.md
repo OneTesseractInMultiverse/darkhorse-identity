@@ -24,6 +24,10 @@ List the proposed changes and explicit boundaries. Include security, protocol, a
 
 Describe the success and failure evidence needed. Keep unit tests self-contained and identify any integration or performance checks.
 
+## Security and performance impact
+
+Identify affected authority, disclosure, resource limits and failure behavior. For a performance proposal, distinguish the hypothesis from measured results and describe a comparable baseline with unchanged security controls. State priority, known limits and the evidence needed before claiming completion. Follow SECURITY.md for sensitive findings.
+
 ## Dependencies and related work
 
 Link related issues and pull requests. Break large proposals into independently reviewable increments.

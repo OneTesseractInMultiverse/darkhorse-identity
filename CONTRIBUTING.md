@@ -49,6 +49,8 @@ Integration and browser prerequisites are documented in the [persistence](docs/p
 
 Include actual commands and results, including failures and skipped checks. Existing coverage qualification gaps are tracked in [issue #2](https://github.com/OneTesseractInMultiverse/darkhorse-identity/issues/2). Do not lower gates or describe a partial report as complete. Reviewers must assess affected uncovered paths and any regression before merging.
 
+Review security and performance in every increment using the [continuing review rules](docs/engineering.md#continuing-security-and-performance-review). Explain the impact and use evidence appropriate to the change. Query, lock, cache and concurrency optimizations require a comparable baseline with equivalent security controls; documentation-only changes need no runtime benchmark. Reuse existing issues for gaps, or open a focused, linked follow-up with priority and testable completion criteria. Keep sensitive findings in the [private reporting channel](SECURITY.md#report-a-vulnerability-privately).
+
 ## Commit and open a pull request
 
 Use your own Git author identity and a concise subject describing the change. Every commit must reference the owning issue, normally in the body:

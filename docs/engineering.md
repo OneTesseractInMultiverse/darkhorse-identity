@@ -91,6 +91,47 @@ Describe unknown outcomes explicitly. A failed transport or output stream can fo
 a committed mutation. Automatic retry requires a proven idempotency contract.
 External service calls need defined reconciliation or cleanup behavior.
 
+## Continuing security and performance review
+
+Every increment records its security and performance impact in the owning issue
+and pull request. Identify the affected runtime paths and the evidence needed
+before implementation. Documentation-only changes can state that they affect no
+runtime behavior; other changes explain why existing evidence is sufficient or
+which boundary checks and measurements must be repeated.
+
+Review authority and data disclosure across the complete operation: input,
+admission, lock waits, authoritative reads, mutations, audit, commit and output.
+Include state-dependent errors, proof expiry and intentional self-revocation.
+Check input and work bounds, secret exposure, dependency failure and uncertain
+outcomes. Newly suspected vulnerabilities follow the
+[private reporting policy](../SECURITY.md); public work items contain only suitable
+planning and qualification details.
+
+For changes to frequently used paths, queries, locks, indexes, worker concurrency,
+caches or dependency behavior, state a performance hypothesis and compare a
+reproducible baseline. Record source and dependency versions, topology, population,
+arrival pattern and protection settings. Inspect useful throughput, scheduled
+latency percentiles, failures and dropped work alongside the relevant CPU, memory,
+database, Redis and queue costs. A bounded result set does not prove bounded scan
+work. Use query plans and contention evidence where appropriate. Small fixtures
+and hosted CI duration do not establish production capacity.
+
+An optimization must preserve coherent primary reads, post-commit revocation,
+credential and scope boundaries, shared admission, required audit, and conservative
+failure behavior. Do not bypass these controls in the comparison or cache positive
+authorization decisions. Enable computation caching only after equivalent-security
+measurements demonstrate a useful gain. Keep unknown workload budgets explicit.
+The [performance guide](performance.md) defines the available measurement tools
+and their limits.
+
+Search the backlog when a review finds a gap. Reuse the owning issue or create a
+focused follow-up with evidence, priority, dependencies and observable completion
+criteria. Distinguish a confirmed defect from an optimization hypothesis or missing
+qualification. Link follow-ups from their parent issues, record what remains, and
+repeat the affected review after material schema, workload, dependency or
+deployment changes and before release claims. Passing coverage alone clears none
+of these requirements.
+
 ## Coverage and qualification
 
 The target remains 100% of authored executable logic. Coverage demonstrates
