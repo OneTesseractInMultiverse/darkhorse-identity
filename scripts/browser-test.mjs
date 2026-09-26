@@ -22,6 +22,7 @@ import { objectService } from "./lib/objects-test-service.mjs";
 import { verifyProfiles } from "./lib/profiles-browser.mjs";
 import { verifyDirectory } from "./lib/admin-directory-browser.mjs";
 import { verifySessionManagement } from "./lib/sessions-browser.mjs";
+import { verifyAccountOverview } from "./lib/account-overview-browser.mjs";
 
 async function freePort() {
   const server = createServer();
@@ -371,6 +372,7 @@ async function verifySignIn(page, context, origin, password) {
   await page.getByLabel("Password", { exact: true }).fill(password);
   await page.getByRole("button", { name: "Sign in", exact: true }).click();
   await page.getByRole("heading", { name: "Welcome, Browser." }).waitFor();
+  await verifyAccountOverview(page);
   const initial = (await context.cookies()).find(
     (c) => c.name === "__Host-darkhorse",
   );

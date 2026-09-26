@@ -6,6 +6,13 @@ See [development](development.md) for database, migration, bootstrap, Redis,
 and HTTPS setup. Only a currently active platform administrator can read or
 change the directory. The static page and its navigation carry no authority.
 
+Successful sign-in opens a wide account overview with a prominent **Open console**
+action and separate cards for profile, sessions, personal API keys, and email
+verification. The cards include brief descriptions and adapt to a single column
+on narrow screens. **Sign out** remains available in the overview header. The
+console entry identifies its platform-administrator requirement; displaying that
+link grants no authority. Embedded sign-in forms retain their compact layout.
+
 ## Workflows
 
 The console uses a top navigation bar, a left menu, dark surfaces, restrained

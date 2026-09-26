@@ -58,7 +58,7 @@ it('restores a session and keeps it visible if logout fails', async () => {
 	const p = props();
 	p.checkSession.mockResolvedValue({ kind: 'signed-in', name: 'Ada' });
 	p.signOut.mockResolvedValue(false);
-	render(LoginPanel, p);
+	render(LoginPanel, { ...p, showSecurityLink: true });
 	await fireEvent.click(await screen.findByRole('button', { name: 'Sign out' }));
 	expect(await screen.findByRole('alert')).toHaveTextContent('Sign out could not be confirmed');
 	expect(screen.getByRole('heading', { name: 'Welcome, Ada.' })).toBeInTheDocument();

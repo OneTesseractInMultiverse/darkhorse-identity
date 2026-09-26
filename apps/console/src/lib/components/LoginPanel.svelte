@@ -1,7 +1,7 @@
 <script lang="ts">
 	import { onMount, tick } from 'svelte';
-	import { resolve } from '$app/paths';
 	import { Button } from '$lib/components/ui/button';
+	import AccountOverview from './AccountOverview.svelte';
 	import type { AuthState } from '$lib/authentication';
 	let {
 		signIn,
@@ -57,75 +57,64 @@
 	}
 </script>
 
-<section class="glass login-panel" aria-labelledby="login-title" aria-busy={pending}>
-	<div class="panel-top">
-		<span><span class="dot"></span> SECURE ACCESS</span><span>IDENTITY / 01</span>
-	</div>
-	<div class="panel-body">
-		<span class="eyebrow">YOUR ORGANIZATION. ONE IDENTITY.</span>
-		{#if account.kind === 'signed-in'}
-			<h1 id="login-title">Welcome, {account.name}.</h1>
-			<p class="intro">You're signed in to Darkhorse.</p>
-			{#if showSecurityLink}<a
-					href={resolve('/account/profile')}
-					class="mb-4 block text-primary underline underline-offset-4">My profile</a
-				><a
-					href={resolve('/console/users')}
-					class="mb-4 block text-primary underline underline-offset-4">Open console</a
-				><a href={resolve('/security/sessions')} class="text-primary underline underline-offset-4"
-					>Manage sessions</a
+{#if account.kind === 'signed-in' && showSecurityLink}
+	<AccountOverview name={account.name} {pending} {error} signOut={signOut ? logout : undefined} />
+{:else}
+	<section class="glass login-panel" aria-labelledby="login-title" aria-busy={pending}>
+		<div class="panel-top">
+			<span><span class="dot"></span> SECURE ACCESS</span><span>IDENTITY / 01</span>
+		</div>
+		<div class="panel-body">
+			<span class="eyebrow">YOUR ORGANIZATION. ONE IDENTITY.</span>
+			{#if account.kind === 'signed-in'}
+				<h1 id="login-title">Welcome, {account.name}.</h1>
+				<p class="intro">You're signed in to Darkhorse.</p>
+				{#if signOut}<Button onclick={logout} disabled={pending} class="mt-6 h-11 w-full font-mono"
+						>{pending ? 'Signing out…' : 'Sign out'}</Button
+					>{/if}
+			{:else}
+				<h1 id="login-title">Welcome<br /><span>back.</span></h1>
+				<p class="intro">Sign in to your organization’s workspace.</p>
+				<form aria-label="Sign in" onsubmit={submit} class="login-form">
+					<label for="email">Email address</label>
+					<input
+						id="email"
+						name="email"
+						type="email"
+						autocomplete="username"
+						autocapitalize="none"
+						spellcheck="false"
+						required
+						maxlength="254"
+						bind:value={email}
+						disabled={pending}
+					/>
+					<label for="password">Password</label>
+					<input
+						id="password"
+						name="password"
+						type="password"
+						autocomplete="current-password"
+						required
+						maxlength="512"
+						bind:value={password}
+						disabled={pending}
+						aria-describedby={error ? 'login-error' : undefined}
+					/>
+					<Button type="submit" disabled={pending} class="mt-3 h-12 w-full font-mono"
+						>{pending ? 'Connecting…' : 'Sign in'} <span aria-hidden="true">↗</span></Button
+					>
+				</form>
+			{/if}
+			{#if error}<p
+					id="login-error"
+					bind:this={message}
+					role="alert"
+					tabindex="-1"
+					class="login-error"
 				>
-				<a href={resolve('/security/email')} class="ml-4 text-primary underline underline-offset-4"
-					>Verify email</a
-				><a
-					href={resolve('/security/keys')}
-					class="mt-4 block text-primary underline underline-offset-4">Manage API keys</a
-				>{/if}
-			{#if signOut}<Button onclick={logout} disabled={pending} class="mt-6 h-11 w-full font-mono"
-					>{pending ? 'Signing out…' : 'Sign out'}</Button
-				>{/if}
-		{:else}
-			<h1 id="login-title">Welcome<br /><span>back.</span></h1>
-			<p class="intro">Sign in to your organization’s workspace.</p>
-			<form aria-label="Sign in" onsubmit={submit} class="login-form">
-				<label for="email">Email address</label>
-				<input
-					id="email"
-					name="email"
-					type="email"
-					autocomplete="username"
-					autocapitalize="none"
-					spellcheck="false"
-					required
-					maxlength="254"
-					bind:value={email}
-					disabled={pending}
-				/>
-				<label for="password">Password</label>
-				<input
-					id="password"
-					name="password"
-					type="password"
-					autocomplete="current-password"
-					required
-					maxlength="512"
-					bind:value={password}
-					disabled={pending}
-					aria-describedby={error ? 'login-error' : undefined}
-				/>
-				<Button type="submit" disabled={pending} class="mt-3 h-12 w-full font-mono"
-					>{pending ? 'Connecting…' : 'Sign in'} <span aria-hidden="true">↗</span></Button
-				>
-			</form>
-		{/if}
-		{#if error}<p
-				id="login-error"
-				bind:this={message}
-				role="alert"
-				tabindex="-1"
-				class="login-error"
-			>
-				{error}
-			</p>{/if}
-	</div>
-</section>
+					{error}
+				</p>{/if}
+		</div>
+	</section>
+{/if}

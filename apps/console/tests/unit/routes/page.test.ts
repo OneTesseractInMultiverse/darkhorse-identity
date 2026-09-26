@@ -19,11 +19,17 @@ it('connects the static portal to the Rust session boundary', async () => {
 	await fireEvent.submit(screen.getByRole('form', { name: 'Sign in' }));
 	expect(await screen.findByRole('heading', { name: 'Welcome, Ada.' })).toBeInTheDocument();
 	expect(authenticate).toHaveBeenCalledWith(fetch, 'a@example.com', 'test-only');
+	expect(screen.getByRole('navigation', { name: 'Account tools' })).toBeInTheDocument();
+	expect(screen.getByRole('link', { name: 'Open console' })).toHaveAttribute(
+		'href',
+		'/console/users'
+	);
 	expect(screen.getByRole('link', { name: 'Manage sessions' })).toHaveAttribute(
 		'href',
 		'/security/sessions'
 	);
 	await fireEvent.click(screen.getByRole('button', { name: 'Sign out' }));
 	expect(await screen.findByRole('button', { name: 'Sign in' })).toBeInTheDocument();
+	expect(screen.queryByRole('navigation', { name: 'Account tools' })).not.toBeInTheDocument();
 	expect(endSession).toHaveBeenCalledWith(fetch);
 });
