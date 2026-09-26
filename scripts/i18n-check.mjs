@@ -1,4 +1,5 @@
-import { readFile } from "node:fs/promises";
+import { lstat, readFile } from "node:fs/promises";
+import { readBoundedCatalog } from "./lib/i18n-catalog.mjs";
 import { compileCatalog } from "../apps/console/src/lib/i18n/catalog.ts";
 import { contract } from "../apps/console/src/lib/i18n/contract.ts";
 import { adminContract } from "../apps/console/src/lib/i18n/admin-contract.ts";
@@ -8,15 +9,13 @@ for (const [prefix, schema] of [
   ["admin-", adminContract],
 ]) {
   for (const locale of ["en", "es"]) {
-    const source = await readFile(
+    const source = await readBoundedCatalog(
       new URL(
         `../apps/console/src/lib/i18n/catalogs/${prefix}${locale}.json`,
         import.meta.url,
       ),
-      "utf8",
+      { lstat, readFile },
     );
-    if (Buffer.byteLength(source) > 256 * 1024)
-      throw new Error("Catalog size limit exceeded.");
     compileCatalog(schema, JSON.parse(source), locale);
   }
 }

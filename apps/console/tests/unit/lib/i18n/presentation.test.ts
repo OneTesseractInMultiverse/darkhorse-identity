@@ -1,5 +1,5 @@
 import { expect, it, vi } from 'vitest';
-import { presentation } from '../../../../src/lib/i18n/presentation';
+import { documentPresentation, presentation } from '../../../../src/lib/i18n/presentation';
 it('reads a bounded public default without credentials and ignores failures or unknown values', async () => {
 	const fetcher = vi.fn().mockResolvedValue(new Response('{"default_locale":"es"}'));
 	expect(await presentation(fetcher)).toBe('es');
@@ -17,4 +17,10 @@ it('reads a bounded public default without credentials and ignores failures or u
 	])
 		expect(await presentation(vi.fn().mockResolvedValue(response))).toBeUndefined();
 	expect(await presentation(vi.fn().mockRejectedValue(new Error('secret')))).toBeUndefined();
+});
+
+it('sets document language only on fully translated routes and keeps current direction left-to-right', () => {
+	expect(documentPresentation('/console/users', 'es')).toEqual(['es', 'ltr']);
+	expect(documentPresentation('/authorization', 'en')).toEqual(['en', 'ltr']);
+	expect(documentPresentation('/console/future-page', 'es')).toEqual(['en', 'ltr']);
 });

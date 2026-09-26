@@ -6,7 +6,7 @@
 	import { provideLocalization } from '$lib/i18n/context';
 	import { browserStorage, readPreference } from '$lib/i18n/browser';
 	import { localeList } from '$lib/i18n/input';
-	import { presentation } from '$lib/i18n/presentation';
+	import { documentPresentation, presentation } from '$lib/i18n/presentation';
 	import { currentSession } from '$lib/authentication';
 	let { children } = $props();
 	const language = provideLocalization();
@@ -38,28 +38,9 @@
 	});
 	$effect(() => {
 		if (mounted) {
-			// Other routes remain English until their complete translation is delivered.
-			document.documentElement.lang = [
-				'/',
-				'/account/profile',
-				'/security/sessions',
-				'/security/keys',
-				'/security/email',
-				'/invitation',
-				'/authorization',
-				'/console/settings',
-				'/console/users',
-				'/console/applications',
-				'/console/clients',
-				'/console/resources',
-				'/console/scopes',
-				'/console/roles',
-				'/console/capabilities',
-				'/console/profile'
-			].includes(page.url.pathname)
-				? $language.locale
-				: 'en';
-			document.documentElement.dir = 'ltr';
+			const metadata = documentPresentation(page.url.pathname, $language.locale);
+			document.documentElement.lang = metadata[0];
+			document.documentElement.dir = metadata[1];
 		}
 	});
 </script>

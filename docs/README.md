@@ -34,6 +34,8 @@ can still require load testing, protocol conformance, or an independent security
 - [Email verification](email-verification.md) proves control of the current address.
 - [Invitations](invitations.md) creates ordinary accounts through purpose-bound links.
 - [Localization](localization.md) describes English/Spanish presentation, fallback, typed catalogs and current limits.
+- [Translation contributions](localization-contributing.md) defines catalog workflow, style, security meaning, provenance and pseudolocalization.
+- [Localization release checklist](localization-release.md) separates web, OIDC, email and CLI evidence from human release review.
 - [Console](console.md) describes user directory operations and browser failure handling.
 - [Catalog administration](catalog-administration.md) manages explicit application and permission bindings.
 - [Profiles and media](profiles-and-media.md) covers descriptive fields, private images, and login branding.

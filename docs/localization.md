@@ -188,12 +188,23 @@ gates. Adding a language requires an allowlisted locale, complete reviewed catal
 matching plural rules, selector metadata and boundary tests. It must not duplicate
 authentication or authorization logic.
 
+See the [translation contribution guide](localization-contributing.md) for catalog
+editing, glossary, source licensing and security-meaning review. The
+[localization release checklist](localization-release.md) tracks web, OIDC, email
+and CLI evidence separately from fluent and accessibility approval.
+
 ## Verification and performance
 
 - `make test-i18n`: isolated locale, formatter, storage and component behavior;
   catalog fakes are defined in test source.
 - `make i18n-check`: production source catalogs, separate from unit fixtures. It
   runs in `make check`, `make ci` and `make build-web`. A build-only Vite hook also validates all four fixed catalogs for direct package and container builds.
+- Catalog files are rejected unless they are regular UTF-8 files below 256 KiB;
+  the checker checks the file size before reading and confirms the bound afterward.
+  Unit fixtures exercise malformed UTF-8, symlinks, reported size and read-time growth.
+- `make test-i18n` includes a test-only pseudolocale that accents and expands
+  catalog literals while retaining placeholders and plural behavior. It exercises
+  longer copy through the existing formatter and does not add a production locale.
 - `make test-browser`: actual static output and verified HTTPS authentication;
   language, reload, error, keyboard and route-preservation checks run in Chromium.
 
@@ -468,6 +479,22 @@ The complete static build remains within the same 36 KiB regression budget;
 [`catalog-validation-2026-09-26.json`](measurements/catalog-validation-2026-09-26.json)
 records the rebuilt asset hashes and presentation-only observations. These checks
 do not substitute for full browser, linguistic review or whole-project coverage.
+
+### Bounded catalog inputs and test pseudolocalization
+
+The production catalog gate now checks each fixed input as a regular UTF-8 file,
+rejecting inputs over 256 KiB before reading and rechecking the byte limit after
+read. Source-defined tooling tests cover symlinks, malformed UTF-8, claimed size
+and growth during a read. The test-only pseudolocale accents and expands message
+literals through the existing formatter while leaving ICU arguments and plural
+behavior intact; a production build check confirms it is absent from shipped code.
+
+The [quality-gate asset report](measurements/localization-quality-gates-2026-09-26.json)
+records 145,481 gzip JavaScript bytes for the current static build, 36,328 above the
+same 109,153-byte English-only baseline. It leaves 536 bytes under the existing
+36,864-byte limit. This later asset-only observation does not repeat or replace
+the earlier cold/warm presentation measurements, and it measures neither server
+cost nor capacity. Future UI additions must account for the narrow remaining margin.
 
 ### Static control hydration
 

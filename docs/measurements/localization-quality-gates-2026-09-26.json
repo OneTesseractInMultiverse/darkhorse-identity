@@ -1,0 +1,39 @@
+{
+  "schema": 1,
+  "date": "2026-09-26T16:40:59.356Z",
+  "scope": "Static production JavaScript asset sizes only. Sorted asset tree fingerprint with gzip bytes compared to the recorded English-only baseline. This does not measure loading time, authenticated behavior, server cost, or production capacity.",
+  "node": "v24.19.0",
+  "host": {
+    "platform": "darwin",
+    "arch": "arm64",
+    "cpu": "Apple M5"
+  },
+  "baselineRevision": "f14c77823001135862e1d85991a23d1f1a27ab9f",
+  "budgetAdditionalGzipBytes": 36864,
+  "assets": {
+    "baseline": {
+      "jsFiles": 38,
+      "bytes": 312495,
+      "gzip": 109153,
+      "sha256": "85d11f44638ebddb12f533b5927fc553e941da84180d42c3f51db546674a1c6a"
+    },
+    "localized": {
+      "jsFiles": 40,
+      "bytes": 436855,
+      "gzip": 145481,
+      "sha256": "b3bcbf799bda4c46704aa6ffd569d72c47b8283595ee8360728140f0b8df4098"
+    }
+  },
+  "additionalGzipBytes": 36328,
+  "budgetHeadroomBytes": 536,
+  "inputSha256": {
+    "apps/console/src/lib/i18n/presentation.ts": "d62e7c10a3f648bf61825d7094ace66e61592a956b952a136c2a4a0406d2f715",
+    "apps/console/src/routes/+layout.svelte": "a0c339ba70a27b87fca3c5fb77c216b14fa35f51d32fe2ad78abf8cc2884811a"
+  },
+  "testOnlyPseudolocaleIncludedInProductionBuild": false,
+  "notes": [
+    "The baseline values and English-only revision are from the comparable presentation measurement in localization-2026-09-26.json.",
+    "The test-only pseudolocale lives outside the production src tree and its identifier was absent from the built static output.",
+    "Cold/warm observations remain in localization-2026-09-26.json; this report records the later asset-only rebuild and makes no latency claim."
+  ]
+}

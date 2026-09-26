@@ -1,4 +1,28 @@
 import type { Locale } from './locale';
+const translatedRoutes = [
+	'/',
+	'/account/profile',
+	'/security/sessions',
+	'/security/keys',
+	'/security/email',
+	'/invitation',
+	'/authorization',
+	'/console/settings',
+	'/console/users',
+	'/console/applications',
+	'/console/clients',
+	'/console/resources',
+	'/console/scopes',
+	'/console/roles',
+	'/console/capabilities',
+	'/console/profile'
+];
+
+/** Metadata remains left-to-right; right-to-left support is not enabled. */
+export function documentPresentation(pathname: string, selected: Locale): [Locale, 'ltr'] {
+	return [translatedRoutes.includes(pathname) ? selected : 'en', 'ltr'];
+}
+
 export async function presentation(fetcher: typeof fetch): Promise<Locale | undefined> {
 	try {
 		const response = await fetcher('/api/presentation', {
