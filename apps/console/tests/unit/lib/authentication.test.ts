@@ -42,3 +42,23 @@ it('distinguishes generic denial, limits and unavailability without reflecting s
 		expect(await endSession(fetcher)).toBe(false);
 	}
 });
+it('accepts only allowlisted account preferences in an authenticated session projection', async () => {
+	for (const locale of ['en', 'es', null] as const) {
+		const state = await currentSession(
+			vi
+				.fn()
+				.mockResolvedValue(new Response(JSON.stringify({ name: 'Ada', preferred_locale: locale })))
+		);
+		expect(state).toEqual({ kind: 'signed-in', name: 'Ada', locale: locale ?? undefined });
+	}
+	for (const locale of ['es-CR', '../en', true, {}])
+		expect(
+			await currentSession(
+				vi
+					.fn()
+					.mockResolvedValue(
+						new Response(JSON.stringify({ name: 'Ada', preferred_locale: locale }))
+					)
+			)
+		).toEqual({ kind: 'unavailable' });
+});

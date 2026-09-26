@@ -158,3 +158,22 @@ test("migration inspection uses only the dedicated owner workload", () => {
   ])
     assert.throws(() => operatorArgs("migration-inspect", args));
 });
+test("deployment language defaults safely and persists only allowlisted choices", () => {
+  assert.equal(
+    environment(settings(input), "/private/stack").DARKHORSE_DEFAULT_LOCALE,
+    "en",
+  );
+  assert.equal(
+    environment(settings({ ...input, defaultLocale: "es" }), "/private/stack")
+      .DARKHORSE_DEFAULT_LOCALE,
+    "es",
+  );
+  for (const defaultLocale of [
+    "es-CR",
+    "ES",
+    null,
+    {},
+    "secret-invalid-language",
+  ])
+    assert.throws(() => settings({ ...input, defaultLocale }));
+});

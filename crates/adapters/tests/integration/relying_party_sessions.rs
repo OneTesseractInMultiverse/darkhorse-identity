@@ -242,13 +242,8 @@ async fn relying_party_sessions_upgrade_preserves_existing_handles_and_historica
         .bootstrap(administrator(1, "one@example.com"))
         .await
         .unwrap();
-    let candidate = db
-        .store
-        .candidate("one@example.com")
-        .await
-        .unwrap()
-        .unwrap();
-    db.store.establish(&candidate, [1; 32], None).await.unwrap();
+    // Seed the legacy schema directly: current session projection requires newer columns.
+    sqlx::raw_sql("INSERT INTO browser_sessions(digest,principal_id,credential_id,credential_epoch,created_ms,seen_ms,expires_ms) SELECT decode(repeat('01',32),'hex'),p.id,c.id,p.credential_epoch,t,t,t+28800000 FROM principals p JOIN credentials c ON c.principal_id=p.id CROSS JOIN (SELECT floor(extract(epoch FROM clock_timestamp())*1000)::bigint t) n WHERE p.id='00000000-0000-0000-0000-000000000001'; INSERT INTO session_audit(principal_id,session_id,event,occurred_ms) SELECT principal_id,public_id,'created',created_ms FROM browser_sessions;").execute(&db.pool).await.unwrap();
     sqlx::raw_sql("INSERT INTO applications(id,name,owner_id,active) VALUES('00000000-0000-0000-0000-000000000010','App','00000000-0000-0000-0000-000000000001',true); INSERT INTO oauth_clients(id,application_id,name,active) VALUES('00000000-0000-0000-0000-000000000020','00000000-0000-0000-0000-000000000010','Client',true); INSERT INTO token_audit(principal_id,client_id,event,occurred_ms) VALUES('00000000-0000-0000-0000-000000000001','00000000-0000-0000-0000-000000000020','code_redeemed',1);").execute(&db.pool).await.unwrap();
     db.store.migrate().await.unwrap();
     db.store.migrate().await.unwrap();

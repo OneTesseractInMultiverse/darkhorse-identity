@@ -5,6 +5,7 @@ import type { ProfileApi } from '../../../src/lib/profiles';
 const profile = {
 	id: '00000000-0000-0000-0000-000000000001',
 	revision: '0',
+	preferred_locale: null,
 	email: 'ana@example.com',
 	active: true,
 	email_verified: false,
@@ -25,6 +26,10 @@ const options = {
 };
 function api() {
 	return {
+		language: vi.fn().mockResolvedValue({
+			kind: 'ready',
+			value: { ...profile, revision: '1', preferred_locale: 'es' }
+		}),
 		load: vi.fn().mockResolvedValue({ kind: 'ready', value: profile }),
 		options: vi.fn().mockResolvedValue({ kind: 'ready', value: options }),
 		save: vi.fn().mockResolvedValue({
@@ -137,4 +142,21 @@ it('falls back safely when a private image is absent and supports closing either
 	expect(images.upload).not.toHaveBeenCalled();
 	expect(images.remove).not.toHaveBeenCalled();
 	expect(service.save).not.toHaveBeenCalled();
+});
+it('requires an explicit account language save and blocks uncertain mutations until reload', async () => {
+	const service = api();
+	render(ProfilePanel, { api: service });
+	await fireEvent.click(await screen.findByRole('button', { name: 'Change language' }));
+	await fireEvent.change(screen.getByLabelText('Preferred language'), { target: { value: 'es' } });
+	expect(service.language).not.toHaveBeenCalled();
+	await fireEvent.click(screen.getByRole('button', { name: 'Save language' }));
+	expect(await screen.findByRole('status')).toHaveTextContent('Language preference saved.');
+	expect(service.language).toHaveBeenCalledWith('0', 'es');
+	await fireEvent.click(screen.getByRole('button', { name: 'Change language' }));
+	service.language.mockResolvedValue({ kind: 'uncertain' });
+	await fireEvent.change(screen.getByLabelText('Preferred language'), { target: { value: '' } });
+	await fireEvent.click(screen.getByRole('button', { name: 'Save language' }));
+	expect(await screen.findByRole('alert')).toHaveTextContent('could not be confirmed');
+	expect(screen.getByRole('button', { name: 'Change language' })).toBeDisabled();
+	expect(service.language).toHaveBeenCalledTimes(2);
 });

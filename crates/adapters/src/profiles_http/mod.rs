@@ -16,10 +16,15 @@ use serde::Deserialize;
 use serde_json::json;
 use std::sync::Arc;
 pub(crate) mod input;
+mod language;
 use input::{Input, prepare, target};
 pub fn router<S: Store + 'static>(store: S, origin: url::Url) -> Router {
     let routes = Router::new()
         .route("/api/profiles/options", get(options::<S>))
+        .route(
+            "/api/profiles/me/language",
+            axum::routing::post(language::update::<S>),
+        )
         .route("/api/profiles/{target}", get(read::<S>).post(update::<S>))
         .with_state(Arc::new(store));
     authentication_http::protect(routes, origin, 16384, 16).layer(
@@ -93,6 +98,7 @@ fn project(p: Profile) -> serde_json::Value {
         "active": p.active,
         "email_verified": p.email_verified,
         "revision": p.revision.to_string(),
+        "preferred_locale": p.locale.map(crate::localization::tag),
         "first_name": f.first_name(),
         "second_name": f.second_name().unwrap_or(""),
         "last_name": f.last_name(),

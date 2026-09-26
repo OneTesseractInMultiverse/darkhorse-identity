@@ -28,6 +28,7 @@ pub struct SessionSecret {
 pub struct SessionView {
     pub principal: PrincipalId,
     pub name: String,
+    pub locale: Option<darkhorse_domain::localization::Locale>,
 }
 pub struct SignedIn {
     pub secret: SessionSecret,

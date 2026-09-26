@@ -42,6 +42,7 @@ object storage, using the default portrait.
 | `DARKHORSE_HTTP_HOST`          | `127.0.0.1`                      | Listener address                                                                      |
 | `DARKHORSE_HTTP_PORT`          | `3001`                           | Listener port                                                                         |
 | `DARKHORSE_PUBLIC_ORIGIN`      | `https://localhost:8443`         | Canonical HTTPS origin without credentials, path, query, or fragment                  |
+| `DARKHORSE_DEFAULT_LOCALE`     | `en`                             | Exact `en` or `es` presentation fallback; invalid/empty values fail startup           |
 | `DARKHORSE_STATIC_DIR`         | `apps/console/build`             | Static console directory                                                              |
 | `DARKHORSE_DATABASE_URL`       | Required for database operations | Explicit TCP host, user, password, database, no query or fragment, at most 4096 bytes |
 | `DARKHORSE_DATABASE_POOL_SIZE` | `5`                              | Range 1–32 connections per process                                                    |

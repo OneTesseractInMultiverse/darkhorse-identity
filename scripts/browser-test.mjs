@@ -23,6 +23,7 @@ import { objectService } from "./lib/objects-test-service.mjs";
 import { verifyProfiles } from "./lib/profiles-browser.mjs";
 import { verifyDirectory } from "./lib/admin-directory-browser.mjs";
 import { verifySessionManagement } from "./lib/sessions-browser.mjs";
+import { verifyLanguagePreferences } from "./lib/language-preferences-browser.mjs";
 import { verifyLocalization } from "./lib/localization-browser.mjs";
 import { verifyAccountOverview } from "./lib/account-overview-browser.mjs";
 
@@ -90,6 +91,7 @@ export async function verifyBrowser(
     DARKHORSE_HTTP_PORT: String(port),
     DARKHORSE_PUBLIC_ORIGIN: origin,
     DARKHORSE_LOGIN_ENABLED: "true",
+    DARKHORSE_DEFAULT_LOCALE: exercise === exerciseBrowser ? "es" : "en",
     DARKHORSE_PROVIDER_ENABLED: "true",
     DARKHORSE_SIGNING_WRAP_KEY: randomBytes(32).toString("hex"),
     DARKHORSE_LOGIN_LIMIT_KEY: randomBytes(32).toString("hex"),
@@ -335,6 +337,7 @@ async function exerciseBrowser({
     );
   });
   await verifyLocalization(browser, origin);
+  await verifyLanguagePreferences(browser, origin, password, principal, runSql);
   const initial = await verifySignIn(page, context, origin, password);
   await verifyRotation(page, context, origin, ca, password, initial);
   await verifyRegistration(page, principal);

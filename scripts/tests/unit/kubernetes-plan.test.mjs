@@ -64,7 +64,7 @@ test("replicas, terminating pods and operator processes fit an explicit bounded 
   assert.deepEqual(budgets(), {
     pods: 4,
     databaseConnections: 20,
-    limiterConnections: 16,
+    limiterConnections: 32,
     cacheConnections: 8,
   });
   const policies = list.items.filter((x) => x.kind === "NetworkPolicy");
@@ -111,7 +111,11 @@ test("all admitted runtime or operator pods fit the advertised connection envelo
     ]) {
       const size = (pod) =>
         Number(pod.containers[0].env.find((e) => e.name === name).value);
-      assert.ok(servers * size(runtime) + jobs * size(operator) <= limit);
+      const runtimePools =
+        name === "DARKHORSE_REDIS_LIMITER_CONNECTIONS" ? 2 : 1;
+      assert.ok(
+        servers * size(runtime) * runtimePools + jobs * size(operator) <= limit,
+      );
     }
   }
 });
@@ -214,4 +218,15 @@ test("migration inspection job has owner isolation and bounded operation argumen
       operatorJob(input, "migration-inspect", "inspect-1", args),
     );
   assert.throws(() => operatorJob(input, "migrate", "migration-1", [id]));
+});
+test("optional deployment language is validated and propagated without changing existing configurations", () => {
+  const localized = application({ ...input, defaultLocale: "es" });
+  const deployment = localized.items.find((v) => v.kind === "Deployment");
+  assert.ok(
+    deployment.spec.template.spec.containers[0].env.some(
+      (v) => v.name === "DARKHORSE_DEFAULT_LOCALE" && v.value === "es",
+    ),
+  );
+  for (const defaultLocale of ["es-CR", "", null, "secret-invalid-language"])
+    assert.throws(() => application({ ...input, defaultLocale }));
 });

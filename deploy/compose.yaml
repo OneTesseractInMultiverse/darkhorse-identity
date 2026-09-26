@@ -11,6 +11,7 @@ x-server: &server
   pids_limit: 128
   stop_grace_period: 20s
 x-environment: &environment
+  DARKHORSE_DEFAULT_LOCALE: ${DARKHORSE_DEFAULT_LOCALE:-en}
   DARKHORSE_PUBLIC_ORIGIN: ${DARKHORSE_STACK_ORIGIN:?set the canonical HTTPS issuer}
   DARKHORSE_LOGIN_ENABLED: "true"
   DARKHORSE_LOGIN_LIMIT_KEY_FILE: /run/secrets/login_key

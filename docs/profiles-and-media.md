@@ -144,3 +144,12 @@ The functional paths have isolated, PostgreSQL, provider, and browser tests. Rem
 [profile policy](../crates/domain/src/profiles.rs),
 [image conversion](../crates/adapters/src/media/images.rs),
 [publication transactions](../crates/adapters/src/postgres/media/mod.rs).
+
+## Account language
+
+The profile includes an optional English or Spanish preference. **My profile →
+Change language** explicitly saves or clears it after recent authentication.
+Administrators can read it through existing profile authority; the language action
+edits only the signed-in account. Name/contact edits preserve it. See
+[language preferences](localization.md#saving-an-account-language) for revision,
+audit, fallback, cross-device and uncertain-write behavior.

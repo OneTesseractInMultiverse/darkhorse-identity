@@ -45,6 +45,7 @@ fn view() -> SessionView {
     SessionView {
         principal: PrincipalId::from_u128(1).unwrap(),
         name: "Ada".into(),
+        locale: None,
     }
 }
 fn app(result: Option<AuthError>) -> (Router, Arc<AtomicUsize>) {

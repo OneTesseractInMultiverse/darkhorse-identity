@@ -1,4 +1,5 @@
 {
+  "defaultLocale": "en",
   "namespace": "darkhorse-app",
   "origin": "https://identity.example.com",
   "image": "registry.example.com/darkhorse@sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",

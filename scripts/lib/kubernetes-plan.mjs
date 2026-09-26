@@ -18,13 +18,19 @@ export function configuration(input) {
     !input ||
     typeof input !== "object" ||
     Array.isArray(input) ||
-    Object.keys(input).length !== fields.length ||
+    (Object.keys(input).length !== fields.length &&
+      Object.keys(input).length !== fields.length + 1) ||
     fields.some((k) => typeof input[k] !== "string") ||
-    Object.keys(input).some((k) => !fields.includes(k))
+    Object.keys(input).some((k) => ![...fields, "defaultLocale"].includes(k))
   )
     throw new Error(
       "Supply exactly the documented nonsecret Kubernetes configuration fields.",
     );
+  if (
+    Object.hasOwn(input, "defaultLocale") &&
+    !["en", "es"].includes(input.defaultLocale)
+  )
+    throw new Error("Unsupported deployment language.");
   for (const key of ["namespace", "backendNamespace", "ingressNamespace"])
     if (
       !/^[a-z][a-z0-9-]{0,30}[a-z0-9]$/.test(input[key]) ||
@@ -53,13 +59,18 @@ export function configuration(input) {
     image: input.image.split("@")[1],
     edgeImage: input.edgeImage.split("@")[1],
   });
-  return Object.fromEntries(fields.map((k) => [k, input[k]]));
+  return {
+    ...Object.fromEntries(fields.map((k) => [k, input[k]])),
+    ...(input.defaultLocale === undefined
+      ? {}
+      : { defaultLocale: input.defaultLocale }),
+  };
 }
 export function budgets() {
   return {
     pods: 4,
     databaseConnections: 20,
-    limiterConnections: 16,
+    limiterConnections: 32,
     cacheConnections: 8,
   };
 }

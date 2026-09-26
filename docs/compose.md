@@ -60,6 +60,15 @@ make stack-signing-generate STACK=trial REVISION=0
 
 Setup generates independent credentials and certificates under `.local/stacks/trial`, never installs host trust, and preserves an existing matching manifest. An incomplete directory or different origin/image fails instead of replacing identity material. Keep manifests and credentials together with their volumes. Rebuilding an image does not select it for an existing stack.
 
+To select Spanish as the deployment fallback, prefix the initial setup with
+`DARKHORSE_DEFAULT_LOCALE=es`. Setup records the allowlisted `defaultLocale` in
+the private stack manifest; an omitted value retains English and existing manifests
+remain compatible. An explicit different value on repeat setup fails rather than
+rewriting a running stack. For an intentional change, stop the stack, update this
+nonsecret field in its private `settings.json`, and recreate the serving container.
+Only `en` and `es` are accepted. Account/browser choices take precedence; see
+[language preferences](localization.md).
+
 Bootstrap runs interactively in a one-shot operator container. Password input is hidden and never passed in arguments. For protected automation, pipe the bounded JSON described in [bootstrap input](persistence.md#bootstrap-input-and-password-storage) to `node scripts/deployment.mjs operator trial bootstrap --stdin`. Never put credentials in shell literals, history or trace logs.
 
 After generating a signing key, wait at least 60 seconds before activation. Read the returned `kid` and current inventory revision, then use those values:

@@ -12,6 +12,7 @@ pub struct HttpSettings {
     pub listen: SocketAddr,
     pub public_origin: Url,
     pub static_dir: PathBuf,
+    pub default_locale: darkhorse_domain::localization::Locale,
 }
 
 #[derive(Debug, PartialEq, Eq)]
@@ -20,6 +21,7 @@ pub enum ConfigurationError {
     ListenAddress,
     PublicOrigin,
     StaticDirectory,
+    DefaultLocale,
 }
 
 struct RawSettings {
@@ -27,11 +29,18 @@ struct RawSettings {
     port: u16,
     public_origin: String,
     static_dir: String,
+    locale: String,
 }
 
 impl ParameterSource for RawSettings {
     fn bind<E: Environment>(binder: &Binder<E>) -> Result<Self, envbind::BindError> {
         Ok(Self {
+            locale: binder.bind(
+                &StringVar::new("DARKHORSE_DEFAULT_LOCALE")
+                    .allow_empty()
+                    .default("en")
+                    .max_bytes(2),
+            )?,
             host: binder.bind(
                 &StringVar::new("DARKHORSE_HTTP_HOST")
                     .default("127.0.0.1")
@@ -74,6 +83,8 @@ fn validate(raw: RawSettings) -> Result<HttpSettings, ConfigurationError> {
         listen: SocketAddr::new(host, raw.port),
         public_origin,
         static_dir: raw.static_dir.into(),
+        default_locale: crate::localization::parse(&raw.locale)
+            .map_err(|_| ConfigurationError::DefaultLocale)?,
     })
 }
 

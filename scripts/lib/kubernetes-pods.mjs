@@ -39,6 +39,7 @@ export function runtimeEnvironment(c, role = "runtime") {
   return [
     ...common,
     env("DARKHORSE_PUBLIC_ORIGIN", c.origin),
+    env("DARKHORSE_DEFAULT_LOCALE", c.defaultLocale ?? "en"),
     env("DARKHORSE_LOGIN_ENABLED", "true"),
     env("DARKHORSE_PROVIDER_ENABLED", role === "account" ? "false" : "true"),
     env("DARKHORSE_REDIS_CACHE_CONNECTIONS", role === "account" ? "1" : "2"),

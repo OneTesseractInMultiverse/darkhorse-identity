@@ -53,3 +53,7 @@ pub mod deployment_environment;
 
 pub mod introspection_admission;
 pub mod readiness;
+
+pub mod localization;
+
+pub mod localization_http;

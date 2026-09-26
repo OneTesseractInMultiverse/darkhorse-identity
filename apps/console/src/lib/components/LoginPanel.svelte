@@ -30,11 +30,19 @@
 		limited: 'login.limited',
 		unavailable: 'login.unavailable'
 	} as const;
+	let alive = false;
 	onMount(() => {
+		alive = true;
 		void restore();
+		return () => {
+			alive = false;
+		};
 	});
 	async function restore() {
-		account = await checkSession();
+		const result = await checkSession();
+		if (!alive) return;
+		account = result;
+		language.account(account.kind === 'signed-in' ? account.locale : undefined);
 		if (account.kind === 'unavailable') errorKey = errors.unavailable;
 		pending = false;
 	}
@@ -45,7 +53,10 @@
 		errorKey = undefined;
 		const supplied = password;
 		password = '';
-		account = await signIn(email, supplied);
+		const result = await signIn(email, supplied);
+		if (!alive) return;
+		account = result;
+		language.account(account.kind === 'signed-in' ? account.locale : undefined);
 		pending = false;
 		if (account.kind !== 'signed-in') {
 			errorKey = errors[account.kind];
@@ -56,8 +67,12 @@
 	async function logout() {
 		pending = true;
 		errorKey = undefined;
-		if (await signOut?.()) account = { kind: 'signed-out' };
-		else errorKey = 'logout.unconfirmed';
+		const confirmed = await signOut?.();
+		if (!alive) return;
+		if (confirmed) {
+			account = { kind: 'signed-out' };
+			language.account(undefined);
+		} else errorKey = 'logout.unconfirmed';
 		pending = false;
 	}
 </script>

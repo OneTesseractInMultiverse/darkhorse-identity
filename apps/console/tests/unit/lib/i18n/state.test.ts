@@ -69,3 +69,34 @@ it('uses the rendered English fallback when the optional Spanish catalog is unav
 	language.select('es');
 	expect(get(language).locale).toBe('en');
 });
+it('isolates saved account choice from anonymous hints and clears it on sign-out', () => {
+	const language = fake();
+	language.initialize({ anonymous: 'en', browser: ['es'] });
+	language.account('es');
+	expect(get(language).locale).toBe('es');
+	language.account(undefined);
+	expect(get(language).locale).toBe('en');
+	language.account('es');
+	language.select('en');
+	language.initialize({ anonymous: 'es', deployment: 'es' });
+	expect(get(language).locale).toBe('en');
+	language.account('es');
+	expect(get(language).locale).toBe('en');
+});
+it('ignores session restoration after leaving a render tree', async () => {
+	const language = fake();
+	let finish!: (state: { kind: 'signed-in'; name: string; locale: 'es' }) => void;
+	const pending = new Promise<{ kind: 'signed-in'; name: string; locale: 'es' }>((resolve) => {
+		finish = resolve;
+	});
+	const view = render(Harness, {
+		language,
+		remember: () => true,
+		signIn: async () => ({ kind: 'signed-out' }),
+		checkSession: () => pending
+	});
+	view.unmount();
+	finish({ kind: 'signed-in', name: 'Previous account', locale: 'es' });
+	await pending;
+	expect(get(language).locale).toBe('en');
+});

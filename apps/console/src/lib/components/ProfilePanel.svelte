@@ -14,6 +14,11 @@
 	import type { MediaApi } from '$lib/media';
 	import Modal from './admin/Modal.svelte';
 	import ProfileEditor from './ProfileEditor.svelte';
+	import LanguageEditor from './LanguageEditor.svelte';
+	import { useLocalization } from '$lib/i18n/context';
+	import type { Locale } from '$lib/i18n/locale';
+	const language = useLocalization();
+	let languageEditing = $state(false);
 	let {
 		api,
 		images,
@@ -33,6 +38,7 @@
 		error = message(e);
 		blocked = true;
 		if (e.kind === 'signed-out' || e.kind === 'denied') {
+			if (target === 'me') language.account(undefined);
 			profile = null;
 			options = null;
 		}
@@ -41,6 +47,7 @@
 		if (!alive) return;
 		pending = true;
 		editing = false;
+		languageEditing = false;
 		pictureEditing = false;
 		pictureFailed = false;
 		notice = '';
@@ -49,6 +56,7 @@
 		if (!alive) return;
 		if (result.kind === 'ready') {
 			profile = result.value;
+			if (target === 'me') language.account(profile.preferred_locale ?? undefined);
 			blocked = false;
 		} else fail(result);
 		pending = false;
@@ -73,10 +81,27 @@
 		editing = false;
 		if (result.kind === 'ready') {
 			profile = result.value;
+			if (target === 'me') language.account(profile.preferred_locale ?? undefined);
 			notice = 'Profile saved.';
 		} else fail(result);
 		pending = false;
 	}
+	async function saveLanguage(locale: Locale | null) {
+		if (!profile || pending || blocked || target !== 'me') return;
+		pending = true;
+		error = '';
+		notice = '';
+		const result = await api.language(profile.revision, locale);
+		if (!alive) return;
+		languageEditing = false;
+		if (result.kind === 'ready') {
+			profile = result.value;
+			language.account(profile.preferred_locale ?? undefined);
+			notice = 'Language preference saved.';
+		} else fail(result);
+		pending = false;
+	}
+
 	onMount(() => {
 		alive = true;
 		void load();
@@ -142,11 +167,28 @@
 						: 'Not specified'}
 				</dd>
 			</div>
+			<div>
+				<dt>Preferred language</dt>
+				<dd>
+					{profile.preferred_locale === 'es'
+						? 'Español'
+						: profile.preferred_locale === 'en'
+							? 'English'
+							: 'Automatic'}
+				</dd>
+			</div>
 			<div class="bio">
 				<dt>Bio</dt>
 				<dd>{profile.bio || 'Not specified'}</dd>
 			</div>
 		</dl>
+		{#if target === 'me'}<Button
+				variant="outline"
+				disabled={pending || blocked}
+				onclick={() => {
+					languageEditing = true;
+				}}>Change language</Button
+			>{/if}
 	{/if}
 	<div class="modal-actions">
 		<Button variant="outline" disabled={pending} onclick={load}>Reload profile</Button
@@ -197,6 +239,22 @@
 			/></Modal
 		>{/if}
 </section>
+
+{#if languageEditing && profile}<Modal
+		title="Account language"
+		{pending}
+		close={() => {
+			languageEditing = false;
+		}}
+		><LanguageEditor
+			locale={profile.preferred_locale}
+			{pending}
+			save={saveLanguage}
+			cancel={() => {
+				languageEditing = false;
+			}}
+		/></Modal
+	>{/if}
 
 <style>
 	.avatar {

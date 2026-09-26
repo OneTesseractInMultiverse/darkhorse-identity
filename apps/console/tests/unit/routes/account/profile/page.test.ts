@@ -4,6 +4,7 @@ import Page from '../../../../../src/routes/account/profile/+page.svelte';
 const profile = {
 	id: '00000000-0000-0000-0000-000000000001',
 	revision: '0',
+	preferred_locale: null,
 	email: 'person@example.com',
 	active: true,
 	email_verified: false,

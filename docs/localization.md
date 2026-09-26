@@ -11,23 +11,25 @@ presentation; it never changes identity, permissions or protocol behavior.
 The first supported choice wins. External tags are parsed before entering this
 policy. Language, country and time zone are separate inputs.
 
-| Priority | Source                                 | Persistence and authority                                                      | Current integration               |
-| -------- | -------------------------------------- | ------------------------------------------------------------------------------ | --------------------------------- |
-| 1        | Explicit selection in the current page | Immediate presentation choice                                                  | Sign-in selector                  |
-| 2        | Saved account preference               | Existing authenticated profile boundary; never inferred from a submitted email | Planned in #37                    |
-| 3        | Anonymous browser preference           | Local storage, allowlisted language only                                       | Implemented                       |
-| 4        | OIDC transaction language hints        | Transaction-local suggestion; no account write                                 | Planned in #40                    |
-| 5        | Browser language list                  | First supported tag in supplied order                                          | Implemented                       |
-| 6        | Deployment default                     | Validated operator setting                                                     | Planned in #37; currently English |
-| 7        | Final fallback                         | English                                                                        | Implemented                       |
+| Priority | Source                                 | Persistence and authority                                                      | Current integration              |
+| -------- | -------------------------------------- | ------------------------------------------------------------------------------ | -------------------------------- |
+| 1        | Explicit selection in the current page | Immediate presentation choice                                                  | Sign-in selector                 |
+| 2        | Saved account preference               | Existing authenticated profile boundary; never inferred from a submitted email | Implemented                      |
+| 3        | Anonymous browser preference           | Local storage, allowlisted language only                                       | Implemented                      |
+| 4        | OIDC transaction language hints        | Transaction-local suggestion; no account write                                 | Planned in #40                   |
+| 5        | Browser language list                  | First supported tag in supplied order                                          | Implemented                      |
+| 6        | Deployment default                     | Validated operator setting                                                     | Implemented; defaults to English |
+| 7        | Final fallback                         | English                                                                        | Implemented                      |
 
 Explicit selection remains effective for the current page even when storage is
 blocked. The page reports that it could not remember the choice. Anonymous
 preference uses `darkhorse.locale.v1` in local storage and contains only `en` or
 `es`; it contains no account identifier or credential and does not alter the Rust
 HttpOnly session. Reload uses that preference. Other tabs do not synchronously
-change language. A future saved account preference must remain separate from this
-anonymous value and must be cleared from presentation state on account changes.
+change language. Saved account preferences remain separate from this anonymous value. The layout
+keeps them in memory and replaces them on session restoration; confirmed logout
+clears them. An explicit choice lasts for the current layout visit. On reload,
+a saved account preference takes precedence over anonymous storage.
 
 The tag adapter accepts at most 64 ASCII characters and validates language-tag
 syntax with the platform's `Intl.getCanonicalLocales`. It matches the primary
@@ -39,10 +41,54 @@ removed. This is a bounded application matching policy informed by
 [RFC 4647](https://www.rfc-editor.org/rfc/rfc4647), not a complete HTTP
 `Accept-Language` parser. Rust will parse protocol hints at its own adapter boundary.
 
+## Saving an account language
+
+Open **My profile → Change language** and choose English, Español or Automatic.
+Only **Save language** persists the selection. Choosing a language at sign-in,
+browser detection, and OIDC hints never write an account preference. Automatic
+explicitly clears the preference; it does not save the current browser language.
+Country and phone settings remain independent.
+
+Migration `0032_language_preferences.sql` adds nullable `principals.preferred_locale`
+with an `en`/`es` constraint. Existing accounts retain NULL and all existing values.
+The server includes `preferred_locale` in authorized profile responses and, when
+set, in the existing login/session profile projection. Ordinary profile edits
+preserve it. No ID-token, UserInfo or introspection claim is added.
+
+`POST /api/profiles/me/language` accepts exactly a decimal-string `revision` and
+`locale` equal to `"en"`, `"es"` or explicit `null`. A missing value is invalid.
+The Rust adapter enforces origin, CSRF, body and admission bounds. The store checks
+the current original browser session, five-minute recent authentication and profile
+revision under the existing primary security lock. A change and its profile audit
+commit together; authority is rechecked after the audit. An unchanged selection
+requires the current revision but creates no new revision/audit. Credentials,
+memberships and session/token expiry are unchanged. Administrators can inspect
+language in an authorized profile read; this route only edits the caller's account.
+
+Stale state requires reloading. A timeout or lost response may follow a committed
+write: the form blocks further writes and offers reload, without automatic retry.
+The frontend applies only confirmed/read preferences. Other devices receive the
+saved value on their next session/profile read; there is no push synchronization.
+Untranslated routes remain marked English even when an account prefers Spanish.
+
+## Deployment default
+
+Set `DARKHORSE_DEFAULT_LOCALE=en` (the default) or `es` before starting the Rust
+server, for example `DARKHORSE_DEFAULT_LOCALE=es make dev-login`. The exact lowercase
+allowlist rejects empty, regional, uppercase and unsupported values with a redacted
+startup error. This is a presentation fallback, not a locale claim or account lookup.
+The public `/api/presentation` JSON exposes only `default_locale`, uses no database,
+requires no credentials and sends `Cache-Control: no-store`. A failed fetch leaves
+the English final fallback; explicit/account/browser choices still take precedence.
+See [Compose](compose.md) and [Kubernetes](kubernetes.md) for packaged configuration.
+
 ## Rendering and message contracts
 
 The static artifact and its first hydration render use English. After mount, the
-layout resolves the anonymous preference and browser languages. This permits a
+layout resolves the anonymous preference and browser languages, then loads the
+deployment default from the bounded public `/api/presentation` response. The
+existing session response supplies any saved account preference. Late configuration
+responses cannot override a higher-priority choice. This permits a
 brief English first paint; it avoids a second runtime server, an inline executable
 preference script and a hydration mismatch. The root page updates document `lang`
 to the rendered language and `dir` to `ltr`. Routes still written in English keep
@@ -143,10 +189,12 @@ authentication or authorization logic.
 
 The provisional foundation budget is at most 36 KiB additional summed compressed
 JavaScript over the matching English-only build. It is a regression budget, not a
-performance improvement claim. Fixed catalog loading adds no HTTP/API query and
-no preference lookup to introspection or authorization. Cold/warm browser and build
+performance improvement claim. Fixed catalog loading adds no HTTP/API query. Deployment configuration adds one
+small, credential-free GET per layout mount. Account language extends existing
+session/profile projections, with no additional SQL statement on those reads and
+no preference lookup added to introspection or authorization. Cold/warm browser and build
 observations are recorded separately; full multilingual web/email/OIDC/CLI and
-release qualification remain in #37–#42.
+release qualification remain tracked in #36–#42.
 
 ### Foundation measurements — 2026-09-26
 
@@ -179,3 +227,30 @@ locked dependencies, build the current console, then run
 `make benchmark-i18n I18N_BASELINE=/absolute/path/to/baseline/build`.
 The target enforces the byte budget and writes the complete observations to
 `.local/benchmarks/i18n.json`. It requires the pinned Chromium installation.
+
+### Preference integration observations — 2026-09-26
+
+The [preference integration sample](measurements/language-preferences-2026-09-26.json)
+repeats the same five cold/warm pairs with the English-only source export and a
+fixed public presentation response. All JavaScript totals 124,773 gzip bytes:
+15,620 above the English-only baseline and 1,026 above the recorded foundation
+artifact. The 36 KiB regression budget still passes. Root navigation makes one
+additional presentation request; its JSON body is 23 bytes, with 323 observed
+resource transfer bytes including the fixture's response overhead. These numbers
+exclude production TLS/header variability. Saved language adds 24 JSON bytes to a
+login/session response; an unset language adds none. Profiles always include the
+nullable field (24 bytes for either a supported value or `null`).
+
+The existing SQL statements project one additional nullable column. No new read
+statement or join was added to login/session/profile retrieval. Explicit preference
+writes reuse the profile transaction, exclusive security lock and audit; the
+existing principal trigger also advances the policy revision. They are settings
+writes, not an authorization-cache path. The public configuration read uses no SQL.
+This source-level query accounting is separate from database load measurement.
+
+In the presentation fixture, median cold readiness was 71.7 ms for baseline English,
+71.9 ms for localized English and 72.2 ms for Spanish. Warm medians were 40.1, 56.2
+and 56.4 ms respectively. This small sample does not establish stable percentiles
+or a speedup. Real primary-state, shared limiter, profile mutation and HTTPS browser
+checks run separately; production request-cost and capacity qualification remain
+open.

@@ -10,6 +10,15 @@ struct Fake {
     error: Option<Error>,
 }
 impl Store for Fake {
+    async fn update_language(
+        &self,
+        actor: [u8; 32],
+        _: u64,
+        _: Option<darkhorse_domain::localization::Locale>,
+    ) -> Result<Profile, Error> {
+        self.profile(actor, None).await
+    }
+
     async fn profile(&self, _: [u8; 32], _: Option<PrincipalId>) -> Result<Profile, Error> {
         self.calls.fetch_add(1, Ordering::SeqCst);
         self.error.map_or_else(|| Ok(profile()), Err)
@@ -31,6 +40,7 @@ fn profile() -> Profile {
         active: true,
         email_verified: false,
         revision: 8,
+        locale: None,
         fields: prepare(serde_json::from_value(body()).unwrap()).unwrap().1,
     }
 }
@@ -80,6 +90,7 @@ async fn profile_and_dropdown_responses_expose_only_the_documented_fields() {
         expected["email"] = "ana@example.test".into();
         expected["active"] = true.into();
         expected["email_verified"] = false.into();
+        expected["preferred_locale"] = serde_json::Value::Null;
         assert_eq!(actual, expected);
     }
     let r = app
@@ -184,4 +195,57 @@ async fn store_failures_use_fixed_errors_and_only_invalid_sessions_clear_the_coo
             assert!(body["error"].is_string());
         }
     }
+}
+#[tokio::test]
+async fn language_selection_is_explicit_self_service_and_keeps_transport_guards() {
+    let (app, calls) = app(None);
+    for locale in [json!("en"), json!("es"), serde_json::Value::Null] {
+        let response = app
+            .clone()
+            .oneshot(request(
+                "/api/profiles/me/language",
+                Some(json!({"revision":"8","locale":locale})),
+            ))
+            .await
+            .unwrap();
+        assert_eq!(response.status(), 200);
+        assert_eq!(response.headers()["cache-control"], "no-store");
+    }
+    assert_eq!(calls.load(Ordering::SeqCst), 3);
+    for body in [
+        json!({"revision":"8"}),
+        json!({"revision":"8","locale":"es-CR"}),
+        json!({"revision":"8","locale":"fr"}),
+        json!({"revision":"8","locale":2}),
+        json!({"revision":"08","locale":"en"}),
+        json!({"revision":"8","locale":"en","target":"other"}),
+    ] {
+        let response = app
+            .clone()
+            .oneshot(request("/api/profiles/me/language", Some(body)))
+            .await
+            .unwrap();
+        assert_eq!(response.status(), 400);
+    }
+    let mut missing = request(
+        "/api/profiles/me/language",
+        Some(json!({"revision":"8","locale":"es"})),
+    );
+    missing.headers_mut().remove("x-darkhorse-csrf");
+    assert_eq!(app.clone().oneshot(missing).await.unwrap().status(), 403);
+    let mut missing = request(
+        "/api/profiles/me/language",
+        Some(json!({"revision":"8","locale":"es"})),
+    );
+    missing.headers_mut().remove("cookie");
+    assert_eq!(app.clone().oneshot(missing).await.unwrap().status(), 401);
+    let other = app
+        .oneshot(request(
+            "/api/profiles/00000000-0000-0000-0000-000000000002/language",
+            Some(json!({"revision":"8","locale":"es"})),
+        ))
+        .await
+        .unwrap();
+    assert_eq!(other.status(), 404);
+    assert_eq!(calls.load(Ordering::SeqCst), 3);
 }

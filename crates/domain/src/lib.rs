@@ -40,3 +40,5 @@ pub mod operator_applications;
 pub mod operator_catalog;
 pub mod operator_client_secrets;
 pub mod operator_clients;
+
+pub mod localization;

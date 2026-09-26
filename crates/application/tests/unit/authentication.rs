@@ -82,6 +82,7 @@ impl AuthenticationStore for Dependencies {
         Ok(SessionView {
             principal: c.principal,
             name: "Ada".into(),
+            locale: None,
         })
     }
     async fn session(&self, digest: [u8; 32]) -> Result<SessionView, AuthError> {
@@ -90,6 +91,7 @@ impl AuthenticationStore for Dependencies {
         Ok(SessionView {
             principal: candidate().principal,
             name: "Ada".into(),
+            locale: None,
         })
     }
     async fn logout(&self, digest: [u8; 32]) -> Result<(), AuthError> {

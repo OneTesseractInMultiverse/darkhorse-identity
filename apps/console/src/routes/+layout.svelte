@@ -6,18 +6,23 @@
 	import { provideLocalization } from '$lib/i18n/context';
 	import { browserStorage, readPreference } from '$lib/i18n/browser';
 	import { localeList } from '$lib/i18n/input';
-	import { resolveLocale } from '$lib/i18n/locale';
+	import { presentation } from '$lib/i18n/presentation';
 	let { children } = $props();
 	const language = provideLocalization();
 	let mounted = $state(false);
 	onMount(() => {
-		language.select(
-			resolveLocale({
-				anonymous: readPreference(browserStorage()),
-				browser: localeList(navigator.languages)
-			})
-		);
+		let alive = true;
+		language.initialize({
+			anonymous: readPreference(browserStorage()),
+			browser: localeList(navigator.languages)
+		});
+		void presentation(fetch).then((locale) => {
+			if (alive) language.deployment(locale);
+		});
 		mounted = true;
+		return () => {
+			alive = false;
+		};
 	});
 	$effect(() => {
 		if (mounted) {

@@ -1,7 +1,7 @@
 import { writable } from 'svelte/store';
 import type { contract } from './contract';
 import type { Formatter, Arguments } from './format';
-import type { Locale } from './locale';
+import { resolveLocale, type Locale, type Preferences } from './locale';
 type Key = keyof typeof contract;
 export type Translate = <K extends Key>(
 	key: K,
@@ -14,6 +14,28 @@ export function createLocalization(format: Formatter<typeof contract>) {
 		const t: Translate = (key, ...args) => format(locale, key, ...args).text;
 		return { locale, t };
 	}
+	let preferences: Preferences = {};
 	const state = writable(view('en'));
-	return { subscribe: state.subscribe, select: (locale: Locale) => state.set(view(locale)) };
+	function publish() {
+		state.set(view(resolveLocale(preferences)));
+	}
+	return {
+		subscribe: state.subscribe,
+		initialize(hints: Pick<Preferences, 'anonymous' | 'browser' | 'deployment'>) {
+			preferences = { ...preferences, ...hints };
+			publish();
+		},
+		deployment(locale?: Locale) {
+			preferences.deployment = locale;
+			publish();
+		},
+		account(locale?: Locale) {
+			preferences.saved = locale;
+			publish();
+		},
+		select(locale: Locale) {
+			preferences.explicit = locale;
+			publish();
+		}
+	};
 }

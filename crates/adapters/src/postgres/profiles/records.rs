@@ -28,6 +28,13 @@ fn project(row: &PgRow, id: PrincipalId) -> Result<Profile, Error> {
         email_verified: row.try_get("email_verified").map_err(storage)?,
         revision: number(row, "revision")?,
         fields,
+        locale: row
+            .try_get::<Option<String>, _>("preferred_locale")
+            .map_err(storage)?
+            .as_deref()
+            .map(crate::localization::parse)
+            .transpose()
+            .map_err(storage)?,
     })
 }
 fn optional(row: &PgRow, key: &str) -> Result<String, Error> {

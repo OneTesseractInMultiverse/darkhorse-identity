@@ -45,7 +45,9 @@ async function respond(root, req, res) {
       res.end(
         path === "/api/auth/session"
           ? '{"error":"unauthorized"}'
-          : '{"logo":false,"background":false}',
+          : path === "/api/presentation"
+            ? '{"default_locale":"en"}'
+            : '{"logo":false,"background":false}',
       );
       return;
     }
@@ -165,7 +167,7 @@ try {
     schema: 1,
     date: new Date().toISOString(),
     scope:
-      "Presentation only: loopback HTTP, gzip, static production builds, fake anonymous session/branding responses; no real authentication or server-latency claim.",
+      "Presentation only: loopback HTTP, gzip, static production builds, fake anonymous session/branding/presentation responses; no real authentication or server-latency claim.",
     node: process.version,
     browser: browser.version(),
     host: { platform: platform(), arch: arch(), cpu: cpus()[0].model },

@@ -1,5 +1,7 @@
 import { createHash } from "node:crypto";
-export function settings({ name, origin, image, edgeImage }) {
+export function settings({ name, origin, image, edgeImage, defaultLocale }) {
+  if (defaultLocale !== undefined && !["en", "es"].includes(defaultLocale))
+    throw new Error("Unsupported deployment language.");
   if (
     !/^[a-z][a-z0-9-]{0,31}$/.test(name) ||
     ![image, edgeImage].every((v) => /^sha256:[a-f0-9]{64}$/.test(v))
@@ -34,11 +36,13 @@ export function settings({ name, origin, image, edgeImage }) {
     port,
     image,
     edgeImage,
+    ...(defaultLocale === undefined ? {} : { defaultLocale }),
   };
 }
 export function environment(value, directory) {
   return {
     DARKHORSE_STACK_DIR: directory,
+    DARKHORSE_DEFAULT_LOCALE: value.defaultLocale ?? "en",
     DARKHORSE_STACK_ORIGIN: value.origin,
     DARKHORSE_STACK_HOST: value.host,
     DARKHORSE_STACK_PORT: String(value.port),

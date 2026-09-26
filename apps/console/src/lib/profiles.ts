@@ -1,3 +1,4 @@
+import type { Locale } from './i18n/locale';
 import { object, reference, counter } from './admin/catalog-decode';
 export type Fields = {
 	first_name: string;
@@ -10,6 +11,7 @@ export type Fields = {
 	bio: string;
 };
 export type Profile = Fields & {
+	preferred_locale: Locale | null;
 	id: string;
 	revision: string;
 	email: string;
@@ -27,6 +29,7 @@ export type Failure = {
 };
 export type Result<T> = { kind: 'ready'; value: T } | Failure;
 export type ProfileApi = {
+	language: (revision: string, locale: Locale | null) => Promise<Result<Profile>>;
 	load: (target?: string) => Promise<Result<Profile>>;
 	options: () => Promise<Result<Options>>;
 	save: (target: string, revision: string, fields: Fields) => Promise<Result<Profile>>;
@@ -61,11 +64,16 @@ export function decodeProfile(v: unknown): Profile | null {
 		!text(v.country, 2) ||
 		!text(v.calling_code, 3) ||
 		!text(v.national_number, 14) ||
-		!text(v.bio, 2000)
+		!text(v.bio, 2000) ||
+		(v.preferred_locale !== undefined &&
+			v.preferred_locale !== null &&
+			v.preferred_locale !== 'en' &&
+			v.preferred_locale !== 'es')
 	)
 		return null;
 	return {
 		id: v.id,
+		preferred_locale: v.preferred_locale ?? null,
 		revision: v.revision,
 		email: v.email,
 		active: v.active,
@@ -128,25 +136,28 @@ export function profileApi(fetcher: typeof fetch): ProfileApi {
 			return { kind: 'unavailable' };
 		}
 	}
+	async function write(path: string, body: unknown): Promise<Result<Profile>> {
+		try {
+			const r = await fetcher(`/api/profiles/${path}`, {
+				method: 'POST',
+				credentials: 'same-origin',
+				cache: 'no-store',
+				headers: { 'content-type': 'application/json', 'x-darkhorse-csrf': '1' },
+				body: JSON.stringify(body)
+			});
+			if (!r.ok) return failure(r);
+			const p = decodeProfile(await r.json());
+			return p ? { kind: 'ready', value: p } : { kind: 'uncertain' };
+		} catch {
+			return { kind: 'uncertain' };
+		}
+	}
 	return {
 		load: (target = 'me') => read(encodeURIComponent(target), decodeProfile),
 		options: () => read('options', decodeOptions),
-		async save(target, revision, value) {
-			try {
-				const r = await fetcher(`/api/profiles/${encodeURIComponent(target)}`, {
-					method: 'POST',
-					credentials: 'same-origin',
-					cache: 'no-store',
-					headers: { 'content-type': 'application/json', 'x-darkhorse-csrf': '1' },
-					body: JSON.stringify({ revision, ...fields(value) })
-				});
-				if (!r.ok) return failure(r);
-				const p = decodeProfile(await r.json());
-				return p ? { kind: 'ready', value: p } : { kind: 'uncertain' };
-			} catch {
-				return { kind: 'uncertain' };
-			}
-		}
+		save: (target, revision, value) =>
+			write(encodeURIComponent(target), { revision, ...fields(value) }),
+		language: (revision, locale) => write('me/language', { revision, locale })
 	};
 }
 async function failure(r: Response): Promise<Failure> {

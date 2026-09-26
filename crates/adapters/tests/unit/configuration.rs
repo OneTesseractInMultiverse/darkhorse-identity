@@ -117,3 +117,28 @@ fn rejects_oversized_host_at_the_binding_boundary() {
         ConfigurationError::Binding
     );
 }
+#[test]
+fn deployment_language_is_a_bounded_allowlist_with_an_english_default() {
+    use darkhorse_domain::localization::Locale;
+    assert_eq!(
+        load(MapEnvironment::new()).unwrap().default_locale,
+        Locale::English
+    );
+    assert_eq!(
+        load(MapEnvironment::from_pairs([(
+            "DARKHORSE_DEFAULT_LOCALE",
+            "es"
+        )]))
+        .unwrap()
+        .default_locale,
+        Locale::Spanish
+    );
+    for value in ["", "ES", "es-CR", "fr", "secret-invalid-language"] {
+        let error = load(MapEnvironment::from_pairs([(
+            "DARKHORSE_DEFAULT_LOCALE",
+            value,
+        )]))
+        .unwrap_err();
+        assert!(!format!("{error:?}").contains("secret-invalid-language"));
+    }
+}

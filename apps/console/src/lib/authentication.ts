@@ -1,5 +1,7 @@
+import type { Locale } from './i18n/locale';
 export type AuthState =
-	{ kind: 'signed-in'; name: string } | { kind: 'signed-out' | 'limited' | 'unavailable' };
+	| { kind: 'signed-in'; name: string; locale?: Locale }
+	| { kind: 'signed-out' | 'limited' | 'unavailable' };
 type Fetcher = typeof fetch;
 const headers = { 'content-type': 'application/json', 'x-darkhorse-csrf': '1' };
 export async function authenticate(
@@ -56,7 +58,10 @@ function profile(value: unknown): AuthState {
 		value.name.length > 0 &&
 		value.name.length <= 400
 	) {
-		return { kind: 'signed-in', name: value.name };
+		const locale = 'preferred_locale' in value ? value.preferred_locale : undefined;
+		if (locale !== undefined && locale !== null && locale !== 'en' && locale !== 'es')
+			return { kind: 'unavailable' };
+		return { kind: 'signed-in', name: value.name, locale: locale ?? undefined };
 	}
 	return { kind: 'unavailable' };
 }

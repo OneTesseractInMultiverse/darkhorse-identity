@@ -32,7 +32,13 @@ export async function setupStack(name, origin, image, command) {
       { capture: true },
     )
   ).stdout.trim();
-  const value = settings({ name, origin, image: selected, edgeImage });
+  const value = settings({
+    name,
+    origin,
+    image: selected,
+    edgeImage,
+    defaultLocale: process.env.DARKHORSE_DEFAULT_LOCALE,
+  });
   try {
     await lstat(directory);
   } catch (error) {
@@ -43,10 +49,12 @@ export async function setupStack(name, origin, image, command) {
   if (
     existing.settings.origin !== value.origin ||
     existing.settings.image !== value.image ||
-    existing.settings.edgeImage !== value.edgeImage
+    existing.settings.edgeImage !== value.edgeImage ||
+    (value.defaultLocale !== undefined &&
+      (existing.settings.defaultLocale ?? "en") !== value.defaultLocale)
   )
     throw new Error(
-      "Stack already exists with another origin/image. Existing identity and credentials were preserved.",
+      "Stack already exists with another origin/image/language. Existing identity and credentials were preserved.",
     );
   return existing;
 }

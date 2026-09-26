@@ -9,6 +9,7 @@ import {
 export const profile = {
 	id: '00000000-0000-0000-0000-000000000001',
 	revision: '0',
+	preferred_locale: null,
 	email: 'ana@example.com',
 	active: true,
 	email_verified: false,
@@ -127,4 +128,27 @@ it('loads canonical options, saves confirmed edits, and rejects malformed respon
 	expect(
 		decodeOptions({ ...options, countries: [...options.countries, ...options.countries] })
 	).toBeNull();
+});
+it('saves language as a separate revision-checked self-service action without retry', async () => {
+	const fetcher = vi
+		.fn()
+		.mockResolvedValue(new Response(JSON.stringify({ ...profile, preferred_locale: 'es' })));
+	const api = profileApi(fetcher);
+	expect(await api.language('0', 'es')).toEqual({
+		kind: 'ready',
+		value: { ...profile, preferred_locale: 'es' }
+	});
+	expect(fetcher).toHaveBeenCalledWith(
+		'/api/profiles/me/language',
+		expect.objectContaining({
+			method: 'POST',
+			credentials: 'same-origin',
+			headers: { 'content-type': 'application/json', 'x-darkhorse-csrf': '1' },
+			body: '{"revision":"0","locale":"es"}'
+		})
+	);
+	fetcher.mockRejectedValue(new Error('Lost reply'));
+	expect(await api.language('1', null)).toEqual({ kind: 'uncertain' });
+	expect(fetcher).toHaveBeenCalledTimes(2);
+	expect(decodeProfile({ ...profile, preferred_locale: 'es-CR' })).toBeNull();
 });

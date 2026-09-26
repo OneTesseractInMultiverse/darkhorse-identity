@@ -72,13 +72,20 @@ async fn serve() -> Result<(), &'static str> {
     let settings =
         configuration::load(darkhorse_adapters::deployment_environment::DeploymentEnvironment)
             .map_err(|_| "Invalid server configuration; check DARKHORSE_* settings.")?;
+    let presentation = darkhorse_adapters::localization_http::router(
+        settings.default_locale,
+        settings.public_origin.clone(),
+    );
     let authentication = authentication::runtime(&settings).await?;
     let listener = tokio::net::TcpListener::bind(settings.listen)
         .await
         .map_err(|_| "Cannot bind HTTP listener; check host and port availability.")?;
     let server = axum::serve(
         listener,
-        http::with_authentication(settings.static_dir, authentication.router),
+        http::with_authentication(
+            settings.static_dir,
+            authentication.router.merge(presentation),
+        ),
     )
     .with_graceful_shutdown(shutdown());
     tokio::select! {

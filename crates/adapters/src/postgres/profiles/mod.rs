@@ -6,6 +6,7 @@ use darkhorse_domain::{
 };
 use sqlx::{Postgres, Row, Transaction, postgres::PgRow};
 use uuid::Uuid;
+mod language;
 mod records;
 type Tx<'a> = Transaction<'a, Postgres>;
 pub(super) struct Actor {
@@ -14,6 +15,14 @@ pub(super) struct Actor {
     pub now: u64,
 }
 impl Store for PostgresStore {
+    async fn update_language(
+        &self,
+        digest: [u8; 32],
+        expected: u64,
+        locale: Option<darkhorse_domain::localization::Locale>,
+    ) -> Result<Profile, Error> {
+        language::update(self, digest, expected, locale).await
+    }
     async fn profile(
         &self,
         digest: [u8; 32],

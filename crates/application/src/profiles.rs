@@ -1,6 +1,7 @@
 //! Project-owned profile ports; the store rechecks current authority on every operation.
 use darkhorse_domain::{
     identity::PrincipalId,
+    localization::Locale,
     profiles::{Error, Fields},
 };
 use std::future::Future;
@@ -12,8 +13,15 @@ pub struct Profile {
     pub email_verified: bool,
     pub revision: u64,
     pub fields: Fields,
+    pub locale: Option<Locale>,
 }
 pub trait Store: Send + Sync {
+    fn update_language(
+        &self,
+        actor: [u8; 32],
+        expected: u64,
+        locale: Option<Locale>,
+    ) -> impl Future<Output = Result<Profile, Error>> + Send;
     fn profile(
         &self,
         actor: [u8; 32],

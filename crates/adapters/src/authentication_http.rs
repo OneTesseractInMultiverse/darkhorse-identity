@@ -161,6 +161,8 @@ struct LoginBody {
 #[derive(Serialize)]
 struct ProfileBody {
     name: String,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    preferred_locale: Option<&'static str>,
 }
 #[derive(Serialize)]
 struct ErrorBody {
@@ -229,7 +231,11 @@ async fn logout<S: BrowserAuthentication>(
     response
 }
 fn profile(view: SessionView) -> Response {
-    Json(ProfileBody { name: view.name }).into_response()
+    Json(ProfileBody {
+        name: view.name,
+        preferred_locale: view.locale.map(crate::localization::tag),
+    })
+    .into_response()
 }
 pub(crate) fn clear_cookie(response: &mut Response) {
     response.headers_mut().insert(

@@ -53,7 +53,7 @@ impl AuthenticationStore for PostgresStore {
         sessions::lock(&mut tx, false)
             .await
             .map_err(session_error)?;
-        let row = sqlx::query("SELECT s.*, p.id, p.first_name, p.active, p.credential_epoch AS current_epoch, NOT c.revoked AS credential_live FROM browser_sessions s JOIN principals p ON p.id=s.principal_id JOIN credentials c ON c.id=s.credential_id AND c.principal_id=p.id WHERE s.digest=$1 AND NOT pg_is_in_recovery() FOR UPDATE OF s")
+        let row = sqlx::query("SELECT s.*, p.id, p.first_name, p.preferred_locale, p.active, p.credential_epoch AS current_epoch, NOT c.revoked AS credential_live FROM browser_sessions s JOIN principals p ON p.id=s.principal_id JOIN credentials c ON c.id=s.credential_id AND c.principal_id=p.id WHERE s.digest=$1 AND NOT pg_is_in_recovery() FOR UPDATE OF s")
             .bind(digest.as_slice()).fetch_optional(&mut *tx).await.map_err(unavailable)?.ok_or(AuthError::Denied)?;
         let now = sessions::now(&mut tx).await.map_err(session_error)?;
         let view = checked_session(&row, now)?;
@@ -111,7 +111,7 @@ pub(super) async fn recheck_state(
     active: bool,
     epoch: u64,
 ) -> Result<SessionView, AuthError> {
-    let row = sqlx::query("SELECT p.id, p.first_name FROM principals p JOIN credentials c ON c.principal_id=p.id AND c.kind='password' JOIN password_credentials pc ON pc.credential_id=c.id WHERE p.id=$1 AND c.id=$2 AND p.active=$5 AND NOT c.revoked AND p.credential_epoch=$3 AND pc.verifier=$4 AND NOT pg_is_in_recovery() FOR SHARE OF p,c,pc")
+    let row = sqlx::query("SELECT p.id, p.first_name, p.preferred_locale FROM principals p JOIN credentials c ON c.principal_id=p.id AND c.kind='password' JOIN password_credentials pc ON pc.credential_id=c.id WHERE p.id=$1 AND c.id=$2 AND p.active=$5 AND NOT c.revoked AND p.credential_epoch=$3 AND pc.verifier=$4 AND NOT pg_is_in_recovery() FOR SHARE OF p,c,pc")
         .bind(Uuid::from_u128(c.principal.as_u128())).bind(Uuid::from_u128(c.credential.as_u128()))
         .bind(i64::try_from(epoch).map_err(unavailable)?).bind(&c.verifier).bind(active)
         .fetch_optional(&mut **tx).await.map_err(unavailable)?.ok_or(AuthError::Denied)?;
@@ -159,6 +159,13 @@ fn view(row: &PgRow) -> Result<SessionView, AuthError> {
     Ok(SessionView {
         principal: principal(row)?,
         name: row.try_get("first_name").map_err(unavailable)?,
+        locale: row
+            .try_get::<Option<String>, _>("preferred_locale")
+            .map_err(unavailable)?
+            .as_deref()
+            .map(crate::localization::parse)
+            .transpose()
+            .map_err(unavailable)?,
     })
 }
 fn principal(row: &PgRow) -> Result<PrincipalId, AuthError> {
