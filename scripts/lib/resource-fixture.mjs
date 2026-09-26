@@ -38,7 +38,10 @@ export async function registerResource(
     client: {
       name,
       active: true,
-      redirect_uris: [`${origin}/callback?resource=${resourceId}`],
+      redirect_uris: [
+        `${origin}/callback?resource=${resourceId}`,
+        `${origin}/example-resource-callback`,
+      ],
       resource_ids: [resourceId],
       scope_ids: [scopeId],
       token_endpoint_auth_method: "client_secret_basic",

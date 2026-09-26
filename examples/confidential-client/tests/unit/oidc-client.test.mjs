@@ -3,6 +3,7 @@ import { test } from "node:test";
 import { createHash } from "node:crypto";
 import {
   beginAuthorization,
+  beginResourceAuthorization,
   completeAuthorization,
   createConfidentialOidcClient,
   loadUserInfo,
@@ -162,6 +163,55 @@ test("authorization creates distinct state, nonce and S256 PKCE transactions", a
     second.transaction.codeVerifier,
   );
   assert.equal(first.authorizationUrl.searchParams.has("client_secret"), false);
+});
+
+test("resource authorization uses one audience and only its explicitly requested scopes", async () => {
+  const mock = createDiscoveryFetch();
+  const client = await createClient(mock.fetch);
+  const audience =
+    "urn:darkhorse:resource:12345678-1234-4234-8234-123456789abc";
+  const flow = await beginResourceAuthorization(client, {
+    audience,
+    scopes: ["operate", "read:records"],
+  });
+  const parameters = flow.authorizationUrl.searchParams;
+
+  assert.equal(parameters.get("resource"), audience);
+  assert.equal(parameters.get("scope"), "openid operate read:records");
+  assert.equal(parameters.get("client_id"), clientId);
+  assert.equal(parameters.get("code_challenge_method"), "S256");
+  assert.equal(parameters.get("state"), flow.transaction.state);
+  assert.equal(parameters.get("nonce"), flow.transaction.nonce);
+  assert.equal(flow.authorizationUrl.searchParams.has("client_secret"), false);
+
+  for (const request of [
+    { audience: "", scopes: ["operate"] },
+    {
+      audience: "urn:other:resource:12345678-1234-4234-8234-123456789abc",
+      scopes: ["operate"],
+    },
+    { audience, scopes: [] },
+    { audience, scopes: ["operate", "operate"] },
+    ...["openid", "profile", "email", "address", "phone", "offline_access"].map(
+      (scope) => ({ audience, scopes: [scope] }),
+    ),
+    { audience, scopes: ["bad scope"] },
+    { audience, scopes: ['bad"scope'] },
+    { audience, scopes: ["bad\\scope"] },
+    { audience, scopes: ["ñ"] },
+    { audience, scopes: ["x".repeat(101)] },
+    {
+      audience,
+      scopes: Array.from({ length: 33 }, (_, index) => `scope-${index}`),
+    },
+    { audience: null, scopes: ["operate"] },
+    null,
+  ]) {
+    await assert.rejects(
+      beginResourceAuthorization(client, request),
+      /resource authorization parameters are invalid/,
+    );
+  }
 });
 
 test("client operations reject handles that were not created by discovery", async () => {

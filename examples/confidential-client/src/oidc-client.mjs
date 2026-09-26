@@ -54,6 +54,60 @@ function transactionValues(transaction) {
   return transaction;
 }
 
+function isResourceScope(scope) {
+  return (
+    typeof scope === "string" &&
+    scope.length > 0 &&
+    scope.length <= 100 &&
+    /^[\x21\x23-\x5b\x5d-\x7e]+$/.test(scope) &&
+    ![
+      "openid",
+      "profile",
+      "email",
+      "address",
+      "phone",
+      "offline_access",
+    ].includes(scope)
+  );
+}
+
+function isResourceAuthorizationRequest(audience, scopes) {
+  return (
+    typeof audience === "string" &&
+    /^urn:darkhorse:resource:[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/.test(
+      audience,
+    ) &&
+    Array.isArray(scopes) &&
+    scopes.length >= 1 &&
+    scopes.length <= 32 &&
+    scopes.every(isResourceScope) &&
+    new Set(scopes).size === scopes.length
+  );
+}
+
+async function beginAuthorizationWithScope(client, scope, resource) {
+  const { configuration, redirectUri } = clientSettings(client);
+  const codeVerifier = randomPKCECodeVerifier();
+  const codeChallenge = await calculatePKCECodeChallenge(codeVerifier);
+  const transaction = Object.freeze({
+    state: randomState(),
+    nonce: randomNonce(),
+    codeVerifier,
+  });
+  const parameters = {
+    redirect_uri: redirectUri.href,
+    response_type: "code",
+    scope,
+    state: transaction.state,
+    nonce: transaction.nonce,
+    code_challenge: codeChallenge,
+    code_challenge_method: "S256",
+  };
+  if (resource !== undefined) parameters.resource = resource;
+  const authorizationUrl = buildAuthorizationUrl(configuration, parameters);
+  return Object.freeze({ authorizationUrl, transaction });
+}
+
 /**
  * Discover a Darkhorse issuer and configure the confidential client using
  * client_secret_basic. The secret remains inside the OIDC library config.
@@ -101,24 +155,21 @@ export async function createConfidentialOidcClient({
 
 /** Generate a one-time authorization URL and server-side transaction values. */
 export async function beginAuthorization(client) {
-  const { configuration, redirectUri } = clientSettings(client);
-  const codeVerifier = randomPKCECodeVerifier();
-  const codeChallenge = await calculatePKCECodeChallenge(codeVerifier);
-  const transaction = Object.freeze({
-    state: randomState(),
-    nonce: randomNonce(),
-    codeVerifier,
-  });
-  const authorizationUrl = buildAuthorizationUrl(configuration, {
-    redirect_uri: redirectUri.href,
-    response_type: "code",
-    scope: "openid",
-    state: transaction.state,
-    nonce: transaction.nonce,
-    code_challenge: codeChallenge,
-    code_challenge_method: "S256",
-  });
-  return Object.freeze({ authorizationUrl, transaction });
+  return beginAuthorizationWithScope(client, "openid");
+}
+
+/** Begin an Authorization Code flow for one resource and its registered scopes. */
+export async function beginResourceAuthorization(client, request = {}) {
+  const audience = request?.audience;
+  const scopes = request?.scopes;
+  if (!isResourceAuthorizationRequest(audience, scopes)) {
+    throw new TypeError("resource authorization parameters are invalid.");
+  }
+  return beginAuthorizationWithScope(
+    client,
+    ["openid", ...scopes].join(" "),
+    audience,
+  );
 }
 
 /**

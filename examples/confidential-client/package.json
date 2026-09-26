@@ -8,10 +8,10 @@
   "scripts": {
     "test:unit": "node --test tests/unit/*.test.mjs"
   },
-	"dependencies": {
-		"openid-client": "6.8.8"
-	},
-	"devDependencies": {
-		"undici": "8.11.2"
-	}
+  "dependencies": {
+    "openid-client": "6.8.8"
+  },
+  "devDependencies": {
+    "undici": "8.11.2"
+  }
 }

@@ -1,6 +1,17 @@
 import assert from "node:assert/strict";
 import { manage } from "./reference-client.mjs";
 import {
+  beginResourceAuthorization,
+  completeAuthorization,
+  createConfidentialOidcClient,
+  loadUserInfo,
+} from "../../examples/confidential-client/src/oidc-client.mjs";
+import {
+  hasResourceCapability,
+  requestResourceIntrospection,
+} from "../../examples/confidential-client/src/resource-access.mjs";
+import { trustedFetch } from "../../examples/confidential-client/tests/support/trusted-fetch.mjs";
+import {
   registerResource as register,
   authorizeResource as authorize,
 } from "./resource-fixture.mjs";
@@ -13,10 +24,102 @@ function permitted(response, app, capability) {
     response.body.capabilities.includes(capability)
   );
 }
+
+async function verifyConfidentialResourceExample(options, app) {
+  const { page, origin, ca, principal } = options;
+  const transport = trustedFetch(ca);
+  try {
+    const client = await createConfidentialOidcClient({
+      issuer: origin,
+      clientId: app.client,
+      clientSecret: app.secret,
+      redirectUri: `${origin}/example-resource-callback`,
+      fetch: transport.fetch,
+    });
+    const flow = await beginResourceAuthorization(client, {
+      audience: app.audience,
+      scopes: ["operate"],
+    });
+    await page.route(`${origin}/example-resource-callback?**`, (route) =>
+      route.fulfill({
+        status: 200,
+        body: "Protected resource callback",
+        contentType: "text/plain",
+      }),
+    );
+    await page.goto(flow.authorizationUrl.href);
+    await page.getByRole("heading", { name: `Connect ${app.name}?` }).waitFor();
+    await page.getByRole("button", { name: "Allow connection" }).click();
+    await page.waitForURL(`${origin}/example-resource-callback?**`);
+
+    const callback = new URL(page.url());
+    await assert.rejects(
+      completeAuthorization(client, callback, {
+        ...flow.transaction,
+        state: "substituted-state",
+      }),
+    );
+    const tokens = await completeAuthorization(
+      client,
+      callback,
+      flow.transaction,
+    );
+    const claims = tokens.claims();
+    assert.equal(claims.iss, origin);
+    assert.equal(claims.aud, app.client);
+    assert.equal(claims.sub, principal);
+    assert.equal(claims.nonce, flow.transaction.nonce);
+    assert.match(tokens.access_token, /^da_[a-f0-9]{64}$/);
+    await assert.rejects(loadUserInfo(client, tokens.access_token, principal));
+
+    const decision = await requestResourceIntrospection({
+      issuer: origin,
+      introspectionClientId: app.credential.introspection_client_id,
+      introspectionSecret: app.credential.secret,
+      accessToken: tokens.access_token,
+      fetch: transport.fetch,
+    });
+    const nowSeconds = Math.floor(Date.now() / 1000);
+    assert.equal(
+      hasResourceCapability(decision, {
+        issuer: origin,
+        audience: app.audience,
+        capability: app.write,
+        nowSeconds,
+      }),
+      true,
+    );
+    assert.equal(
+      hasResourceCapability(decision, {
+        issuer: origin,
+        audience: app.audience,
+        capability: app.read,
+        nowSeconds,
+      }),
+      true,
+    );
+    assert.equal(
+      hasResourceCapability(decision, {
+        issuer: origin,
+        audience: app.audience,
+        capability: "ffffffff-ffff-ffff-ffff-ffffffffffff",
+        nowSeconds,
+      }),
+      false,
+    );
+    console.log(
+      "Confidential OIDC resource example passed: PKCE, fresh consent, distinct resource introspection credentials, exact audience and live capability checks.",
+    );
+  } finally {
+    await transport.close();
+  }
+}
+
 export async function verifyResourceChecks(options) {
   const { page, origin, ca, call, runSql, principal } = options;
   const first = await register(options, "Inventory");
   const second = await register(options, "Billing");
+  await verifyConfidentialResourceExample(options, first);
   const tokens = [
     await authorize(options, first),
     await authorize(options, second),
