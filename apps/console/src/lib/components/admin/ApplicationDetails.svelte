@@ -11,7 +11,8 @@
 		{ path: 'resources', icon: '◇' },
 		{ path: 'scopes', icon: '⌘' },
 		{ path: 'roles', icon: '☷' },
-		{ path: 'capabilities', icon: '＋' }
+		{ path: 'capabilities', icon: '＋' },
+		{ path: 'policies', icon: '⌘' }
 	] as const;
 </script>
 

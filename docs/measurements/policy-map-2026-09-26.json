@@ -1,0 +1,102 @@
+{
+  "schema": 1,
+  "date": "2026-09-26",
+  "issue": 44,
+  "scope": "Local policy-map correctness and bounded-render observations from the HTTPS Chromium browser suite. These are single-run development measurements, not service capacity or production SLO evidence.",
+  "environment": {
+    "host": "macOS on Apple Silicon",
+    "browser": "Chromium via Playwright",
+    "application": "Rust debug server behind the local HTTPS test proxy; SvelteKit static production build",
+    "database": "Disposable Percona Distribution for PostgreSQL container",
+    "cache": "Disposable Redis test services; no policy-map cache",
+    "viewport": {
+      "desktop": "1280x900",
+      "mobile": "390x844"
+    }
+  },
+  "serverLimits": {
+    "snapshotNodes": 2048,
+    "snapshotRelationships": 8192,
+    "serializedJsonBytes": 16777216,
+    "sqlStatementsPerSnapshot": 14,
+    "positiveAuthorizationCache": false,
+    "cacheControl": "no-store"
+  },
+  "interactiveGraphLimits": {
+    "nodes": 512,
+    "relationships": 2048,
+    "overflowBehavior": "Do not mount a partial graph. Explain the counts and offer complete paginated item and relationship tables."
+  },
+  "observations": {
+    "authorizedSmallSnapshot": {
+      "nodes": 5,
+      "relationships": 7,
+      "jsonBytes": 3049,
+      "httpsReadMs": 14.4,
+      "sameSessionGraphReadyMs": 119.8
+    },
+    "maximumInteractiveSyntheticFixture": {
+      "nodes": 512,
+      "relationships": 2048,
+      "jsonBytes": 656076,
+      "renderedGraphDomNodes": 512,
+      "routeReadyMs": 236.1,
+      "tabHeapBytesAfterRender": 81400000
+    },
+    "maximumServerSnapshotSyntheticFixture": {
+      "nodes": 2048,
+      "relationships": 8192,
+      "jsonBytes": 2625939,
+      "graphFallbackMs": 96.7,
+      "renderedGraphDomNodes": 0,
+      "visiblePaginatedTableRows": 100,
+      "tabHeapBytesAfterRender": 81400000
+    },
+    "policyRouteEntryChunk": {
+      "path": "apps/console/build/_app/immutable/nodes/9.CLym-U6I.js",
+      "bytes": 195599,
+      "gzipBytes": 61391,
+      "scope": "The policy-route entry chunk only; it excludes other route dependencies and shared application chunks."
+    }
+  },
+  "verification": {
+    "browserSuite": "make test-browser passed, including application switching, English/Spanish labels, keyboard selection, responsive bounds, read-only behavior, complete tables, 401/403 clearing, and stale-response cancellation.",
+    "policyUnitTests": "60 tests passed across four focused test files.",
+    "focusedPolicyCoreUnitCoverage": {
+      "files": [
+        "apps/console/src/lib/admin/policy-map.ts",
+        "apps/console/src/lib/admin/policy-map-api.ts",
+        "apps/console/src/lib/admin/policy-flow.ts"
+      ],
+      "linesPercent": 100,
+      "statementsPercent": 100,
+      "functionsPercent": 100,
+      "branchesPercent": 100
+    },
+    "wholeConsoleUnitCoverage": {
+      "linesPercent": 92.78,
+      "statementsPercent": 90.41,
+      "functionsPercent": 91.18,
+      "branchesPercent": 86.65,
+      "policyRoute": {
+        "linesPercent": 36.31,
+        "statementsPercent": 28.42,
+        "functionsPercent": 21.02,
+        "branchesPercent": 26
+      },
+      "policyFlowComponentUnitCoveragePercent": 0,
+      "limitation": "Vitest instruments isolated console unit/component tests; the full policy page and Svelte Flow interactions are exercised by the separate browser suite, which does not contribute to this coverage report. The authored-logic coverage target is not claimed as achieved for the route/component."
+    },
+    "svelteCheck": "0 errors and 0 warnings.",
+    "lint": "Focused console lint passed before the browser run.",
+    "localization": "429 shared and 298 administration messages per language passed parity and placeholder checks."
+  },
+  "limitations": [
+    "Browser timings are single observations on one local host with a warm test environment; they are not benchmarks or capacity promises.",
+    "The 512-node/2048-relationship fixture rendered all 512 graph nodes in the DOM, which motivated the explicit interactive graph cap.",
+    "The 2048-node/8192-relationship fixtures are synthetic and do not measure database query execution at production cardinality.",
+    "The reported browser heap is total tab heap after rendering and is not an incremental graph allocation measurement.",
+    "Cold-cache, multi-host, production-device, concurrent-administrator, and sustained-load behavior remain unmeasured.",
+    "The complete page and graph component are verified in the browser suite, but their unit instrumentation coverage remains incomplete as recorded above."
+  ]
+}

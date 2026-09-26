@@ -3,6 +3,7 @@ use crate::registration::{ApplicationRecord, Entropy, ResourceRecord, ScopeRecor
 use darkhorse_domain::{
     admin_catalog::{Change, Query},
     identity::*,
+    policy_map::Graph as PolicyMap,
     registration::RegistrationError as Error,
 };
 use std::{future::Future, num::NonZeroU128};
@@ -75,11 +76,26 @@ pub struct View {
     pub capabilities: Vec<CapabilitySummary>,
     pub policy_revision: u64,
 }
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum PolicyMapError {
+    Unauthorized,
+    Forbidden,
+    NotFound,
+    TooLarge,
+    Unavailable,
+}
+
 pub struct Written {
     pub target: Target,
     pub policy_revision: u64,
 }
 pub trait CatalogStore: Send + Sync {
+    fn policy_map(
+        &self,
+        actor: [u8; 32],
+        application: ApplicationId,
+    ) -> impl Future<Output = Result<PolicyMap, PolicyMapError>> + Send;
     fn list(
         &self,
         actor: [u8; 32],
@@ -106,6 +122,11 @@ pub trait CatalogStore: Send + Sync {
     ) -> impl Future<Output = Result<Written, Error>> + Send;
 }
 pub trait Catalog: Send + Sync {
+    fn policy_map(
+        &self,
+        actor: [u8; 32],
+        application: ApplicationId,
+    ) -> impl Future<Output = Result<PolicyMap, PolicyMapError>> + Send;
     fn list(
         &self,
         actor: [u8; 32],
@@ -129,6 +150,13 @@ pub struct Service<S, E> {
     pub entropy: E,
 }
 impl<S: CatalogStore, E: Entropy> Catalog for Service<S, E> {
+    async fn policy_map(
+        &self,
+        actor: [u8; 32],
+        application: ApplicationId,
+    ) -> Result<PolicyMap, PolicyMapError> {
+        self.store.policy_map(actor, application).await
+    }
     async fn list(&self, actor: [u8; 32], target: List, query: Query) -> Result<Page, Error> {
         self.store.list(actor, target, query).await
     }

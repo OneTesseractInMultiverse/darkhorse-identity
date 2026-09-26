@@ -52,6 +52,7 @@ async fn unknown_api_and_protocol_routes_never_use_frontend_fallback() {
 async fn api_reference_page_and_downloads_are_explicit_static_routes() {
     for path in [
         "/console/api-docs",
+        "/console/policies",
         "/reference/openapi-v1.json",
         "/reference/route-classification-v1.json",
     ] {

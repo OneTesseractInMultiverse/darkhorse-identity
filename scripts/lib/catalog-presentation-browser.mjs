@@ -30,6 +30,7 @@ export async function verifyApplicationOverview(
     ["scopes", "Scopes", "Ámbitos"],
     ["roles", "Roles", "Roles"],
     ["capabilities", "Capabilities", "Capacidades"],
+    ["policies", "Policy map", "Mapa de políticas"],
   ]) {
     const link = dialog.getByRole("link", {
       name: locale === "es" ? es : en,
@@ -85,6 +86,22 @@ export async function verifyApplicationOverview(
       exact: true,
     })
     .click();
+  await page
+    .getByRole("dialog")
+    .getByRole("link", {
+      name: locale === "es" ? "Mapa de políticas" : "Policy map",
+      exact: true,
+    })
+    .click();
+  await page.waitForURL(`**/console/policies?application_id=${application}`);
+  await page.goBack();
+  await page
+    .getByRole("button", {
+      name: locale === "es" ? "Ver Console portal" : "View Console portal",
+      exact: true,
+    })
+    .click();
+  await page.getByRole("dialog").waitFor();
 }
 
 export async function verifyClientFormGuidance(page, locale = "en") {

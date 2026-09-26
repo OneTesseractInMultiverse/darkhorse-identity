@@ -26,6 +26,7 @@ use tower::ServiceExt;
 struct Fake {
     calls: Arc<AtomicUsize>,
     failure: Option<Error>,
+    policy_map_failure: Option<PolicyMapError>,
 }
 impl Fake {
     fn check(&self, actor: [u8; 32]) -> Result<(), Error> {
@@ -54,6 +55,42 @@ fn record() -> registration::Record {
     })
 }
 impl Catalog for Fake {
+    async fn policy_map(
+        &self,
+        actor: [u8; 32],
+        application: ApplicationId,
+    ) -> Result<darkhorse_domain::policy_map::Graph, PolicyMapError> {
+        self.check(actor).map_err(|error| match error {
+            Error::Unauthorized => PolicyMapError::Unauthorized,
+            Error::Forbidden | Error::RecentAuthenticationRequired => PolicyMapError::Forbidden,
+            Error::NotFound => PolicyMapError::NotFound,
+            Error::Invalid | Error::Conflict | Error::Unavailable => PolicyMapError::Unavailable,
+        })?;
+        if let Some(error) = self.policy_map_failure {
+            return Err(error);
+        }
+        Ok(darkhorse_domain::policy_map::Graph {
+            application: darkhorse_domain::policy_map::Application {
+                id: application,
+                name: darkhorse_domain::registration::Label::new("Portal").unwrap(),
+                active: true,
+            },
+            policy_revision: 9007199254740993,
+            roles: vec![],
+            capabilities: vec![darkhorse_domain::policy_map::Capability {
+                id: CapabilityId::from_u128(3).unwrap(),
+                definition: darkhorse_domain::admin_catalog::PermissionDefinition::new(
+                    "records.read",
+                    "Read organization records",
+                )
+                .unwrap(),
+                retired: false,
+            }],
+            resources: vec![],
+            scopes: vec![],
+            edges: vec![],
+        })
+    }
     async fn list(&self, actor: [u8; 32], _: List, _: Query) -> Result<Page, Error> {
         self.check(actor)?;
         Ok(Page {
@@ -101,6 +138,25 @@ fn app(failure: Option<Error>) -> (Router, Arc<AtomicUsize>) {
     let fake = Fake {
         calls: Arc::default(),
         failure,
+        policy_map_failure: None,
+    };
+    (
+        crate::http::with_authentication(
+            std::path::PathBuf::new(),
+            router(
+                fake.clone(),
+                fake.clone(),
+                url::Url::parse("https://localhost:8443").unwrap(),
+            ),
+        ),
+        fake.calls,
+    )
+}
+fn policy_app(failure: Option<PolicyMapError>) -> (Router, Arc<AtomicUsize>) {
+    let fake = Fake {
+        calls: Arc::default(),
+        failure: None,
+        policy_map_failure: failure,
     };
     (
         crate::http::with_authentication(
@@ -156,6 +212,90 @@ async fn catalog_http_keeps_counters_exact_and_responses_noncacheable() {
     let response=app.oneshot(request("POST","/api/admin/console/registration").body(Body::from(json!({"operation":"create_application","application":{"name":"Portal","owner_id":reference,"active":true}}).to_string())).unwrap()).await.unwrap();
     assert_eq!(response.status(), StatusCode::OK);
     assert_eq!(calls.load(Ordering::SeqCst), 6);
+}
+
+#[tokio::test]
+async fn policy_map_http_preserves_exact_revision_and_rejects_query_parameters() {
+    let (app, calls) = app(None);
+    let path = "/api/admin/console/applications/00000000-0000-0000-0000-000000000001/policy-map";
+    let response = app
+        .clone()
+        .oneshot(request("GET", path).body(Body::empty()).unwrap())
+        .await
+        .unwrap();
+    assert_eq!(response.status(), StatusCode::OK);
+    assert_eq!(response.headers()["cache-control"], "no-store");
+    let value: Value =
+        serde_json::from_slice(&to_bytes(response.into_body(), 10000).await.unwrap()).unwrap();
+    assert_eq!(value["policy_revision"], "9007199254740993");
+    assert_eq!(
+        value["application"]["id"],
+        "00000000-0000-0000-0000-000000000001"
+    );
+    assert_eq!(
+        value["nodes"][0]["id"],
+        "application:00000000-0000-0000-0000-000000000001"
+    );
+    assert_eq!(value["complete"], true);
+    assert_eq!(value["nodes"][1]["type"], "capability");
+    assert_eq!(value["nodes"][1]["name"], "records.read");
+    assert_eq!(value["nodes"][1]["key"], "records.read");
+
+    for invalid_path in [
+        "/api/admin/console/applications/not-a-uuid/policy-map",
+        "/api/admin/console/applications/00000000-0000-0000-0000-000000000001/policy-map?unknown=value",
+    ] {
+        let response = app
+            .clone()
+            .oneshot(request("GET", invalid_path).body(Body::empty()).unwrap())
+            .await
+            .unwrap();
+        assert_eq!(response.status(), StatusCode::BAD_REQUEST);
+    }
+    assert_eq!(calls.load(Ordering::SeqCst), 1);
+}
+
+#[tokio::test]
+async fn oversized_policy_map_is_distinguished_from_an_unavailable_read() {
+    for (error, status, code) in [
+        (
+            PolicyMapError::TooLarge,
+            StatusCode::PAYLOAD_TOO_LARGE,
+            "policy_map_too_large",
+        ),
+        (
+            PolicyMapError::Unavailable,
+            StatusCode::SERVICE_UNAVAILABLE,
+            "temporarily_unavailable",
+        ),
+    ] {
+        let (app, _) = policy_app(Some(error));
+        let response = app
+            .oneshot(
+                request(
+                    "GET",
+                    "/api/admin/console/applications/00000000-0000-0000-0000-000000000001/policy-map",
+                )
+                .body(Body::empty())
+                .unwrap(),
+            )
+            .await
+            .unwrap();
+        assert_eq!(response.status(), status);
+        let value: Value =
+            serde_json::from_slice(&to_bytes(response.into_body(), 10000).await.unwrap()).unwrap();
+        assert_eq!(value["error"], code);
+    }
+}
+#[tokio::test]
+async fn serialized_policy_map_byte_limit_returns_only_a_no_store_error() {
+    let response =
+        policy_map_response(json!({"nodes":["x".repeat(MAX_POLICY_MAP_RESPONSE_BYTES)]}));
+    assert_eq!(response.status(), StatusCode::PAYLOAD_TOO_LARGE);
+    assert_eq!(response.headers()["cache-control"], "no-store");
+    let value: Value =
+        serde_json::from_slice(&to_bytes(response.into_body(), 10000).await.unwrap()).unwrap();
+    assert_eq!(value, json!({"error":"policy_map_too_large"}));
 }
 #[tokio::test]
 async fn invalid_counters_unknown_fields_and_csrf_are_rejected_before_service_calls() {

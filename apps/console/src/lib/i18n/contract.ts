@@ -280,6 +280,8 @@ export const contract = {
 	'console.capabilities': {},
 	'console.settings': {},
 	'console.apiDocs': {},
+	'console.policyMap': {},
+	'console.policies': {},
 	'console.security': {},
 	'console.securityNav': {},
 	'console.profile': {},

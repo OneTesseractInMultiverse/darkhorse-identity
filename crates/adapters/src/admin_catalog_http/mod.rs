@@ -6,8 +6,9 @@ use crate::{
 };
 use axum::{
     Json, Router,
+    body::Body,
     extract::{Path, RawQuery, State},
-    http::HeaderMap,
+    http::{HeaderMap, HeaderValue, StatusCode, header},
     response::{IntoResponse, Response},
     routing::{get, post},
 };
@@ -20,6 +21,8 @@ use serde_json::{Value, json};
 use std::sync::Arc;
 mod input;
 mod output;
+/// Maximum serialized size of one complete policy-map snapshot.
+const MAX_POLICY_MAP_RESPONSE_BYTES: usize = 16 * 1024 * 1024;
 struct Services<C, R> {
     catalog: C,
     registration: R,
@@ -36,6 +39,10 @@ pub fn router<C: Catalog + 'static, R: Registration + 'static>(
     let reads = Router::new()
         .route("/api/admin/catalog/{kind}", get(list::<C, R>))
         .route("/api/admin/catalog/{kind}/{id}", get(view::<C, R>))
+        .route(
+            "/api/admin/console/applications/{app}/policy-map",
+            get(policy_map::<C, R>),
+        )
         .with_state(state.clone());
     let registration = Router::new()
         .route("/api/admin/console/registration", post(register::<C, R>))
@@ -78,6 +85,57 @@ async fn view<C: Catalog, R: Registration>(
             Err(e) => return error(e),
         };
     respond(s.catalog.view(actor, target).await.map(output::view))
+}
+async fn policy_map<C: Catalog, R: Registration>(
+    State(s): State<Arc<Services<C, R>>>,
+    headers: HeaderMap,
+    Path(app): Path<String>,
+    RawQuery(raw): RawQuery,
+) -> Response {
+    let request = actor(&headers).and_then(|actor| {
+        if raw.is_some() {
+            return Err(Error::Invalid);
+        }
+        Ok((actor, id(&app, ApplicationId::from_u128)?))
+    });
+    let (actor, application) = match request {
+        Ok(request) => request,
+        Err(e) => return error(e),
+    };
+    match s.catalog.policy_map(actor, application).await {
+        Ok(graph) => policy_map_response(output::policy_map(graph)),
+        Err(PolicyMapError::Unauthorized) => error(Error::Unauthorized),
+        Err(PolicyMapError::Forbidden) => error(Error::Forbidden),
+        Err(PolicyMapError::NotFound) => error(Error::NotFound),
+        Err(PolicyMapError::TooLarge) => too_large_policy_map(),
+        Err(PolicyMapError::Unavailable) => error(Error::Unavailable),
+    }
+}
+fn policy_map_response(value: Value) -> Response {
+    let body = match serde_json::to_vec(&value) {
+        Ok(body) if body.len() <= MAX_POLICY_MAP_RESPONSE_BYTES => body,
+        Ok(_) => {
+            return too_large_policy_map();
+        }
+        Err(_) => return error(Error::Unavailable),
+    };
+    let mut response = Response::new(Body::from(body));
+    response.headers_mut().insert(
+        header::CONTENT_TYPE,
+        HeaderValue::from_static("application/json"),
+    );
+    response
+        .headers_mut()
+        .insert(header::CACHE_CONTROL, HeaderValue::from_static("no-store"));
+    response
+}
+fn too_large_policy_map() -> Response {
+    (
+        StatusCode::PAYLOAD_TOO_LARGE,
+        [(header::CACHE_CONTROL, HeaderValue::from_static("no-store"))],
+        Json(json!({"error":"policy_map_too_large"})),
+    )
+        .into_response()
 }
 async fn write<C: Catalog, R: Registration>(
     State(s): State<Arc<Services<C, R>>>,

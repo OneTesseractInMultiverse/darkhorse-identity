@@ -37,6 +37,13 @@
     },
     {
       "function": "router",
+      "handler": "policy_map",
+      "method": "GET",
+      "path": "/api/admin/console/applications/{app}/policy-map",
+      "source": "crates/adapters/src/admin_catalog_http/mod.rs"
+    },
+    {
+      "function": "router",
       "handler": "register",
       "method": "POST",
       "path": "/api/admin/console/registration",
@@ -187,6 +194,13 @@
       "handler": "static-service",
       "method": "SERVICE",
       "path": "/console/clients",
+      "source": "crates/adapters/src/http.rs"
+    },
+    {
+      "function": "with_authentication",
+      "handler": "static-service",
+      "method": "SERVICE",
+      "path": "/console/policies",
       "source": "crates/adapters/src/http.rs"
     },
     {

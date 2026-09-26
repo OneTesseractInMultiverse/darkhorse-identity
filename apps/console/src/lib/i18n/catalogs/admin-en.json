@@ -224,6 +224,11 @@
 	["sectionTag.scopes", "REQUEST LIMITS"],
 	["sectionTag.roles", "USER ACCESS"],
 	["sectionTag.capabilities", "PERMISSIONS"],
+	["sectionTag.policies", "POLICY OVERVIEW"],
+	[
+		"intro.policies",
+		"Explore the roles, capabilities, resources and scopes connected to this application."
+	],
 	["applicationId", "Application ID"],
 	[
 		"applicationIdHelp",
@@ -247,6 +252,141 @@
 	],
 	["applicationInactive", "Clients in this application cannot authenticate while it is inactive."],
 	["applicationCatalogs", "Application catalogs"],
+	["policy.title", "Application policy map"],
+	[
+		"policy.description",
+		"Inspect the explicit roles, capabilities, protected resources and scopes configured for one application. This is a structural policy view, not a calculation of any user’s effective access."
+	],
+	["policy.eyebrow", "ACCESS MODEL / READ ONLY"],
+	["policy.application", "Choose an application"],
+	[
+		"policy.applicationHelp",
+		"Search the application directory, then load one complete policy snapshot. The application ID stays in the page URL so this view can be bookmarked and shared with administrators."
+	],
+	["policy.searchApplications", "Find applications"],
+	["policy.applicationPlaceholder", "Search by application name"],
+	["policy.findApplications", "Search"],
+	["policy.chooseApplication", "Application"],
+	["policy.load", "Open policy map"],
+	["policy.loadingApplications", "Loading applications…"],
+	[
+		"policy.noApplications",
+		"No applications to choose from. Search for an application or register one first."
+	],
+	["policy.nextApplications", "More applications"],
+	[
+		"policy.applicationError",
+		"The application directory could not be loaded. Try the search again."
+	],
+	["policy.loading", "Loading a consistent policy snapshot…"],
+	["policy.graphEmpty", "Choose an application to inspect its policy."],
+	["policy.signIn", "Sign in again"],
+	["policy.currentApplication", "SELECTED APPLICATION"],
+	["policy.revision", "Policy revision {revision}"],
+	["policy.nodes", "items"],
+	["policy.relationships", "relationships"],
+	["policy.completeNotice", "Complete snapshot · no partial results"],
+	["policy.filters", "Policy map filters and view controls"],
+	["policy.search", "Search names, identifiers or descriptions"],
+	["policy.relationshipFilter", "Relationship type"],
+	["policy.entityFilter", "Item type"],
+	["policy.allEntities", "All item types"],
+	["policy.legend", "Item type legend"],
+	[
+		"policy.loadedAt",
+		"Browser loaded this snapshot at {time} UTC. Reload to see later policy changes."
+	],
+	[
+		"policy.filteredNotice",
+		"The complete snapshot contains {total, number} relationships; {visible, number} are visible with these filters. Hidden connections remain configured."
+	],
+	["policy.openManagement", "Open this item in its management form"],
+	["policy.itemsCaption", "{count, number} policy items in this filtered view"],
+	["policy.previousItems", "Previous items"],
+	["policy.nextItems", "Next items"],
+	["policy.itemRange", "Showing {from, number}–{to, number} of {total, number}"],
+	["policy.noItems", "No policy items match these filters."],
+	["policy.allRelationships", "All relationships"],
+	["policy.view", "Choose graph or table view"],
+	["policy.viewGraph", "Graph"],
+	["policy.viewList", "Accessible table"],
+	["policy.graphLimitTitle", "This graph is too large to render interactively"],
+	[
+		"policy.graphLimitDescription",
+		"This filtered view has {nodes, number} items and {edges, number} relationships, above the graph limit of {maxNodes, number} items or {maxEdges, number} relationships. Narrow the filters or use the complete paginated table. The table retains every item and relationship."
+	],
+	["policy.resetView", "Clear filters / reset layout"],
+	["policy.refresh", "Reload snapshot"],
+	["policy.focusedOn", "Showing direct connections for {name}."],
+	["policy.clearFocus", "Show all"],
+	["policy.noMatches", "No policy items match these filters."],
+	["policy.noRelationships", "This application has no explicit relationships in the current view."],
+	["policy.previousRelationships", "Previous relationships"],
+	["policy.nextRelationships", "Next relationships"],
+	["policy.relationshipRange", "Showing {from, number}–{to, number} of {total, number}"],
+	["policy.snapshot", "Application policy snapshot summary"],
+	["policy.listCaption", "{count, number} explicit policy relationships in this filtered view"],
+	["policy.source", "From"],
+	["policy.relationship", "Relationship"],
+	["policy.target", "To"],
+	["policy.inspector", "ITEM INSPECTOR"],
+	["policy.noSelection", "Select an item"],
+	[
+		"policy.inspectorHelp",
+		"Choose a graph item or a table entry to see its identifier, details and direct relationships."
+	],
+	["policy.identifier", "Identifier"],
+	["policy.permissionKey", "Capability key"],
+	["policy.meaning", "Description"],
+	["policy.audience", "Resource audience"],
+	["policy.parentResource", "Parent resource"],
+	["policy.focusDirect", "Focus direct relationships"],
+	["policy.directRelationships", "Direct relationships"],
+	[
+		"policy.accessBoundary",
+		"This view shows configured catalog bindings and grants only. It does not show user assignments, token contents or effective access decisions."
+	],
+	[
+		"policy.error.reference",
+		"The application ID in the page address is invalid. Choose an application from the directory."
+	],
+	["policy.error.signed-out", "Your administrator session has ended. Sign in again to continue."],
+	[
+		"policy.error.forbidden",
+		"Your current account is not authorized to inspect application policy."
+	],
+	[
+		"policy.error.too-large",
+		"This application policy is larger than the safe visualization limit. No partial graph was returned."
+	],
+	[
+		"policy.error.unavailable",
+		"The policy snapshot could not be loaded. Try reloading; if this continues, contact your system administrator."
+	],
+	["policy.type.application", "Application"],
+	["policy.type.role", "Role"],
+	["policy.type.capability", "Capability"],
+	["policy.type.resource", "Resource"],
+	["policy.type.scope", "Scope"],
+	["policy.relation.application_role", "Application includes role"],
+	["policy.relation.application_capability", "Application binds capability"],
+	["policy.relation.application_resource", "Application protects resource"],
+	["policy.relation.role_capability", "Role grants capability"],
+	["policy.relation.resource_capability", "Resource grants capability"],
+	["policy.relation.resource_scope", "Resource contains scope"],
+	["policy.relation.scope_capability", "Scope grants capability"],
+	[
+		"policy.graphRegion",
+		"Application policy graph. Use Tab to move between items and Enter to inspect one. Drag the background to pan and use the controls to zoom or fit the graph."
+	],
+	["policy.graphControls", "Policy graph controls"],
+	["policy.zoomIn", "Zoom in"],
+	["policy.zoomOut", "Zoom out"],
+	["policy.fitView", "Fit graph to view"],
+	["policy.toggleInteraction", "Toggle graph interaction"],
+	["policy.minimap", "Policy graph overview"],
+	["policy.nodeA11y", "Policy item. Press Enter to inspect."],
+	["policy.edgeA11y", "Explicit policy relationship."],
 	["clientId", "Client ID"],
 	[
 		"clientIdHelp",

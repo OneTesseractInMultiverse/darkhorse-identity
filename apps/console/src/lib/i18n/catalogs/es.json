@@ -424,6 +424,8 @@
 	["console.capabilities", "Capacidades"],
 	["console.settings", "Configuración del sistema"],
 	["console.apiDocs", "Documentación de API"],
+	["console.policyMap", "Mapa de políticas"],
+	["console.policies", "Mapa de políticas"],
 	["console.security", "MI SEGURIDAD"],
 	["console.securityNav", "Seguridad de la cuenta"],
 	["console.profile", "Mi perfil"],

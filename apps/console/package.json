@@ -44,6 +44,7 @@
 	},
 	"dependencies": {
 		"@formatjs/icu-messageformat-parser": "3.5.20",
+		"@xyflow/svelte": "1.7.0",
 		"clsx": "2.1.1",
 		"intl-messageformat": "12.1.2",
 		"tailwind-merge": "3.6.0"

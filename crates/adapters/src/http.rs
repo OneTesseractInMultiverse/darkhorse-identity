@@ -76,6 +76,10 @@ pub fn with_authentication(static_dir: PathBuf, authentication: Router) -> Route
             ServeFile::new(static_dir.join("console/api-docs.html")),
         )
         .route_service(
+            "/console/policies",
+            ServeFile::new(static_dir.join("console/policies.html")),
+        )
+        .route_service(
             "/reference/openapi-v1.json",
             ServeFile::new(static_dir.join("reference/openapi-v1.json")),
         )

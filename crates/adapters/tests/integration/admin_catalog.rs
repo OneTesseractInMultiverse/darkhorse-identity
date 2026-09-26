@@ -1,6 +1,6 @@
 use super::*;
 use darkhorse_application::{
-    admin_catalog::{CatalogStore, List, Target},
+    admin_catalog::{CatalogStore, List, PolicyMapError, Target},
     authentication::AuthenticationStore,
 };
 use darkhorse_domain::{
@@ -375,6 +375,246 @@ async fn shared_bindings_are_explicit_and_scope_bounds_cannot_expand_resource_au
     ] {
         assert!(sqlx::query(sql).execute(&db.pool).await.is_err());
     }
+    db.store.close().await;
+}
+
+#[tokio::test]
+async fn policy_map_reads_one_authorized_application_snapshot_and_preserves_shared_binding_semantics()
+ {
+    let db = oidc::fixture().await;
+    definitions(&db).await;
+    write(
+        &db,
+        Change::RoleCapability {
+            role: role(),
+            capability: cap(),
+            granted: true,
+        },
+        None,
+    )
+    .await
+    .unwrap();
+    let other = ApplicationId::from_u128(17).unwrap();
+    sqlx::query("INSERT INTO applications(id,name,owner_id,active) VALUES($1,'Other','00000000-0000-0000-0000-000000000001',true)")
+        .bind(Uuid::from_u128(other.as_u128()))
+        .execute(&db.pool)
+        .await
+        .unwrap();
+
+    assert!(matches!(
+        db.store.policy_map([9; 32], app()).await,
+        Err(PolicyMapError::Unauthorized)
+    ));
+    let initially_unbound = db.store.policy_map([1; 32], other).await.unwrap();
+    assert!(initially_unbound.roles.is_empty());
+    assert!(initially_unbound.capabilities.is_empty());
+
+    write(
+        &db,
+        Change::CapabilityBinding {
+            application: other,
+            capability: cap(),
+            bound: true,
+        },
+        None,
+    )
+    .await
+    .unwrap();
+    write(
+        &db,
+        Change::RoleBinding {
+            application: other,
+            role: role(),
+            bound: true,
+        },
+        None,
+    )
+    .await
+    .unwrap();
+
+    let first_resource = ResourceId::from_u128(144).unwrap();
+    let first_scope = ScopeId::from_u128(145).unwrap();
+    let second_resource = ResourceId::from_u128(146).unwrap();
+    let second_scope = ScopeId::from_u128(147).unwrap();
+    sqlx::query("INSERT INTO protected_resources(id,application_id,name,audience) VALUES($1,$2,'First API',$3),($4,$5,'Second API',$6)")
+        .bind(Uuid::from_u128(first_resource.as_u128()))
+        .bind(Uuid::from_u128(app().as_u128()))
+        .bind(format!("urn:darkhorse:resource:{}", Uuid::from_u128(first_resource.as_u128())))
+        .bind(Uuid::from_u128(second_resource.as_u128()))
+        .bind(Uuid::from_u128(other.as_u128()))
+        .bind(format!("urn:darkhorse:resource:{}", Uuid::from_u128(second_resource.as_u128())))
+        .execute(&db.pool)
+        .await
+        .unwrap();
+    sqlx::query("INSERT INTO resource_scopes(id,application_id,resource_id,name) VALUES($1,$2,$3,'read'),($4,$5,$6,'write')")
+        .bind(Uuid::from_u128(first_scope.as_u128()))
+        .bind(Uuid::from_u128(app().as_u128()))
+        .bind(Uuid::from_u128(first_resource.as_u128()))
+        .bind(Uuid::from_u128(second_scope.as_u128()))
+        .bind(Uuid::from_u128(other.as_u128()))
+        .bind(Uuid::from_u128(second_resource.as_u128()))
+        .execute(&db.pool)
+        .await
+        .unwrap();
+    for (application, resource, scope) in [
+        (app(), first_resource, first_scope),
+        (other, second_resource, second_scope),
+    ] {
+        write(
+            &db,
+            Change::ResourceCapability {
+                application,
+                resource,
+                capability: cap(),
+                exposed: true,
+            },
+            None,
+        )
+        .await
+        .unwrap();
+        write(
+            &db,
+            Change::ScopeCapability {
+                application,
+                resource,
+                scope,
+                capability: cap(),
+                included: true,
+            },
+            None,
+        )
+        .await
+        .unwrap();
+    }
+
+    let first = db.store.policy_map([1; 32], app()).await.unwrap();
+    let second = db.store.policy_map([1; 32], other).await.unwrap();
+    assert_eq!(first.application.id, app());
+    assert_eq!(first.policy_revision, revision(&db).await);
+    assert_eq!(
+        first.roles.iter().map(|value| value.id).collect::<Vec<_>>(),
+        [role()]
+    );
+    assert_eq!(
+        first
+            .capabilities
+            .iter()
+            .map(|value| value.id)
+            .collect::<Vec<_>>(),
+        [cap()]
+    );
+    assert_eq!(
+        first
+            .resources
+            .iter()
+            .map(|value| value.id)
+            .collect::<Vec<_>>(),
+        [first_resource]
+    );
+    assert_eq!(
+        first
+            .scopes
+            .iter()
+            .map(|value| value.id)
+            .collect::<Vec<_>>(),
+        [first_scope]
+    );
+    assert_eq!(first.edges.len(), 7);
+    assert_eq!(second.application.id, other);
+    assert_eq!(
+        second
+            .resources
+            .iter()
+            .map(|value| value.id)
+            .collect::<Vec<_>>(),
+        [second_resource]
+    );
+    assert_eq!(
+        second
+            .scopes
+            .iter()
+            .map(|value| value.id)
+            .collect::<Vec<_>>(),
+        [second_scope]
+    );
+    assert_eq!(second.edges.len(), 7);
+
+    assert!(matches!(
+        db.store
+            .policy_map([1; 32], ApplicationId::from_u128(999).unwrap())
+            .await,
+        Err(PolicyMapError::NotFound)
+    ));
+    db.store.logout([1; 32]).await.unwrap();
+    assert!(matches!(
+        db.store.policy_map([1; 32], app()).await,
+        Err(PolicyMapError::Unauthorized)
+    ));
+    db.store.close().await;
+}
+
+#[tokio::test]
+async fn policy_map_database_read_stops_at_its_bounded_node_limit() {
+    let db = oidc::fixture().await;
+    sqlx::raw_sql("INSERT INTO protected_resources(id,application_id,name,audience) SELECT lpad(to_hex(n),32,'0')::uuid,'00000000-0000-0000-0000-000000000010','Resource '||n,'urn:darkhorse:resource:'||(lpad(to_hex(n),32,'0')::uuid)::text FROM generate_series(1000,3047) n")
+        .execute(&db.pool)
+        .await
+        .unwrap();
+    assert_eq!(
+        db.store.policy_map([1; 32], app()).await,
+        Err(PolicyMapError::TooLarge)
+    );
+    db.store.close().await;
+}
+
+#[tokio::test]
+async fn policy_map_waits_for_the_security_fence_and_returns_matching_committed_revision() {
+    let db = oidc::fixture().await;
+    let mut writer = db.pool.begin().await.unwrap();
+    sqlx::query("SELECT singleton FROM security_state WHERE singleton FOR UPDATE")
+        .execute(&mut *writer)
+        .await
+        .unwrap();
+
+    let store = db.store.clone();
+    let reader = tokio::spawn(async move { store.policy_map([1; 32], app()).await });
+    tokio::time::timeout(std::time::Duration::from_secs(5), async {
+        loop {
+            let waiting: bool = sqlx::query_scalar("SELECT EXISTS(SELECT 1 FROM pg_stat_activity WHERE datname=current_database() AND wait_event_type='Lock' AND query LIKE '%security_state%FOR SHARE%')")
+                .fetch_one(&db.pool)
+                .await
+                .unwrap();
+            if waiting {
+                break;
+            }
+            tokio::time::sleep(std::time::Duration::from_millis(10)).await;
+        }
+    })
+    .await
+    .unwrap();
+
+    sqlx::query("INSERT INTO roles(id,name) VALUES($1,'Committed role')")
+        .bind(Uuid::from_u128(230))
+        .execute(&mut *writer)
+        .await
+        .unwrap();
+    sqlx::query("INSERT INTO role_applications(application_id,role_id) VALUES($1,$2)")
+        .bind(Uuid::from_u128(app().as_u128()))
+        .bind(Uuid::from_u128(230))
+        .execute(&mut *writer)
+        .await
+        .unwrap();
+    writer.commit().await.unwrap();
+
+    let graph = reader.await.unwrap().unwrap();
+    let current_revision = revision(&db).await;
+    assert_eq!(graph.policy_revision, current_revision);
+    assert!(
+        graph
+            .roles
+            .iter()
+            .any(|value| value.id == RoleId::from_u128(230).unwrap())
+    );
     db.store.close().await;
 }
 #[tokio::test]

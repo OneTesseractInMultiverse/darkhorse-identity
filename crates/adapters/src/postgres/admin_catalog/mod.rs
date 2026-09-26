@@ -8,6 +8,7 @@ use darkhorse_domain::{
 use sqlx::{Postgres, Row, Transaction, postgres::PgRow};
 use std::num::NonZeroU128;
 use uuid::Uuid;
+mod policy_map;
 mod reads;
 mod writes;
 type Tx<'a> = Transaction<'a, Postgres>;
@@ -19,6 +20,29 @@ pub(super) async fn list_current(
     reads::list(tx, target, query).await
 }
 impl CatalogStore for PostgresStore {
+    async fn policy_map(
+        &self,
+        actor: [u8; 32],
+        application: ApplicationId,
+    ) -> Result<darkhorse_domain::policy_map::Graph, PolicyMapError> {
+        let mut tx = self
+            .pool
+            .begin()
+            .await
+            .map_err(|_| PolicyMapError::Unavailable)?;
+        fence(&mut tx, false)
+            .await
+            .map_err(policy_map_authority_error)?;
+        authority::actor(&mut tx, actor, false)
+            .await
+            .map_err(policy_map_authority_error)?;
+        let graph = policy_map::read(&mut tx, application).await?;
+        authority::actor(&mut tx, actor, false)
+            .await
+            .map_err(policy_map_authority_error)?;
+        tx.commit().await.map_err(|_| PolicyMapError::Unavailable)?;
+        Ok(graph)
+    }
     async fn list(&self, actor: [u8; 32], target: List, query: Query) -> Result<Page, Error> {
         query.validate()?;
         let mut tx = self.pool.begin().await.map_err(storage)?;
@@ -67,6 +91,14 @@ impl CatalogStore for PostgresStore {
         let written = writes::apply(&mut tx, plan, &change, principal, session, now).await?;
         tx.commit().await.map_err(constraint)?;
         Ok(written)
+    }
+}
+fn policy_map_authority_error(error: Error) -> PolicyMapError {
+    match error {
+        Error::Unauthorized => PolicyMapError::Unauthorized,
+        Error::Forbidden | Error::RecentAuthenticationRequired => PolicyMapError::Forbidden,
+        Error::NotFound => PolicyMapError::NotFound,
+        Error::Invalid | Error::Conflict | Error::Unavailable => PolicyMapError::Unavailable,
     }
 }
 async fn fence(tx: &mut Tx<'_>, write: bool) -> Result<(), Error> {

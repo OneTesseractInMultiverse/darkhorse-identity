@@ -47,6 +47,15 @@
     },
     {
       "function": "router",
+      "handler": "policy_map",
+      "method": "GET",
+      "path": "/api/admin/console/applications/{app}/policy-map",
+      "rationale": "First-party browser, account, or administration workflow; this route does not grant third-party API authority.",
+      "source": "crates/adapters/src/admin_catalog_http/mod.rs",
+      "surface": "first_party_browser"
+    },
+    {
+      "function": "router",
       "handler": "register",
       "method": "POST",
       "path": "/api/admin/console/registration",
@@ -239,6 +248,15 @@
       "handler": "static-service",
       "method": "SERVICE",
       "path": "/console/clients",
+      "rationale": "Bundled frontend HTML or static asset, not an HTTP API operation.",
+      "source": "crates/adapters/src/http.rs",
+      "surface": "static_asset"
+    },
+    {
+      "function": "with_authentication",
+      "handler": "static-service",
+      "method": "SERVICE",
+      "path": "/console/policies",
       "rationale": "Bundled frontend HTML or static asset, not an HTTP API operation.",
       "source": "crates/adapters/src/http.rs",
       "surface": "static_asset"

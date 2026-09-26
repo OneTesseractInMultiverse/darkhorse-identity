@@ -230,6 +230,11 @@
 	["sectionTag.scopes", "LÍMITES DE SOLICITUD"],
 	["sectionTag.roles", "ACCESO DE USUARIOS"],
 	["sectionTag.capabilities", "PERMISOS"],
+	["sectionTag.policies", "VISTA DE POLÍTICAS"],
+	[
+		"intro.policies",
+		"Explora los roles, capacidades, recursos y alcances asociados con esta aplicación."
+	],
 	["applicationId", "ID de la aplicación"],
 	[
 		"applicationIdHelp",
@@ -256,6 +261,141 @@
 		"Los clientes de esta aplicación no pueden autenticarse mientras esté inactiva."
 	],
 	["applicationCatalogs", "Catálogos de la aplicación"],
+	["policy.title", "Mapa de políticas de la aplicación"],
+	[
+		"policy.description",
+		"Consulta los roles, capacidades, recursos protegidos y alcances configurados explícitamente para una aplicación. Esta vista muestra la estructura de las políticas; no calcula el acceso efectivo de un usuario."
+	],
+	["policy.eyebrow", "MODELO DE ACCESO / SOLO LECTURA"],
+	["policy.application", "Elige una aplicación"],
+	[
+		"policy.applicationHelp",
+		"Busca en el directorio y carga una instantánea completa de las políticas. El ID de la aplicación permanece en la dirección de la página para que puedas guardar el enlace y compartirlo con otros administradores."
+	],
+	["policy.searchApplications", "Buscar aplicaciones"],
+	["policy.applicationPlaceholder", "Buscar por nombre de aplicación"],
+	["policy.findApplications", "Buscar"],
+	["policy.chooseApplication", "Aplicación"],
+	["policy.load", "Abrir mapa de políticas"],
+	["policy.loadingApplications", "Cargando aplicaciones…"],
+	["policy.noApplications", "No hay aplicaciones para elegir. Busca una o registra una primero."],
+	["policy.nextApplications", "Más aplicaciones"],
+	["policy.applicationError", "No se pudo cargar el directorio de aplicaciones. Vuelve a buscar."],
+	["policy.loading", "Cargando una instantánea coherente de las políticas…"],
+	["policy.graphEmpty", "Elige una aplicación para consultar sus políticas."],
+	["policy.signIn", "Iniciar sesión de nuevo"],
+	["policy.currentApplication", "APLICACIÓN SELECCIONADA"],
+	["policy.revision", "Revisión de políticas {revision}"],
+	["policy.nodes", "elementos"],
+	["policy.relationships", "relaciones"],
+	["policy.completeNotice", "Instantánea completa · sin resultados parciales"],
+	["policy.filters", "Filtros y controles de vista de políticas"],
+	["policy.search", "Buscar nombres, identificadores o descripciones"],
+	["policy.relationshipFilter", "Tipo de relación"],
+	["policy.entityFilter", "Tipo de elemento"],
+	["policy.allEntities", "Todos los tipos de elemento"],
+	["policy.legend", "Leyenda de tipos de elementos"],
+	[
+		"policy.loadedAt",
+		"El navegador cargó esta instantánea a las {time} UTC. Vuelve a cargarla para consultar cambios posteriores."
+	],
+	[
+		"policy.filteredNotice",
+		"La instantánea completa contiene {total, number} relaciones; {visible, number} se muestran con estos filtros. Las conexiones ocultas permanecen configuradas."
+	],
+	["policy.openManagement", "Abrir este elemento en su formulario de administración"],
+	["policy.itemsCaption", "{count, number} elementos de políticas en esta vista filtrada"],
+	["policy.previousItems", "Elementos anteriores"],
+	["policy.nextItems", "Elementos siguientes"],
+	["policy.itemRange", "Mostrando {from, number}–{to, number} de {total, number}"],
+	["policy.noItems", "Ningún elemento de la política coincide con estos filtros."],
+	["policy.allRelationships", "Todas las relaciones"],
+	["policy.view", "Elige la vista de grafo o tabla"],
+	["policy.viewGraph", "Grafo"],
+	["policy.viewList", "Tabla accesible"],
+	["policy.graphLimitTitle", "Este grafo es demasiado grande para mostrarlo de forma interactiva"],
+	[
+		"policy.graphLimitDescription",
+		"Esta vista filtrada contiene {nodes, number} elementos y {edges, number} relaciones, por encima del límite de {maxNodes, number} elementos o {maxEdges, number} relaciones para el grafo. Reduce los filtros o usa la tabla completa con paginación. La tabla conserva todos los elementos y relaciones."
+	],
+	["policy.resetView", "Borrar filtros / restablecer diseño"],
+	["policy.refresh", "Volver a cargar la instantánea"],
+	["policy.focusedOn", "Mostrando las conexiones directas de {name}."],
+	["policy.clearFocus", "Mostrar todo"],
+	["policy.noMatches", "Ningún elemento de la política coincide con estos filtros."],
+	["policy.noRelationships", "Esta aplicación no tiene relaciones explícitas en la vista actual."],
+	["policy.previousRelationships", "Relaciones anteriores"],
+	["policy.nextRelationships", "Relaciones siguientes"],
+	["policy.relationshipRange", "Mostrando {from, number}–{to, number} de {total, number}"],
+	["policy.snapshot", "Resumen de la instantánea de políticas"],
+	[
+		"policy.listCaption",
+		"{count, number} relaciones explícitas de políticas en esta vista filtrada"
+	],
+	["policy.source", "Desde"],
+	["policy.relationship", "Relación"],
+	["policy.target", "Hacia"],
+	["policy.inspector", "DETALLE DEL ELEMENTO"],
+	["policy.noSelection", "Selecciona un elemento"],
+	[
+		"policy.inspectorHelp",
+		"Elige un elemento del grafo o la tabla para ver su identificador, detalles y relaciones directas."
+	],
+	["policy.identifier", "Identificador"],
+	["policy.permissionKey", "Clave de capacidad"],
+	["policy.meaning", "Descripción"],
+	["policy.audience", "Audiencia del recurso"],
+	["policy.parentResource", "Recurso principal"],
+	["policy.focusDirect", "Enfocar relaciones directas"],
+	["policy.directRelationships", "Relaciones directas"],
+	[
+		"policy.accessBoundary",
+		"Esta vista muestra únicamente las asociaciones y concesiones configuradas en el catálogo. No muestra asignaciones de usuarios, contenido de tokens ni decisiones de acceso efectivo."
+	],
+	[
+		"policy.error.reference",
+		"El ID de aplicación en la dirección de la página no es válido. Elige una aplicación del directorio."
+	],
+	[
+		"policy.error.signed-out",
+		"Tu sesión de administración terminó. Inicia sesión de nuevo para continuar."
+	],
+	[
+		"policy.error.forbidden",
+		"Tu cuenta actual no tiene autorización para consultar las políticas de esta aplicación."
+	],
+	[
+		"policy.error.too-large",
+		"Las políticas de esta aplicación superan el límite seguro de visualización. No se devolvió un grafo parcial."
+	],
+	[
+		"policy.error.unavailable",
+		"No se pudo cargar la instantánea de políticas. Vuelve a cargarla; si el problema continúa, contacta al administrador del sistema."
+	],
+	["policy.type.application", "Aplicación"],
+	["policy.type.role", "Rol"],
+	["policy.type.capability", "Capacidad"],
+	["policy.type.resource", "Recurso"],
+	["policy.type.scope", "Alcance"],
+	["policy.relation.application_role", "La aplicación incluye el rol"],
+	["policy.relation.application_capability", "La aplicación asocia la capacidad"],
+	["policy.relation.application_resource", "La aplicación protege el recurso"],
+	["policy.relation.role_capability", "El rol concede la capacidad"],
+	["policy.relation.resource_capability", "El recurso concede la capacidad"],
+	["policy.relation.resource_scope", "El recurso contiene el alcance"],
+	["policy.relation.scope_capability", "El alcance concede la capacidad"],
+	[
+		"policy.graphRegion",
+		"Grafo de políticas de la aplicación. Usa Tab para recorrer los elementos y Enter para consultar uno. Arrastra el fondo para desplazarte y usa los controles para acercar, alejar o ajustar el grafo."
+	],
+	["policy.graphControls", "Controles del grafo de políticas"],
+	["policy.zoomIn", "Acercar"],
+	["policy.zoomOut", "Alejar"],
+	["policy.fitView", "Ajustar el grafo a la vista"],
+	["policy.toggleInteraction", "Alternar la interacción con el grafo"],
+	["policy.minimap", "Vista general del grafo de políticas"],
+	["policy.nodeA11y", "Elemento de política. Presiona Enter para consultar."],
+	["policy.edgeA11y", "Relación explícita de políticas."],
 	["clientId", "ID del cliente"],
 	[
 		"clientIdHelp",

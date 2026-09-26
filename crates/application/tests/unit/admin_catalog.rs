@@ -35,6 +35,29 @@ fn view() -> View {
     }
 }
 impl CatalogStore for Fake {
+    async fn policy_map(
+        &self,
+        actor: [u8; 32],
+        application: ApplicationId,
+    ) -> Result<darkhorse_domain::policy_map::Graph, PolicyMapError> {
+        assert_eq!(actor, [1; 32]);
+        assert_eq!(application, ApplicationId::from_u128(1).unwrap());
+        self.call("policy_map")
+            .map_err(|_| PolicyMapError::Unavailable)?;
+        Ok(darkhorse_domain::policy_map::Graph {
+            application: darkhorse_domain::policy_map::Application {
+                id: application,
+                name: Label::new("Portal").unwrap(),
+                active: true,
+            },
+            policy_revision: 7,
+            roles: vec![],
+            capabilities: vec![],
+            resources: vec![],
+            scopes: vec![],
+            edges: vec![],
+        })
+    }
     async fn list(&self, actor: [u8; 32], _: List, q: Query) -> Result<Page, Error> {
         assert_eq!(actor, [1; 32]);
         assert_eq!(q.limit, 25);
@@ -136,6 +159,23 @@ fn authority_precedes_entropy_and_no_failure_retries_or_continues() {
         *service.store.calls.lock().unwrap(),
         ["preflight", "execute"]
     );
+}
+
+#[test]
+fn policy_map_read_delegates_one_application_without_other_effects() {
+    let success_service = service(None);
+    let graph =
+        run(success_service.policy_map([1; 32], ApplicationId::from_u128(1).unwrap())).unwrap();
+    assert_eq!(graph.application.id, ApplicationId::from_u128(1).unwrap());
+    assert_eq!(graph.policy_revision, 7);
+    assert_eq!(*success_service.store.calls.lock().unwrap(), ["policy_map"]);
+
+    let failed_service = service(Some("policy_map"));
+    assert_eq!(
+        run(failed_service.policy_map([1; 32], ApplicationId::from_u128(1).unwrap())),
+        Err(PolicyMapError::Unavailable)
+    );
+    assert_eq!(*failed_service.store.calls.lock().unwrap(), ["policy_map"]);
 }
 #[test]
 fn reads_forward_authority_and_storage_failures() {

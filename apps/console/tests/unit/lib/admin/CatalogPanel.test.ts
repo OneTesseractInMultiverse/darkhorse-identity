@@ -59,6 +59,26 @@ it('creates a shared role with the displayed revision and no implicit applicatio
 	);
 	expect(await screen.findByText('Access policy saved.')).toBeInTheDocument();
 });
+it('opens a type-checked deep-linked catalog record with its application context', async () => {
+	window.history.replaceState({}, '', `/?application_id=${id}&item_kind=role&item_id=${id}`);
+	const service = api();
+	render(CatalogPanel, { kind: 'roles', api: service });
+	await screen.findByRole('dialog');
+	expect(service.detail).toHaveBeenCalledExactlyOnceWith({
+		kind: 'role',
+		id,
+		name: '',
+		application_id: id
+	});
+});
+it('fails closed before catalog reads when a deep link disagrees with its page type', async () => {
+	window.history.replaceState({}, '', `/?application_id=${id}&item_kind=scope&item_id=${id}`);
+	const service = api();
+	render(CatalogPanel, { kind: 'roles', api: service });
+	expect(await screen.findByRole('alert')).toHaveTextContent('Invalid application reference.');
+	expect(service.list).not.toHaveBeenCalled();
+	expect(service.detail).not.toHaveBeenCalled();
+});
 it('confirms graph writes with the fresh detail revision and blocks after uncertainty', async () => {
 	const service = api();
 	service.change.mockResolvedValue({ kind: 'uncertain' });

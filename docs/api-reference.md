@@ -71,6 +71,35 @@ prove route availability, authentication, authorization, request/response
 schemas, or feature prerequisites. Do not generate clients or access policy
 from the inventory.
 
+The first-party `GET /api/admin/console/applications/{app}/policy-map` route
+requires a current platform administrator session and reads the primary
+database under the shared policy fence. A successful response contains one
+complete application-scoped topology and its policy revision; application
+bindings, role grants, resource exposure and scope bounds are shown as stored.
+It does not include person assignments or calculate effective access. The
+projection is capped at 2,048 nodes, 8,192 edges, and 16 MiB of serialized JSON.
+If any limit is exceeded, the server returns `413 policy_map_too_large` without
+a partial graph or pagination cursor. Successful responses are non-cacheable.
+The values are plain text and API consumers must render them as text rather than
+HTML.
+
+The JSON response includes an `application` summary, a decimal-string
+`policy_revision`, `complete: true`, a flat `nodes` array, and an `edges` array.
+Every node has a type-qualified `id`, its original `identifier`, and a plain-text
+`name`. Application nodes also expose `active`; capability nodes expose their
+stable permission `key`, explanatory `meaning`, and `retired` state; resource
+nodes expose their `audience`; scope nodes expose the parent `resource_id`. Role
+nodes are shared definitions and have no independent active status. Each edge
+has `source`, `target`, and one of
+`application_role`, `application_capability`, `application_resource`,
+`role_capability`, `resource_capability`, `resource_scope`, or
+`scope_capability`. These are stored configuration relationships, not proof of
+effective access for a person or client. The [authorization model](authorization.md)
+describes the remaining live checks that decide access.
+
+See the [policy-map guide](policy-map.md) for complete edge semantics, snapshot
+limits, query budget, console behavior, and performance verification.
+
 ## Credential boundaries
 
 - Darkhorse browser pages use the host-only HTTP-only session cookie. Browser
@@ -106,8 +135,8 @@ and operations detail, consult the
 [provider flow](provider.md), [registration](registration.md),
 [token checks](token-checks.md), [resource introspection](resource-introspection.md),
 [personal API keys](personal-api-keys.md), [console](console.md), and the
-feature-specific guides. Runnable end-to-end examples and deployment
-qualification remain in progress under issue #43.
+feature-specific guides. Release deployment qualification remains part of
+issue #21.
 
 ## Generate and verify
 
@@ -146,6 +175,6 @@ console pages do not fetch its JSON documents. The disposable HTTPS browser suit
 checks the documented flow, search, direct links and reloads, keyboard
 disclosure, clipboard and download actions, safe text rendering, Spanish
 presentation, signed-out behavior, cookie omission on static-reference fetches,
-and mobile/zoom-sized viewports. Further protected-resource examples,
-screen-reader review, repeatable bundle/load performance budgets, and mechanical
-runtime-schema parity remain tracked work for issue #43.
+and mobile/zoom-sized viewports. Manual screen-reader review, repeatable
+bundle/load performance budgets, and mechanical runtime-schema parity remain
+tracked work for issue #43.

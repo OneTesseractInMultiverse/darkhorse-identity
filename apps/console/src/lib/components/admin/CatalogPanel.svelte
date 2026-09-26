@@ -53,14 +53,22 @@
 	const scoped = $derived(kind === 'clients' || kind === 'resources' || kind === 'scopes');
 	onMount(() => {
 		mounted = true;
-		const selected = new URLSearchParams(window.location.search).get('application_id');
+		const params = new URLSearchParams(window.location.search);
+		const selected = params.get('application_id');
+		const deepLink = deepLinkItem(params, kind, selected ?? undefined);
 		if (selected && !reference(selected)) {
+			error = 'reference';
+			pending = false;
+			blocked = true;
+		} else if (deepLink === null) {
 			error = 'reference';
 			pending = false;
 			blocked = true;
 		} else {
 			application = selected ?? undefined;
-			void load();
+			void load().then(() => {
+				if (mounted && deepLink && !blocked) void open(deepLink, null);
+			});
 		}
 		return () => {
 			mounted = false;
@@ -115,7 +123,7 @@
 		selectApplication = false;
 		void load({}, [undefined], 0);
 	}
-	async function open(item: Item, origin: HTMLElement) {
+	async function open(item: Item, origin: HTMLElement | null) {
 		if (pending || blocked) return;
 		trigger = origin;
 		pending = true;
@@ -217,6 +225,42 @@
 			message = 'refresh';
 			blocked = true;
 		}
+	}
+	function deepLinkItem(
+		params: URLSearchParams,
+		current: Kind,
+		applicationId?: string
+	): Item | null | undefined {
+		const id = params.get('item_id');
+		if (!id) return undefined;
+		const kind = params.get('item_kind');
+		const expected: Partial<Record<Kind, Item['kind']>> = {
+			applications: 'application',
+			roles: 'role',
+			capabilities: 'capability',
+			resources: 'resource',
+			scopes: 'scope'
+		};
+		if (!reference(id) || kind !== expected[current]) return null;
+		const name = '';
+		if (kind === 'application')
+			return !applicationId || applicationId === id ? { kind, id, name } : null;
+		if (kind === 'role' || kind === 'capability')
+			return {
+				kind,
+				id,
+				name,
+				...(applicationId ? { application_id: applicationId } : {})
+			};
+		if (!reference(applicationId)) return null;
+		if (kind === 'resource') return { kind, id, name, application_id: applicationId };
+		if (kind === 'scope') {
+			const resourceId = params.get('resource_id');
+			return reference(resourceId)
+				? { kind, id, name, application_id: applicationId, resource_id: resourceId }
+				: null;
+		}
+		return null;
 	}
 </script>
 
