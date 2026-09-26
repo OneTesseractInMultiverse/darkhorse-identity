@@ -34,6 +34,7 @@ pub(super) fn request() -> Request {
         resource: None,
         prompt: Prompt::Default,
         max_age: None,
+        ui_locale: None,
     }
 }
 fn pending(outcome: Outcome, expected: Interaction) {
@@ -426,5 +427,90 @@ async fn transport_enforces_origin_cookie_confirmation_and_no_false_discovery() 
         assert_eq!(response.status().as_u16(), expected);
         assert!(response.headers().get(header::SET_COOKIE).is_none());
     }
+    db.store.close().await;
+}
+
+#[tokio::test]
+async fn language_is_immutable_per_transaction_and_never_changes_authority() {
+    use darkhorse_domain::localization::Locale;
+    let db = fixture().await;
+    let mut spanish = request();
+    spanish.ui_locale = Some(Locale::Spanish);
+    let mut english = request();
+    english.ui_locale = Some(Locale::English);
+    for (handle, request, expected) in [
+        ([50; 32], spanish, Some(Locale::Spanish)),
+        ([51; 32], english, Some(Locale::English)),
+        ([52; 32], request(), None),
+    ] {
+        let Outcome::Pending(view) = db.store.begin(request, handle, None).await.unwrap() else {
+            panic!("pending request")
+        };
+        assert_eq!(view.ui_locale, expected);
+        assert_eq!(view.interaction, Interaction::Login);
+        let Outcome::Pending(view) = db
+            .store
+            .resume(handle, Some([1; 32]), Decision::Inspect)
+            .await
+            .unwrap()
+        else {
+            panic!("pending consent")
+        };
+        assert_eq!(view.ui_locale, expected);
+        assert_eq!(view.scopes, ["openid"]);
+        assert_eq!(view.interaction, Interaction::Consent);
+    }
+    assert!(
+        sqlx::query("UPDATE authorization_requests SET ui_locale='en' WHERE digest=$1")
+            .bind([50; 32].as_slice())
+            .execute(&db.pool)
+            .await
+            .is_err()
+    );
+    assert!(
+        sqlx::query("UPDATE authorization_requests SET ui_locale='unsupported'")
+            .execute(&db.pool)
+            .await
+            .is_err()
+    );
+    db.store.logout([1; 32]).await.unwrap();
+    for handle in [[50; 32], [51; 32]] {
+        assert!(matches!(
+            db.store
+                .resume(handle, Some([1; 32]), Decision::Inspect)
+                .await,
+            Err(Error::InvalidTransaction)
+        ));
+    }
+    db.store.close().await;
+}
+
+#[tokio::test]
+async fn language_migration_preserves_existing_pending_request_bytes() {
+    let db = Database::at_version(33).await;
+    db.store
+        .bootstrap(administrator(1, "migration@example.com"))
+        .await
+        .unwrap();
+    sqlx::raw_sql("INSERT INTO applications(id,name,owner_id,active) VALUES('00000000-0000-0000-0000-000000000010','Existing app','00000000-0000-0000-0000-000000000001',true); INSERT INTO oauth_clients(id,application_id,name,active) VALUES('00000000-0000-0000-0000-000000000020','00000000-0000-0000-0000-000000000010','Existing client',true); INSERT INTO authorization_requests(digest,client_id,client_revision,application_revision,redirect_uri,challenge,state,nonce,scopes,prompt,created_ms,expires_ms) VALUES(decode(repeat('40',32),'hex'),'00000000-0000-0000-0000-000000000020',0,0,'https://client.example/callback',decode(repeat('41',32),'hex'),'opaque-state','opaque-nonce',ARRAY['openid'],'consent',100,300100);").execute(&db.pool).await.unwrap();
+    let before: String =
+        sqlx::query_scalar("SELECT to_jsonb(r)::text FROM authorization_requests r")
+            .fetch_one(&db.pool)
+            .await
+            .unwrap();
+    db.store.migrate().await.unwrap();
+    let after: String =
+        sqlx::query_scalar("SELECT (to_jsonb(r)-'ui_locale')::text FROM authorization_requests r")
+            .fetch_one(&db.pool)
+            .await
+            .unwrap();
+    assert_eq!(before, after);
+    let absent: bool = sqlx::query_scalar("SELECT ui_locale IS NULL FROM authorization_requests")
+        .fetch_one(&db.pool)
+        .await
+        .unwrap();
+    assert!(absent);
+    let invalid = sqlx::query("INSERT INTO authorization_requests(digest,client_id,client_revision,application_revision,redirect_uri,challenge,scopes,prompt,created_ms,expires_ms,ui_locale) SELECT decode(repeat('42',32),'hex'),client_id,client_revision,application_revision,redirect_uri,challenge,scopes,prompt,created_ms,expires_ms,'unsupported' FROM authorization_requests").execute(&db.pool).await;
+    assert!(invalid.is_err());
     db.store.close().await;
 }

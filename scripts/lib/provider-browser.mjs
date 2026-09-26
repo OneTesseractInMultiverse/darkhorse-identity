@@ -1,3 +1,4 @@
+import { verifyOidcLanguages } from "./oidc-language-browser.mjs";
 import assert from "node:assert/strict";
 import {
   createPublicKey,
@@ -90,6 +91,8 @@ export async function verifyProvider(
   assert.equal(metadata.body.token_endpoint, `${origin}/token`);
   assert.equal(metadata.body.userinfo_endpoint, `${origin}/userinfo`);
   assert.ok(metadata.body.claims_supported.includes("sid"));
+  assert.deepEqual(metadata.body.ui_locales_supported, ["en", "es"]);
+  assert.equal(metadata.body.claims_locales_supported, undefined);
   assert.equal(metadata.body.backchannel_logout_supported, undefined);
   assert.equal(metadata.body.backchannel_logout_session_supported, undefined);
   assert.deepEqual(metadata.body.token_endpoint_auth_methods_supported, [
@@ -141,6 +144,14 @@ export async function verifyProvider(
   });
   assert.equal(registered.status, 200);
   assert.equal(registered.body.record.refresh_tokens, false);
+  await verifyOidcLanguages({
+    page,
+    context,
+    origin,
+    application: app.body.record.id,
+    client: registered.body.record.id,
+    call,
+  });
   const verifier = randomBytes(32).toString("base64url");
   const query = new URLSearchParams({
     client_id: registered.body.record.id,
@@ -155,7 +166,9 @@ export async function verifyProvider(
   await page.goto(`${origin}/authorize?${query}`);
   await page.getByRole("heading", { name: "Connect Calendar?" }).waitFor();
   const cookie = (await context.cookies()).find(
-    (c) => c.name === "__Host-darkhorse-authorization",
+    (c) =>
+      c.name ===
+      `__Host-darkhorse-authorization-${new URL(page.url()).searchParams.get("request")}`,
   );
   assert.ok(
     cookie?.secure &&
@@ -168,7 +181,12 @@ export async function verifyProvider(
       "__Host-darkhorse-authorization",
     ),
   );
-  const first = (await call(page, "/api/authorization")).body;
+  const first = (
+    await call(
+      page,
+      `/api/authorization?request=${new URL(page.url()).searchParams.get("request")}`,
+    )
+  ).body;
   await page.screenshot({
     path: ".local/authorization-browser.png",
     fullPage: true,
@@ -177,10 +195,14 @@ export async function verifyProvider(
   await page.getByRole("heading", { name: "Connect Calendar?" }).waitFor();
   assert.equal(
     (
-      await call(page, "/api/authorization/decision", {
-        request_id: first.request_id,
-        decision: "approve",
-      })
+      await call(
+        page,
+        `/api/authorization/decision?request=${new URL(page.url()).searchParams.get("request")}`,
+        {
+          request_id: first.request_id,
+          decision: "approve",
+        },
+      )
     ).status,
     400,
   );

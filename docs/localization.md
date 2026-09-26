@@ -18,7 +18,7 @@ policy. Language, country and time zone are separate inputs.
 | 1        | Explicit selection in the current page | Immediate presentation choice                                                  | Sign-in selector                 |
 | 2        | Saved account preference               | Existing authenticated profile boundary; never inferred from a submitted email | Implemented                      |
 | 3        | Anonymous browser preference           | Local storage, allowlisted language only                                       | Implemented                      |
-| 4        | OIDC transaction language hints        | Transaction-local suggestion; no account write                                 | Planned in #40                   |
+| 4        | OIDC transaction language hints        | Transaction-local suggestion; no account write                                 | [Implemented](oidc-language.md)  |
 | 5        | Browser language list                  | First supported tag in supplied order                                          | Implemented                      |
 | 6        | Deployment default                     | Validated operator setting                                                     | Implemented; defaults to English |
 | 7        | Final fallback                         | English                                                                        | Implemented                      |

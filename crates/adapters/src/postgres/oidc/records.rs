@@ -70,6 +70,13 @@ fn decode(row: &PgRow) -> Result<Pending, Error> {
         scopes: row.try_get("scopes").map_err(storage)?,
         resource: row.try_get("resource").map_err(storage)?,
         prompt: parse_prompt(&row.try_get::<String, _>("prompt").map_err(storage)?)?,
+        ui_locale: row
+            .try_get::<Option<String>, _>("ui_locale")
+            .map_err(storage)?
+            .as_deref()
+            .map(crate::localization::parse)
+            .transpose()
+            .map_err(storage)?,
         max_age: row
             .try_get::<Option<i64>, _>("max_age")
             .map_err(storage)?

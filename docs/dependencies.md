@@ -227,3 +227,19 @@ informational or yanked-package findings. The RustSec database revision was
 `aarch64-apple-darwin` contain no `atomic-polyfill`. The scanner still checks the
 entire lockfile. Rerun the command for current evidence and consult #28 for the
 exact committed revision and hosted result. All other release gates remain.
+
+## OIDC language-tag parsing
+
+`language-tags` **0.3.2** is pinned only in the infrastructure adapter. The lockfile
+adds that package without new transitive dependencies. Its declared license is
+MIT OR Apache-2.0; the packaged MIT notice is reproduced in
+[third-party notices](third-party-notices.md).
+
+The [upstream parser](https://docs.rs/language-tags/0.3.2/language_tags/struct.LanguageTag.html#method.parse)
+checks language-tag syntax and exposes the primary language. Darkhorse bounds
+input before parsing, validates every list entry and maps only `en` and `es`. It
+does not require registry validation, so a syntactically acceptable language
+unknown to the bundled registry can remain an unsupported presentation hint.
+There is no registry download, locale package, runtime file or network lookup.
+This dependency controls presentation only; it never participates in credential
+verification or authority decisions.

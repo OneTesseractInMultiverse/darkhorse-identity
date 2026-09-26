@@ -1,0 +1,185 @@
+{
+  "arch": "aarch64",
+  "observations": [
+    {
+      "case": "absent",
+      "elapsedNs": 430250,
+      "inputBytes": 0,
+      "iterations": 100000,
+      "repeat": 0
+    },
+    {
+      "case": "supported",
+      "elapsedNs": 27760541,
+      "inputBytes": 11,
+      "iterations": 100000,
+      "repeat": 0
+    },
+    {
+      "case": "unsupported",
+      "elapsedNs": 17676209,
+      "inputBytes": 11,
+      "iterations": 100000,
+      "repeat": 0
+    },
+    {
+      "case": "sixteen-tags",
+      "elapsedNs": 130814333,
+      "inputBytes": 175,
+      "iterations": 100000,
+      "repeat": 0
+    },
+    {
+      "case": "malformed-after-supported",
+      "elapsedNs": 6001000,
+      "inputBytes": 9,
+      "iterations": 100000,
+      "repeat": 0
+    },
+    {
+      "case": "supported",
+      "elapsedNs": 14964209,
+      "inputBytes": 11,
+      "iterations": 100000,
+      "repeat": 1
+    },
+    {
+      "case": "unsupported",
+      "elapsedNs": 12137000,
+      "inputBytes": 11,
+      "iterations": 100000,
+      "repeat": 1
+    },
+    {
+      "case": "sixteen-tags",
+      "elapsedNs": 126359459,
+      "inputBytes": 175,
+      "iterations": 100000,
+      "repeat": 1
+    },
+    {
+      "case": "malformed-after-supported",
+      "elapsedNs": 6403875,
+      "inputBytes": 9,
+      "iterations": 100000,
+      "repeat": 1
+    },
+    {
+      "case": "absent",
+      "elapsedNs": 206125,
+      "inputBytes": 0,
+      "iterations": 100000,
+      "repeat": 1
+    },
+    {
+      "case": "unsupported",
+      "elapsedNs": 12308250,
+      "inputBytes": 11,
+      "iterations": 100000,
+      "repeat": 2
+    },
+    {
+      "case": "sixteen-tags",
+      "elapsedNs": 126631000,
+      "inputBytes": 175,
+      "iterations": 100000,
+      "repeat": 2
+    },
+    {
+      "case": "malformed-after-supported",
+      "elapsedNs": 6226542,
+      "inputBytes": 9,
+      "iterations": 100000,
+      "repeat": 2
+    },
+    {
+      "case": "absent",
+      "elapsedNs": 207000,
+      "inputBytes": 0,
+      "iterations": 100000,
+      "repeat": 2
+    },
+    {
+      "case": "supported",
+      "elapsedNs": 15734208,
+      "inputBytes": 11,
+      "iterations": 100000,
+      "repeat": 2
+    },
+    {
+      "case": "sixteen-tags",
+      "elapsedNs": 133377459,
+      "inputBytes": 175,
+      "iterations": 100000,
+      "repeat": 3
+    },
+    {
+      "case": "malformed-after-supported",
+      "elapsedNs": 6659750,
+      "inputBytes": 9,
+      "iterations": 100000,
+      "repeat": 3
+    },
+    {
+      "case": "absent",
+      "elapsedNs": 211042,
+      "inputBytes": 0,
+      "iterations": 100000,
+      "repeat": 3
+    },
+    {
+      "case": "supported",
+      "elapsedNs": 16678833,
+      "inputBytes": 11,
+      "iterations": 100000,
+      "repeat": 3
+    },
+    {
+      "case": "unsupported",
+      "elapsedNs": 13506625,
+      "inputBytes": 11,
+      "iterations": 100000,
+      "repeat": 3
+    },
+    {
+      "case": "malformed-after-supported",
+      "elapsedNs": 6930917,
+      "inputBytes": 9,
+      "iterations": 100000,
+      "repeat": 4
+    },
+    {
+      "case": "absent",
+      "elapsedNs": 217333,
+      "inputBytes": 0,
+      "iterations": 100000,
+      "repeat": 4
+    },
+    {
+      "case": "supported",
+      "elapsedNs": 16800666,
+      "inputBytes": 11,
+      "iterations": 100000,
+      "repeat": 4
+    },
+    {
+      "case": "unsupported",
+      "elapsedNs": 14394917,
+      "inputBytes": 11,
+      "iterations": 100000,
+      "repeat": 4
+    },
+    {
+      "case": "sixteen-tags",
+      "elapsedNs": 140237833,
+      "inputBytes": 175,
+      "iterations": 100000,
+      "repeat": 4
+    }
+  ],
+  "os": "macos",
+  "parser": "language-tags 0.3.2",
+  "profile": "release",
+  "schema": 1,
+  "scope": "In-process bounded ui_locales validation/resolution; excludes HTTP, cookies, SQL, authentication and authorization. No production throughput claim."
+}

@@ -1,4 +1,5 @@
 //! Browser-bound consent and one-time code redirects; token exchange is a separate transport.
+mod context;
 pub(crate) mod request;
 mod response;
 use crate::{authentication_http, json::SafeJson, session_secret};
@@ -19,7 +20,6 @@ use darkhorse_domain::oidc::Error;
 use serde::Deserialize;
 use sha2::{Digest, Sha256};
 use std::sync::Arc;
-const COOKIE: &str = "__Host-darkhorse-authorization";
 struct Provider<S> {
     store: S,
     issuer: String,
@@ -40,8 +40,9 @@ pub fn router<S: AuthorizationStore + CodeStore + SigningStore + 'static>(
         .route("/api/authorization", get(inspect::<S>))
         .route("/api/authorization/decision", post(decide::<S>))
         .with_state(state);
-    authentication_http::protect_with_queries(public, origin.clone(), 0, 32, true)
-        .merge(authentication_http::protect(private, origin, 1024, 32))
+    authentication_http::protect_with_queries(public, origin.clone(), 0, 32, true).merge(
+        authentication_http::protect_with_queries(private, origin, 1024, 32, true),
+    )
 }
 async fn jwks<S: SigningStore>(State(state): State<Arc<Provider<S>>>) -> Response {
     match state.store.published(&state.issuer).await {
@@ -69,6 +70,9 @@ async fn begin<S: AuthorizationStore + CodeStore>(
         Ok(value) => value,
         Err(_) => return response::error(Error::InvalidRequest),
     };
+    if let Err(error) = context::admit(&headers) {
+        return response::error(error);
+    }
     let (secret, digest) = match handle() {
         Ok(value) => value,
         Err(error) => return response::error(error),
@@ -80,13 +84,14 @@ async fn begin<S: AuthorizationStore + CodeStore>(
             complete(&state, digest, session, false).await
         }
         Ok(Outcome::Pending(_)) => {
-            let mut response = Redirect::to("/authorization").into_response();
-            let cookie =
-                format!("{COOKIE}={secret}; Path=/; Secure; HttpOnly; SameSite=Lax; Max-Age=300");
-            response.headers_mut().insert(
-                header::SET_COOKIE,
-                HeaderValue::from_str(&cookie).expect("hex cookie"),
-            );
+            let reference = session_secret::hex(&digest);
+            let cookie = match context::cookie(&reference, &secret, 300) {
+                Ok(cookie) => cookie,
+                Err(error) => return response::error(error),
+            };
+            let mut response =
+                Redirect::to(&format!("/authorization?request={reference}")).into_response();
+            response.headers_mut().insert(header::SET_COOKIE, cookie);
             response
         }
         Ok(Outcome::Return { target, error }) => response::redirect(target, error, &state.issuer),
@@ -95,9 +100,18 @@ async fn begin<S: AuthorizationStore + CodeStore>(
 }
 async fn inspect<S: AuthorizationStore + CodeStore>(
     State(state): State<Arc<Provider<S>>>,
+    method: Method,
     headers: HeaderMap,
+    RawQuery(query): RawQuery,
 ) -> Response {
-    resume(&state, &headers, Decision::Inspect, None).await
+    if method != Method::GET {
+        return StatusCode::METHOD_NOT_ALLOWED.into_response();
+    }
+    let reference = match context::reference(query.as_deref()) {
+        Ok(reference) => reference,
+        Err(error) => return response::error(error),
+    };
+    resume(&state, &headers, Decision::Inspect, reference).await
 }
 #[derive(Deserialize)]
 #[serde(deny_unknown_fields)]
@@ -114,27 +128,29 @@ enum Choice {
 async fn decide<S: AuthorizationStore + CodeStore>(
     State(state): State<Arc<Provider<S>>>,
     headers: HeaderMap,
+    RawQuery(query): RawQuery,
     SafeJson(body): SafeJson<Submission>,
 ) -> Response {
+    let reference = match context::reference(query.as_deref()) {
+        Ok(reference) if reference == body.request_id => reference,
+        _ => return response::error(Error::InvalidTransaction),
+    };
     let decision = match body.decision {
         Choice::Approve => Decision::Approve,
         Choice::Deny => Decision::Deny,
     };
-    resume(&state, &headers, decision, Some(&body.request_id)).await
+    resume(&state, &headers, decision, reference).await
 }
 async fn resume<S: AuthorizationStore + CodeStore>(
     state: &Provider<S>,
     headers: &HeaderMap,
     decision: Decision,
-    confirmation: Option<&str>,
+    reference: &str,
 ) -> Response {
-    let digest = match authentication_http::named_cookie(headers, COOKIE, handle_digest) {
-        Ok(Some(value)) => value,
-        _ => return response::error(Error::InvalidTransaction),
+    let digest = match context::select(headers, reference) {
+        Ok(digest) => digest,
+        Err(error) => return response::error(error),
     };
-    if confirmation.is_some_and(|id| id != session_secret::hex(&digest)) {
-        return response::error(Error::InvalidTransaction);
-    }
     let session = match authentication_http::cookie(headers) {
         Ok(value) => value,
         Err(_) => return response::error(Error::InvalidTransaction),
@@ -143,12 +159,13 @@ async fn resume<S: AuthorizationStore + CodeStore>(
         Ok(Outcome::Pending(view))
             if view.interaction == darkhorse_domain::oidc::Interaction::Ready =>
         {
-            complete(state, digest, session, true).await
+            context::clear(complete(state, digest, session, true).await, reference)
         }
         Ok(Outcome::Pending(view)) => response::view(view, digest),
-        Ok(Outcome::Return { target, error }) => {
-            response::return_json(target, error, &state.issuer)
-        }
+        Ok(Outcome::Return { target, error }) => context::clear(
+            response::return_json(target, error, &state.issuer),
+            reference,
+        ),
         Err(error) => response::error(error),
     }
 }

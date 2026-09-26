@@ -4,6 +4,7 @@ import AuthorizationPanel from '../../../src/lib/components/AuthorizationPanel.s
 const pending = {
 	kind: 'pending',
 	request_id: 'a'.repeat(64),
+	ui_locale: null,
 	client_name: 'Calendar',
 	scopes: ['openid', 'events.read'],
 	resource: 'urn:calendar',

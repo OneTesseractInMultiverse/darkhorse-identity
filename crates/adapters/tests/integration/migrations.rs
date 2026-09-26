@@ -18,7 +18,7 @@ async fn initialize_journal(db: &Database) {
 }
 #[tokio::test]
 async fn fresh_upgrade_and_noop_preserve_baseline_and_step_receipts() {
-    for version in [0, 22, 24, 25, 26, 27, 28, 29, 30, 31, 32, 33] {
+    for version in [0, 22, 24, 25, 26, 27, 28, 29, 30, 31, 32, 33, 34] {
         let db = Database::at_version(version).await;
         assert!(db.store.inspect_migration(id(1)).await.unwrap().is_none());
         let absent: bool =
@@ -30,7 +30,7 @@ async fn fresh_upgrade_and_noop_preserve_baseline_and_step_receipts() {
         db.store.migrate_operation(id(1)).await.unwrap();
         let record = db.store.inspect_migration(id(1)).await.unwrap().unwrap();
         assert!(record.completed_ms.is_some());
-        assert_eq!(record.steps.len(), 33);
+        assert_eq!(record.steps.len(), 34);
         assert_eq!(
             record.steps.iter().filter(|s| s.already_applied).count(),
             version as usize
@@ -41,7 +41,7 @@ async fn fresh_upgrade_and_noop_preserve_baseline_and_step_receipts() {
                 .iter()
                 .filter(|s| s.completed_ms.is_some())
                 .count(),
-            33 - version as usize
+            34 - version as usize
         );
         assert!(record.steps.iter().all(|s| s.current_matches));
         let before = history(&db).await;
@@ -151,7 +151,7 @@ async fn journal_failure_prevents_changes_and_completion_failure_keeps_steps() {
             assert!(record.completed_ms.is_none());
             assert!(record.steps[23].completed_ms.is_some());
             assert!(record.steps.iter().all(|s| s.current_matches));
-            assert_eq!(history(&db).await, 33);
+            assert_eq!(history(&db).await, 34);
         }
         db.pool.close().await;
     }

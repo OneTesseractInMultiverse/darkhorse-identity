@@ -1,3 +1,4 @@
+import type { Locale } from './i18n/locale';
 export type PendingAuthorization = {
 	kind: 'pending';
 	request_id: string;
@@ -5,27 +6,40 @@ export type PendingAuthorization = {
 	scopes: string[];
 	resource: string | null;
 	status: 'login' | 'consent' | 'ready';
+	ui_locale: Locale | null;
 };
 export type AuthorizationState =
 	PendingAuthorization | { kind: 'unavailable' } | { kind: 'redirect'; url: string };
-export async function loadAuthorization(fetcher: typeof fetch): Promise<AuthorizationState> {
-	return request(fetcher, '/api/authorization', { method: 'GET' });
+export async function loadAuthorization(
+	fetcher: typeof fetch,
+	reference: string | null
+): Promise<AuthorizationState> {
+	if (!validReference(reference)) return { kind: 'unavailable' };
+	return request(fetcher, `/api/authorization?request=${reference}`, { method: 'GET' }, reference);
 }
 export async function decideAuthorization(
 	fetcher: typeof fetch,
+	reference: string | null,
 	request_id: string,
 	decision: 'approve' | 'deny'
 ): Promise<AuthorizationState> {
-	return request(fetcher, '/api/authorization/decision', {
-		method: 'POST',
-		headers: { 'content-type': 'application/json', 'x-darkhorse-csrf': '1' },
-		body: JSON.stringify({ request_id, decision })
-	});
+	if (!validReference(reference) || reference !== request_id) return { kind: 'unavailable' };
+	return request(
+		fetcher,
+		`/api/authorization/decision?request=${reference}`,
+		{
+			method: 'POST',
+			headers: { 'content-type': 'application/json', 'x-darkhorse-csrf': '1' },
+			body: JSON.stringify({ request_id, decision })
+		},
+		reference
+	);
 }
 async function request(
 	fetcher: typeof fetch,
 	path: string,
-	init: RequestInit
+	init: RequestInit,
+	reference: string
 ): Promise<AuthorizationState> {
 	try {
 		const response = await fetcher(path, {
@@ -33,7 +47,12 @@ async function request(
 			credentials: 'same-origin',
 			cache: 'no-store'
 		});
-		return response.ok ? project(await response.json()) : { kind: 'unavailable' };
+		const result = response.ok
+			? project(await response.json())
+			: ({ kind: 'unavailable' } as const);
+		return result.kind === 'pending' && result.request_id !== reference
+			? { kind: 'unavailable' }
+			: result;
 	} catch {
 		return { kind: 'unavailable' };
 	}
@@ -60,6 +79,8 @@ function project(value: unknown): AuthorizationState {
 		value.scopes.every((s: unknown) => typeof s === 'string' && s.length <= 100) &&
 		'resource' in value &&
 		(value.resource === null || typeof value.resource === 'string') &&
+		'ui_locale' in value &&
+		(value.ui_locale === null || value.ui_locale === 'en' || value.ui_locale === 'es') &&
 		'status' in value &&
 		(value.status === 'login' || value.status === 'consent' || value.status === 'ready')
 	) {
@@ -69,8 +90,13 @@ function project(value: unknown): AuthorizationState {
 			client_name: value.client_name,
 			scopes: value.scopes,
 			resource: value.resource,
-			status: value.status
+			status: value.status,
+			ui_locale: value.ui_locale
 		};
 	}
 	return { kind: 'unavailable' };
+}
+
+function validReference(reference: string | null): reference is string {
+	return typeof reference === 'string' && /^[a-f0-9]{64}$/.test(reference);
 }

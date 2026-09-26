@@ -126,6 +126,7 @@ fn view(name: String, request: &Request, interaction: Interaction) -> Outcome {
         scopes: request.scopes.clone(),
         resource: request.resource.clone(),
         interaction,
+        ui_locale: request.ui_locale,
     })
 }
 fn return_to(request: &Request, error: Error) -> Outcome {

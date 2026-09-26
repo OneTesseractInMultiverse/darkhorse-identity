@@ -3,6 +3,9 @@ import { expect, it, vi } from 'vitest';
 import Page from '../../../../src/routes/authorization/+page.svelte';
 import { loadAuthorization, decideAuthorization } from '../../../../src/lib/authorization';
 import { authenticate } from '../../../../src/lib/authentication';
+vi.mock('$app/state', () => ({
+	page: { url: new URL('https://identity.example/authorization?request=' + 'a'.repeat(64)) }
+}));
 vi.mock('../../../../src/lib/authentication', () => ({
 	authenticate: vi.fn().mockResolvedValue({ kind: 'signed-in', name: 'Ada' }),
 	endSession: vi.fn().mockResolvedValue(true)
@@ -15,6 +18,7 @@ it('connects sign-in, displayed consent and cancellation to the Rust transport p
 	const pending = {
 		kind: 'pending' as const,
 		request_id: 'a'.repeat(64),
+		ui_locale: null,
 		client_name: 'Calendar',
 		scopes: ['openid'],
 		resource: null,
@@ -34,8 +38,18 @@ it('connects sign-in, displayed consent and cancellation to the Rust transport p
 	await fireEvent.click(screen.getByRole('button', { name: 'Sign in' }));
 	await fireEvent.click(await screen.findByRole('button', { name: 'Allow connection' }));
 	expect(authenticate).toHaveBeenCalledWith(fetch, 'ada@example.com', 'test-only');
-	expect(decideAuthorization).toHaveBeenCalledWith(fetch, pending.request_id, 'approve');
+	expect(decideAuthorization).toHaveBeenCalledWith(
+		fetch,
+		pending.request_id,
+		pending.request_id,
+		'approve'
+	);
 	await fireEvent.click(await screen.findByRole('button', { name: 'Cancel connection' }));
 	await waitFor(() => expect(window.location.hash).toBe('#returned'));
-	expect(decideAuthorization).toHaveBeenLastCalledWith(fetch, pending.request_id, 'deny');
+	expect(decideAuthorization).toHaveBeenLastCalledWith(
+		fetch,
+		pending.request_id,
+		pending.request_id,
+		'deny'
+	);
 });

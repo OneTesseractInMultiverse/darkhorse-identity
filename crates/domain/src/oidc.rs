@@ -32,6 +32,7 @@ pub struct Request {
     pub resource: Option<String>,
     pub prompt: Prompt,
     pub max_age: Option<u64>,
+    pub ui_locale: Option<crate::localization::Locale>,
 }
 impl Request {
     pub fn validate(&self) -> Result<(), Error> {

@@ -11,3 +11,5 @@ fn request_cookie_uses_a_separate_digest_namespace() {
     let (two, _) = handle().unwrap();
     assert_ne!(one, two);
 }
+#[path = "transport.rs"]
+mod transport;

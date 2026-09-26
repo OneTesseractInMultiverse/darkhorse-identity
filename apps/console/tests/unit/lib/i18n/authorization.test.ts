@@ -16,6 +16,7 @@ it('translates consent without changing untrusted application text, scope values
 	const pending = {
 		kind: 'pending',
 		request_id: 'a'.repeat(64),
+		ui_locale: null,
 		client_name: '<img src=x>Reports',
 		scopes: ['openid', 'reports:read'],
 		resource: 'https://api.example/reports',
@@ -44,4 +45,47 @@ it('translates consent without changing untrusted application text, scope values
 	expect(properties.navigate).toHaveBeenCalledExactlyOnceWith(
 		'https://app.example/callback?code=unchanged'
 	);
+});
+
+it('keeps transaction hints local and below an explicit or saved preference', async () => {
+	const en = Object.entries(contract).map(([key, args]) => [
+		key,
+		[key, ...Object.keys(args).map((name) => `{${name}}`)].join(' ')
+	]);
+	const format = createFormatter(contract, {
+		en,
+		es: en.map(([key, text]) => [key, `ES ${text}`])
+	});
+	const language = createLocalization(format);
+	const second = createLocalization(format);
+	language.initialize({ browser: ['en'] });
+	second.initialize({ browser: ['en'] });
+	const { get } = await import('svelte/store');
+	const pending = {
+		kind: 'pending',
+		request_id: 'a'.repeat(64),
+		client_name: 'Calendar',
+		scopes: ['openid'],
+		resource: null,
+		status: 'consent',
+		ui_locale: 'es'
+	};
+	const properties = {
+		load: vi.fn().mockResolvedValue(pending),
+		decide: vi.fn(),
+		signIn: vi.fn(),
+		navigate: vi.fn()
+	};
+	const view = render(Harness, { language, properties });
+	await screen.findByRole('heading', { name: 'ES authorization.connect Calendar' });
+	expect(get(second).locale).toBe('en');
+	language.account('en');
+	await screen.findByRole('heading', { name: 'authorization.connect Calendar' });
+	language.account();
+	await screen.findByRole('heading', { name: 'ES authorization.connect Calendar' });
+	language.select('en');
+	await screen.findByRole('heading', { name: 'authorization.connect Calendar' });
+	expect(properties.decide).not.toHaveBeenCalled();
+	view.unmount();
+	expect(get(language).locale).toBe('en');
 });

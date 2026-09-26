@@ -134,6 +134,12 @@ Plain PKCE, implicit/password grants, request objects, request URIs, claims,
 `id_token_hint`, `acr_values`, `login_hint` and `select_account` are unsupported.
 No supplied URI is fetched.
 
+The optional `ui_locales` parameter accepts bounded, ordered language tags such as
+`es-CR es en`. It selects English or Spanish presentation without changing claims
+or authority. Unsupported languages use the ordinary fallback. See
+[language hints and independent authorization tabs](oidc-language.md) for limits,
+precedence, migration and integration examples.
+
 Callback matching uses the exact registered string, including query encoding.
 Callbacks containing reserved response query names (`code`, `state`, `error`,
 `error_description`, `error_uri`, `iss`) cannot start a transaction. State and nonce
@@ -244,15 +250,18 @@ for the complete supported identity-check contract.
 
 ## Transaction and transport integrity
 
-An OS-generated 256-bit browser handle lives only in a `Secure`, `HttpOnly`,
+Each OS-generated 256-bit browser handle lives only in a `Secure`, `HttpOnly`,
 `SameSite=Lax`, host-only cookie, with path `/` and a five-minute maximum age.
 Only its purpose-separated SHA-256 digest is stored. Neither handles nor protocol
-credentials enter frontend storage. A separate public confirmation identifier
-binds each consent submission to the request actually displayed: replacing the
-cookie from another tab cannot redirect an old approval to a new request.
+credentials enter frontend storage. Each flow has a distinct cookie. Its public
+digest selects the pending transaction through `?request=<reference>` on the
+portal and internal API URLs; the matching cookie proves possession. A separate
+body confirmation must equal that selector, binding each consent submission to
+the request actually displayed. Another tab cannot overwrite this flow's cookie.
 
-`/api/authorization` reads the current interaction. The decision endpoint accepts
-only that confirmation identifier and `approve`/`deny`. The actor, client, callback,
+`GET /api/authorization?request=<reference>` reads the selected interaction; HEAD
+cannot resume it. The decision endpoint requires the same query selector and
+accepts only that confirmation identifier and `approve`/`deny` in its body. The actor, client, callback,
 challenge, nonce and requested access come from the cookie-bound stored request.
 Unsafe methods require exact Origin, the CSRF header and same-origin Fetch Metadata
 when supplied. Route admission is bounded and responses carry `no-store`,

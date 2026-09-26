@@ -20,7 +20,7 @@ pub(super) fn code(error: Error) -> &'static str {
     }
 }
 pub(super) fn view(view: View, digest: [u8; 32]) -> Response {
-    Json(serde_json::json!({"request_id":session_secret::hex(&digest),"client_name":view.client_name,"scopes":view.scopes,"resource":view.resource,"status":match view.interaction {Interaction::Login=>"login",Interaction::Consent=>"consent",Interaction::Ready=>"ready"}})).into_response()
+    Json(serde_json::json!({"request_id":session_secret::hex(&digest),"client_name":view.client_name,"scopes":view.scopes,"resource":view.resource,"ui_locale":view.ui_locale.map(crate::localization::tag),"status":match view.interaction {Interaction::Login=>"login",Interaction::Consent=>"consent",Interaction::Ready=>"ready"}})).into_response()
 }
 fn location(target: ReturnTo, error: Error, issuer: &str) -> Result<String, Error> {
     let mut url = url::Url::parse(&target.uri).map_err(|_| Error::Unavailable)?;

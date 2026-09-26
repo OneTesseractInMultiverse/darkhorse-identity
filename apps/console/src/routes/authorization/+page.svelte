@@ -3,15 +3,19 @@
 	import LanguageSelector from '$lib/components/LanguageSelector.svelte';
 	const language = useLocalization();
 	import { resolve } from '$app/paths';
+	import { page } from '$app/state';
+	const reference = $derived(
+		page.url.searchParams.size === 1 ? page.url.searchParams.get('request') : null
+	);
 	import logo from '$lib/assets/brand/logo.svg';
 	import AuthorizationPanel from '$lib/components/AuthorizationPanel.svelte';
 	import { loadAuthorization, decideAuthorization } from '$lib/authorization';
 	import { authenticate } from '$lib/authentication';
 	async function load() {
-		return loadAuthorization(fetch);
+		return loadAuthorization(fetch, reference);
 	}
 	async function decide(id: string, choice: 'approve' | 'deny') {
-		return decideAuthorization(fetch, id, choice);
+		return decideAuthorization(fetch, reference, id, choice);
 	}
 	async function signIn(email: string, password: string) {
 		return authenticate(fetch, email, password);
@@ -34,7 +38,9 @@
 		><span class="edition">{$language.t('authorization.edition')}</span>
 		<LanguageSelector />
 	</header>
-	<main id="main"><AuthorizationPanel {load} {decide} {signIn} {navigate} /></main>
+	<main id="main">
+		{#key reference}<AuthorizationPanel {load} {decide} {signIn} {navigate} />{/key}
+	</main>
 	<footer><span>DARKHORSE / IDENTITY SYSTEMS</span></footer>
 </div>
 

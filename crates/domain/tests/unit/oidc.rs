@@ -10,6 +10,7 @@ fn request() -> Request {
         resource: None,
         prompt: Prompt::Default,
         max_age: None,
+        ui_locale: None,
     }
 }
 #[test]

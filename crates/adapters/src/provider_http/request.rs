@@ -17,6 +17,7 @@ const PARAMETERS: &[&str] = &[
     "nonce",
     "prompt",
     "max_age",
+    "ui_locales",
 ];
 pub(super) fn parse(query: &str) -> Result<Request, Error> {
     let fields = fields(query)?;
@@ -67,6 +68,8 @@ pub(super) fn parse(query: &str) -> Result<Request, Error> {
         resource: fields.get("resource").cloned(),
         prompt: prompt(fields.get("prompt").map(String::as_str))?,
         max_age: fields.get("max_age").map(|value| age(value)).transpose()?,
+        ui_locale: crate::locale_hint::ui_locales(fields.get("ui_locales").map(String::as_str))
+            .map_err(invalid)?,
     };
     request.validate()?;
     Ok(request)

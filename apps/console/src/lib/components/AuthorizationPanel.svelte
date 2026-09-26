@@ -20,14 +20,18 @@
 	let flow = $state<AuthorizationState>({ kind: 'unavailable' });
 	let busy = $state(true);
 	let alive = false;
+	let clearHint = () => {};
 	onMount(() => {
 		alive = true;
 		void refresh();
 		return () => {
 			alive = false;
+			clearHint();
 		};
 	});
 	function accept(next: AuthorizationState) {
+		clearHint();
+		clearHint = next.kind === 'pending' ? language.hint(next.ui_locale ?? undefined) : () => {};
 		flow = next;
 		if (next.kind === 'redirect') navigate(next.url);
 	}

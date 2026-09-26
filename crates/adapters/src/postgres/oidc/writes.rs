@@ -26,9 +26,9 @@ pub(super) async fn insert(
     initial: Option<[u8; 32]>,
     now: u64,
 ) -> Result<(), Error> {
-    sqlx::query("INSERT INTO authorization_requests(digest,client_id,client_revision,application_revision,redirect_uri,challenge,state,nonce,scopes,resource,prompt,max_age,created_ms,expires_ms,initial_session,resource_policy_revision) VALUES($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,CASE WHEN $10::text IS NULL THEN NULL ELSE (SELECT policy_revision FROM security_state WHERE singleton) END)")
+    sqlx::query("INSERT INTO authorization_requests(digest,client_id,client_revision,application_revision,redirect_uri,challenge,state,nonce,scopes,resource,prompt,max_age,created_ms,expires_ms,initial_session,resource_policy_revision,ui_locale) VALUES($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,CASE WHEN $10::text IS NULL THEN NULL ELSE (SELECT policy_revision FROM security_state WHERE singleton) END,$16)")
   .bind(handle.as_slice()).bind(Uuid::from_u128(r.client.as_u128())).bind(integer(p.revision)?).bind(integer(p.application_revision)?).bind(&r.redirect).bind(r.challenge.as_slice()).bind(&r.state).bind(&r.nonce).bind(&r.scopes).bind(&r.resource).bind(records::prompt(r.prompt)).bind(r.max_age.map(integer).transpose()?).bind(integer(now)?).bind(integer(now.checked_add(TRANSACTION_MS).ok_or(Error::Unavailable)?)?).bind(initial.as_ref().map(|d|d.as_slice()))
-  .execute(&mut **tx).await.map_err(storage)?;
+  .bind(r.ui_locale.map(crate::localization::tag)).execute(&mut **tx).await.map_err(storage)?;
     Ok(())
 }
 pub(super) async fn bind(

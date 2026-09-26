@@ -45,3 +45,30 @@ fn parser_rejects_duplicates_ambiguous_encoding_unsupported_flows_and_unbounded_
     assert_eq!(request.prompt, Prompt::LoginConsent);
     assert_eq!(request.state.as_deref(), Some("x&y=z"));
 }
+
+#[test]
+fn language_hints_are_ordered_bounded_and_distinct_from_protocol_identifiers() {
+    use darkhorse_domain::localization::Locale;
+    assert_eq!(parse(&query()).unwrap().ui_locale, None);
+    let request = parse(&(query() + "&ui_locales=es-CR+es+en&state=EN&nonce=ES")).unwrap();
+    assert_eq!(request.ui_locale, Some(Locale::Spanish));
+    assert_eq!(request.state.as_deref(), Some("EN"));
+    assert_eq!(request.nonce.as_deref(), Some("ES"));
+    assert_eq!(request.scopes, ["openid"]);
+    assert_eq!(
+        parse(&(query() + "&ui_locales=de+fr")).unwrap().ui_locale,
+        None
+    );
+    for tail in [
+        "&ui_locales=en&ui_locales=es",
+        "&ui_locales=",
+        "&ui_locales=en+../es",
+        "&ui_locales=es%09en",
+        "&ui_locales=en%00",
+    ] {
+        assert!(matches!(
+            parse(&(query() + tail)),
+            Err(Error::InvalidRequest)
+        ));
+    }
+}

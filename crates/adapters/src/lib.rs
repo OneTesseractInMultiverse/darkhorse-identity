@@ -57,3 +57,5 @@ pub mod readiness;
 pub mod localization;
 
 pub mod localization_http;
+
+pub mod locale_hint;

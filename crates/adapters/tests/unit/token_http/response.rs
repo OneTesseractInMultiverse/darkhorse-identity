@@ -154,3 +154,17 @@ async fn admission_rejections_have_bounded_generic_errors_and_rounded_retry_time
         );
     }
 }
+
+#[test]
+fn discovery_advertises_only_tested_ui_languages_without_claims_localization() {
+    let value = metadata("https://issuer.example");
+    assert_eq!(
+        value["ui_locales_supported"],
+        serde_json::json!(["en", "es"])
+    );
+    assert!(value.get("claims_locales_supported").is_none());
+    assert_eq!(
+        value["token_endpoint_auth_methods_supported"],
+        serde_json::json!(["client_secret_basic"])
+    );
+}

@@ -1,0 +1,284 @@
+{
+  "schema": 1,
+  "date": "2026-09-26T15:35:28.388Z",
+  "scope": "Presentation only: loopback HTTP, gzip, static production builds, fake anonymous session/branding/presentation responses; no real authentication or server-latency claim.",
+  "node": "v24.19.0",
+  "browser": "153.0.8010.12",
+  "host": {
+    "platform": "darwin",
+    "arch": "arm64",
+    "cpu": "Apple M5"
+  },
+  "budgetAdditionalGzipBytes": 36864,
+  "assets": {
+    "baseline": {
+      "jsFiles": 38,
+      "bytes": 312495,
+      "gzip": 109153,
+      "sha256": "85d11f44638ebddb12f533b5927fc553e941da84180d42c3f51db546674a1c6a"
+    },
+    "localized": {
+      "jsFiles": 40,
+      "bytes": 436806,
+      "gzip": 145423,
+      "sha256": "47fc931e70a5ea7c3df6d5ad84078636e2f876d65fe410bdef7ea729bbee8696"
+    }
+  },
+  "observations": [
+    {
+      "repeat": 0,
+      "variant": "baseline",
+      "locale": "en",
+      "cold": {
+        "readyMs": 73.59999990463257,
+        "transferBytes": 84588,
+        "requests": 18,
+        "language": "en"
+      },
+      "warm": {
+        "readyMs": 39.700000047683716,
+        "transferBytes": 333,
+        "requests": 18,
+        "language": "en"
+      }
+    },
+    {
+      "repeat": 0,
+      "variant": "localized",
+      "locale": "en",
+      "cold": {
+        "readyMs": 71.79999995231628,
+        "transferBytes": 101259,
+        "requests": 22,
+        "language": "en"
+      },
+      "warm": {
+        "readyMs": 56.39999997615814,
+        "transferBytes": 656,
+        "requests": 22,
+        "language": "en"
+      }
+    },
+    {
+      "repeat": 0,
+      "variant": "localized",
+      "locale": "es",
+      "cold": {
+        "readyMs": 71.70000004768372,
+        "transferBytes": 101259,
+        "requests": 22,
+        "language": "es"
+      },
+      "warm": {
+        "readyMs": 56.699999928474426,
+        "transferBytes": 656,
+        "requests": 22,
+        "language": "es"
+      }
+    },
+    {
+      "repeat": 1,
+      "variant": "localized",
+      "locale": "es",
+      "cold": {
+        "readyMs": 71.5,
+        "transferBytes": 101259,
+        "requests": 22,
+        "language": "es"
+      },
+      "warm": {
+        "readyMs": 56.60000002384186,
+        "transferBytes": 656,
+        "requests": 22,
+        "language": "es"
+      }
+    },
+    {
+      "repeat": 1,
+      "variant": "baseline",
+      "locale": "en",
+      "cold": {
+        "readyMs": 71.5,
+        "transferBytes": 84588,
+        "requests": 18,
+        "language": "en"
+      },
+      "warm": {
+        "readyMs": 39.10000002384186,
+        "transferBytes": 333,
+        "requests": 18,
+        "language": "en"
+      }
+    },
+    {
+      "repeat": 1,
+      "variant": "localized",
+      "locale": "en",
+      "cold": {
+        "readyMs": 71.5,
+        "transferBytes": 101259,
+        "requests": 22,
+        "language": "en"
+      },
+      "warm": {
+        "readyMs": 56.60000002384186,
+        "transferBytes": 656,
+        "requests": 22,
+        "language": "en"
+      }
+    },
+    {
+      "repeat": 2,
+      "variant": "baseline",
+      "locale": "en",
+      "cold": {
+        "readyMs": 70.20000004768372,
+        "transferBytes": 84588,
+        "requests": 18,
+        "language": "en"
+      },
+      "warm": {
+        "readyMs": 40.10000002384186,
+        "transferBytes": 333,
+        "requests": 18,
+        "language": "en"
+      }
+    },
+    {
+      "repeat": 2,
+      "variant": "localized",
+      "locale": "en",
+      "cold": {
+        "readyMs": 71.79999995231628,
+        "transferBytes": 101259,
+        "requests": 22,
+        "language": "en"
+      },
+      "warm": {
+        "readyMs": 55,
+        "transferBytes": 656,
+        "requests": 22,
+        "language": "en"
+      }
+    },
+    {
+      "repeat": 2,
+      "variant": "localized",
+      "locale": "es",
+      "cold": {
+        "readyMs": 71.69999992847443,
+        "transferBytes": 101259,
+        "requests": 22,
+        "language": "es"
+      },
+      "warm": {
+        "readyMs": 56.699999928474426,
+        "transferBytes": 656,
+        "requests": 22,
+        "language": "es"
+      }
+    },
+    {
+      "repeat": 3,
+      "variant": "localized",
+      "locale": "es",
+      "cold": {
+        "readyMs": 71.80000007152557,
+        "transferBytes": 101259,
+        "requests": 22,
+        "language": "es"
+      },
+      "warm": {
+        "readyMs": 56.800000071525574,
+        "transferBytes": 656,
+        "requests": 22,
+        "language": "es"
+      }
+    },
+    {
+      "repeat": 3,
+      "variant": "baseline",
+      "locale": "en",
+      "cold": {
+        "readyMs": 71.60000002384186,
+        "transferBytes": 84588,
+        "requests": 18,
+        "language": "en"
+      },
+      "warm": {
+        "readyMs": 40.200000047683716,
+        "transferBytes": 333,
+        "requests": 18,
+        "language": "en"
+      }
+    },
+    {
+      "repeat": 3,
+      "variant": "localized",
+      "locale": "en",
+      "cold": {
+        "readyMs": 70,
+        "transferBytes": 101259,
+        "requests": 22,
+        "language": "en"
+      },
+      "warm": {
+        "readyMs": 56.40000009536743,
+        "transferBytes": 656,
+        "requests": 22,
+        "language": "en"
+      }
+    },
+    {
+      "repeat": 4,
+      "variant": "baseline",
+      "locale": "en",
+      "cold": {
+        "readyMs": 70.5,
+        "transferBytes": 84588,
+        "requests": 18,
+        "language": "en"
+      },
+      "warm": {
+        "readyMs": 39.60000002384186,
+        "transferBytes": 333,
+        "requests": 18,
+        "language": "en"
+      }
+    },
+    {
+      "repeat": 4,
+      "variant": "localized",
+      "locale": "en",
+      "cold": {
+        "readyMs": 71.5,
+        "transferBytes": 101259,
+        "requests": 22,
+        "language": "en"
+      },
+      "warm": {
+        "readyMs": 56.300000071525574,
+        "transferBytes": 656,
+        "requests": 22,
+        "language": "en"
+      }
+    },
+    {
+      "repeat": 4,
+      "variant": "localized",
+      "locale": "es",
+      "cold": {
+        "readyMs": 71.70000004768372,
+        "transferBytes": 101259,
+        "requests": 22,
+        "language": "es"
+      },
+      "warm": {
+        "readyMs": 56.699999928474426,
+        "transferBytes": 656,
+        "requests": 22,
+        "language": "es"
+      }
+    }
+  ]
+}

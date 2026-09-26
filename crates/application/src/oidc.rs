@@ -6,6 +6,7 @@ pub struct View {
     pub scopes: Vec<String>,
     pub resource: Option<String>,
     pub interaction: Interaction,
+    pub ui_locale: Option<darkhorse_domain::localization::Locale>,
 }
 pub struct ReturnTo {
     pub uri: String,

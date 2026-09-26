@@ -25,7 +25,7 @@ export async function replicaProtocol({
         name = pair.split("=")[0];
       cookie = [
         ...cookie.split("; ").filter((v) => v && !v.startsWith(`${name}=`)),
-        pair,
+        ...(pair.endsWith("=") ? [] : [pair]),
       ].join("; ");
     }
     return {
@@ -105,12 +105,22 @@ export async function replicaProtocol({
       code_challenge_method: "S256",
       code_challenge: createHash("sha256").update(verifier).digest("base64url"),
     });
-    assert.equal((await browser(`/authorize?${query}`)).status, 303);
-    const pending = (await browser("/api/authorization")).body;
-    const decision = await browser("/api/authorization/decision", {
-      request_id: pending.request_id,
-      decision: "approve",
-    });
+    const started = await browser(`/authorize?${query}`);
+    assert.equal(started.status, 303);
+    const reference = new URL(
+      started.headers.location,
+      origin,
+    ).searchParams.get("request");
+    assert.match(reference, /^[a-f0-9]{64}$/);
+    const pending = (await browser(`/api/authorization?request=${reference}`))
+      .body;
+    const decision = await browser(
+      `/api/authorization/decision?request=${reference}`,
+      {
+        request_id: pending.request_id,
+        decision: "approve",
+      },
+    );
     assert.equal(decision.status, 200);
     return {
       expected,
