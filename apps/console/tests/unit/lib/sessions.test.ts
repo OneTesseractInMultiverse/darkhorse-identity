@@ -1,5 +1,5 @@
 import { expect, it, vi } from 'vitest';
-import { readSessions, terminateSession, formatTime } from '../../../src/lib/sessions';
+import { readSessions, terminateSession } from '../../../src/lib/sessions';
 const id = '00000000-0000-0000-0000-000000000001';
 const page = {
 	current: id,
@@ -28,7 +28,6 @@ it('uses bounded public references and protected same-origin requests', async ()
 			body: JSON.stringify({ session_id: id })
 		})
 	);
-	expect(formatTime(1000)).toBe('1970-01-01 00:00:01 UTC');
 });
 it('rejects malformed or oversized projections and handles unavailable or lost outcomes', async () => {
 	for (const value of [

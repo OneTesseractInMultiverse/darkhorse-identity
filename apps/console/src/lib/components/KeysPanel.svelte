@@ -1,25 +1,29 @@
 <script lang="ts">
+	import { useLocalization } from '$lib/i18n/context';
+	const language = useLocalization();
 	import { onMount } from 'svelte';
 	import { resolve } from '$app/paths';
 	import { Button } from '$lib/components/ui/button';
 	import Modal from '$lib/components/admin/Modal.svelte';
 	import KeyEditor from './KeyEditor.svelte';
 	import {
-		failureMessage,
 		type KeyApi,
 		type Page,
 		type Key,
 		type Creation,
 		type Failure
 	} from '$lib/personal-keys';
-	import { formatTime } from '$lib/sessions';
+	import { dateTime } from '$lib/i18n/display';
+	const formatTime = $derived(dateTime($language.locale));
 	let { api }: { api: KeyApi } = $props();
 	let page = $state<Page | null>(null);
 	let pending = $state(true);
 	let blocked = $state(false);
 	let signedOut = $state(false);
 	let reauthenticate = $state(false);
-	let message = $state('');
+	let message = $state<
+		`keys.failure.${Failure['kind']}` | 'keys.concealed' | 'keys.hidden' | 'keys.revoked' | null
+	>(null);
 	let modal = $state<'create' | 'detail' | 'revoke' | 'secret' | null>(null);
 	let selected = $state<Key | null>(null);
 	let secret = $state('');
@@ -36,8 +40,7 @@
 		if (secret) {
 			secret = '';
 			modal = null;
-			message =
-				'The secret is no longer displayed. If it was not saved, revoke the key and create a replacement.';
+			message = 'keys.concealed';
 		}
 	}
 	function close() {
@@ -46,18 +49,19 @@
 		modal = null;
 	}
 	function failure(result: Failure) {
-		message = failureMessage(result);
+		message = `keys.failure.${result.kind}`;
 		blocked = true;
 		reauthenticate = result.kind === 'reauthenticate';
 		if (result.kind === 'signed-out') {
 			signedOut = true;
+			language.account(undefined);
 			page = null;
 		}
 		close();
 	}
 	async function load(after?: string) {
 		pending = true;
-		message = '';
+		message = null;
 		const result = await api.list(after);
 		if (!mounted) return;
 		if (result.kind === 'ready') {
@@ -73,7 +77,7 @@
 	}
 	async function create(input: Creation) {
 		pending = true;
-		message = '';
+		message = null;
 		const result = await api.create(input);
 		if (!mounted) return;
 		if (result.kind === 'created') {
@@ -81,8 +85,7 @@
 			page = null;
 			if (document.visibilityState === 'hidden') {
 				close();
-				message =
-					'The key was created while this page was hidden. Its secret cannot be retrieved. Refresh the list, revoke that key, and create a replacement.';
+				message = 'keys.hidden';
 				blocked = true;
 			} else {
 				secret = result.secret;
@@ -94,20 +97,20 @@
 	async function revoke() {
 		if (!selected || pending) return;
 		pending = true;
-		message = '';
+		message = null;
 		const result = await api.revoke(selected.id);
 		if (!mounted) return;
 		close();
 		if (result.kind === 'revoked') {
 			await load();
-			message = 'API key revoked.';
+			message = 'keys.revoked';
 		} else failure(result);
 		pending = false;
 	}
 	function show(key: Key, kind: 'detail' | 'revoke') {
 		selected = key;
 		modal = kind;
-		message = '';
+		message = null;
 	}
 	async function acknowledge() {
 		close();
@@ -123,75 +126,85 @@
 <section class="glass key-panel" aria-labelledby="keys-title" aria-busy={pending}>
 	<div class="directory-heading">
 		<div>
-			<p class="eyebrow">ACCOUNT SECURITY</p>
-			<h1 id="keys-title">Personal API keys.</h1>
-			<p>Give scripts and services a limited portion of your application access.</p>
+			<p class="eyebrow">{$language.t('sessions.security')}</p>
+			<h1 id="keys-title">{$language.t('keys.heading')}</h1>
+			<p>{$language.t('keys.intro')}</p>
 		</div>
 		{#if !signedOut}<div class="directory-actions">
-				<Button variant="outline" disabled={pending} onclick={() => load()}>Refresh keys</Button
+				<Button variant="outline" disabled={pending} onclick={() => load()}
+					>{$language.t('keys.refresh')}</Button
 				><Button
 					disabled={pending || blocked || !page}
 					onclick={() => {
 						modal = 'create';
-						message = '';
-					}}>New API key</Button
+						message = null;
+					}}>{$language.t('keys.new')}</Button
 				>
 			</div>{/if}
 	</div>
-	{#if message}<p role="alert" class="directory-notice">{message}</p>{/if}
-	{#if signedOut || reauthenticate}<a class="admin-link" href={resolve('/')}>Sign in</a>{/if}
-	{#if pending && !page}<p role="status">Loading…</p>{:else if page}
-		<p class="key-scroll-hint">Scroll sideways to view all columns. The key name stays visible.</p>
+	{#if message}<p role="alert" class="directory-notice">{$language.t(message)}</p>{/if}
+	{#if signedOut || reauthenticate}<a class="admin-link" href={resolve('/')}
+			>{$language.t('login.submit')}</a
+		>{/if}
+	{#if pending && !page}<p role="status">{$language.t('common.loading')}</p>{:else if page}
+		<p class="key-scroll-hint">{$language.t('keys.scroll')}</p>
 		<!-- svelte-ignore a11y_no_noninteractive_tabindex (keyboard users must be able to scroll the table horizontally) -->
-		<div class="directory-table" role="region" aria-label="Your API keys" tabindex="0">
+		<div class="directory-table" role="region" aria-label={$language.t('keys.region')} tabindex="0">
 			<table>
 				<thead
-					><tr><th>Name</th><th>Created</th><th>Expires</th><th>Status</th><th>Actions</th></tr
+					><tr
+						><th>{$language.t('keys.columnName')}</th><th>{$language.t('keys.created')}</th><th
+							>{$language.t('keys.expires')}</th
+						><th>{$language.t('common.status')}</th><th>{$language.t('common.actions')}</th></tr
 					></thead
 				><tbody>
 					{#each page.items as key (key.id)}<tr
 							><td>{key.name}</td><td>{formatTime(key.created_ms)}</td><td
-								>{key.expires_ms === null ? 'No expiration' : formatTime(key.expires_ms)}</td
-							><td>{key.active ? 'Active' : 'Inactive'}</td><td
+								>{key.expires_ms === null
+									? $language.t('keys.never')
+									: formatTime(key.expires_ms)}</td
+							><td>{$language.t(key.active ? 'common.active' : 'common.inactive')}</td><td
 								><div class="directory-actions">
 									<Button
 										variant="outline"
 										disabled={pending}
 										onclick={() => show(key, 'detail')}
-										aria-label={`View ${key.name}`}>View</Button
+										aria-label={$language.t('keys.viewName', { name: key.name })}
+										>{$language.t('keys.view')}</Button
 									><Button
 										variant="outline"
 										disabled={pending || blocked || !key.active}
 										onclick={() => show(key, 'revoke')}
-										aria-label={`Revoke ${key.name}`}>Revoke</Button
+										aria-label={$language.t('keys.revokeName', { name: key.name })}
+										>{$language.t('keys.revoke')}</Button
 									>
 								</div></td
 							></tr
 						>{/each}
-					{#if page.items.length === 0}<tr><td colspan="5">You have no API keys yet.</td></tr>{/if}
+					{#if page.items.length === 0}<tr><td colspan="5">{$language.t('keys.empty')}</td></tr
+						>{/if}
 				</tbody>
 			</table>
 		</div>
 		{#if page.next}<Button variant="outline" disabled={pending} onclick={() => load(page!.next!)}
-				>Next keys</Button
+				>{$language.t('keys.next')}</Button
 			>{/if}
 	{/if}
 	<p class="key-hint">
-		Keys do not grow when you receive new permissions. Signing out ends your browser session; revoke
-		API keys separately when they are no longer needed.
+		{$language.t('keys.help')}
 	</p>
 </section>
-{#if modal === 'create'}<Modal title="New personal API key" {pending} {close}
+{#if modal === 'create'}<Modal title={$language.t('keys.newTitle')} {pending} {close}
 		><KeyEditor read={api.options} {create} cancel={close} {pending} /></Modal
 	>
 {:else if modal === 'secret' && selected}<Modal
-		title="Save your API key"
+		title={$language.t('keys.saveTitle')}
 		{pending}
 		close={() => {
 			void acknowledge();
 		}}
-		><p>Store this secret securely now. Darkhorse cannot display it again.</p>
-		<label for="key-secret">API key secret</label><textarea
+		><p>{$language.t('keys.saveHelp')}</p>
+		<label for="key-secret">{$language.t('keys.secret')}</label><textarea
 			id="key-secret"
 			class="key-secret"
 			readonly
@@ -201,33 +214,34 @@
 			rows="3"></textarea>
 		<p>
 			{selected.name} · {selected.expires_ms === null
-				? 'No expiration'
-				: `Expires ${formatTime(selected.expires_ms)}`}
+				? $language.t('keys.never')
+				: $language.t('keys.expirationValue', { time: formatTime(selected.expires_ms) })}
 		</p>
-		<Button onclick={acknowledge}>I have saved the key</Button></Modal
+		<Button onclick={acknowledge}>{$language.t('keys.saved')}</Button></Modal
 	>
-{:else if modal === 'revoke' && selected}<Modal title="Revoke API key" {pending} {close}
+{:else if modal === 'revoke' && selected}<Modal
+		title={$language.t('keys.revokeTitle')}
+		{pending}
+		{close}
 		><p>
-			Revoke <strong>{selected.name}</strong>? This cannot be undone. Services using this key will
-			lose access.
+			{$language.t('keys.revokeHelp', { name: selected.name })}
 		</p>
 		<div class="directory-actions">
-			<Button disabled={pending} onclick={revoke}>Confirm revoke key</Button><Button
-				variant="outline"
-				disabled={pending}
-				onclick={close}>Cancel</Button
+			<Button disabled={pending} onclick={revoke}>{$language.t('keys.confirmRevoke')}</Button
+			><Button variant="outline" disabled={pending} onclick={close}
+				>{$language.t('common.cancel')}</Button
 			>
 		</div></Modal
 	>
 {:else if modal === 'detail' && selected}<Modal title={selected.name} {close}
 		><p class="key-hint">
-			These are the original permission limits. Current account access may reduce them.
+			{$language.t('keys.originalLimits')}
 		</p>
-		<p>Application: <code>{selected.application_id}</code></p>
+		<p>{$language.t('keys.application')} <code>{selected.application_id}</code></p>
 		{#each selected.grants as grant (grant.resource_id)}<h3>
-				Resource <code>{grant.resource_id}</code>
+				{$language.t('keys.resource')} <code>{grant.resource_id}</code>
 			</h3>
 			<ul>
 				{#each grant.capabilities as cap (cap)}<li><code>{cap}</code></li>{/each}
-			</ul>{/each}<Button onclick={close}>Close</Button></Modal
+			</ul>{/each}<Button onclick={close}>{$language.t('common.close')}</Button></Modal
 	>{/if}

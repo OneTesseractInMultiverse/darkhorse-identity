@@ -108,6 +108,3 @@ function decode(value: unknown): SessionsState {
 		page: { current: value.current, items: items as SessionRecord[], next: value.next }
 	};
 }
-export function formatTime(value: number): string {
-	return `${new Date(value).toISOString().slice(0, 19).replace('T', ' ')} UTC`;
-}

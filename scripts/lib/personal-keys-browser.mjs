@@ -24,11 +24,25 @@ async function call(page, path, body) {
     { path, body },
   );
 }
-async function create(page, name) {
-  await page.getByRole("button", { name: "New API key", exact: true }).click();
-  await page.getByLabel("Key name", { exact: true }).fill(name);
-  await page.getByLabel("Include Personal worker API", { exact: true }).check();
-  await page.getByLabel("Expiration", { exact: true }).selectOption("never");
+async function create(page, name, spanish = false) {
+  await page
+    .getByRole("button", {
+      name: spanish ? "Nueva clave de API" : "New API key",
+      exact: true,
+    })
+    .click();
+  await page
+    .getByLabel(spanish ? "Nombre de la clave" : "Key name", { exact: true })
+    .fill(name);
+  await page
+    .getByLabel(
+      spanish ? "Incluir Personal worker API" : "Include Personal worker API",
+      { exact: true },
+    )
+    .check();
+  await page
+    .getByLabel(spanish ? "Vencimiento" : "Expiration", { exact: true })
+    .selectOption("never");
 }
 export async function verifyPersonalKeys(page, origin, ca, principal, runSql) {
   const options = { page, origin, ca, principal, runSql, call };
@@ -91,10 +105,11 @@ export async function verifyPersonalKeys(page, origin, ca, principal, runSql) {
       ]),
     ).includes(secret),
   );
+  await page.getByRole("combobox").selectOption("es");
   await page
-    .getByRole("button", { name: "View Terminal worker", exact: true })
+    .getByRole("button", { name: "Ver Terminal worker", exact: true })
     .click();
-  await page.getByRole("button", { name: "Close", exact: true }).click();
+  await page.getByRole("button", { name: "Cerrar", exact: true }).click();
   await page.screenshot({
     path: resolve(".local/personal-keys-desktop.png"),
     fullPage: true,
@@ -134,20 +149,20 @@ export async function verifyPersonalKeys(page, origin, ca, principal, runSql) {
   );
   assert.deepEqual((await check(first)).body.capabilities, [first.read]);
   await page
-    .getByRole("button", { name: "Revoke Terminal worker", exact: true })
+    .getByRole("button", { name: "Revocar Terminal worker", exact: true })
     .click();
   await page
-    .getByRole("button", { name: "Confirm revoke key", exact: true })
+    .getByRole("button", { name: "Confirmar revocación", exact: true })
     .click();
   await page
     .getByRole("alert")
-    .filter({ hasText: "API key revoked." })
+    .filter({ hasText: "Se revocó la clave de API." })
     .waitFor();
   assert.deepEqual((await check(first)).body, { active: false });
   // Discard a real committed response; the browser must not retry the issuance.
   let submissions = 0,
     forwardError;
-  await create(page, "Lost response worker");
+  await create(page, "Lost response worker", true);
   await page.route("**/api/security/keys", async (route) => {
     if (route.request().method() !== "POST") {
       await route.continue();
@@ -161,35 +176,38 @@ export async function verifyPersonalKeys(page, origin, ca, principal, runSql) {
     }
     await route.abort("failed");
   });
-  await page.getByRole("button", { name: "Create key", exact: true }).click();
+  await page.getByRole("button", { name: "Crear clave", exact: true }).click();
   await page
     .getByRole("alert")
-    .filter({ hasText: "could not be confirmed" })
+    .filter({ hasText: "No se pudo confirmar" })
     .waitFor();
   assert.equal(forwardError, undefined);
   assert.equal(submissions, 1);
   assert.ok(
     await page
-      .getByRole("button", { name: "New API key", exact: true })
+      .getByRole("button", { name: "Nueva clave de API", exact: true })
       .isDisabled(),
   );
   await page.unroute("**/api/security/keys");
-  await page.getByRole("button", { name: "Refresh keys", exact: true }).click();
+  await page
+    .getByRole("button", { name: "Actualizar claves", exact: true })
+    .click();
   const lost = await call(page, "/api/security/keys");
   assert.equal(
     lost.body.items.filter((k) => k.name === "Lost response worker").length,
     1,
   );
   await page
-    .getByRole("button", { name: "Revoke Lost response worker", exact: true })
+    .getByRole("button", { name: "Revocar Lost response worker", exact: true })
     .click();
   await page
-    .getByRole("button", { name: "Confirm revoke key", exact: true })
+    .getByRole("button", { name: "Confirmar revocación", exact: true })
     .click();
   await page
     .getByRole("alert")
-    .filter({ hasText: "API key revoked." })
+    .filter({ hasText: "Se revocó la clave de API." })
     .waitFor();
+  await page.getByRole("combobox").selectOption("en");
   await page.goto(origin);
   console.log(
     "Personal-key HTTPS creation, single reveal, scoped introspection, live reductions, revocation, lost-response and responsive console checks passed.",

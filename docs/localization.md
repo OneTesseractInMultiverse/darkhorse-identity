@@ -2,7 +2,7 @@
 
 Darkhorse's first supported presentation languages are English (`en`) and Spanish
 (`es`). The sign-in page, account overview, profile, sessions, email verification, invitation
-and consent pages offer both. Personal-key and management pages, outgoing email and
+consent and personal-key pages offer both. Management pages, outgoing email and
 the operator CLI still require translation. Their
 translation and qualification are tracked separately. A language choice changes
 presentation; it never changes identity, permissions or protocol behavior.
@@ -263,7 +263,7 @@ open.
 | `/` — login and account overview                                                                        | Translated, including current errors and logout uncertainty                                                                 |
 | `/account/profile` — read/edit/language/image dialogs                                                   | Translated; names and bios remain literal text; country names/order use browser `Intl` while submitted codes stay unchanged |
 | `/security/sessions` — list, pagination, confirmation, failures                                         | Translated; selected-language dates explicitly remain in UTC                                                                |
-| `/security/keys` and key creation/reveal/revocation                                                     | Pending                                                                                                                     |
+| `/security/keys` and key creation/reveal/revocation                                                     | Translated; permission identifiers, one-time reveal and uncertain-outcome handling remain unchanged                         |
 | `/security/email` and confirmation/account switching                                                    | Translated; requesting, account binding, explicit confirmation and uncertainty remain unchanged                             |
 | `/invitation` and enrollment failures                                                                   | Translated; switching language preserves the unsent form and never accepts the invitation                                   |
 | `/authorization` and consent                                                                            | Translated; exact scopes stay visible; OIDC `ui_locales` hint/discovery support remains separate in #40                     |
@@ -287,7 +287,7 @@ versions and backend validation are unchanged. Country labels may vary with the
 browser's locale-data version. Dates use an explicitly UTC `Intl.DateTimeFormat`
 created once per language change, with an ISO/UTC fallback.
 
-A direct session, verification or consent page visit restores the account preference
+A direct session, personal-key, verification or consent page visit restores the account preference
 with one existing session GET. The layout ignores an older response after a newer profile preference
 or sign-out update. Profile pages already receive the preference through their
 profile read. These reads affect presentation only and add no positive authority
@@ -330,3 +330,21 @@ and 71.6 ms Spanish; warm medians were 40.0, 55.4 and 56.8 ms. These are small
 presentation samples, not production throughput or stable percentile estimates.
 Actual bilingual SMTP-link confirmation, enrollment and OIDC callback validation
 run in the separate verified-HTTPS browser suite.
+
+### Personal API keys
+
+The key directory, resource/permission selector, creation form, one-time secret
+reveal and revocation confirmation now support English and Spanish. Language
+switching preserves the draft and exact resource/capability selection. Identifiers,
+permission meanings and secrets remain literal values. Secrets still exist only in
+component memory, are cleared on concealment or acknowledgment, and never enter
+catalog interpolation or persistent browser storage. An uncertain issuance remains
+blocked until the operator reconciles the key list; switching language cannot retry
+it. Dates are explicitly UTC.
+
+The [personal-key presentation sample](measurements/personal-key-localization-2026-09-26.json)
+records 133,937 summed gzip JavaScript bytes, 24,784 above the English-only baseline,
+within the unchanged 36 KiB budget. Its five cold/warm pairs measure only the static
+presentation fixture; real bilingual issuance, attenuation, current permission
+reductions, lost-response reconciliation and revocation are separately exercised
+through verified HTTPS. The catalogs now contain 261 typed messages per language.

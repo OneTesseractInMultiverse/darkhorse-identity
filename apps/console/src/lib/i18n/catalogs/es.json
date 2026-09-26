@@ -287,5 +287,127 @@
 		"authorization.help",
 		"Esta conexión no está disponible. Vuelve a la aplicación e inténtalo de nuevo."
 	],
-	["authorization.cancel", "Cancelar conexión"]
+	["authorization.cancel", "Cancelar conexión"],
+	["keys.title", "Claves de API personales — Darkhorse"],
+	["keys.edition", "SEGURIDAD DE LA CUENTA / CLAVES DE API"],
+	["keys.heading", "Claves de API personales."],
+	[
+		"keys.intro",
+		"Concede a scripts y servicios una parte limitada de tu acceso a las aplicaciones."
+	],
+	["keys.refresh", "Actualizar claves"],
+	["keys.new", "Nueva clave de API"],
+	[
+		"keys.scroll",
+		"Desplázate horizontalmente para ver todas las columnas. El nombre de la clave permanece visible."
+	],
+	["keys.region", "Tus claves de API"],
+	["keys.columnName", "Nombre"],
+	["keys.created", "Creación"],
+	["keys.expires", "Vencimiento"],
+	["keys.never", "Sin vencimiento"],
+	["keys.viewName", "Ver {name}"],
+	["keys.revokeName", "Revocar {name}"],
+	["keys.view", "Ver"],
+	["keys.revoke", "Revocar"],
+	["keys.empty", "Aún no tienes claves de API."],
+	["keys.next", "Claves siguientes"],
+	[
+		"keys.help",
+		"Las claves no obtienen permisos nuevos cuando se amplía tu acceso. Cerrar sesión termina la sesión del navegador; revoca las claves de API por separado cuando ya no las necesites."
+	],
+	["keys.newTitle", "Nueva clave de API personal"],
+	["keys.saveTitle", "Guarda tu clave de API"],
+	[
+		"keys.saveHelp",
+		"Guarda este secreto de forma segura ahora. Darkhorse no puede volver a mostrarlo."
+	],
+	["keys.secret", "Secreto de la clave de API"],
+	["keys.expirationValue", "Vence el {time}"],
+	["keys.saved", "Ya guardé la clave"],
+	["keys.revokeTitle", "Revocar clave de API"],
+	[
+		"keys.revokeHelp",
+		"¿Revocar {name}? Esta acción no se puede deshacer. Los servicios que usan esta clave perderán el acceso."
+	],
+	["keys.confirmRevoke", "Confirmar revocación"],
+	[
+		"keys.originalLimits",
+		"Estos son los límites de permisos originales. El acceso actual de la cuenta puede reducirlos."
+	],
+	["keys.application", "Aplicación:"],
+	["keys.resource", "Recurso"],
+	[
+		"keys.concealed",
+		"El secreto ya no se muestra. Si no lo guardaste, revoca la clave y crea una nueva."
+	],
+	[
+		"keys.hidden",
+		"La clave se creó mientras esta página estaba oculta. Su secreto no se puede recuperar. Actualiza la lista, revoca esa clave y crea una nueva."
+	],
+	["keys.revoked", "Se revocó la clave de API."],
+	["keys.form", "Crear clave de API personal"],
+	[
+		"keys.formHelp",
+		"Elige recursos de una sola aplicación. Los permisos se fijan al crear la clave y permanecen limitados por tu acceso actual."
+	],
+	["keys.name", "Nombre de la clave"],
+	["keys.expiration", "Vencimiento"],
+	["keys.defaultDays", "Valor predeterminado de la organización ({days, number} días)"],
+	["keys.duration", "Elegir una duración"],
+	["keys.days", "Días hasta el vencimiento"],
+	[
+		"keys.neverHelp",
+		"Esta clave permanece válida hasta que se revoque o un cambio de seguridad de la cuenta la invalide. Usa un vencimiento cuando sea posible."
+	],
+	["keys.permissions", "Recursos y permisos"],
+	["keys.refreshPermissions", "Actualizar permisos"],
+	["keys.loading", "Cargando tus permisos…"],
+	[
+		"keys.noAccess",
+		"No tienes acceso a recursos que puedas delegar. Un administrador debe asignarte primero un rol de aplicación."
+	],
+	["keys.includeName", "Incluir {name}"],
+	["keys.include", "Incluir este recurso"],
+	["keys.allPermissions", "Todos los permisos actuales"],
+	["keys.count", "Recursos seleccionados: {count, number} / 16. Máximo una aplicación."],
+	["keys.nextResources", "Recursos siguientes"],
+	["keys.selectedResources", "Recursos seleccionados"],
+	["keys.removeName", "Quitar {name}"],
+	["keys.remove", "Quitar"],
+	["keys.creating", "Creando…"],
+	["keys.create", "Crear clave"],
+	[
+		"keys.permissionsChanged",
+		"Los permisos cambiaron. Actualízalos y vuelve a seleccionar los recursos."
+	],
+	[
+		"keys.failure.signed-out",
+		"Tu sesión ha finalizado. Inicia sesión para administrar las claves de API."
+	],
+	[
+		"keys.failure.reauthenticate",
+		"Vuelve a iniciar sesión antes de crear o revocar una clave de API. Debes haber iniciado sesión en los últimos cinco minutos."
+	],
+	[
+		"keys.failure.denied",
+		"Tu acceso actual no permite esta solicitud. Actualiza los permisos antes de continuar."
+	],
+	["keys.failure.changed", "Los permisos cambiaron. Actualízalos y revisa tu selección."],
+	[
+		"keys.failure.limited",
+		"La emisión está limitada a 100 claves vigentes y 10 claves nuevas cada diez minutos."
+	],
+	[
+		"keys.failure.invalid",
+		"Se rechazó la solicitud. Actualiza los permisos y revisa los datos de la clave."
+	],
+	[
+		"keys.failure.unavailable",
+		"Las claves de API no están disponibles temporalmente. Actualiza la lista para volver a intentarlo."
+	],
+	[
+		"keys.failure.uncertain",
+		"No se pudo confirmar el cambio. Actualiza la lista de claves antes de volver a intentarlo. No se puede recuperar un secreto perdido; revoca esa clave y crea una nueva."
+	]
 ]

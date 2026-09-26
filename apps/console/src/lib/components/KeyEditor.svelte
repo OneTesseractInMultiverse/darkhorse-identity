@@ -1,9 +1,11 @@
 <script lang="ts">
+	import { useLocalization } from '$lib/i18n/context';
+	const language = useLocalization();
 	import { onMount } from 'svelte';
 	import { Button } from '$lib/components/ui/button';
 	import {
-		failureMessage,
 		type KeyApi,
+		type Failure,
 		type Options,
 		type Eligible,
 		type Selection,
@@ -26,7 +28,7 @@
 	let expiration = $state('default');
 	let days = $state(30);
 	let loading = $state(true);
-	let message = $state('');
+	let message = $state<`keys.failure.${Failure['kind']}` | 'keys.permissionsChanged' | null>(null);
 	let blocked = $state(false);
 	const application = $derived(choices[0]?.resource.application_id);
 	const valid = $derived(
@@ -39,13 +41,13 @@
 	});
 	async function load(after?: string) {
 		loading = true;
-		message = '';
+		message = null;
 		const result = await read(after);
 		if (result.kind === 'ready') {
 			if (after && options && options.policy_revision !== result.value.policy_revision) {
 				choices = [];
 				blocked = true;
-				message = 'Permissions changed. Refresh permissions and select resources again.';
+				message = 'keys.permissionsChanged';
 			} else if (!after) {
 				choices = [];
 				blocked = false;
@@ -55,7 +57,7 @@
 			options = null;
 			choices = [];
 			blocked = true;
-			message = failureMessage(result);
+			message = `keys.failure.${result.kind}`;
 		}
 		loading = false;
 	}
@@ -102,12 +104,11 @@
 	}
 </script>
 
-<form class="key-editor" aria-label="Create personal API key" onsubmit={submit}>
+<form class="key-editor" aria-label={$language.t('keys.form')} onsubmit={submit}>
 	<p>
-		Choose resources from one application. Permissions are fixed at creation and remain limited by
-		your current access.
+		{$language.t('keys.formHelp')}
 	</p>
-	<label for="key-name">Key name</label><input
+	<label for="key-name">{$language.t('keys.name')}</label><input
 		id="key-name"
 		bind:value={name}
 		required
@@ -115,17 +116,18 @@
 		autocomplete="off"
 		disabled={pending}
 	/>
-	<label for="key-expiration">Expiration</label><select
+	<label for="key-expiration">{$language.t('keys.expiration')}</label><select
 		id="key-expiration"
 		bind:value={expiration}
 		disabled={pending || loading}
 	>
-		<option value="default">Organization default ({options?.policy.default_days ?? 30} days)</option
-		><option value="days">Choose a duration</option>{#if options?.policy.allow_never}<option
-				value="never">No expiration</option
+		<option value="default"
+			>{$language.t('keys.defaultDays', { days: options?.policy.default_days ?? 30 })}</option
+		><option value="days">{$language.t('keys.duration')}</option
+		>{#if options?.policy.allow_never}<option value="never">{$language.t('keys.never')}</option
 			>{/if}
 	</select>
-	{#if expiration === 'days'}<label for="key-days">Days until expiration</label><input
+	{#if expiration === 'days'}<label for="key-days">{$language.t('keys.days')}</label><input
 			id="key-days"
 			type="number"
 			required
@@ -135,20 +137,18 @@
 			disabled={pending}
 		/>{/if}
 	{#if expiration === 'never'}<p class="key-hint">
-			This key remains valid until revoked or invalidated by an account security change. Prefer an
-			expiration when possible.
+			{$language.t('keys.neverHelp')}
 		</p>{/if}
 	<div class="directory-actions">
-		<h3>Resources and permissions</h3>
+		<h3>{$language.t('keys.permissions')}</h3>
 		<Button type="button" variant="outline" disabled={pending || loading} onclick={() => load()}
-			>Refresh permissions</Button
+			>{$language.t('keys.refreshPermissions')}</Button
 		>
 	</div>
-	{#if message}<p role="alert">{message}</p>{/if}
-	{#if loading}<p role="status">Loading your permissions…</p>{:else if options}
+	{#if message}<p role="alert">{$language.t(message)}</p>{/if}
+	{#if loading}<p role="status">{$language.t('keys.loading')}</p>{:else if options}
 		{#if options.items.length === 0}<p>
-				You have no delegable resource access. An administrator must assign an application role
-				first.
+				{$language.t('keys.noAccess')}
 			</p>{/if}
 		{#each options.items as resource (resource.resource_id)}
 			{@const selected = choices.find((c) => c.resource.resource_id === resource.resource_id)}
@@ -157,13 +157,13 @@
 				<label class="key-check"
 					><input
 						type="checkbox"
-						aria-label={`Include ${resource.resource_name}`}
+						aria-label={$language.t('keys.includeName', { name: resource.resource_name })}
 						checked={!!selected}
 						disabled={!selected &&
 							((application !== undefined && application !== resource.application_id) ||
 								choices.length >= 16)}
 						onchange={(e) => select(resource, e.currentTarget.checked)}
-					/>Include this resource</label
+					/>{$language.t('keys.include')}</label
 				>
 				{#if selected}
 					<label class="key-check"
@@ -171,7 +171,7 @@
 							type="checkbox"
 							checked={selected.selection.kind === 'all'}
 							onchange={(e) => mode(resource.resource_id, e.currentTarget.checked)}
-						/>All current permissions</label
+						/>{$language.t('keys.allPermissions')}</label
 					>
 					{#if selected.selection.kind === 'subset'}
 						{#each resource.capabilities as cap (cap.id)}<label class="key-check"
@@ -187,18 +187,15 @@
 			</fieldset>
 		{/each}
 		<div class="directory-actions">
-			<span
-				>{choices.length} of 16 resources selected{#if application}
-					· one application{/if}</span
-			>{#if options.next}<Button
+			<span>{$language.t('keys.count', { count: choices.length })}</span>{#if options.next}<Button
 					type="button"
 					variant="outline"
 					disabled={pending || blocked}
-					onclick={() => load(options!.next!)}>Next resources</Button
+					onclick={() => load(options!.next!)}>{$language.t('keys.nextResources')}</Button
 				>{/if}
 		</div>
 	{/if}
-	{#if choices.length}<ul aria-label="Selected resources">
+	{#if choices.length}<ul aria-label={$language.t('keys.selectedResources')}>
 			{#each choices as choice (choice.resource.resource_id)}<li>
 					{choice.resource.application_name} / {choice.resource.resource_name}
 					<button
@@ -206,13 +203,16 @@
 						class="admin-link"
 						disabled={pending}
 						onclick={() => select(choice.resource, false)}
-						aria-label={`Remove ${choice.resource.resource_name}`}>Remove</button
+						aria-label={$language.t('keys.removeName', { name: choice.resource.resource_name })}
+						>{$language.t('keys.remove')}</button
 					>
 				</li>{/each}
 		</ul>{/if}
 	<div class="directory-actions">
 		<Button type="submit" disabled={pending || loading || blocked || !valid}
-			>{pending ? 'Creating…' : 'Create key'}</Button
-		><Button type="button" variant="outline" disabled={pending} onclick={cancel}>Cancel</Button>
+			>{$language.t(pending ? 'keys.creating' : 'keys.create')}</Button
+		><Button type="button" variant="outline" disabled={pending} onclick={cancel}
+			>{$language.t('common.cancel')}</Button
+		>
 	</div>
 </form>

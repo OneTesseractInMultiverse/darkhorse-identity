@@ -1,10 +1,5 @@
 import { describe, expect, it, vi } from 'vitest';
-import {
-	keyApi,
-	failureMessage,
-	type Creation,
-	type Failure
-} from '../../../src/lib/personal-keys';
+import { keyApi, type Creation } from '../../../src/lib/personal-keys';
 import { options } from './key-fixtures';
 const id = (n: number) => `00000000-0000-0000-0000-${n.toString(16).padStart(12, '0')}`;
 const record = {
@@ -24,7 +19,7 @@ const creation: Creation = {
 	grants: [{ resource_id: id(3), selection: { kind: 'all' } }]
 };
 describe('personal key transport', () => {
-	it('loads bounded issuance options and produces fixed recovery guidance for every failure', async () => {
+	it('loads bounded issuance options and produces typed failures without server text', async () => {
 		const fetcher = vi
 			.fn()
 			.mockResolvedValueOnce(new Response(JSON.stringify(options)))
@@ -40,17 +35,6 @@ describe('personal key transport', () => {
 		}
 		const broken = vi.fn().mockRejectedValue(new Error('untrusted'));
 		expect(await keyApi(broken).revoke(id(1))).toEqual({ kind: 'uncertain' });
-		for (const [kind, phrase] of [
-			['signed-out', 'session has ended'],
-			['reauthenticate', 'five minutes'],
-			['denied', 'Refresh permissions'],
-			['changed', 'Permissions changed'],
-			['limited', '100 live keys'],
-			['invalid', 'request was rejected'],
-			['unavailable', 'temporarily unavailable'],
-			['uncertain', 'could not be confirmed']
-		] as [Failure['kind'], string][])
-			expect(failureMessage({ kind })).toContain(phrase);
 	});
 	it('uses protected same-origin requests and exposes secrets only from a committed creation', async () => {
 		const fetcher = vi

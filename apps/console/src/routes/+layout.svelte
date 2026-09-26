@@ -20,7 +20,11 @@
 		void presentation(fetch).then((locale) => {
 			if (alive) language.deployment(locale);
 		});
-		if (['/security/sessions', '/security/email', '/authorization'].includes(page.url.pathname)) {
+		if (
+			['/security/sessions', '/security/keys', '/security/email', '/authorization'].includes(
+				page.url.pathname
+			)
+		) {
 			void language.restoreAccount(async () => {
 				const result = await currentSession(fetch);
 				return result.kind === 'signed-in' ? result.locale : undefined;
@@ -38,6 +42,7 @@
 				'/',
 				'/account/profile',
 				'/security/sessions',
+				'/security/keys',
 				'/security/email',
 				'/invitation',
 				'/authorization'

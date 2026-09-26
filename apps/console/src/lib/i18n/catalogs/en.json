@@ -257,5 +257,115 @@
 		"authorization.help",
 		"This connection is unavailable. Return to the application and try again."
 	],
-	["authorization.cancel", "Cancel connection"]
+	["authorization.cancel", "Cancel connection"],
+	["keys.title", "Personal API keys — Darkhorse"],
+	["keys.edition", "ACCOUNT SECURITY / API KEYS"],
+	["keys.heading", "Personal API keys."],
+	["keys.intro", "Give scripts and services a limited portion of your application access."],
+	["keys.refresh", "Refresh keys"],
+	["keys.new", "New API key"],
+	["keys.scroll", "Scroll sideways to view all columns. The key name stays visible."],
+	["keys.region", "Your API keys"],
+	["keys.columnName", "Name"],
+	["keys.created", "Created"],
+	["keys.expires", "Expires"],
+	["keys.never", "No expiration"],
+	["keys.viewName", "View {name}"],
+	["keys.revokeName", "Revoke {name}"],
+	["keys.view", "View"],
+	["keys.revoke", "Revoke"],
+	["keys.empty", "You have no API keys yet."],
+	["keys.next", "Next keys"],
+	[
+		"keys.help",
+		"Keys do not grow when you receive new permissions. Signing out ends your browser session; revoke API keys separately when they are no longer needed."
+	],
+	["keys.newTitle", "New personal API key"],
+	["keys.saveTitle", "Save your API key"],
+	["keys.saveHelp", "Store this secret securely now. Darkhorse cannot display it again."],
+	["keys.secret", "API key secret"],
+	["keys.expirationValue", "Expires {time}"],
+	["keys.saved", "I have saved the key"],
+	["keys.revokeTitle", "Revoke API key"],
+	[
+		"keys.revokeHelp",
+		"Revoke {name}? This cannot be undone. Services using this key will lose access."
+	],
+	["keys.confirmRevoke", "Confirm revoke key"],
+	[
+		"keys.originalLimits",
+		"These are the original permission limits. Current account access may reduce them."
+	],
+	["keys.application", "Application:"],
+	["keys.resource", "Resource"],
+	[
+		"keys.concealed",
+		"The secret is no longer displayed. If it was not saved, revoke the key and create a replacement."
+	],
+	[
+		"keys.hidden",
+		"The key was created while this page was hidden. Its secret cannot be retrieved. Refresh the list, revoke that key, and create a replacement."
+	],
+	["keys.revoked", "API key revoked."],
+	["keys.form", "Create personal API key"],
+	[
+		"keys.formHelp",
+		"Choose resources from one application. Permissions are fixed at creation and remain limited by your current access."
+	],
+	["keys.name", "Key name"],
+	["keys.expiration", "Expiration"],
+	["keys.defaultDays", "Organization default ({days, number} days)"],
+	["keys.duration", "Choose a duration"],
+	["keys.days", "Days until expiration"],
+	[
+		"keys.neverHelp",
+		"This key remains valid until revoked or invalidated by an account security change. Prefer an expiration when possible."
+	],
+	["keys.permissions", "Resources and permissions"],
+	["keys.refreshPermissions", "Refresh permissions"],
+	["keys.loading", "Loading your permissions…"],
+	[
+		"keys.noAccess",
+		"You have no delegable resource access. An administrator must assign an application role first."
+	],
+	["keys.includeName", "Include {name}"],
+	["keys.include", "Include this resource"],
+	["keys.allPermissions", "All current permissions"],
+	["keys.count", "Resources selected: {count, number} / 16. Maximum one application."],
+	["keys.nextResources", "Next resources"],
+	["keys.selectedResources", "Selected resources"],
+	["keys.removeName", "Remove {name}"],
+	["keys.remove", "Remove"],
+	["keys.creating", "Creating…"],
+	["keys.create", "Create key"],
+	[
+		"keys.permissionsChanged",
+		"Permissions changed. Refresh permissions and select resources again."
+	],
+	["keys.failure.signed-out", "Your session has ended. Sign in to manage API keys."],
+	[
+		"keys.failure.reauthenticate",
+		"Sign in again before creating or revoking an API key. This requires a sign-in within five minutes."
+	],
+	[
+		"keys.failure.denied",
+		"Your current access does not permit this request. Refresh permissions before continuing."
+	],
+	["keys.failure.changed", "Permissions changed. Refresh permissions and review your selection."],
+	[
+		"keys.failure.limited",
+		"Key issuance is limited to 100 live keys and 10 new keys per ten minutes."
+	],
+	[
+		"keys.failure.invalid",
+		"The request was rejected. Refresh permissions and review the key details."
+	],
+	[
+		"keys.failure.unavailable",
+		"API keys are temporarily unavailable. Refresh the list to try again."
+	],
+	[
+		"keys.failure.uncertain",
+		"The change could not be confirmed. Refresh your key list before trying again. A lost secret cannot be retrieved; revoke that key and create a replacement."
+	]
 ]

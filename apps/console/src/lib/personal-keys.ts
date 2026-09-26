@@ -117,23 +117,3 @@ async function failure(response: Response): Promise<Failure> {
 	if (response.status === 400) return { kind: 'invalid' };
 	return { kind: 'uncertain' };
 }
-export function failureMessage(failure: Failure): string {
-	switch (failure.kind) {
-		case 'signed-out':
-			return 'Your session has ended. Sign in to manage API keys.';
-		case 'reauthenticate':
-			return 'Sign in again before creating or revoking an API key. This requires a sign-in within five minutes.';
-		case 'denied':
-			return 'Your current access does not permit this request. Refresh permissions before continuing.';
-		case 'changed':
-			return 'Permissions changed. Refresh permissions and review your selection.';
-		case 'limited':
-			return 'Key issuance is limited to 100 live keys and 10 new keys per ten minutes.';
-		case 'invalid':
-			return 'The request was rejected. Refresh permissions and review the key details.';
-		case 'unavailable':
-			return 'API keys are temporarily unavailable. Refresh the list to try again.';
-		case 'uncertain':
-			return 'The change could not be confirmed. Refresh your key list before trying again. A lost secret cannot be retrieved; revoke that key and create a replacement.';
-	}
-}
