@@ -467,3 +467,13 @@ The complete static build remains within the same 36 KiB regression budget;
 [`catalog-validation-2026-09-26.json`](measurements/catalog-validation-2026-09-26.json)
 records the rebuilt asset hashes and presentation-only observations. These checks
 do not substitute for full browser, linguistic review or whole-project coverage.
+
+### Static control hydration
+
+The language selector is disabled in the static document and enabled on mount,
+after its event handler is attached. An enabled static control previously allowed
+a choice to disappear if it was made before hydration. A production-build browser
+regression delays all application JavaScript, verifies the initial disabled state,
+then releases the scripts and verifies selection, persistence and reload. It failed
+before this correction. This exercises actual static rendering, separately from
+component tests and the full authenticated HTTPS workflow.

@@ -3,6 +3,7 @@ import { resolve } from "node:path";
 import { expect } from "@playwright/test";
 
 export async function verifyLocalization(browser, origin) {
+  await verifyLanguageHydration(browser, origin);
   const spanish = await browser.newContext({
     locale: "es-CR",
     viewport: { width: 390, height: 844 },
@@ -105,4 +106,39 @@ export async function verifyLocalization(browser, origin) {
   console.log(
     "English/Spanish static login, keyboard, errors, storage isolation and unchanged URLs passed.",
   );
+}
+
+export async function verifyLanguageHydration(browser, origin) {
+  const context = await browser.newContext({ locale: "en-US" });
+  let release;
+  const gate = new Promise((resolve) => {
+    release = resolve;
+  });
+  try {
+    const page = await context.newPage();
+    await page.route("**/_app/immutable/**/*.js", async (route) => {
+      await gate;
+      await route.continue();
+    });
+    await page.goto(origin, { waitUntil: "commit" });
+    const selector = page.getByRole("combobox", {
+      name: "Language",
+      exact: true,
+    });
+    await expect(selector).toBeDisabled();
+    release();
+    await expect(selector).toBeEnabled();
+    await selector.selectOption("es");
+    await expect(page.locator("html")).toHaveAttribute("lang", "es");
+    await page.reload();
+    await expect(page.getByRole("combobox")).toBeEnabled();
+    await expect(page.getByRole("combobox")).toHaveValue("es");
+    assert.equal(
+      await page.evaluate(() => localStorage.getItem("darkhorse.locale.v1")),
+      "es",
+    );
+  } finally {
+    release();
+    await context.close();
+  }
 }

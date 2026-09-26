@@ -1,4 +1,9 @@
 <script lang="ts">
+	import { onMount } from 'svelte';
+	let ready = $state(false);
+	onMount(() => {
+		ready = true;
+	});
 	import { useLocalization } from '$lib/i18n/context';
 	import { browserStorage, writePreference } from '$lib/i18n/browser';
 	import type { Locale } from '$lib/i18n/locale';
@@ -18,7 +23,13 @@
 
 <div class="language-selector" lang={$language.locale}>
 	<label for="language">{$language.t('language.label')}</label>
-	<select id="language" value={$language.locale} onchange={change} aria-describedby="language-help">
+	<select
+		disabled={!ready}
+		id="language"
+		value={$language.locale}
+		onchange={change}
+		aria-describedby="language-help"
+	>
 		<option value="en" lang="en">English</option>
 		<option value="es" lang="es">Español</option>
 	</select>
