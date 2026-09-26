@@ -16,7 +16,7 @@ it('connects protected settings and marks the selected navigation entry', async 
 	);
 	vi.stubGlobal('fetch', fetcher);
 	render(Page);
-	await screen.findByText(/Image storage: disabled/);
+	await screen.findByText(/Image storage is disabled/);
 	expect(screen.getByRole('link', { name: 'System settings' })).toHaveAttribute(
 		'aria-current',
 		'page'

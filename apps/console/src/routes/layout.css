@@ -353,7 +353,7 @@ footer {
 	min-height: 100svh;
 	display: grid;
 	grid-template-columns: 224px minmax(0, 1fr);
-	grid-template-rows: 82px 1fr;
+	grid-template-rows: minmax(82px, auto) 1fr;
 	background:
 		radial-gradient(ellipse at 90% 0%, #28413345, transparent 65%), var(--color-background);
 }

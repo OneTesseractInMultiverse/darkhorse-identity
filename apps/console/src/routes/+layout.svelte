@@ -21,6 +21,7 @@
 			if (alive) language.deployment(locale);
 		});
 		if (
+			page.url.pathname.startsWith('/console/') ||
 			['/security/sessions', '/security/keys', '/security/email', '/authorization'].includes(
 				page.url.pathname
 			)
@@ -45,7 +46,9 @@
 				'/security/keys',
 				'/security/email',
 				'/invitation',
-				'/authorization'
+				'/authorization',
+				'/console/settings',
+				'/console/profile'
 			].includes(page.url.pathname)
 				? $language.locale
 				: 'en';

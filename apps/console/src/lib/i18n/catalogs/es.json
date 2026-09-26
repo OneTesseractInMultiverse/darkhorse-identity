@@ -409,5 +409,51 @@
 	[
 		"keys.failure.uncertain",
 		"No se pudo confirmar el cambio. Actualiza la lista de claves antes de volver a intentarlo. No se puede recuperar un secreto perdido; revoca esa clave y crea una nueva."
-	]
+	],
+	["console.skip", "Ir a la consola"],
+	["console.edition", "CONSOLA DE IDENTIDAD"],
+	["console.account", "Mi cuenta"],
+	["console.workspace", "ESPACIO DE TRABAJO"],
+	["console.management", "Administración"],
+	["console.users", "Directorio de usuarios"],
+	["console.applications", "Aplicaciones"],
+	["console.clients", "Clientes"],
+	["console.resources", "Recursos"],
+	["console.scopes", "Ámbitos"],
+	["console.roles", "Roles"],
+	["console.capabilities", "Capacidades"],
+	["console.settings", "Configuración del sistema"],
+	["console.security", "MI SEGURIDAD"],
+	["console.securityNav", "Seguridad de la cuenta"],
+	["console.profile", "Mi perfil"],
+	["console.keys", "Claves de API personales"],
+	["console.sessions", "Sesiones"],
+	["console.email", "Verificación del correo"],
+	["console.signature", "UNA ORGANIZACIÓN. UNA IDENTIDAD."],
+	["console.profileTitle", "Perfil de usuario — Darkhorse"],
+	["branding.title", "Apariencia del inicio de sesión — Darkhorse"],
+	["branding.eyebrow", "SISTEMA / APARIENCIA"],
+	["branding.heading", "Apariencia del inicio de sesión"],
+	[
+		"branding.intro",
+		"Estas imágenes son visibles para todas las personas que visitan la página de inicio de sesión."
+	],
+	[
+		"branding.storageEnabled",
+		"El almacenamiento de imágenes está habilitado en el bucket {bucket}. La conexión se administra mediante la configuración del despliegue."
+	],
+	[
+		"branding.storageDisabled",
+		"El almacenamiento de imágenes está deshabilitado. La conexión se administra mediante la configuración del despliegue."
+	],
+	["branding.logo", "Logotipo del inicio de sesión"],
+	["branding.background", "Fondo del inicio de sesión"],
+	["branding.logoAlt", "Logotipo actual del inicio de sesión"],
+	["branding.backgroundAlt", "Fondo actual del inicio de sesión"],
+	["branding.default", "Se usa la imagen predeterminada incluida."],
+	["branding.changeLogo", "Cambiar logotipo"],
+	["branding.changeBackground", "Cambiar fondo"],
+	["branding.changeLogoTitle", "Cambiar logotipo del inicio de sesión"],
+	["branding.changeBackgroundTitle", "Cambiar fondo del inicio de sesión"],
+	["branding.reload", "Volver a cargar la configuración"]
 ]

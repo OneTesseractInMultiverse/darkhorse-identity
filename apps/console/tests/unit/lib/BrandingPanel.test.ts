@@ -25,7 +25,7 @@ it('uses focused branding dialogs and reloads current authority after a change',
 		remove: vi.fn().mockResolvedValue({ kind: 'ready', value: '1' })
 	};
 	render(BrandingPanel, { api });
-	await screen.findByText(/enabled \(private-test\)/);
+	await screen.findByText(/enabled in bucket private-test/);
 	await fireEvent.click(screen.getByRole('button', { name: 'Change logo' }));
 	await fireEvent.click(screen.getByRole('button', { name: 'Remove image' }));
 	await waitFor(() => expect(api.settings).toHaveBeenCalledTimes(2));
@@ -45,7 +45,7 @@ it('shows disabled storage and discards settings after leaving', async () => {
 		remove: vi.fn()
 	};
 	render(BrandingPanel, { api });
-	await screen.findByText(/Image storage: disabled/);
+	await screen.findByText(/Image storage is disabled/);
 	await fireEvent.click(screen.getByRole('button', { name: 'Change background' }));
 	await fireEvent.click(screen.getByRole('button', { name: 'Close' }));
 	expect(screen.queryByRole('dialog')).not.toBeInTheDocument();

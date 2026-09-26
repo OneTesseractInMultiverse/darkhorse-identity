@@ -1,3 +1,4 @@
+import { verifyConsoleLanguages } from "./lib/console-localization-browser.mjs";
 import assert from "node:assert/strict";
 import { createHash, X509Certificate, randomBytes } from "node:crypto";
 import { createServer } from "node:net";
@@ -346,6 +347,7 @@ async function exerciseBrowser({
   await verifyCatalog(page, origin, ca);
   await verifyPersonalKeys(page, origin, ca, principal, runSql);
   await verifyProfiles(page, origin, principal, runSql);
+  await verifyConsoleLanguages(page, origin);
   await verifyEmail(page, origin, mailbox);
   await verifyInvitations(browser, page, origin, mailbox);
   await verifySessionManagement(browser, page, origin, password, invoke, ca);

@@ -367,5 +367,48 @@
 	[
 		"keys.failure.uncertain",
 		"The change could not be confirmed. Refresh your key list before trying again. A lost secret cannot be retrieved; revoke that key and create a replacement."
-	]
+	],
+	["console.skip", "Skip to console"],
+	["console.edition", "IDENTITY CONSOLE"],
+	["console.account", "My account"],
+	["console.workspace", "WORKSPACE"],
+	["console.management", "Management"],
+	["console.users", "User directory"],
+	["console.applications", "Applications"],
+	["console.clients", "Clients"],
+	["console.resources", "Resources"],
+	["console.scopes", "Scopes"],
+	["console.roles", "Roles"],
+	["console.capabilities", "Capabilities"],
+	["console.settings", "System settings"],
+	["console.security", "MY SECURITY"],
+	["console.securityNav", "Account security"],
+	["console.profile", "My profile"],
+	["console.keys", "Personal API keys"],
+	["console.sessions", "Sessions"],
+	["console.email", "Email verification"],
+	["console.signature", "ONE ORGANIZATION. ONE IDENTITY."],
+	["console.profileTitle", "User profile — Darkhorse"],
+	["branding.title", "Login branding — Darkhorse"],
+	["branding.eyebrow", "SYSTEM / APPEARANCE"],
+	["branding.heading", "Login branding"],
+	["branding.intro", "These images are visible to everyone visiting the sign-in page."],
+	[
+		"branding.storageEnabled",
+		"Image storage is enabled in bucket {bucket}. Storage connection details are managed through deployment settings."
+	],
+	[
+		"branding.storageDisabled",
+		"Image storage is disabled. Storage connection details are managed through deployment settings."
+	],
+	["branding.logo", "Login logo"],
+	["branding.background", "Login background"],
+	["branding.logoAlt", "Current login logo"],
+	["branding.backgroundAlt", "Current login background"],
+	["branding.default", "Using the bundled default."],
+	["branding.changeLogo", "Change logo"],
+	["branding.changeBackground", "Change background"],
+	["branding.changeLogoTitle", "Change login logo"],
+	["branding.changeBackgroundTitle", "Change login background"],
+	["branding.reload", "Reload settings"]
 ]

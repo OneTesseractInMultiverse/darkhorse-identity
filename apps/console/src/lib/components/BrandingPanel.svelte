@@ -35,36 +35,46 @@
 </script>
 
 <section class="glass branding-panel">
-	<p class="eyebrow">SYSTEM / APPEARANCE</p>
-	<h1>Login branding</h1>
-	<p>These images are visible to everyone visiting the sign-in page.</p>
+	<p class="eyebrow">{$language.t('branding.eyebrow')}</p>
+	<h1>{$language.t('branding.heading')}</h1>
+	<p>{$language.t('branding.intro')}</p>
 	{#if error}<p role="alert">{$language.t(`media.error.${error}`)}</p>{/if}{#if pending}<p
 			role="status"
 		>
-			Loading…
+			{$language.t('common.loading')}
 		</p>{/if}
 	{#if settings}<p>
-			Image storage: {settings.storage_enabled ? `enabled (${settings.bucket})` : 'disabled'}.
-			Storage connection details are managed through deployment settings.
+			{settings.storage_enabled
+				? $language.t('branding.storageEnabled', {
+						bucket: settings.bucket ?? $language.t('common.unspecified')
+					})
+				: $language.t('branding.storageDisabled')}
 		</p>
 		<div class="branding-grid">
 			{#each ['logo', 'background'] as kind (kind)}{@const name = kind as 'logo' | 'background'}
 				<section>
-					<h2>{name === 'logo' ? 'Login logo' : 'Login background'}</h2>
+					<h2>{$language.t(name === 'logo' ? 'branding.logo' : 'branding.background')}</h2>
 					{#key settings.revision}{#if settings[name]}<img
 								src={`/api/branding/${name}`}
-								alt={name === 'logo' ? 'Current login logo' : 'Current login background'}
-							/>{:else}<p>Using the bundled default.</p>{/if}{/key}<Button
+								alt={$language.t(name === 'logo' ? 'branding.logoAlt' : 'branding.backgroundAlt')}
+							/>{:else}<p>{$language.t('branding.default')}</p>{/if}{/key}<Button
 						disabled={pending}
 						onclick={() => {
 							selected = name;
-						}}>Change {name}</Button
+						}}
+						>{$language.t(
+							name === 'logo' ? 'branding.changeLogo' : 'branding.changeBackground'
+						)}</Button
 					>
 				</section>{/each}
 		</div>{/if}
-	<Button variant="outline" disabled={pending} onclick={load}>Reload settings</Button>
+	<Button variant="outline" disabled={pending} onclick={load}
+		>{$language.t('branding.reload')}</Button
+	>
 	{#if selected && settings}<Modal
-			title={`Change login ${selected}`}
+			title={$language.t(
+				selected === 'logo' ? 'branding.changeLogoTitle' : 'branding.changeBackgroundTitle'
+			)}
 			{pending}
 			close={() => {
 				selected = null;

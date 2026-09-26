@@ -1,4 +1,6 @@
 <script lang="ts">
+	import { useLocalization } from '$lib/i18n/context';
+	const language = useLocalization();
 	import { browser } from '$app/environment';
 	import { page } from '$app/state';
 	import ConsoleShell from '$lib/components/admin/ConsoleShell.svelte';
@@ -10,7 +12,7 @@
 	const target = $derived(browser ? (page.url.searchParams.get('user') ?? 'invalid') : 'invalid');
 </script>
 
-<svelte:head><title>User profile — Darkhorse</title></svelte:head>
+<svelte:head><title>{$language.t('console.profileTitle')}</title></svelte:head>
 <ConsoleShell
 	>{#key target}<ProfilePanel {api} {images} {target} />{/key}</ConsoleShell
 >

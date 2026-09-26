@@ -2,7 +2,8 @@
 
 Darkhorse's first supported presentation languages are English (`en`) and Spanish
 (`es`). The sign-in page, account overview, profile, sessions, email verification, invitation,
-consent and personal-key pages offer both. Management pages and the operator CLI still require translation. Verification and invitation
+consent and personal-key pages offer both. Console navigation, administrator profile views and branding settings also support both.
+The directory/catalog workflows and operator CLI still require translation. Verification and invitation
 email now use [pinned delivery languages](email-localization.md). Their
 translation and qualification are tracked separately. A language choice changes
 presentation; it never changes identity, permissions or protocol behavior.
@@ -270,7 +271,7 @@ open.
 | `/console/users` and directory/access dialogs                                                           | Pending                                                                                                                     |
 | `/console/applications`, `/console/clients` and registration/credential dialogs                         | Pending                                                                                                                     |
 | `/console/resources`, `/console/scopes`, `/console/roles`, `/console/capabilities` and bindings/pickers | Pending                                                                                                                     |
-| `/console/profile`, `/console/settings` and console navigation                                          | Pending; shared profile/image dialogs already use catalog messages                                                          |
+| `/console/profile`, `/console/settings` and console navigation                                          | Translated; navigation labels have their own language attribute on otherwise English console pages                          |
 | Verification/invitation email and CLI                                                                   | Email implemented with pinned delivery metadata (#39); CLI remains #41                                                      |
 
 Profile failures and image outcomes map typed results to catalog keys at rendering
@@ -287,7 +288,7 @@ versions and backend validation are unchanged. Country labels may vary with the
 browser's locale-data version. Dates use an explicitly UTC `Intl.DateTimeFormat`
 created once per language change, with an ISO/UTC fallback.
 
-A direct session, personal-key, verification or consent page visit restores the account preference
+A direct session, personal-key, verification, consent or console page visit restores the account preference
 with one existing session GET. The layout ignores an older response after a newer profile preference
 or sign-out update. Profile pages already receive the preference through their
 profile read. These reads affect presentation only and add no positive authority
@@ -349,3 +350,26 @@ within the unchanged 36 KiB budget. Its five cold/warm pairs measure only the st
 presentation fixture; real bilingual issuance, attenuation, current permission
 reductions, lost-response reconciliation and revocation are separately exercised
 through verified HTTPS. The catalogs now contain 261 typed messages per language.
+
+### Console navigation and branding
+
+The shared console navigation, administrator profile page and branding settings now
+use the catalogs, including image descriptions, storage status and dialogs. The
+language selector remains available throughout the console. Directory and catalog
+content still awaiting translation keeps English as the document language;
+translated header/sidebar elements declare their own language. Fully translated
+settings/profile routes declare the chosen document language.
+
+A cold console visit restores the administrator's own saved preference through one
+existing session GET. Viewing another user's profile does not apply that user's
+language to the administrator's session. Switching languages does not reload
+settings or submit an image mutation. The header grows to contain translated help
+text, including on narrow displays.
+
+The [console presentation sample](measurements/console-navigation-localization-2026-09-26.json)
+records 135,661 summed gzip JavaScript bytes, 26,508 above the English-only baseline,
+within the unchanged 36 KiB budget. Source-defined component checks and a local
+static browser fixture cover switching, literal routes, Escape/focus restoration,
+header bounds and mobile layout. That fixture uses fixed API responses and does not
+qualify server authority or image storage; the same browser assertions are also
+included in the full HTTPS suite.
