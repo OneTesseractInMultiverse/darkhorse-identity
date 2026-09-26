@@ -1,3 +1,4 @@
+use darkhorse_domain::localization::Locale;
 use serde::Serialize;
 use serde_json::Value;
 use std::io::Write;
@@ -13,18 +14,28 @@ pub enum Format {
 pub struct Output {
     pub data: Value,
     message: Option<String>,
+    spanish: Option<String>,
 }
 impl Output {
     pub fn record(data: Value) -> Self {
         Self {
             data,
             message: None,
+            spanish: None,
         }
     }
     pub fn message(message: impl Into<String>, data: Value) -> Self {
         Self {
             data,
             message: Some(message.into()),
+            spanish: None,
+        }
+    }
+    pub fn localized_message(english: String, spanish: String, data: Value) -> Self {
+        Self {
+            data,
+            message: Some(english),
+            spanish: Some(spanish),
         }
     }
 }
@@ -121,20 +132,41 @@ fn terminal_line(value: &str) -> Result<Vec<u8>, Failure> {
     Ok(bytes.0)
 }
 pub fn render(output: &Output, format: Format) -> Result<Vec<u8>, Failure> {
+    render_in(output, format, Locale::English)
+}
+pub fn render_in(output: &Output, format: Format, locale: Locale) -> Result<Vec<u8>, Failure> {
     match format {
         Format::Json => json(&serde_json::json!({"schema_version":1,"ok":true,"data":output.data})),
-        Format::Human => match &output.message {
+        Format::Human => match if locale == Locale::Spanish {
+            output.spanish.as_ref().or(output.message.as_ref())
+        } else {
+            output.message.as_ref()
+        } {
             Some(message) => terminal_line(message),
+            None if locale == Locale::Spanish => {
+                let mut bytes = Bounded(b"Resultado:\n".to_vec());
+                bytes
+                    .write_all(&json(&output.data)?)
+                    .map_err(|_| Failure::output())?;
+                Ok(bytes.0)
+            }
             None => json(&output.data),
         },
     }
 }
 pub fn render_failure(error: &Failure, format: Format) -> Result<Vec<u8>, Failure> {
+    render_failure_in(error, format, Locale::English)
+}
+pub fn render_failure_in(
+    error: &Failure,
+    format: Format,
+    locale: Locale,
+) -> Result<Vec<u8>, Failure> {
     match format {
         Format::Json => json(
             &serde_json::json!({"schema_version":1,"ok":false,"error":{"code":error.code,"message":error.message},"data":error.data}),
         ),
-        Format::Human => terminal_line(error.message),
+        Format::Human => terminal_line(super::localization::text(locale, error.message)),
     }
 }
 pub fn write_bytes(writer: &mut impl Write, bytes: &[u8]) -> Result<(), Failure> {
@@ -147,9 +179,18 @@ pub fn display(text: &str) -> Result<(), Failure> {
     write_bytes(&mut std::io::stdout().lock(), text.as_bytes())
 }
 pub fn emit(output: &Output, format: Format) -> Result<(), Failure> {
-    write_bytes(&mut std::io::stdout().lock(), &render(output, format)?)
+    emit_in(output, format, Locale::English)
+}
+pub fn emit_in(output: &Output, format: Format, locale: Locale) -> Result<(), Failure> {
+    write_bytes(
+        &mut std::io::stdout().lock(),
+        &render_in(output, format, locale)?,
+    )
 }
 pub fn diagnose(error: &Failure, format: Format) -> Result<(), Failure> {
+    diagnose_in(error, format, Locale::English)
+}
+pub fn diagnose_in(error: &Failure, format: Format, locale: Locale) -> Result<(), Failure> {
     if format == Format::Human
         && let Some(data) = &error.data
     {
@@ -157,7 +198,7 @@ pub fn diagnose(error: &Failure, format: Format) -> Result<(), Failure> {
     }
     write_bytes(
         &mut std::io::stderr().lock(),
-        &render_failure(error, format)?,
+        &render_failure_in(error, format, locale)?,
     )
 }
 

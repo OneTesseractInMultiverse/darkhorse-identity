@@ -1,3 +1,4 @@
+use crate::operator::localization::{Locale, text};
 use serde::Deserialize;
 use std::io::Read;
 use zeroize::{Zeroize, Zeroizing};
@@ -34,14 +35,16 @@ pub fn read_json(reader: impl Read) -> Result<BootstrapInput, &'static str> {
     parse(&bytes)
 }
 
-pub async fn interactive() -> Result<BootstrapInput, &'static str> {
+pub async fn interactive(locale: Locale) -> Result<BootstrapInput, &'static str> {
     let mut terminal = super::terminal::Terminal::open()?;
-    let email = terminal.prompt("Email: ").await?;
-    let first_name = terminal.prompt("First name: ").await?;
-    let last_name = terminal.prompt("Last name: ").await?;
+    let email = terminal.prompt(text(locale, "Email: ")).await?;
+    let first_name = terminal.prompt(text(locale, "First name: ")).await?;
+    let last_name = terminal.prompt(text(locale, "Last name: ")).await?;
     terminal.hide()?;
-    let password = terminal.prompt("Password: ").await?;
-    let confirmation = terminal.prompt("\nConfirm password: ").await?;
+    let password = terminal.prompt(text(locale, "Password: ")).await?;
+    let confirmation = terminal
+        .prompt(text(locale, "\nConfirm password: "))
+        .await?;
     terminal.restore()?;
     assemble(&email, &first_name, &last_name, &password, &confirmation)
 }

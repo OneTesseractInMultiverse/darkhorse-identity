@@ -2,8 +2,10 @@ use super::{
     command::Command,
     output::{Failure, Format},
 };
-use clap::{Parser, error::ErrorKind};
+use clap::{CommandFactory, FromArgMatches, error::ErrorKind};
+use darkhorse_domain::localization::Locale;
 use std::ffi::OsString;
+mod help;
 mod translate;
 mod tree;
 pub const ARGUMENT_LIMIT: usize = 32;
@@ -21,19 +23,85 @@ pub struct Invocation {
 }
 
 pub fn invocation(args: &[OsString]) -> Result<Plan, Failure> {
+    invocation_in(args, explicit_locale(args)?.unwrap_or(Locale::English))
+}
+pub fn invocation_in(args: &[OsString], locale: Locale) -> Result<Plan, Failure> {
     let arguments = validate(args)?;
-    match tree::Options::try_parse_from(std::iter::once("darkhorse-server").chain(arguments)) {
-        Ok(options) => translate::invocation(options).map(Plan::Run),
+    let mut command = tree::Options::command();
+    command.build();
+    match help::localized(command, locale)
+        .try_get_matches_from(std::iter::once("darkhorse-server").chain(arguments))
+    {
+        Ok(matches) => tree::Options::from_arg_matches(&matches)
+            .map_err(|_| Failure::usage())
+            .and_then(translate::invocation)
+            .map(Plan::Run),
         Err(error)
             if matches!(
                 error.kind(),
                 ErrorKind::DisplayHelp | ErrorKind::DisplayVersion
             ) =>
         {
-            Ok(Plan::Display(error.to_string()))
+            Ok(Plan::Display(help::labels(error.to_string(), locale)))
         }
         Err(_) => Err(Failure::usage()),
     }
+}
+// Clap performs both passes. This permissive pass selects presentation only;
+// the ordinary, strict command tree must still approve every executed command.
+pub fn explicit_locale(args: &[OsString]) -> Result<Option<Locale>, Failure> {
+    Ok(presentation(args)?.locale)
+}
+pub struct Presentation {
+    pub locale: Option<Locale>,
+    pub format: Format,
+}
+pub fn presentation(args: &[OsString]) -> Result<Presentation, Failure> {
+    let arguments = validate(args)?;
+    let probe = presentation_tree(tree::Options::command())
+        .ignore_errors(true)
+        .arg(
+            clap::Arg::new("presentation-help")
+                .long("help")
+                .short('h')
+                .global(true)
+                .action(clap::ArgAction::SetTrue),
+        )
+        .arg(
+            clap::Arg::new("presentation-version")
+                .long("version")
+                .short('V')
+                .global(true)
+                .action(clap::ArgAction::SetTrue),
+        );
+    let matches = probe
+        .try_get_matches_from(std::iter::once("darkhorse-server").chain(arguments))
+        .map_err(|_| Failure::usage())?;
+    let locale = matches
+        .get_one::<String>("locale")
+        .map(|value| crate::localization::parse(value).map_err(|_| Failure::usage()))
+        .transpose()?;
+    Ok(Presentation {
+        locale,
+        format: matches
+            .get_one::<Format>("output")
+            .copied()
+            .unwrap_or_default(),
+    })
+}
+fn presentation_tree(command: clap::Command) -> clap::Command {
+    command
+        .disable_help_flag(true)
+        .disable_version_flag(true)
+        .disable_help_subcommand(true)
+        .mut_args(|arg| {
+            if arg.get_id() == "locale" {
+                arg.value_parser(clap::value_parser!(String))
+            } else {
+                arg
+            }
+        })
+        .mut_subcommands(presentation_tree)
 }
 fn validate(args: &[OsString]) -> Result<Vec<&str>, Failure> {
     if args.len() > ARGUMENT_LIMIT {

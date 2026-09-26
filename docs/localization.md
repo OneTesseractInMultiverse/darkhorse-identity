@@ -3,7 +3,8 @@
 Darkhorse's first supported presentation languages are English (`en`) and Spanish
 (`es`). All shipped portal and management-console routes offer both languages, including
 application/client registration, access-policy bindings and secret lifecycle dialogs.
-The operator CLI still requires translation. Verification and invitation
+The [operator CLI](cli.md#human-language) also supports both languages while
+preserving machine-readable output. Verification and invitation
 email now use [pinned delivery languages](email-localization.md). Their
 translation and qualification are tracked separately. A language choice changes
 presentation; it never changes identity, permissions or protocol behavior.
@@ -279,7 +280,7 @@ open.
 | `/console/applications`, `/console/clients` and registration/credential dialogs                         | Translated; original callback URLs, identifiers, revision checks and one-time secret handling remain intact                 |
 | `/console/resources`, `/console/scopes`, `/console/roles`, `/console/capabilities` and bindings/pickers | Translated; literal definitions and typed binding commands remain unchanged                                                 |
 | `/console/profile`, `/console/settings` and console navigation                                          | Translated; navigation and catalog subtrees also declare their actual presentation language                                 |
-| Verification/invitation email and CLI                                                                   | Email implemented with pinned delivery metadata (#39); CLI remains #41                                                      |
+| Verification/invitation email and CLI                                                                   | Email uses pinned delivery metadata (#39); CLI has compiled human translations and stable JSON (#41)                        |
 
 Profile failures and image outcomes map typed results to catalog keys at rendering
 time; a language change also updates an existing error. Language changes do not

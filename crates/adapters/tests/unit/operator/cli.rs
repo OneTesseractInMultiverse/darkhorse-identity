@@ -5,6 +5,40 @@ use std::ffi::OsString;
 fn parse(parts: &[&str]) -> Result<Plan, crate::operator::output::Failure> {
     invocation(&parts.iter().map(OsString::from).collect::<Vec<_>>())
 }
+
+#[test]
+fn language_selection_uses_the_same_clap_tree_without_changing_commands() {
+    use darkhorse_domain::localization::Locale;
+    for args in [
+        vec!["--locale", "es", "--help"],
+        vec!["--help", "--locale=es"],
+        vec!["operator", "account", "show", "--locale", "es", "--help"],
+    ] {
+        let args = args.into_iter().map(OsString::from).collect::<Vec<_>>();
+        assert_eq!(explicit_locale(&args).unwrap(), Some(Locale::Spanish));
+        let Plan::Display(help) = invocation_in(&args, Locale::Spanish).unwrap() else {
+            panic!("help")
+        };
+        assert!(help.contains("Uso:"));
+        assert!(!help.contains("Usage:"));
+        assert!(!help.contains("Print help"));
+        assert!(!help.contains("possible values:"));
+        assert!(help.len() < 16384);
+    }
+    assert_eq!(
+        run(&["--locale", "es", "operator", "migrate", "--yes"]).command,
+        Command::Migrate
+    );
+    for args in [
+        vec!["--locale", "../es"],
+        vec!["--locale", "es", "--locale", "en"],
+        vec!["--locale"],
+    ] {
+        assert!(parse(&args).is_err());
+    }
+    let invalid_help = [OsString::from("--locale=fr"), OsString::from("--help")];
+    assert!(explicit_locale(&invalid_help).is_err());
+}
 fn run(parts: &[&str]) -> Invocation {
     match parse(parts).unwrap() {
         Plan::Run(value) => value,

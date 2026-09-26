@@ -1,4 +1,5 @@
 //! Shared protected input and bounded infrastructure for authenticated commands.
+use super::localization::Locale;
 use crate::{
     authentication_configuration,
     deployment_environment::DeploymentEnvironment,
@@ -14,11 +15,15 @@ pub(super) struct Context {
     pub store: PostgresStore,
     pub admission: SharedLoginAdmission,
 }
-pub(super) async fn credentials(stdin: bool, mutation: bool) -> Result<Input, &'static str> {
+pub(super) async fn credentials(
+    stdin: bool,
+    mutation: bool,
+    locale: Locale,
+) -> Result<Input, &'static str> {
     if stdin {
         input::read(std::io::stdin().lock())
     } else {
-        input::interactive(mutation).await
+        input::interactive(mutation, locale).await
     }
 }
 pub(super) async fn connect() -> Result<Context, Error> {

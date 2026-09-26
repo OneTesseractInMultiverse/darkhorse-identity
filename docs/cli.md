@@ -33,9 +33,63 @@ cargo run --locked --offline -p darkhorse-server -- operator account --help
 
 No arguments and `serve` both start the normal HTTP server. Help, version and
 invalid syntax are processed before constructing the async runtime, reading
-settings, prompting or connecting to services. Operator dispatch starts no HTTP
+service settings, prompting or connecting to services. Bounded language settings
+are read at the presentation boundary. Operator dispatch starts no HTTP
 listener or unrelated server worker. Output is always uncolored. `--no-color`
 is accepted. Neither `NO_COLOR` nor any terminal setting activates color.
+
+## Human language
+
+Use `--locale en` or `--locale es` for help, terminal prompts and human results:
+
+```sh
+darkhorse-server --locale es operator account --help
+darkhorse-server --locale es operator migrate --yes
+darkhorse-server --locale es --output json --auth-stdin operator account show <principal-id> < protected-account.json
+```
+
+Selection follows this precedence:
+
+1. Explicit `--locale`, accepting exactly `en` or `es`.
+2. `DARKHORSE_CLI_LOCALE`, also exactly `en` or `es`. Malformed configured values
+   produce a redacted failure before service access; an explicit valid option
+   overrides that setting.
+3. The first nonempty `LC_ALL`, `LC_MESSAGES` or `LANG`, accepting at most 128
+   ASCII bytes. A regional primary language such as `es_CR.UTF-8` selects Spanish;
+   encoding/modifier suffixes do not affect presentation. Unsupported or malformed
+   ambient values, `C` and `POSIX` select English without falling through to a
+   lower-priority environment variable.
+4. English.
+
+The binary contains all translations. Runtime locale packages, mounted catalogs
+and downloads are unnecessary. These settings do not change the web deployment
+default or anyone's saved preference. Commands, options, identifiers, enum values,
+JSON keys/values, audit events, credentials and password bytes retain their existing
+spelling. Read results in Spanish human mode have a `Resultado:` heading above
+the unchanged structured fields. Server maintenance logs keep their operational
+text; the operator language is not a process-wide logging locale.
+
+Clap handles both the presentation probe and strict command parsing. The probe
+cannot authorize execution; every operation still passes the ordinary command
+tree and typed validation. Help is translated from the fixed tree, with two static
+Clap value-label substitutions. Raw parsing errors and supplied values are never
+reflected. For the `help SUBCOMMAND` form, place `--locale` before `help`; normal
+`--help` accepts the global language option before or after it.
+
+Confirmation requires the literal `yes` followed by a newline in both languages.
+`sí`, abbreviations, localized command values and mere language selection do not
+confirm a mutation. JSON mode retains the same bytes, streams and exit statuses,
+including its historical English text for argument failures; it never gains a
+prompt. Human outcome-unknown messages retain the instruction to inspect state
+before retrying. Terminal input, signal handling and authority checks use the same
+code paths in both languages.
+
+Inside an existing container, use the same option with the documented binary,
+for example `darkhorse-server --locale es operator account --help`. In Compose or
+Kubernetes operator invocations, retain the named operation's existing credential,
+stdin and privilege boundaries. Language selection supplies no extra permissions.
+`make test-cli` exercises real processes and terminal restoration in both languages;
+source-defined tests separately cover resolution, output bounds and JSON stability.
 
 | Canonical command                                                                                | Compatibility spelling                                |
 | ------------------------------------------------------------------------------------------------ | ----------------------------------------------------- |
@@ -158,7 +212,9 @@ Execution/confirmation failures emit one error envelope on stderr, with a stable
 empty on such JSON failures. In human mode, a failed Redis diagnostic preserves
 its per-role JSON observation on stdout and a failure message on stderr. Inspect
 the exit code. Help/version always remain readable text. Syntax failures use a
-fixed human diagnostic. Parsing has not established a valid output mode.
+fixed human diagnostic. When the presentation probe recognizes JSON mode, this
+historical argument-failure text remains English. Other human diagnostics follow
+the selected language; an invalid language setting itself fails in English.
 
 | Exit | Meaning                                                                                                                                                                      |
 | ---- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
@@ -179,6 +235,30 @@ produces a failing status without a printing panic. Consumers must require a
 complete valid record and successful exit status.
 
 ## Input boundaries and remaining qualification
+
+### Startup measurement
+
+The [recorded macOS arm64 measurement](measurements/cli-language-2026-09-26.json)
+compares release binaries built with Rust 1.97.1 and the same locked dependencies.
+The baseline is `fc34f5b`; the candidate contains this CLI translation increment.
+It runs 125 fresh processes per variant after ten warm-ups, rotating the order of
+five groups. The filesystem cache is warm and CPU scheduling is uncontrolled.
+
+| Static root help            | Median  | p95     | p99     |
+| --------------------------- | ------- | ------- | ------- |
+| Before translation, English | 2.74 ms | 2.91 ms | 2.99 ms |
+| Translated binary, English  | 3.03 ms | 4.29 ms | 7.04 ms |
+| Translated binary, Spanish  | 3.17 ms | 3.33 ms | 3.39 ms |
+
+The executable grows from 17,972,176 to 18,027,216 bytes: 55,040 bytes, approximately
+0.31%. Timing includes process creation, both Clap passes, help rendering and output
+capture. It excludes SQL, Redis, password work, command execution and concurrent
+operator load. These observations do not qualify production command latency.
+Reproduce with `node scripts/benchmark-cli-language.mjs <baseline-release-binary>
+<localized-release-binary>`; use separately built, retained binaries and verify
+their recorded hashes before comparing them.
+
+### Input and terminal limits
 
 - At most 32 arguments, 1,024 UTF-8 bytes per argument and 4,096 bytes in total.
   Non-UTF-8/control-bearing arguments are rejected. Input is never executed as a

@@ -17,6 +17,12 @@ if "LLVM_PROFILE_FILE" in os.environ:
     ENV["LLVM_PROFILE_FILE"] = os.environ["LLVM_PROFILE_FILE"]
 SECRET = b"synthetic-only-terminal-passphrase"
 
+LOCALE = "en"
+SPANISH = {'Email: ': 'Correo electrónico: ', 'First name: ': 'Nombre: ', 'Last name: ': 'Apellido: ', 'Password: ': 'Contraseña: ', 'Confirm password: ': 'Confirme la contraseña: ', 'Invalid database configuration': 'Configuración de base de datos no válida', 'Operator command interrupted': 'Comando interrumpido', 'Terminal input is too long': 'La entrada del terminal es demasiado larga', 'Terminal input cancelled': 'Entrada de terminal cancelada', 'Invalid terminal input': 'Entrada de terminal no válida', 'Cannot access the foreground terminal': 'No se puede acceder al terminal en primer plano', 'Password confirmation does not match': 'La confirmación de contraseña no coincide', 'Cannot read terminal input': 'No se puede leer la entrada del terminal', 'Administrator email: ': 'Correo del administrador: ', 'Administrator password: ': 'Contraseña del administrador: ', 'Reason (no secrets): ': 'Motivo (sin secretos): ', 'Account operation unavailable': 'Operación de cuenta no disponible', 'Administrator email': 'Correo del administrador', 'typing yes: ': 'escribiendo yes: ', 'typing yes': 'escribiendo yes'}
+
+def message(english):
+    return (english if LOCALE == "en" else SPANISH[english]).encode("utf-8")
+
 
 class Terminal:
     def __init__(self, args, background=False, separate_stderr=False):
@@ -91,16 +97,16 @@ class Terminal:
 def bootstrap(until):
     terminal = Terminal(["bootstrap", "--yes"])
     try:
-        for prompt, value in [(b"Email: ", b"terminal@example.com\n"), (b"First name: ", b"Terminal\n"), (b"Last name: ", b"Test\n")]:
+        for prompt, value in [(message("Email: "), b"terminal@example.com\n"), (message("First name: "), b"Terminal\n"), (message("Last name: "), b"Test\n")]:
             terminal.expect(prompt)
             terminal.send(value)
         if until == "complete":
-            terminal.hidden(b"Password: ", SECRET + b"\n")
-            terminal.hidden(b"Confirm password: ", SECRET + b"\n")
+            terminal.hidden(message("Password: "), SECRET + b"\n")
+            terminal.hidden(message("Confirm password: "), SECRET + b"\n")
             assert terminal.finish() == 1  # Invalid configuration, after secret collection.
-            assert b"Invalid database configuration" in terminal.data
+            assert message("Invalid database configuration") in terminal.data
         else:
-            terminal.hidden(b"Password: ", SECRET + (b"\x15\x04" if until == "eof" else b"\x03"))
+            terminal.hidden(message("Password: "), SECRET + (b"\x15\x04" if until == "eof" else b"\x03"))
             result = terminal.finish()
             assert result == 1
         assert termios.tcgetattr(terminal.fd) == terminal.original, "terminal modes were not restored"
@@ -111,30 +117,30 @@ def bootstrap(until):
 def password_boundary(scenario, at_confirmation=False):
     terminal = Terminal(["operator", "bootstrap", "--yes"])
     try:
-        for prompt, value in [(b"Email: ", b"terminal@example.com\n"), (b"First name: ", b"Terminal\n"), (b"Last name: ", b"Test\n")]:
+        for prompt, value in [(message("Email: "), b"terminal@example.com\n"), (message("First name: "), b"Terminal\n"), (message("Last name: "), b"Test\n")]:
             terminal.expect(prompt)
             terminal.send(value)
-        prompt = b"Password: "
+        prompt = message("Password: ")
         if at_confirmation:
             terminal.hidden(prompt, SECRET + b"\n")
-            prompt = b"Confirm password: "
+            prompt = message("Confirm password: ")
         if isinstance(scenario, int):
             terminal.hidden(prompt, SECRET)
             os.kill(terminal.pid, scenario)
-            expected = b"Operator command interrupted"
+            expected = message("Operator command interrupted")
         elif scenario == "oversized":
             terminal.hidden(prompt, SECRET + b"x" * (1025 - len(SECRET)))
-            expected = b"Terminal input is too long"
+            expected = message("Terminal input is too long")
         elif scenario == "eof":
             terminal.hidden(prompt, SECRET + b"\x04")
-            expected = b"Terminal input cancelled"
+            expected = message("Terminal input cancelled")
         else:
             suffix = b"\x1b[31m" if scenario == "escape" else b"\xff\n"
             terminal.hidden(prompt, SECRET + suffix)
-            expected = b"Invalid terminal input"
+            expected = message("Invalid terminal input")
         assert terminal.finish() == 1
         assert expected in terminal.data, "wrong redacted failure category"
-        assert b"Invalid database configuration" not in terminal.data
+        assert message("Invalid database configuration") not in terminal.data
         assert termios.tcgetattr(terminal.fd) == terminal.original, "terminal modes were not restored"
     finally:
         terminal.close()
@@ -143,13 +149,13 @@ def password_boundary(scenario, at_confirmation=False):
 def edited_password():
     terminal = Terminal(["bootstrap", "--yes"])
     try:
-        for prompt, value in [(b"Email: ", b"terminal@example.com\n"), (b"First name: ", b"Terminal\n"), (b"Last name: ", b"Test\n")]:
+        for prompt, value in [(message("Email: "), b"terminal@example.com\n"), (message("First name: "), b"Terminal\n"), (message("Last name: "), b"Test\n")]:
             terminal.expect(prompt)
             terminal.send(value)
-        terminal.hidden(b"Password: ", "🌳é".encode() + b"\x7f\x7f" + SECRET + b" discarded  \x17\x7f\n")
-        terminal.hidden(b"Confirm password: ", SECRET + b"\n")
+        terminal.hidden(message("Password: "), "🌳é".encode() + b"\x7f\x7f" + SECRET + b" discarded  \x17\x7f\n")
+        terminal.hidden(message("Confirm password: "), SECRET + b"\n")
         assert terminal.finish() == 1
-        assert b"Invalid database configuration" in terminal.data
+        assert message("Invalid database configuration") in terminal.data
         assert termios.tcgetattr(terminal.fd) == terminal.original
     finally:
         terminal.close()
@@ -159,7 +165,7 @@ def profile_cancellation_and_background_refusal():
     for action in ["eof", "signal"]:
         terminal = Terminal(["bootstrap", "--yes"])
         try:
-            terminal.expect(b"Email: ")
+            terminal.expect(message("Email: "))
             if action == "eof":
                 terminal.send(b"\x04")
             else:
@@ -171,8 +177,8 @@ def profile_cancellation_and_background_refusal():
     terminal = Terminal(["bootstrap", "--yes"], background=True)
     try:
         assert terminal.finish() == 1
-        assert b"Cannot access the foreground terminal" in terminal.data
-        assert b"Email: " not in terminal.data
+        assert message("Cannot access the foreground terminal") in terminal.data
+        assert message("Email: ") not in terminal.data
         assert termios.tcgetattr(terminal.fd) == terminal.original
     finally:
         terminal.close()
@@ -181,13 +187,13 @@ def profile_cancellation_and_background_refusal():
 def mismatch_restores_terminal():
     terminal = Terminal(["bootstrap", "--yes"])
     try:
-        for prompt, value in [(b"Email: ", b"terminal@example.com\n"), (b"First name: ", b"Terminal\n"), (b"Last name: ", b"Test\n")]:
+        for prompt, value in [(message("Email: "), b"terminal@example.com\n"), (message("First name: "), b"Terminal\n"), (message("Last name: "), b"Test\n")]:
             terminal.expect(prompt)
             terminal.send(value)
-        terminal.hidden(b"Password: ", SECRET + b"\n")
-        terminal.hidden(b"Confirm password: ", b"different-synthetic-passphrase\n")
+        terminal.hidden(message("Password: "), SECRET + b"\n")
+        terminal.hidden(message("Confirm password: "), b"different-synthetic-passphrase\n")
         assert terminal.finish() == 1
-        assert b"Password confirmation does not match" in terminal.data
+        assert message("Password confirmation does not match") in terminal.data
         assert termios.tcgetattr(terminal.fd) == terminal.original
     finally:
         terminal.close()
@@ -197,13 +203,13 @@ def prompt_write_failure_restores_terminal():
     for at_confirmation in [False, True]:
         terminal = Terminal(["bootstrap", "--yes"], separate_stderr=True)
         try:
-            for prompt, value in [(b"Email: ", b"terminal@example.com\n"), (b"First name: ", b"Terminal\n")]:
+            for prompt, value in [(message("Email: "), b"terminal@example.com\n"), (message("First name: "), b"Terminal\n")]:
                 terminal.expect(prompt)
                 terminal.send(value)
-            terminal.expect(b"Last name: ")
+            terminal.expect(message("Last name: "))
             if at_confirmation:
                 terminal.send(b"Test\n")
-                terminal.hidden(b"Password: ", SECRET)
+                terminal.hidden(message("Password: "), SECRET)
             os.close(terminal.error_fd)
             terminal.error_fd = None
             terminal.send(b"\n" if at_confirmation else b"Test\n")
@@ -216,28 +222,28 @@ def prompt_write_failure_restores_terminal():
 def terminal_loss_is_reported_without_secret_disclosure():
     terminal = Terminal(["bootstrap", "--yes"], separate_stderr=True)
     try:
-        for prompt, value in [(b"Email: ", b"terminal@example.com\n"), (b"First name: ", b"Terminal\n"), (b"Last name: ", b"Test\n")]:
+        for prompt, value in [(message("Email: "), b"terminal@example.com\n"), (message("First name: "), b"Terminal\n"), (message("Last name: "), b"Test\n")]:
             terminal.expect(prompt)
             terminal.send(value)
-        terminal.hidden(b"Password: ", SECRET)
+        terminal.hidden(message("Password: "), SECRET)
         os.close(terminal.fd)
         terminal.fd = None
         assert terminal.finish() == 1
-        assert any(message in terminal.data for message in [b"Operator command interrupted", b"Cannot read terminal input", b"Terminal input cancelled"])
-        assert b"Invalid database configuration" not in terminal.data
+        assert any(message in terminal.data for message in [message("Operator command interrupted"), message("Cannot read terminal input"), message("Terminal input cancelled")])
+        assert message("Invalid database configuration") not in terminal.data
     finally:
         terminal.close()
 
 
 def confirmation():
-    for reply, expected in [(b"no\n", 3), (b"\x04", 3), (b"yes\n", 1)]:
+    for reply, expected in [(b"no\n", 3), ("sí\n".encode(), 3), (b"\x04", 3), (b"yes\n", 1)]:
         terminal = Terminal(["operator", "migrate"])
         try:
-            terminal.expect(b"typing yes: ")
+            terminal.expect(message("typing yes: "))
             terminal.send(reply)
             assert terminal.finish() == expected
             if expected == 3:
-                assert b"Invalid database configuration" not in terminal.data
+                assert message("Invalid database configuration") not in terminal.data
         finally:
             terminal.close()
 
@@ -259,15 +265,15 @@ def account_authentication():
     for scenario in ["complete", "eof", signal.SIGTERM]:
         terminal = Terminal(["operator", "account", "revoke-all", "00000000-0000-0000-0000-000000000001", "0", "--yes"])
         try:
-            terminal.expect(b"Administrator email: ")
+            terminal.expect(message("Administrator email: "))
             terminal.send(b"terminal@example.com\n")
-            terminal.expect(b"Reason (no secrets): ")
+            terminal.expect(message("Reason (no secrets): "))
             terminal.send(b"Terminal fixture\n")
-            terminal.hidden(b"Administrator password: ", SECRET + (b"\n" if scenario == "complete" else b"\x04" if scenario == "eof" else b""))
+            terminal.hidden(message("Administrator password: "), SECRET + (b"\n" if scenario == "complete" else b"\x04" if scenario == "eof" else b""))
             if isinstance(scenario, int):
                 os.kill(terminal.pid, scenario)
             assert terminal.finish() == 1
-            assert (b"Account operation unavailable" in terminal.data) == (scenario == "complete")
+            assert (message("Account operation unavailable") in terminal.data) == (scenario == "complete")
             assert termios.tcgetattr(terminal.fd) == terminal.original
         finally:
             terminal.close()
@@ -293,36 +299,42 @@ def incomplete_account_pipe_can_be_terminated():
             child.kill()
         child.communicate()
 
-incomplete_account_pipe_can_be_terminated()
+def checks():
+
+    incomplete_account_pipe_can_be_terminated()
 
 
-account_authentication()
-protected = Terminal(["--auth-stdin", "operator", "account", "revoke-all", "00000000-0000-0000-0000-000000000001", "0"])
-try:
-    assert protected.finish() == 3
-    assert b"typing yes" not in protected.data
-    assert b"Administrator email" not in protected.data
-finally:
-    protected.close()
+    account_authentication()
+    protected = Terminal(["--auth-stdin", "operator", "account", "revoke-all", "00000000-0000-0000-0000-000000000001", "0"])
+    try:
+        assert protected.finish() == 3
+        assert message("typing yes") not in protected.data
+        assert message("Administrator email") not in protected.data
+    finally:
+        protected.close()
 
 
 
-confirmation()
-automated = Terminal(["--output", "json", "operator", "migrate"])
-try:
-    assert automated.finish() == 3
-    assert json.loads(automated.data)["error"]["code"] == "confirmation_required"
-finally:
-    automated.close()
-for scenario in ["complete", "eof", "interrupt"]:
-    bootstrap(scenario)
-for at_confirmation in [False, True]:
-    for scenario in ["oversized", "escape", "invalid_utf8", "eof", signal.SIGINT, signal.SIGTERM, signal.SIGHUP, signal.SIGQUIT, signal.SIGTSTP, signal.SIGTTIN, signal.SIGTTOU]:
-        password_boundary(scenario, at_confirmation)
-edited_password()
-profile_cancellation_and_background_refusal()
-mismatch_restores_terminal()
-prompt_write_failure_restores_terminal()
-terminal_loss_is_reported_without_secret_disclosure()
-broken_output()
-print("CLI terminal checks passed: bounded hidden input, Unicode editing, secret redaction, EOF, catchable-signal cancellation and exact terminal restoration, plus malformed input and broken output.")
+    confirmation()
+    automated = Terminal(["--output", "json", "operator", "migrate"])
+    try:
+        assert automated.finish() == 3
+        assert json.loads(automated.data)["error"]["code"] == "confirmation_required"
+    finally:
+        automated.close()
+    for scenario in ["complete", "eof", "interrupt"]:
+        bootstrap(scenario)
+    for at_confirmation in [False, True]:
+        for scenario in ["oversized", "escape", "invalid_utf8", "eof", signal.SIGINT, signal.SIGTERM, signal.SIGHUP, signal.SIGQUIT, signal.SIGTSTP, signal.SIGTTIN, signal.SIGTTOU]:
+            password_boundary(scenario, at_confirmation)
+    edited_password()
+    profile_cancellation_and_background_refusal()
+    mismatch_restores_terminal()
+    prompt_write_failure_restores_terminal()
+    terminal_loss_is_reported_without_secret_disclosure()
+    broken_output()
+    print("CLI terminal checks passed: bounded hidden input, Unicode editing, secret redaction, EOF, catchable-signal cancellation and exact terminal restoration, plus malformed input and broken output.")
+
+for LOCALE in ["en", "es"]:
+    ENV["DARKHORSE_CLI_LOCALE"] = LOCALE
+    checks()

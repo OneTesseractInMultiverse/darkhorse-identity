@@ -1,3 +1,4 @@
+use super::localization::Locale;
 use super::{
     authenticated,
     output::{Failure, Output},
@@ -13,9 +14,10 @@ pub(super) async fn run(
     target: Target,
     operation: Operation,
     stdin: bool,
+    locale: Locale,
 ) -> Result<Output, Failure> {
     let mutation = matches!(operation, Operation::Retire { .. });
-    let input = authenticated::credentials(stdin, mutation).await?;
+    let input = authenticated::credentials(stdin, mutation, locale).await?;
     let request =
         Request::new(target, operation, input.reason.as_deref()).map_err(|_| Failure::usage())?;
     let id = super::operation_id()?;

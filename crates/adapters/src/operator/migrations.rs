@@ -13,8 +13,12 @@ pub(super) async fn apply(store: &PostgresStore) -> Result<Output, Failure> {
         .migrate_operation(id)
         .await
         .map_err(|error| failure(error, id))?;
-    Ok(Output::message(
+    Ok(Output::localized_message(
         format!("Database migrations applied. Operation: {}", identifier(id)),
+        format!(
+            "Migraciones de base de datos aplicadas. Operación: {}",
+            identifier(id)
+        ),
         serde_json::json!({"migrated":true,"operation_id":identifier(id),"recorded_outcome":"completed"}),
     ))
 }

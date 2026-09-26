@@ -11,6 +11,9 @@ use darkhorse_domain::identity::PrincipalId;
     disable_help_subcommand = false
 )]
 pub(super) struct Options {
+    /// Language for human output; does not change command names or JSON records.
+    #[arg(long, global = true, value_parser = ["en", "es"])]
+    pub locale: Option<String>,
     #[arg(long,global=true,value_enum,default_value_t=Format::Human)]
     pub output: Format,
     /// Confirm a mutation; does not grant authority or bypass safety checks.

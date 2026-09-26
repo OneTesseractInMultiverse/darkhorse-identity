@@ -64,10 +64,44 @@ async function verifyCommands({ sql, invoke }, grants) {
     "f|0",
   );
   await sql("darkhorse_owner", grants);
-  await operator(["operator", "bootstrap", "--stdin"], false, boot);
+  const initialized = await operator(
+    ["--locale", "es", "operator", "bootstrap", "--stdin"],
+    false,
+    boot,
+  );
+  assert.match(
+    initialized.stdout,
+    /^Administrador inicializado: [0-9a-f-]+\n$/,
+  );
   assert.notEqual(
     (await operator(["operator", "bootstrap", "--stdin"], true, boot)).code,
     0,
+  );
+  const repeated = [];
+  for (const locale of ["en", "es"]) {
+    const result = await operator(
+      [
+        "--locale",
+        locale,
+        "--output",
+        "json",
+        "operator",
+        "bootstrap",
+        "--stdin",
+      ],
+      true,
+      boot,
+    );
+    repeated.push({
+      code: result.code,
+      stdout: result.stdout,
+      stderr: result.stderr,
+    });
+  }
+  assert.deepEqual(repeated[0], repeated[1]);
+  assert.equal(
+    JSON.parse(repeated[0].stderr).error.message,
+    "Administrator bootstrap is already complete.",
   );
   assert.equal(
     (
@@ -79,6 +113,11 @@ async function verifyCommands({ sql, invoke }, grants) {
     "darkhorse_operator",
   );
   await operator(["signing-status"]);
+  const spanishStatus = await operator(["--locale", "es", "signing-status"]);
+  assert.match(spanishStatus.stdout, /^Resultado:\n/);
+  assert.doesNotThrow(() =>
+    JSON.parse(spanishStatus.stdout.slice("Resultado:\n".length)),
+  );
   await sql(
     "darkhorse_owner",
     "REVOKE INSERT ON provider_audit FROM darkhorse_operator;",

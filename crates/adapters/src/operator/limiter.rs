@@ -62,9 +62,12 @@ async fn activate(store: &crate::postgres::PostgresStore) -> Result<Output, Fail
         .await
         .map_err(|error| journal::failure(error, id))?;
     let correlation = uuid::Uuid::from_u128(id.as_u128()).to_string();
-    Ok(Output::message(
+    Ok(Output::localized_message(
         format!(
             "Limiter generation activated. Correlation: {correlation}. Use limiter-status to inspect enforcement."
+        ),
+        format!(
+            "Generación del limitador activada. Correlación: {correlation}. Use limiter-status para consultar su aplicación."
         ),
         serde_json::json!({"activated":true,"operation_id":correlation}),
     ))

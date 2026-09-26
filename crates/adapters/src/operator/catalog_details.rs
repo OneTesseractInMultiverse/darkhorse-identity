@@ -1,3 +1,4 @@
+use super::localization::Locale;
 use super::{
     authenticated,
     catalog::failure,
@@ -10,8 +11,12 @@ use darkhorse_application::{
 };
 use darkhorse_domain::{identity::OperationId, operator_accounts::Error};
 
-pub(super) async fn run(target: ReadTarget, stdin: bool) -> Result<Output, Failure> {
-    let input = authenticated::credentials(stdin, false).await?;
+pub(super) async fn run(
+    target: ReadTarget,
+    stdin: bool,
+    locale: Locale,
+) -> Result<Output, Failure> {
+    let input = authenticated::credentials(stdin, false, locale).await?;
     if input.reason.is_some() {
         return Err(Failure::usage());
     }

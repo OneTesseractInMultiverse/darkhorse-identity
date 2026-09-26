@@ -1,3 +1,4 @@
+use super::localization::Locale;
 use super::{
     authenticated,
     output::{Failure, Output},
@@ -13,8 +14,8 @@ use darkhorse_domain::{
     operator_catalog::{Request, Target},
 };
 
-pub(super) async fn run(request: Request, stdin: bool) -> Result<Output, Failure> {
-    let input = authenticated::credentials(stdin, false).await?;
+pub(super) async fn run(request: Request, stdin: bool, locale: Locale) -> Result<Output, Failure> {
+    let input = authenticated::credentials(stdin, false, locale).await?;
     if input.reason.is_some() {
         return Err(Failure::usage());
     }

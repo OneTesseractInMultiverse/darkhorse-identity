@@ -1,3 +1,4 @@
+use crate::operator::localization::{Locale, text};
 use serde::Deserialize;
 use std::io::Read;
 use zeroize::{Zeroize, Zeroizing};
@@ -27,16 +28,25 @@ fn parse(bytes: &[u8]) -> Result<Input, &'static str> {
     }
     serde_json::from_slice(bytes).map_err(|_| "Invalid account authentication input.")
 }
-pub(super) async fn interactive(mutation: bool) -> Result<Input, &'static str> {
+pub(super) async fn interactive(mutation: bool, locale: Locale) -> Result<Input, &'static str> {
     let mut terminal = super::super::terminal::Terminal::open()?;
-    let email = terminal.prompt("Administrator email: ").await?;
+    let email = terminal
+        .prompt(text(locale, "Administrator email: "))
+        .await?;
     let reason = if mutation {
-        Some(terminal.prompt("Reason (no secrets): ").await?.to_string())
+        Some(
+            terminal
+                .prompt(text(locale, "Reason (no secrets): "))
+                .await?
+                .to_string(),
+        )
     } else {
         None
     };
     terminal.hide()?;
-    let password = terminal.prompt("Administrator password: ").await?;
+    let password = terminal
+        .prompt(text(locale, "Administrator password: "))
+        .await?;
     terminal.restore()?;
     Ok(Input {
         email: email.to_string(),

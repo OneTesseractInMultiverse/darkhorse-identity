@@ -1,4 +1,5 @@
 use super::authenticated;
+use super::localization::Locale;
 use super::{
     command::Command,
     output::{Failure, Output},
@@ -15,9 +16,9 @@ enum AccountRequest {
     Directory(darkhorse_domain::operator_directory::Request),
 }
 
-pub(super) async fn run(command: Command, stdin: bool) -> Result<Output, Failure> {
+pub(super) async fn run(command: Command, stdin: bool, locale: Locale) -> Result<Output, Failure> {
     let mutation = matches!(command, Command::Change { .. });
-    let input = authenticated::credentials(stdin, mutation).await?;
+    let input = authenticated::credentials(stdin, mutation, locale).await?;
     let request = request(command, input.reason.as_deref())?;
     let id = super::operation_id()?;
     perform(id, request, &input)
@@ -104,8 +105,9 @@ fn output(id: OperationId, operation: Operation, outcome: operator_accounts::Out
             data["operation_id"] = correlation.into();
             Output::record(data)
         }
-        Operation::Change { .. } => Output::message(
+        Operation::Change { .. } => Output::localized_message(
             format!("Account operation completed. Correlation: {correlation}"),
+            format!("Operación de cuenta completada. Correlación: {correlation}"),
             serde_json::json!({"completed":true,"changed":outcome.changed,"operation_id":correlation,"revision":outcome.account.revision}),
         ),
     }

@@ -1,3 +1,4 @@
+use super::localization::Locale;
 use super::{
     authenticated,
     output::{Failure, Output},
@@ -10,8 +11,12 @@ use darkhorse_domain::{
     operator_applications::{Operation, Request},
 };
 
-pub(super) async fn run(operation: Operation, stdin: bool) -> Result<Output, Failure> {
-    let input = authenticated::credentials(stdin, true).await?;
+pub(super) async fn run(
+    operation: Operation,
+    stdin: bool,
+    locale: Locale,
+) -> Result<Output, Failure> {
+    let input = authenticated::credentials(stdin, true, locale).await?;
     let request = Request::new(operation, input.reason.as_deref().unwrap_or(""))
         .map_err(|_| Failure::usage())?;
     let id = super::operation_id()?;

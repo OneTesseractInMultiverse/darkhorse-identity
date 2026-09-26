@@ -1,3 +1,4 @@
+use super::localization::{Locale, text};
 use super::{
     command::{Command, requires_confirmation},
     output::{Failure, Format, write_bytes},
@@ -23,6 +24,7 @@ pub fn confirm(
     confirmed: bool,
     format: Format,
     auth_stdin: bool,
+    locale: Locale,
 ) -> Result<(), Failure> {
     match decision(
         command,
@@ -32,13 +34,13 @@ pub fn confirm(
     ) {
         Decision::Proceed => Ok(()),
         Decision::Deny => Err(Failure::confirmation()),
-        Decision::Prompt => prompt(),
+        Decision::Prompt => prompt(locale),
     }
 }
-fn prompt() -> Result<(), Failure> {
+fn prompt(locale: Locale) -> Result<(), Failure> {
     write_bytes(
         &mut std::io::stderr().lock(),
-        b"Confirm this operator mutation by typing yes: ",
+        text(locale, "Confirm this operator mutation by typing yes: ").as_bytes(),
     )?;
     let mut line = String::new();
     std::io::stdin()

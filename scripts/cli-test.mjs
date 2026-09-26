@@ -16,13 +16,13 @@ const environment = {
   DARKHORSE_DATABASE_URL: "invalid-secret-database-setting",
   DARKHORSE_HTTP_HOST: "invalid-host-setting",
 };
-function invoke(args, input = "") {
+function invoke(args, input = "", extraEnvironment = {}) {
   return new Promise((resolveResult, reject) => {
     const child = execFile(
       executable,
       args,
       {
-        env: environment,
+        env: { ...environment, ...extraEnvironment },
         timeout: 10000,
         killSignal: "SIGKILL",
         maxBuffer: 128 * 1024,
@@ -321,6 +321,7 @@ async function failures() {
   assert.equal(value.error.code, "operation_failed");
   assert.ok(!json.stderr.includes(environment.DARKHORSE_DATABASE_URL));
 }
+await languages();
 await information();
 await failures();
 await clientInput();
@@ -392,4 +393,70 @@ async function clientInput() {
   assert.equal(valid.stdout, "");
   assert.ok(!valid.stderr.includes(marker));
   assert.ok(!valid.stderr.includes(environment.DARKHORSE_DATABASE_URL));
+}
+
+async function languages() {
+  for (const args of [
+    ["--locale", "es", "--help"],
+    ["operator", "account", "show", "--help", "--locale=es"],
+    ["--locale", "es", "help", "operator"],
+  ]) {
+    const help = await invoke(args);
+    assert.equal(help.code, 0);
+    assert.match(help.stdout, /Uso:/);
+    assert.doesNotMatch(
+      help.stdout,
+      /Usage:|Confirm a mutation|Secret arguments/,
+    );
+  }
+  const cases = [
+    ["operator", "bootstrap"],
+    ["operator", "account"],
+    ["operator", "migrate"],
+    ["operator", "migrate", "--yes"],
+    [
+      "--auth-stdin",
+      "operator",
+      "account",
+      "show",
+      "00000000-0000-0000-0000-000000000001",
+    ],
+  ];
+  for (const args of cases) {
+    const en = await invoke(
+      ["--locale", "en", "--output", "json", ...args],
+      "{}",
+    );
+    const es = await invoke(
+      ["--locale", "es", "--output", "json", ...args],
+      "{}",
+    );
+    assert.deepEqual(
+      es,
+      en,
+      "JSON diagnostics, streams and exit statuses remain byte-identical",
+    );
+    assert.ok(!es.stderr.includes(environment.DARKHORSE_DATABASE_URL));
+  }
+  const failure = await invoke([
+    "--locale",
+    "es",
+    "operator",
+    "migrate",
+    "--yes",
+  ]);
+  assert.equal(failure.code, 1);
+  assert.match(failure.stderr, /Configuración de base de datos no válida/);
+  const ambient = await invoke(["--help"], "", { LANG: "es_CR.UTF-8" });
+  assert.match(ambient.stdout, /Uso:/);
+  const explicit = await invoke(["--locale", "en", "--help"], "", {
+    DARKHORSE_CLI_LOCALE: "invalid-private-value",
+  });
+  assert.equal(explicit.code, 0);
+  assert.match(explicit.stdout, /Usage:/);
+  const invalid = await invoke(["--help"], "", {
+    DARKHORSE_CLI_LOCALE: "invalid-private-value",
+  });
+  assert.equal(invalid.code, 1);
+  assert.doesNotMatch(invalid.stderr, /invalid-private-value/);
 }

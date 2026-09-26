@@ -9,6 +9,7 @@ mod client_secrets;
 mod clients;
 pub mod command;
 pub mod input;
+pub mod localization;
 mod migrations;
 pub mod output;
 pub mod signing;
@@ -22,13 +23,14 @@ use darkhorse_application::{
 };
 use darkhorse_domain::AccountStatus;
 
+use localization::Locale;
 use output::{Failure, Output};
 pub mod confirmation;
 
-pub async fn run(command: Command, auth_stdin: bool) -> Result<Output, Failure> {
+pub async fn run(command: Command, auth_stdin: bool, locale: Locale) -> Result<Output, Failure> {
     match command {
         Command::ClientSecret { target, operation } => {
-            client_secrets::run(target, operation, auth_stdin).await
+            client_secrets::run(target, operation, auth_stdin, locale).await
         }
         Command::ClientUpdate {
             application,
@@ -36,17 +38,19 @@ pub async fn run(command: Command, auth_stdin: bool) -> Result<Output, Failure> 
             revision,
         } => clients::run(application, client, revision).await,
         Command::ApplicationMutation(operation) if auth_stdin => {
-            applications::run(operation, true).await
+            applications::run(operation, true, locale).await
         }
         Command::ApplicationMutation(operation) => {
-            cancellation::run(applications::run(operation, false)).await
+            cancellation::run(applications::run(operation, false, locale)).await
         }
-        Command::CatalogShow(target) if auth_stdin => catalog_details::run(target, true).await,
+        Command::CatalogShow(target) if auth_stdin => {
+            catalog_details::run(target, true, locale).await
+        }
         Command::CatalogShow(target) => {
-            cancellation::run(catalog_details::run(target, false)).await
+            cancellation::run(catalog_details::run(target, false, locale)).await
         }
-        Command::Catalog(request) if auth_stdin => catalog::run(request, true).await,
-        Command::Catalog(request) => cancellation::run(catalog::run(request, false)).await,
+        Command::Catalog(request) if auth_stdin => catalog::run(request, true, locale).await,
+        Command::Catalog(request) => cancellation::run(catalog::run(request, false, locale)).await,
         Command::RedisStatus => redis_status::run().await,
         Command::LimiterFence => limiter::run(limiter::Operation::Fence).await,
         Command::LimiterActivate => limiter::run(limiter::Operation::Activate).await,
@@ -54,13 +58,15 @@ pub async fn run(command: Command, auth_stdin: bool) -> Result<Output, Failure> 
         Command::LimiterInspect(id) => limiter::run(limiter::Operation::Inspect(id)).await,
         Command::Signing(operation) => signing::run(operation).await,
         Command::Serve => Err("Use the HTTP composition root for serve.".into()),
-        Command::Bootstrap { stdin: false } => cancellation::run(run_bootstrap(false)).await,
-        Command::Bootstrap { stdin: true } => run_bootstrap(true).await,
+        Command::Bootstrap { stdin: false } => {
+            cancellation::run(run_bootstrap(false, locale)).await
+        }
+        Command::Bootstrap { stdin: true } => run_bootstrap(true, locale).await,
         Command::Account(_) | Command::Accounts(_) | Command::Change { .. } if auth_stdin => {
-            accounts::run(command, true).await
+            accounts::run(command, true, locale).await
         }
         Command::Account(_) | Command::Accounts(_) | Command::Change { .. } => {
-            cancellation::run(accounts::run(command, false)).await
+            cancellation::run(accounts::run(command, false, locale)).await
         }
         command => {
             let store = connect(32).await?;
@@ -80,11 +86,11 @@ async fn connect(max_connections: u32) -> Result<PostgresStore, &'static str> {
         .map_err(directory_message)
 }
 
-async fn run_bootstrap(stdin: bool) -> Result<Output, Failure> {
+async fn run_bootstrap(stdin: bool, locale: Locale) -> Result<Output, Failure> {
     let input = if stdin {
         input::read_json(std::io::stdin().lock())?
     } else {
-        input::interactive().await?
+        input::interactive(locale).await?
     };
     let store = connect(32).await?;
     let preparation = PasswordPreparation::default();
@@ -102,8 +108,9 @@ async fn run_bootstrap(stdin: bool) -> Result<Output, Failure> {
     store.close().await;
     let principal = result.map_err(bootstrap_message)?;
     let id = uuid::Uuid::from_u128(principal.as_u128());
-    Ok(Output::message(
+    Ok(Output::localized_message(
         format!("Administrator initialized: {id}"),
+        format!("Administrador inicializado: {id}"),
         serde_json::json!({"principal_id":id.to_string()}),
     ))
 }
