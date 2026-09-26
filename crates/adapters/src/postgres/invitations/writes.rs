@@ -6,6 +6,7 @@ pub(super) async fn invite(
     email: &str,
     material: &Material,
     now: u64,
+    locale: darkhorse_domain::localization::Locale,
 ) -> Result<(), Error> {
     let key = email.to_ascii_lowercase();
     let exists: bool =
@@ -25,7 +26,7 @@ pub(super) async fn invite(
     sqlx::query("UPDATE invitations SET closed=true,seed=NULL,delivery_state='cancelled' WHERE email_key=$1 AND NOT closed")
         .bind(&key)
         .execute(&mut **tx).await.map_err(storage)?;
-    sqlx::query("INSERT INTO invitations(id,email,issuer_id,issuer_credential_id,issuer_epoch,digest,seed,created_ms,expires_ms,next_ms) SELECT $1,$2,s.principal_id,s.credential_id,s.credential_epoch,$4,$5,$6,$7,$6 FROM browser_sessions s WHERE s.digest=$3")
+    sqlx::query("INSERT INTO invitations(id,email,issuer_id,issuer_credential_id,issuer_epoch,digest,seed,created_ms,expires_ms,next_ms,delivery_locale,template_version) SELECT $1,$2,s.principal_id,s.credential_id,s.credential_epoch,$4,$5,$6,$7,$6,$8,1 FROM browser_sessions s WHERE s.digest=$3")
  .bind(uuid(material.id.as_u128()))
         .bind(email)
         .bind(actor.as_slice())
@@ -33,6 +34,7 @@ pub(super) async fn invite(
         .bind(material.seed.as_slice())
         .bind(now as i64)
         .bind(expires as i64)
+        .bind(crate::localization::tag(locale))
         .execute(&mut **tx).await.map_err(storage)?;
     audit(tx, material.id, Some(issuer), "invited", 0, now).await
 }

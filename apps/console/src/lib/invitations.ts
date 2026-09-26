@@ -1,3 +1,4 @@
+import { emailLink } from './i18n/email-link';
 export type InvitationInput = {
 	token: string;
 	email: string;
@@ -7,9 +8,7 @@ export type InvitationInput = {
 };
 export type InvitationResult = 'ok' | 'invalid' | 'limited' | 'unavailable';
 export function invitationToken(fragment: string): string | undefined {
-	return fragment.length === 75 && /^#token=iv1_[0-9a-f]{64}$/.test(fragment)
-		? fragment.slice(7)
-		: undefined;
+	return emailLink(fragment, 'iv1')?.token;
 }
 export async function acceptInvitation(
 	fetcher: typeof fetch,

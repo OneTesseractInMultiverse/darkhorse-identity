@@ -124,3 +124,20 @@ it('does not allow an older session preference read to replace a confirmed profi
 	await pending;
 	expect(get(language).locale).toBe('en');
 });
+it('scopes link hints to their page and preserves explicit and saved choices', () => {
+	const language = fake();
+	language.initialize({ browser: ['en'] });
+	const old = language.hint('es');
+	expect(get(language).locale).toBe('es');
+	const current = language.hint('en');
+	old();
+	expect(get(language).locale).toBe('en');
+	current();
+	expect(get(language).locale).toBe('en');
+	const clear = language.hint('es');
+	language.account('en');
+	expect(get(language).locale).toBe('en');
+	language.select('es');
+	clear();
+	expect(get(language).locale).toBe('es');
+});

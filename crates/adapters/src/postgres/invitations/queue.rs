@@ -55,6 +55,14 @@ fn delivery(row: &PgRow) -> Result<Delivery, Error> {
     Ok(Delivery {
         id: id(row)?,
         created_ms: number(row, "created_ms")?,
+        expires_ms: number(row, "expires_ms")?,
+        locale: crate::localization::parse(row.try_get("delivery_locale").map_err(storage)?)
+            .map_err(storage)?,
+        template_version: row
+            .try_get::<i16, _>("template_version")
+            .map_err(storage)?
+            .try_into()
+            .map_err(storage)?,
         attempt: (row.try_get::<i16, _>("attempts").map_err(storage)? + 1) as u16,
         email: row.try_get("email").map_err(storage)?,
         seed: row

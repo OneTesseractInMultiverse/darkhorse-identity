@@ -37,6 +37,11 @@ An invitation expires 24 hours after issuance and is single-use. A replacement i
 
 Both email purposes share the existing TLS SMTP transport, lease/retry calculations and delivery data. They retain distinct identifiers, templates, storage and policy ports. One process sends at most one message at a time, alternating between the two queues. A claim has a recoverable 60-second lease and at most five delivery attempts, with bounded exponential retries before expiry. Network operations run outside SQL transactions. Stale acknowledgements cannot alter a replacement or cancelled invitation. A message already in transit can still arrive after cancellation. Its proof will fail. SMTP acceptance is not proof of inbox delivery. An uncertain SMTP reply or worker restart can produce duplicate messages with the same proof and Message-ID.
 
+New email supports English and Spanish with immutable per-message language and
+version. Administrators can supply the optional canonical `locale` field when
+issuing an invitation. See [email localization](email-localization.md) for selection,
+upgrade and fragment-hint contracts.
+
 ## Abuse and consistency boundaries
 
 Invalid or unknown proofs receive a generic public error and do not reach password hashing. A valid proof must obtain durable admission before hashing: at most five attempts for that invitation and 60 admitted attempts across the deployment per rolling minute. Hash failures, worker saturation and cancelled HTTP requests do not refund admission. A single process shares one bounded Argon2 worker permit between login and onboarding. Public requests have a 4 KiB body limit, 16 in-flight invitation requests, and the existing HTTP timeout/origin/CSRF controls.

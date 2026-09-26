@@ -28,24 +28,24 @@ async fn onboarding_is_single_use_ordinary_verified_and_audited() {
     let db = super::oidc::fixture().await;
     assert_eq!(
         db.store
-            .invite([0; 32], "new@example.com", material(3))
+            .invite([0; 32], "new@example.com", material(3), None)
             .await,
         Err(Error::Unauthorized)
     );
     let id = db
         .store
-        .invite([1; 32], "new@example.com", material(3))
+        .invite([1; 32], "new@example.com", material(3), None)
         .await
         .unwrap();
     assert_eq!(
         db.store
-            .invite([1; 32], "new@example.com", material(4))
+            .invite([1; 32], "new@example.com", material(4), None)
             .await,
         Err(Error::Throttled)
     );
     assert_eq!(
         db.store
-            .invite([1; 32], "ONE@example.com", material(4))
+            .invite([1; 32], "ONE@example.com", material(4), None)
             .await,
         Err(Error::Conflict)
     );
@@ -107,7 +107,7 @@ async fn cancellation_after_admission_prevents_creation_and_attempts_survive_fai
     let db = super::oidc::fixture().await;
     let id = db
         .store
-        .invite([1; 32], "new@example.com", material(3))
+        .invite([1; 32], "new@example.com", material(3), None)
         .await
         .unwrap();
     for _ in 0..5 {
@@ -171,7 +171,7 @@ async fn issuer_demotion_or_credential_revocation_after_hash_admission_is_termin
         extra_administrator(&db).await;
         let id = db
             .store
-            .invite([1; 32], "new@example.com", material(3))
+            .invite([1; 32], "new@example.com", material(3), None)
             .await
             .unwrap();
         db.store
@@ -215,7 +215,7 @@ async fn audit_failure_rolls_back_new_account_consumption_and_issuance() {
     let db = super::oidc::fixture().await;
     let id = db
         .store
-        .invite([1; 32], "new@example.com", material(3))
+        .invite([1; 32], "new@example.com", material(3), None)
         .await
         .unwrap();
     db.store
@@ -231,7 +231,7 @@ async fn audit_failure_rolls_back_new_account_consumption_and_issuance() {
     );
     assert_eq!(
         db.store
-            .invite([1; 32], "another@example.com", material(4))
+            .invite([1; 32], "another@example.com", material(4), None)
             .await,
         Err(Error::Unavailable)
     );
@@ -264,7 +264,7 @@ async fn audit_failure_rolls_back_new_account_consumption_and_issuance() {
 async fn concurrent_admission_has_a_shared_budget_and_no_hash_refund() {
     let db = super::oidc::fixture().await;
     db.store
-        .invite([1; 32], "new@example.com", material(3))
+        .invite([1; 32], "new@example.com", material(3), None)
         .await
         .unwrap();
     for _ in 0..4 {
@@ -288,7 +288,7 @@ async fn concurrent_admission_has_a_shared_budget_and_no_hash_refund() {
         5
     );
     db.store
-        .invite([1; 32], "other@example.com", material(4))
+        .invite([1; 32], "other@example.com", material(4), None)
         .await
         .unwrap();
     sqlx::query("INSERT INTO invitation_audit(invitation_id,event,attempt,occurred_ms) SELECT $1,'hash_admitted',1,floor(extract(epoch FROM clock_timestamp())*1000)::bigint FROM generate_series(1,55)").bind(uuid::Uuid::from_u128(3)).execute(&db.pool).await.unwrap();
@@ -305,7 +305,7 @@ async fn stale_mail_acknowledgements_and_failures_cannot_reopen_revoked_proofs()
     let db = super::oidc::fixture().await;
     let id = db
         .store
-        .invite([1; 32], "new@example.com", material(3))
+        .invite([1; 32], "new@example.com", material(3), None)
         .await
         .unwrap();
     let job = db.store.claim_invitation().await.unwrap().unwrap();
@@ -335,7 +335,7 @@ async fn stale_mail_acknowledgements_and_failures_cannot_reopen_revoked_proofs()
         Err(Error::Invalid)
     );
     db.store
-        .invite([1; 32], "other@example.com", material(4))
+        .invite([1; 32], "other@example.com", material(4), None)
         .await
         .unwrap();
     let job = db.store.claim_invitation().await.unwrap().unwrap();
@@ -370,7 +370,7 @@ async fn administrator_reads_and_mutations_require_current_role_and_recent_sign_
     let db = super::oidc::fixture().await;
     let id = db
         .store
-        .invite([1; 32], "new@example.com", material(3))
+        .invite([1; 32], "new@example.com", material(3), None)
         .await
         .unwrap();
     db.store
@@ -440,7 +440,7 @@ async fn expired_future_replaced_and_wrong_identity_proofs_never_create_accounts
     );
     let id = db
         .store
-        .invite([1; 32], "new@example.com", material(4))
+        .invite([1; 32], "new@example.com", material(4), None)
         .await
         .unwrap();
     assert_eq!(
@@ -471,7 +471,7 @@ async fn acceptance_waiting_for_a_committed_revocation_fails_closed() {
     let db = super::oidc::fixture().await;
     let id = db
         .store
-        .invite([1; 32], "new@example.com", material(3))
+        .invite([1; 32], "new@example.com", material(3), None)
         .await
         .unwrap();
     db.store
@@ -515,7 +515,7 @@ async fn issuance_counts_retained_requests_and_the_shared_mail_capacity() {
  .bind(uuid::Uuid::from_u128(500)).bind(uuid::Uuid::from_u128(501)).execute(&db.pool).await.unwrap();
     assert_eq!(
         db.store
-            .invite([1; 32], "new@example.com", material(3))
+            .invite([1; 32], "new@example.com", material(3), None)
             .await,
         Err(Error::Unavailable)
     );
@@ -538,7 +538,7 @@ async fn issuance_counts_retained_requests_and_the_shared_mail_capacity() {
         .await
         .unwrap();
     db.store
-        .invite([1; 32], "new@example.com", material(3))
+        .invite([1; 32], "new@example.com", material(3), None)
         .await
         .unwrap();
     use darkhorse_application::authentication::AuthenticationStore;
@@ -551,10 +551,64 @@ async fn issuance_counts_retained_requests_and_the_shared_mail_capacity() {
     db.store.establish(&candidate, [5; 32], None).await.unwrap();
     assert_eq!(
         db.store
-            .invite([5; 32], "limit@example.com", material(4))
+            .invite([5; 32], "limit@example.com", material(4), None)
             .await,
         Err(Error::Throttled),
         "cancellation does not refund the issuing administrator budget"
     );
     db.store.close().await;
+}
+#[tokio::test]
+async fn invitation_delivery_language_is_explicit_or_default_and_immutable() {
+    use darkhorse_domain::localization::Locale;
+    for (choice, fallback, expected) in [
+        (None, Locale::Spanish, Locale::Spanish),
+        (Some(Locale::English), Locale::Spanish, Locale::English),
+        (Some(Locale::Spanish), Locale::English, Locale::Spanish),
+    ] {
+        let db = super::oidc::fixture().await;
+        let store = db.store.clone().with_default_locale(fallback);
+        store
+            .invite([1; 32], "new@example.com", material(3), choice)
+            .await
+            .unwrap();
+        let first = store.claim_invitation().await.unwrap().unwrap();
+        assert_eq!(first.locale, expected);
+        assert_eq!(first.template_version, 1);
+        assert_eq!(first.expires_ms - first.created_ms, 86_400_000);
+        store
+            .finish_invitation(first.id, first.attempt, DeliveryResult::Retry)
+            .await
+            .unwrap();
+        sqlx::query("UPDATE invitations SET next_ms=created_ms")
+            .execute(&db.pool)
+            .await
+            .unwrap();
+        let second = db.store.claim_invitation().await.unwrap().unwrap();
+        assert_eq!(
+            (
+                second.locale,
+                second.template_version,
+                second.created_ms,
+                second.expires_ms,
+                second.seed
+            ),
+            (
+                first.locale,
+                first.template_version,
+                first.created_ms,
+                first.expires_ms,
+                first.seed
+            )
+        );
+        assert_eq!(second.attempt, 2);
+        assert!(sqlx::query("UPDATE invitations SET delivery_locale=CASE WHEN delivery_locale='en' THEN 'es' ELSE 'en' END").execute(&db.pool).await.is_err());
+        assert!(
+            sqlx::query("UPDATE invitations SET template_version=0,delivery_locale='en'")
+                .execute(&db.pool)
+                .await
+                .is_err()
+        );
+        db.pool.close().await;
+    }
 }

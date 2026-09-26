@@ -69,6 +69,7 @@ fn record(r: &Record) -> serde_json::Value {
 #[serde(deny_unknown_fields)]
 struct Invite {
     email: String,
+    locale: Option<String>,
 }
 async fn invite<S: InvitationStore, K: InvitationSecrets, P>(
     State(service): State<Arc<Service<S, K, P>>>,
@@ -79,7 +80,24 @@ async fn invite<S: InvitationStore, K: InvitationSecrets, P>(
         Ok(actor) => actor,
         Err(e) => return failure(e),
     };
-    match application::invite(&service.store, &service.secrets, actor, &input.email).await {
+    let locale = match input
+        .locale
+        .as_deref()
+        .map(crate::localization::parse)
+        .transpose()
+    {
+        Ok(locale) => locale,
+        Err(_) => return failure(Error::Invalid),
+    };
+    match application::invite(
+        &service.store,
+        &service.secrets,
+        actor,
+        &input.email,
+        locale,
+    )
+    .await
+    {
         Ok(id) => (
             StatusCode::CREATED,
             Json(json!({"id":uuid::Uuid::from_u128(id.as_u128()).to_string()})),

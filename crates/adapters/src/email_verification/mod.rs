@@ -6,6 +6,7 @@ use sha2::{Digest, Sha256};
 use std::sync::Arc;
 use zeroize::Zeroizing;
 pub mod configuration;
+mod render;
 pub mod smtp;
 #[derive(Clone)]
 pub struct Secrets(Arc<Zeroizing<[u8; 32]>>);

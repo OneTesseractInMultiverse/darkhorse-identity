@@ -1,4 +1,8 @@
 <script lang="ts">
+	import { onDestroy } from 'svelte';
+	import { emailLink } from '$lib/i18n/email-link';
+	let clearHint: (() => void) | undefined;
+	onDestroy(() => clearHint?.());
 	import { useLocalization } from '$lib/i18n/context';
 	import LanguageSelector from '$lib/components/LanguageSelector.svelte';
 	const language = useLocalization();
@@ -7,12 +11,13 @@
 	import { page } from '$app/state';
 	import logo from '$lib/assets/brand/logo.svg';
 	import EmailVerificationPanel from '$lib/components/EmailVerificationPanel.svelte';
-	import { fragmentToken, emailStatus, requestEmail, confirmEmail } from '$lib/email-verification';
+	import { emailStatus, requestEmail, confirmEmail } from '$lib/email-verification';
 	import { authenticate, currentSession, endSession } from '$lib/authentication';
 	function takeToken() {
-		const token = fragmentToken(window.location.hash);
+		const link = emailLink(window.location.hash, 'ev1');
+		clearHint = language.hint(link?.locale);
 		if (window.location.hash) replaceState(resolve('/security/email'), page.state);
-		return token;
+		return link?.token;
 	}
 	function watchToken(changed: () => void) {
 		window.addEventListener('hashchange', changed);

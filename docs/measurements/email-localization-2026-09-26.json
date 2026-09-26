@@ -1,0 +1,196 @@
+{
+  "arch": "aarch64",
+  "observations": [
+    {
+      "bodyBytes": 425,
+      "elapsedNs": 76727084,
+      "iterations": 100000,
+      "kind": "verification",
+      "locale": "en",
+      "repeat": 0,
+      "subjectBytes": 27
+    },
+    {
+      "bodyBytes": 451,
+      "elapsedNs": 52343583,
+      "iterations": 100000,
+      "kind": "verification",
+      "locale": "es",
+      "repeat": 0,
+      "subjectBytes": 31
+    },
+    {
+      "bodyBytes": 413,
+      "elapsedNs": 50304667,
+      "iterations": 100000,
+      "kind": "invitation",
+      "locale": "en",
+      "repeat": 0,
+      "subjectBytes": 25
+    },
+    {
+      "bodyBytes": 442,
+      "elapsedNs": 47687125,
+      "iterations": 100000,
+      "kind": "invitation",
+      "locale": "es",
+      "repeat": 0,
+      "subjectBytes": 26
+    },
+    {
+      "bodyBytes": 451,
+      "elapsedNs": 52120583,
+      "iterations": 100000,
+      "kind": "verification",
+      "locale": "es",
+      "repeat": 1,
+      "subjectBytes": 31
+    },
+    {
+      "bodyBytes": 425,
+      "elapsedNs": 51927667,
+      "iterations": 100000,
+      "kind": "verification",
+      "locale": "en",
+      "repeat": 1,
+      "subjectBytes": 27
+    },
+    {
+      "bodyBytes": 442,
+      "elapsedNs": 47382083,
+      "iterations": 100000,
+      "kind": "invitation",
+      "locale": "es",
+      "repeat": 1,
+      "subjectBytes": 26
+    },
+    {
+      "bodyBytes": 413,
+      "elapsedNs": 47679208,
+      "iterations": 100000,
+      "kind": "invitation",
+      "locale": "en",
+      "repeat": 1,
+      "subjectBytes": 25
+    },
+    {
+      "bodyBytes": 425,
+      "elapsedNs": 51563500,
+      "iterations": 100000,
+      "kind": "verification",
+      "locale": "en",
+      "repeat": 2,
+      "subjectBytes": 27
+    },
+    {
+      "bodyBytes": 451,
+      "elapsedNs": 51417500,
+      "iterations": 100000,
+      "kind": "verification",
+      "locale": "es",
+      "repeat": 2,
+      "subjectBytes": 31
+    },
+    {
+      "bodyBytes": 413,
+      "elapsedNs": 46588250,
+      "iterations": 100000,
+      "kind": "invitation",
+      "locale": "en",
+      "repeat": 2,
+      "subjectBytes": 25
+    },
+    {
+      "bodyBytes": 442,
+      "elapsedNs": 47742916,
+      "iterations": 100000,
+      "kind": "invitation",
+      "locale": "es",
+      "repeat": 2,
+      "subjectBytes": 26
+    },
+    {
+      "bodyBytes": 451,
+      "elapsedNs": 51398667,
+      "iterations": 100000,
+      "kind": "verification",
+      "locale": "es",
+      "repeat": 3,
+      "subjectBytes": 31
+    },
+    {
+      "bodyBytes": 425,
+      "elapsedNs": 51658584,
+      "iterations": 100000,
+      "kind": "verification",
+      "locale": "en",
+      "repeat": 3,
+      "subjectBytes": 27
+    },
+    {
+      "bodyBytes": 442,
+      "elapsedNs": 48170000,
+      "iterations": 100000,
+      "kind": "invitation",
+      "locale": "es",
+      "repeat": 3,
+      "subjectBytes": 26
+    },
+    {
+      "bodyBytes": 413,
+      "elapsedNs": 47393334,
+      "iterations": 100000,
+      "kind": "invitation",
+      "locale": "en",
+      "repeat": 3,
+      "subjectBytes": 25
+    },
+    {
+      "bodyBytes": 425,
+      "elapsedNs": 50935250,
+      "iterations": 100000,
+      "kind": "verification",
+      "locale": "en",
+      "repeat": 4,
+      "subjectBytes": 27
+    },
+    {
+      "bodyBytes": 451,
+      "elapsedNs": 52236875,
+      "iterations": 100000,
+      "kind": "verification",
+      "locale": "es",
+      "repeat": 4,
+      "subjectBytes": 31
+    },
+    {
+      "bodyBytes": 413,
+      "elapsedNs": 47656542,
+      "iterations": 100000,
+      "kind": "invitation",
+      "locale": "en",
+      "repeat": 4,
+      "subjectBytes": 25
+    },
+    {
+      "bodyBytes": 442,
+      "elapsedNs": 48138417,
+      "iterations": 100000,
+      "kind": "invitation",
+      "locale": "es",
+      "repeat": 4,
+      "subjectBytes": 26
+    }
+  ],
+  "os": "macos",
+  "profile": "release",
+  "schema": 1,
+  "scope": "In-process version-1 plaintext rendering and input validation; no MIME, HMAC derivation, SQL, SMTP, network or capacity claim.",
+  "date": "2026-09-26",
+  "rust": "rustc 1.97.1 (8bab26f4f 2026-07-14)",
+  "host": "Apple M5 / macOS arm64",
+  "rendererSha256": "19bf7644425533a3ade367922c12b317a95eb8123ef3a9cd9146a7a175fcd0e8",
+  "lockfileSha256": "8db7ec47e30720c5c7c8b096c3be3b97154e1b017320e493e087bc8ee54ea516",
+  "baseRevision": "d1ea1787c4736b4a545a7f9b3b1f5e45d3db5349",
+  "sourceState": "working tree with pinned email presentation"
+}

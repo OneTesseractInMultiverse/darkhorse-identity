@@ -81,7 +81,7 @@ impl darkhorse_application::invitations::InvitationDelivery for Smtp {
         self.send(message).await
     }
 }
-fn invitation_message(
+fn legacy_invitation_message(
     from: &Address,
     origin: &str,
     secrets: &Secrets,
@@ -98,7 +98,7 @@ fn invitation_message(
         .map_err(|_|Error::Invalid)
 }
 
-fn message(
+fn legacy_message(
     from: &Address,
     origin: &str,
     secrets: &Secrets,
@@ -112,6 +112,71 @@ fn message(
         .subject("Verify your Darkhorse email")
         .body(format!("Confirm this email for your existing Darkhorse account. Sign in to the same account, then confirm the link below. It expires 15 minutes after it was requested and can be used once.\r\n\r\n{origin}/security/email#token={token}\r\n\r\nIf you did not request this message, you can ignore it. This link cannot reset your password or grant access.\r\n"))
         .map_err(|_|Error::Invalid)
+}
+fn message(
+    from: &Address,
+    origin: &str,
+    secrets: &Secrets,
+    delivery: &Delivery,
+) -> Result<Message, Error> {
+    if delivery.template_version == 0
+        && delivery.locale == darkhorse_domain::localization::Locale::English
+    {
+        return legacy_message(from, origin, secrets, delivery);
+    }
+    let token = secrets.token(delivery.seed);
+    let text = super::render::render(origin, &token, delivery, super::render::Kind::Verification)?;
+    envelope(
+        from,
+        delivery,
+        format!(
+            "<{}@darkhorse.invalid>",
+            uuid::Uuid::from_u128(delivery.id.as_u128())
+        ),
+        text,
+    )
+}
+fn invitation_message(
+    from: &Address,
+    origin: &str,
+    secrets: &Secrets,
+    delivery: &darkhorse_application::invitations::Delivery,
+) -> Result<Message, Error> {
+    if delivery.template_version == 0
+        && delivery.locale == darkhorse_domain::localization::Locale::English
+    {
+        return legacy_invitation_message(from, origin, secrets, delivery);
+    }
+    let token = secrets.invitation_token(delivery.seed);
+    let text = super::render::render(origin, &token, delivery, super::render::Kind::Invitation)?;
+    envelope(
+        from,
+        delivery,
+        format!(
+            "<invitation-{}@darkhorse.invalid>",
+            uuid::Uuid::from_u128(delivery.id.as_u128())
+        ),
+        text,
+    )
+}
+fn envelope<I>(
+    from: &Address,
+    delivery: &darkhorse_application::email_delivery::Delivery<I>,
+    id: String,
+    text: super::render::Text,
+) -> Result<Message, Error> {
+    Message::builder()
+        .date(std::time::SystemTime::UNIX_EPOCH + Duration::from_millis(delivery.created_ms))
+        .from(from.clone().into())
+        .to(delivery
+            .email
+            .parse::<Address>()
+            .map_err(|_| Error::Invalid)?
+            .into())
+        .message_id(Some(id))
+        .subject(text.subject)
+        .body(text.body)
+        .map_err(|_| Error::Invalid)
 }
 #[cfg(test)]
 #[path = "../../tests/unit/email_verification/smtp.rs"]

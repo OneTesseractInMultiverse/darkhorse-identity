@@ -61,7 +61,8 @@ pub async fn runtime(
     .map_err(|_| "Invalid Redis configuration.")?;
     let store = PostgresStore::connect(database)
         .await
-        .map_err(|_| "Authentication database unavailable.")?;
+        .map_err(|_| "Authentication database unavailable.")?
+        .with_default_locale(settings.default_locale);
     store
         .bind_login_key(authentication.key_digest())
         .await

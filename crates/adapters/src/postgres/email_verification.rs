@@ -14,6 +14,7 @@ struct Actor {
     email: String,
     epoch: u64,
     verified: bool,
+    locale: Option<darkhorse_domain::localization::Locale>,
 }
 impl VerificationStore for PostgresStore {
     async fn email_status(&self, digest: [u8; 32]) -> Result<Status, Error> {
@@ -39,7 +40,7 @@ impl VerificationStore for PostgresStore {
         lock(&mut tx, true).await?;
         let actor = actor(&mut tx, digest).await?;
         if !actor.verified {
-            enqueue(&mut tx, &actor, &material).await?;
+            enqueue(&mut tx, &actor, &material, self.default_locale).await?;
         }
         // Authentication can expire while waiting for work; rollback on failure.
         self::actor(&mut tx, digest).await?;
@@ -68,7 +69,7 @@ async fn preflight(store: &PostgresStore, digest: [u8; 32], proof: [u8; 32]) -> 
 }
 async fn actor(tx: &mut Tx<'_>, digest: [u8; 32]) -> Result<Actor, Error> {
     let owner = sessions::owner(tx, digest).await.map_err(auth_error)?;
-    let row=sqlx::query("SELECT email,credential_epoch,email_verified_ms IS NOT NULL AS verified FROM principals WHERE id=$1")
+    let row=sqlx::query("SELECT email,credential_epoch,preferred_locale,email_verified_ms IS NOT NULL AS verified FROM principals WHERE id=$1")
         .bind(Uuid::from_u128(owner.0.as_u128())).fetch_one(&mut **tx).await.map_err(storage)?;
     Ok(Actor {
         principal: owner.0,
@@ -76,6 +77,12 @@ async fn actor(tx: &mut Tx<'_>, digest: [u8; 32]) -> Result<Actor, Error> {
         email: row.try_get("email").map_err(storage)?,
         epoch: number(&row, "credential_epoch")?,
         verified: row.try_get("verified").map_err(storage)?,
+        locale: row
+            .try_get::<Option<&str>, _>("preferred_locale")
+            .map_err(storage)?
+            .map(crate::localization::parse)
+            .transpose()
+            .map_err(storage)?,
     })
 }
 fn auth_error(error: darkhorse_domain::sessions::Error) -> Error {
@@ -113,13 +120,18 @@ fn check(row: &PgRow, actor: &Actor, now: u64) -> Result<(), Error> {
         now,
     )
 }
-async fn enqueue(tx: &mut Tx<'_>, actor: &Actor, material: &Material) -> Result<(), Error> {
+async fn enqueue(
+    tx: &mut Tx<'_>,
+    actor: &Actor,
+    material: &Material,
+    default_locale: darkhorse_domain::localization::Locale,
+) -> Result<(), Error> {
     let now = now(tx).await?;
     let counts=sqlx::query("SELECT (SELECT max(occurred_ms) FROM email_verification_audit WHERE principal_id=$1 AND event='requested') AS last_ms,(SELECT count(*) FROM email_verification_audit WHERE principal_id=$1 AND event='requested' AND occurred_ms>$2) AS daily,((SELECT count(*) FROM email_verifications WHERE delivery_state='queued' AND expires_ms>$3)+(SELECT count(*) FROM invitations WHERE delivery_state='queued' AND expires_ms>$3)) AS queued")
         .bind(Uuid::from_u128(actor.principal.as_u128())).bind(now.saturating_sub(policy::DAY_MS) as i64).bind(now as i64).fetch_one(&mut **tx).await.map_err(storage)?;
     let expires = request_expiry(&counts, now)?;
-    sqlx::query("INSERT INTO email_verifications(principal_id,id,actor_session_id,email,credential_epoch,digest,seed,created_ms,expires_ms,next_ms) VALUES($1,$2,$3,$4,$5,$6,$7,$8,$9,$8) ON CONFLICT(principal_id) DO UPDATE SET id=excluded.id,actor_session_id=excluded.actor_session_id,email=excluded.email,credential_epoch=excluded.credential_epoch,digest=excluded.digest,seed=excluded.seed,created_ms=excluded.created_ms,expires_ms=excluded.expires_ms,next_ms=excluded.next_ms,consumed=false,attempts=0,delivery_state='queued'")
-        .bind(Uuid::from_u128(actor.principal.as_u128())).bind(Uuid::from_u128(material.id.as_u128())).bind(Uuid::from_u128(actor.session.as_u128())).bind(&actor.email).bind(actor.epoch as i64).bind(material.digest.as_slice()).bind(material.seed.as_slice()).bind(now as i64).bind(expires as i64).execute(&mut **tx).await.map_err(storage)?;
+    sqlx::query("INSERT INTO email_verifications(principal_id,id,actor_session_id,email,credential_epoch,digest,seed,created_ms,expires_ms,next_ms,delivery_locale,template_version) VALUES($1,$2,$3,$4,$5,$6,$7,$8,$9,$8,$10,1) ON CONFLICT(principal_id) DO UPDATE SET id=excluded.id,actor_session_id=excluded.actor_session_id,email=excluded.email,credential_epoch=excluded.credential_epoch,digest=excluded.digest,seed=excluded.seed,created_ms=excluded.created_ms,expires_ms=excluded.expires_ms,next_ms=excluded.next_ms,consumed=false,attempts=0,delivery_state='queued',delivery_locale=excluded.delivery_locale,template_version=excluded.template_version")
+        .bind(Uuid::from_u128(actor.principal.as_u128())).bind(Uuid::from_u128(material.id.as_u128())).bind(Uuid::from_u128(actor.session.as_u128())).bind(&actor.email).bind(actor.epoch as i64).bind(material.digest.as_slice()).bind(material.seed.as_slice()).bind(now as i64).bind(expires as i64).bind(crate::localization::tag(actor.locale.unwrap_or(default_locale))).execute(&mut **tx).await.map_err(storage)?;
     audit(
         tx,
         actor.principal,

@@ -1,4 +1,8 @@
 <script lang="ts">
+	import { onDestroy } from 'svelte';
+	import { emailLink } from '$lib/i18n/email-link';
+	let clearHint: (() => void) | undefined;
+	onDestroy(() => clearHint?.());
 	import { useLocalization } from '$lib/i18n/context';
 	import LanguageSelector from '$lib/components/LanguageSelector.svelte';
 	const language = useLocalization();
@@ -7,11 +11,12 @@
 	import { page } from '$app/state';
 	import logo from '$lib/assets/brand/logo.svg';
 	import InvitationPanel from '$lib/components/InvitationPanel.svelte';
-	import { invitationToken, acceptInvitation, type InvitationInput } from '$lib/invitations';
+	import { acceptInvitation, type InvitationInput } from '$lib/invitations';
 	function takeToken() {
-		const token = invitationToken(window.location.hash);
+		const link = emailLink(window.location.hash, 'iv1');
+		clearHint = language.hint(link?.locale);
 		if (window.location.hash) replaceState(resolve('/invitation'), page.state);
-		return token;
+		return link?.token;
 	}
 	function watchToken(changed: () => void) {
 		window.addEventListener('hashchange', changed);

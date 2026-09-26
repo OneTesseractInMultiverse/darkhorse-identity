@@ -45,6 +45,7 @@ pub trait InvitationStore: Send + Sync {
         actor: [u8; 32],
         email: &str,
         material: Material,
+        locale: Option<darkhorse_domain::localization::Locale>,
     ) -> impl Future<Output = Result<InvitationId, Error>> + Send;
     fn invitations(
         &self,
@@ -75,11 +76,12 @@ pub async fn invite(
     secrets: &impl InvitationSecrets,
     actor: [u8; 32],
     email: &str,
+    locale: Option<darkhorse_domain::localization::Locale>,
 ) -> Result<InvitationId, Error> {
     let email = policy::email(email)?;
     store.invitation_preflight(actor).await?;
     let material = secrets.issue_invitation()?;
-    store.invite(actor, &email, material).await
+    store.invite(actor, &email, material, locale).await
 }
 pub async fn accept(
     store: &impl InvitationStore,

@@ -6,6 +6,16 @@ export async function verifyEmail(page, origin, mailbox) {
   await page.goto(`${origin}/security/email`);
   await page.getByText("Email not verified", { exact: true }).waitFor();
   assert.equal(mailbox.messages.length, 0);
+  const profile = await call(page, "/api/profiles/me");
+  assert.equal(
+    (
+      await call(page, "/api/profiles/me/language", {
+        revision: profile.body.revision,
+        locale: "es",
+      })
+    ).status,
+    200,
+  );
   await page.getByRole("button", { name: "Send verification email" }).click();
   await page.getByText(/A verification message has been queued/).waitFor();
   for (
@@ -16,13 +26,18 @@ export async function verifyEmail(page, origin, mailbox) {
     await delay(100);
   assert.equal(mailbox.messages.length, 1, "TLS SMTP delivery must complete");
   // Lettre emits quoted-printable plain text; undo wrapping and byte escapes.
-  const text = mailbox.messages[0]
-    .replace(/=\r\n/g, "")
-    .replace(/=([0-9A-F]{2})/g, (_, hex) =>
-      String.fromCharCode(parseInt(hex, 16)),
-    );
+  const text = Buffer.from(
+    mailbox.messages[0]
+      .replace(/=\r\n/g, "")
+      .replace(/=([0-9A-F]{2})/g, (_, hex) =>
+        String.fromCharCode(parseInt(hex, 16)),
+      ),
+    "binary",
+  ).toString("utf8");
+  assert.ok(text.includes("15 minutos"));
+  assert.ok(text.includes("contraseña"));
   const match = text.match(
-    /https:\/\/localhost:[0-9]+\/security\/email#token=(ev1_[a-f0-9]{64})/,
+    /https:\/\/localhost:[0-9]+\/security\/email#token=(ev1_[a-f0-9]{64})&lang=es/,
   );
   assert.ok(match, "message must contain the canonical verification link");
   const token = match[1];
@@ -31,8 +46,8 @@ export async function verifyEmail(page, origin, mailbox) {
   const freshErrors = [];
   fresh.on("pageerror", () => freshErrors.push("page error"));
   try {
-    await fresh.goto(`${origin}/security/email#token=${token}`);
-    await fresh.getByRole("button", { name: "Confirm email" }).waitFor();
+    await fresh.goto(match[0]);
+    await fresh.getByRole("button", { name: "Confirmar correo" }).waitFor();
     await fresh.getByRole("combobox").selectOption("es");
     await fresh
       .getByRole("button", { name: "Confirmar correo", exact: true })
@@ -48,7 +63,7 @@ export async function verifyEmail(page, origin, mailbox) {
   const urls = [];
   const listener = (request) => urls.push(request.url());
   page.on("request", listener);
-  await page.goto(`${origin}/security/email#token=${token}`);
+  await page.goto(match[0]);
   await page.getByRole("button", { name: "Confirm email" }).waitFor();
   await page.getByRole("combobox").selectOption("es");
   await page
@@ -94,6 +109,16 @@ export async function verifyEmail(page, origin, mailbox) {
   );
   page.off("request", listener);
   await page.setViewportSize({ width: 1280, height: 900 });
+  const updated = await call(page, "/api/profiles/me");
+  assert.equal(
+    (
+      await call(page, "/api/profiles/me/language", {
+        revision: updated.body.revision,
+        locale: null,
+      })
+    ).status,
+    200,
+  );
   await page.getByRole("combobox").selectOption("en");
   await page.goto(origin);
   console.log(

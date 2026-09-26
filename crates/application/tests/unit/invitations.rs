@@ -47,8 +47,13 @@ impl InvitationStore for Fake {
         _: [u8; 32],
         email: &str,
         material: Material,
+        locale: Option<darkhorse_domain::localization::Locale>,
     ) -> Result<InvitationId, Error> {
         assert_eq!(email, "new@example.com");
+        assert_eq!(
+            locale,
+            Some(darkhorse_domain::localization::Locale::Spanish)
+        );
         assert_eq!(material.digest, [3; 32]);
         self.step("invite")?;
         Ok(id())
@@ -62,6 +67,7 @@ impl InvitationStore for Fake {
     async fn admit_invitation(&self, digest: [u8; 32], email: &str) -> Result<InvitationId, Error> {
         assert_eq!(digest, [3; 32]);
         assert_eq!(email, "new@example.com");
+
         self.step("admit")?;
         Ok(id())
     }
@@ -86,6 +92,9 @@ impl InvitationQueue for Fake {
         Ok((self.fail != "empty").then(|| Delivery {
             id: id(),
             created_ms: 10,
+            expires_ms: 86400010,
+            locale: darkhorse_domain::localization::Locale::English,
+            template_version: 0,
             attempt: 1,
             email: "new@example.com".into(),
             seed: [2; 32],
@@ -134,13 +143,24 @@ fn administrator_is_checked_before_entropy_and_all_failures_propagate() {
         ] {
             let f = fake(fail);
             assert_eq!(
-                invite(&f, &f, [1; 32], " new@example.com ").await.is_ok(),
+                invite(
+                    &f,
+                    &f,
+                    [1; 32],
+                    " new@example.com ",
+                    Some(darkhorse_domain::localization::Locale::Spanish)
+                )
+                .await
+                .is_ok(),
                 fail.is_empty()
             );
             assert_eq!(*f.calls.lock().unwrap(), expected);
         }
         let f = fake("");
-        assert_eq!(invite(&f, &f, [1; 32], "bad").await, Err(Error::Invalid));
+        assert_eq!(
+            invite(&f, &f, [1; 32], "bad", None).await,
+            Err(Error::Invalid)
+        );
         assert!(f.calls.lock().unwrap().is_empty());
     });
 }

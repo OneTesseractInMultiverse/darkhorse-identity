@@ -28,11 +28,19 @@ mod signing;
 #[derive(Clone)]
 pub struct PostgresStore {
     pool: PgPool,
+    default_locale: darkhorse_domain::localization::Locale,
 }
 
 impl PostgresStore {
     pub fn from_pool(pool: PgPool) -> Self {
-        Self { pool }
+        Self {
+            pool,
+            default_locale: darkhorse_domain::localization::Locale::English,
+        }
+    }
+    pub fn with_default_locale(mut self, locale: darkhorse_domain::localization::Locale) -> Self {
+        self.default_locale = locale;
+        self
     }
     pub async fn connect(settings: DatabaseSettings) -> Result<Self, DirectoryFailure> {
         let options = connection_options(&settings)?;

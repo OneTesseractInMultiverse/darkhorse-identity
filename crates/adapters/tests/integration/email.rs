@@ -11,6 +11,9 @@ async fn smtp_requires_trusted_chain_correct_hostname_and_valid_credentials() {
     let delivery = Delivery {
         id: EmailVerificationId::from_u128(1).unwrap(),
         created_ms: 1,
+        expires_ms: 900001,
+        locale: darkhorse_domain::localization::Locale::English,
+        template_version: 0,
         attempt: 1,
         email: "fixture@example.com".into(),
         seed: [1; 32],
@@ -41,6 +44,9 @@ async fn smtp_requires_trusted_chain_correct_hostname_and_valid_credentials() {
     let bad_invitation = darkhorse_application::invitations::Delivery {
         id: darkhorse_domain::identity::InvitationId::from_u128(1).unwrap(),
         created_ms: 1,
+        expires_ms: 900001,
+        locale: darkhorse_domain::localization::Locale::English,
+        template_version: 0,
         attempt: 1,
         email: "fixture@example.com\r\nBcc: bad@example.com".into(),
         seed: [1; 32],

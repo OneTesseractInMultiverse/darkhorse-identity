@@ -35,7 +35,13 @@ impl InvitationStore for Fake {
     async fn invitation_preflight(&self, _: [u8; 32]) -> Result<(), Error> {
         self.0.map_or(Ok(()), Err)
     }
-    async fn invite(&self, _: [u8; 32], _: &str, _: Material) -> Result<InvitationId, Error> {
+    async fn invite(
+        &self,
+        _: [u8; 32],
+        _: &str,
+        _: Material,
+        _: Option<darkhorse_domain::localization::Locale>,
+    ) -> Result<InvitationId, Error> {
         self.0.map_or(Ok(id()), Err)
     }
     async fn invitations(&self, _: [u8; 32]) -> Result<Vec<Record>, Error> {
@@ -222,5 +228,37 @@ async fn admin_transport_has_explicit_errors_no_proofs_and_live_actor_requiremen
             .unwrap()
             .status(),
         400
+    );
+}
+#[tokio::test]
+async fn invitation_language_accepts_only_canonical_choices_without_altering_authority() {
+    for (locale, expected) in [
+        (json!("en"), 201),
+        (json!("es"), 201),
+        (json!(null), 201),
+        (json!("es-CR"), 400),
+        (json!(""), 400),
+        (json!("fr"), 400),
+        (json!(3), 400),
+        (json!("x".repeat(4096)), 413),
+    ] {
+        let body = json!({"email":"new@example.com","locale":locale}).to_string();
+        assert_eq!(
+            app(None)
+                .oneshot(req("POST", "/api/admin/invitations", body))
+                .await
+                .unwrap()
+                .status(),
+            expected
+        );
+    }
+    let body = json!({"email":"new@example.com","locale":"es"}).to_string();
+    assert_eq!(
+        app(Some(Error::Forbidden))
+            .oneshot(req("POST", "/api/admin/invitations", body))
+            .await
+            .unwrap()
+            .status(),
+        403
     );
 }

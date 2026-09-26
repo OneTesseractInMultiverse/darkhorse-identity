@@ -12,6 +12,7 @@ export async function verifyInvitations(
   const start = mailbox.messages.length;
   const created = await call(administrator, "/api/admin/invitations", {
     email: "invited@example.com",
+    locale: "es",
   });
   assert.equal(created.status, 201);
   assert.equal(typeof created.body.id, "string");
@@ -23,13 +24,18 @@ export async function verifyInvitations(
   )
     await delay(100);
   assert.equal(mailbox.messages.length, start + 1);
-  const text = mailbox.messages[start]
-    .replace(/=\r\n/g, "")
-    .replace(/=([0-9A-F]{2})/g, (_, hex) =>
-      String.fromCharCode(parseInt(hex, 16)),
-    );
+  const text = Buffer.from(
+    mailbox.messages[start]
+      .replace(/=\r\n/g, "")
+      .replace(/=([0-9A-F]{2})/g, (_, hex) =>
+        String.fromCharCode(parseInt(hex, 16)),
+      ),
+    "binary",
+  ).toString("utf8");
+  assert.ok(text.includes("24 horas"));
+  assert.ok(text.includes("contraseña"));
   const match = text.match(
-    /https:\/\/localhost:[0-9]+\/invitation#token=(iv1_[a-f0-9]{64})/,
+    /https:\/\/localhost:[0-9]+\/invitation#token=(iv1_[a-f0-9]{64})&lang=es/,
   );
   assert.ok(
     match,
@@ -43,8 +49,17 @@ export async function verifyInvitations(
     const errors = [];
     page.on("request", (request) => urls.push(request.url()));
     page.on("pageerror", () => errors.push("page error"));
-    await page.goto(`${origin}/invitation#token=${token}`);
-    await page.getByRole("form", { name: "Accept invitation" }).waitFor();
+    await page.goto(match[0]);
+    await page.getByRole("form", { name: "Aceptar invitación" }).waitFor();
+    assert.equal(
+      await page.evaluate(() => document.documentElement.lang),
+      "es",
+    );
+    assert.equal(
+      await page.evaluate(() => localStorage.getItem("darkhorse.locale.v1")),
+      null,
+    );
+    await page.getByRole("combobox").selectOption("en");
     assert.equal(page.url(), `${origin}/invitation`);
     assert.equal((await call(page, "/api/admin/invitations")).status, 401);
     const password = randomBytes(24).toString("base64url");

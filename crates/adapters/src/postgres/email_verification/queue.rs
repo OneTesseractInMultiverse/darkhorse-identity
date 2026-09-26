@@ -68,6 +68,14 @@ fn delivery(row: &PgRow) -> Result<Delivery, Error> {
     let attempt: i16 = row.try_get("attempts").map_err(storage)?;
     Ok(Delivery {
         created_ms: number(row, "created_ms")?,
+        expires_ms: number(row, "expires_ms")?,
+        locale: crate::localization::parse(row.try_get("delivery_locale").map_err(storage)?)
+            .map_err(storage)?,
+        template_version: row
+            .try_get::<i16, _>("template_version")
+            .map_err(storage)?
+            .try_into()
+            .map_err(storage)?,
         id: id(row)?,
         attempt: (attempt + 1) as u16,
         email: row.try_get("email").map_err(storage)?,

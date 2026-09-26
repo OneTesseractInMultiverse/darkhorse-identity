@@ -12,6 +12,9 @@ impl DeliveryQueue for Queue {
         }
         Ok(self.available.then(|| Delivery {
             created_ms: 100,
+            expires_ms: 900100,
+            locale: darkhorse_domain::localization::Locale::English,
+            template_version: 0,
             id: EmailVerificationId::from_u128(1).unwrap(),
             attempt: 1,
             email: "a@example.com".into(),

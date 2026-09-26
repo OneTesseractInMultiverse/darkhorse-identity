@@ -1,9 +1,9 @@
 # Language and localization
 
 Darkhorse's first supported presentation languages are English (`en`) and Spanish
-(`es`). The sign-in page, account overview, profile, sessions, email verification, invitation
-consent and personal-key pages offer both. Management pages, outgoing email and
-the operator CLI still require translation. Their
+(`es`). The sign-in page, account overview, profile, sessions, email verification, invitation,
+consent and personal-key pages offer both. Management pages and the operator CLI still require translation. Verification and invitation
+email now use [pinned delivery languages](email-localization.md). Their
 translation and qualification are tracked separately. A language choice changes
 presentation; it never changes identity, permissions or protocol behavior.
 
@@ -271,7 +271,7 @@ open.
 | `/console/applications`, `/console/clients` and registration/credential dialogs                         | Pending                                                                                                                     |
 | `/console/resources`, `/console/scopes`, `/console/roles`, `/console/capabilities` and bindings/pickers | Pending                                                                                                                     |
 | `/console/profile`, `/console/settings` and console navigation                                          | Pending; shared profile/image dialogs already use catalog messages                                                          |
-| Verification/invitation email and CLI                                                                   | Separate #39/#41 work                                                                                                       |
+| Verification/invitation email and CLI                                                                   | Email implemented with pinned delivery metadata (#39); CLI remains #41                                                      |
 
 Profile failures and image outcomes map typed results to catalog keys at rendering
 time; a language change also updates an existing error. Language changes do not
@@ -313,7 +313,8 @@ selection preserves the invitation password fields in the current form without
 persisting them. Verification proofs remain fragment-only, are removed from history,
 and still require an explicit confirmation for the correct account. Creating an
 account neither starts a session nor grants administrative/application access.
-Outgoing email content remains English until the durable-language work in #39.
+Outgoing email now retains its resolved language and template version through the
+[durable delivery contract](email-localization.md).
 
 Consent keeps application names, resource audiences and exact scope identifiers
 verbatim, including `openid`; its explanatory text is translated and untrusted

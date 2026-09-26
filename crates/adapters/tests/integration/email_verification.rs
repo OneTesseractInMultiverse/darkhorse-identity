@@ -345,3 +345,97 @@ async fn persistent_daily_budget_survives_process_state_and_blocks_parallel_rese
     assert_eq!(usize::from(a.is_ok()) + usize::from(b.is_ok()), 1);
     db.store.close().await;
 }
+#[tokio::test]
+async fn queued_language_survives_preference_changes_retries_and_worker_replacement() {
+    use darkhorse_domain::localization::Locale;
+    for (saved, fallback, expected) in [
+        (None, Locale::Spanish, Locale::Spanish),
+        (Some("en"), Locale::Spanish, Locale::English),
+        (Some("es"), Locale::English, Locale::Spanish),
+    ] {
+        let db = super::oidc::fixture().await;
+        sqlx::query("UPDATE principals SET preferred_locale=$1,revision=revision+1")
+            .bind(saved)
+            .execute(&db.pool)
+            .await
+            .unwrap();
+        let store = db.store.clone().with_default_locale(fallback);
+        store
+            .request_verification([1; 32], material(3))
+            .await
+            .unwrap();
+        let sizes: (i32,i32) = sqlx::query_as("SELECT pg_column_size(delivery_locale),pg_column_size(template_version) FROM email_verifications").fetch_one(&db.pool).await.unwrap();
+        assert_eq!(sizes, (3, 2));
+        let first = store.claim_email().await.unwrap().unwrap();
+        assert_eq!(first.locale, expected);
+        assert_eq!(first.template_version, 1);
+        assert_eq!(first.expires_ms - first.created_ms, 900_000);
+        store
+            .finish_email(first.id, first.attempt, DeliveryResult::Retry)
+            .await
+            .unwrap();
+        sqlx::query("UPDATE principals SET preferred_locale='en',revision=revision+1")
+            .execute(&db.pool)
+            .await
+            .unwrap();
+        sqlx::query("UPDATE email_verifications SET next_ms=created_ms")
+            .execute(&db.pool)
+            .await
+            .unwrap();
+        let second = db.store.claim_email().await.unwrap().unwrap();
+        assert_eq!(second.locale, first.locale);
+        assert_eq!(second.template_version, first.template_version);
+        assert_eq!(second.seed, first.seed);
+        assert_eq!(second.created_ms, first.created_ms);
+        assert_eq!(second.expires_ms, first.expires_ms);
+        assert_eq!(second.attempt, 2);
+        assert!(sqlx::query("UPDATE email_verifications SET delivery_locale=CASE WHEN delivery_locale='en' THEN 'es' ELSE 'en' END").execute(&db.pool).await.is_err());
+        assert!(
+            sqlx::query("UPDATE email_verifications SET template_version=0,delivery_locale='en'")
+                .execute(&db.pool)
+                .await
+                .is_err()
+        );
+        db.pool.close().await;
+    }
+}
+#[tokio::test]
+async fn version_32_queues_upgrade_with_the_legacy_template_and_same_proofs() {
+    use darkhorse_application::{bootstrap::BootstrapStore, invitations::InvitationQueue};
+    use darkhorse_domain::localization::Locale;
+    let db = super::Database::at_version(32).await;
+    db.store
+        .bootstrap(super::administrator(1, "one@example.com"))
+        .await
+        .unwrap();
+    let candidate = db
+        .store
+        .candidate("one@example.com")
+        .await
+        .unwrap()
+        .unwrap();
+    db.store.establish(&candidate, [1; 32], None).await.unwrap();
+    sqlx::query("INSERT INTO email_verifications(principal_id,id,actor_session_id,email,credential_epoch,digest,seed,created_ms,expires_ms,next_ms) SELECT s.principal_id,$1,s.public_id,'one@example.com',s.credential_epoch,$2,$3,s.created_ms,s.created_ms+900000,s.created_ms FROM browser_sessions s WHERE s.digest=$4")
+        .bind(uuid::Uuid::from_u128(3)).bind([3_u8;32].as_slice()).bind([4_u8;32].as_slice()).bind([1_u8;32].as_slice()).execute(&db.pool).await.unwrap();
+    sqlx::query("INSERT INTO invitations(id,email,issuer_id,issuer_credential_id,issuer_epoch,digest,seed,created_ms,expires_ms,next_ms) SELECT $1,'new@example.com',s.principal_id,s.credential_id,s.credential_epoch,$2,$3,s.created_ms,s.created_ms+86400000,s.created_ms FROM browser_sessions s WHERE s.digest=$4")
+        .bind(uuid::Uuid::from_u128(5)).bind([5_u8;32].as_slice()).bind([6_u8;32].as_slice()).bind([1_u8;32].as_slice()).execute(&db.pool).await.unwrap();
+    db.store.migrate().await.unwrap();
+    let store = db.store.clone().with_default_locale(Locale::Spanish);
+    let email = store.claim_email().await.unwrap().unwrap();
+    let invitation = store.claim_invitation().await.unwrap().unwrap();
+    assert_eq!(
+        (email.locale, email.template_version, email.seed),
+        (Locale::English, 0, [4; 32])
+    );
+    assert_eq!(
+        (
+            invitation.locale,
+            invitation.template_version,
+            invitation.seed
+        ),
+        (Locale::English, 0, [6; 32])
+    );
+    assert_eq!(email.expires_ms - email.created_ms, 900000);
+    assert_eq!(invitation.expires_ms - invitation.created_ms, 86400000);
+    db.pool.close().await;
+}

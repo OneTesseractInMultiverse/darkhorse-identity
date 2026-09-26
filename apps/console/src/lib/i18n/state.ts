@@ -16,6 +16,7 @@ export function createLocalization(format: Formatter<typeof contract>) {
 	}
 	let preferences: Preferences = {};
 	let accountVersion = 0;
+	let hintVersion = 0;
 	const state = writable(view('en'));
 	function publish() {
 		state.set(view(resolveLocale(preferences)));
@@ -41,6 +42,16 @@ export function createLocalization(format: Formatter<typeof contract>) {
 			accountVersion++;
 			preferences.saved = locale;
 			publish();
+		},
+		hint(locale?: Locale) {
+			const version = ++hintVersion;
+			preferences.transaction = locale ? [locale] : undefined;
+			publish();
+			return () => {
+				if (version !== hintVersion) return;
+				preferences.transaction = undefined;
+				publish();
+			};
 		},
 		select(locale: Locale) {
 			preferences.explicit = locale;

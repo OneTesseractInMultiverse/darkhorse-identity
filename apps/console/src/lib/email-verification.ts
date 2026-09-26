@@ -1,11 +1,10 @@
+import { emailLink } from './i18n/email-link';
 export type EmailStatus =
 	| { kind: 'ready'; email: string; verified: boolean }
 	| { kind: 'signed-out' | 'unavailable' | 'disabled' };
 export type EmailResult = 'ok' | 'invalid' | 'signed-out' | 'limited' | 'unavailable';
 export function fragmentToken(fragment: string): string | undefined {
-	return fragment.length === 75 && /^#token=ev1_[0-9a-f]{64}$/.test(fragment)
-		? fragment.slice(7)
-		: undefined;
+	return emailLink(fragment, 'ev1')?.token;
 }
 export async function emailStatus(fetcher: typeof fetch): Promise<EmailStatus> {
 	try {

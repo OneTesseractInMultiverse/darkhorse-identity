@@ -580,3 +580,7 @@ override I18N_BASELINE := $(value I18N_BASELINE)
 export I18N_BASELINE
 benchmark-i18n: ## Performance: compare static UI bytes and Chromium cold/warm renders; requires I18N_BASELINE directory
 	$(NODE) scripts/i18n-measure.mjs
+
+.PHONY: benchmark-email
+benchmark-email: ## Measure: fixed English/Spanish plaintext rendering; no SMTP or capacity claim
+	cargo run --release --locked --offline -p darkhorse-adapters --example email-render-benchmark

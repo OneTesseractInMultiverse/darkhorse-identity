@@ -23,12 +23,22 @@ impl InvitationStore for PostgresStore {
         actor: [u8; 32],
         email: &str,
         material: Material,
+        locale: Option<darkhorse_domain::localization::Locale>,
     ) -> Result<InvitationId, Error> {
         let email = policy::email(email)?;
         let mut tx = self.pool.begin().await.map_err(storage)?;
         lock(&mut tx, true).await?;
         let (issuer, now) = admin(&mut tx, actor, true).await?;
-        writes::invite(&mut tx, issuer, actor, &email, &material, now).await?;
+        writes::invite(
+            &mut tx,
+            issuer,
+            actor,
+            &email,
+            &material,
+            now,
+            locale.unwrap_or(self.default_locale),
+        )
+        .await?;
         admin(&mut tx, actor, true).await?;
         tx.commit().await.map_err(storage)?;
         Ok(material.id)
