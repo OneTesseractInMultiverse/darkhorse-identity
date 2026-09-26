@@ -77,7 +77,7 @@ export async function verifyLocalization(browser, origin) {
       fullPage: true,
     });
     await page.goto(`${origin}/account/profile`);
-    await expect(page.locator("html")).toHaveAttribute("lang", "en");
+    await expect(page.locator("html")).toHaveAttribute("lang", "es");
     const other = await english.newPage();
     await other.goto(origin);
     await expect(other.getByRole("combobox")).toHaveValue("en");

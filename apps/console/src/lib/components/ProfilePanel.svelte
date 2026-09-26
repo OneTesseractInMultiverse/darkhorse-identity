@@ -2,7 +2,6 @@
 	import { onMount } from 'svelte';
 	import { Button } from '$lib/components/ui/button';
 	import {
-		message,
 		type ProfileApi,
 		type Profile,
 		type Options,
@@ -15,6 +14,7 @@
 	import Modal from './admin/Modal.svelte';
 	import ProfileEditor from './ProfileEditor.svelte';
 	import LanguageEditor from './LanguageEditor.svelte';
+	import { countries } from '$lib/i18n/display';
 	import { useLocalization } from '$lib/i18n/context';
 	import type { Locale } from '$lib/i18n/locale';
 	const language = useLocalization();
@@ -31,11 +31,16 @@
 		pending = $state(true),
 		editing = $state(false),
 		blocked = $state(false),
-		error = $state(''),
-		notice = $state('');
+		error = $state<Failure | null>(null),
+		notice = $state<'profile.saved' | 'profile.languageSaved' | null>(null);
+	const countryLabel = $derived(
+		profile?.country
+			? countries($language.locale, [{ code: profile.country, name: profile.country }])[0].name
+			: ''
+	);
 	let alive = true;
 	function fail(e: Failure) {
-		error = message(e);
+		error = e;
 		blocked = true;
 		if (e.kind === 'signed-out' || e.kind === 'denied') {
 			if (target === 'me') language.account(undefined);
@@ -50,8 +55,8 @@
 		languageEditing = false;
 		pictureEditing = false;
 		pictureFailed = false;
-		notice = '';
-		error = '';
+		notice = null;
+		error = null;
 		const result = await api.load(target);
 		if (!alive) return;
 		if (result.kind === 'ready') {
@@ -63,7 +68,7 @@
 	}
 	async function edit() {
 		pending = true;
-		notice = '';
+		notice = null;
 		const result = await api.options();
 		if (!alive) return;
 		if (result.kind === 'ready') {
@@ -75,29 +80,29 @@
 	async function save(fields: Fields) {
 		if (!profile || pending || blocked) return;
 		pending = true;
-		error = '';
+		error = null;
 		const result = await api.save(target, profile.revision, fields);
 		if (!alive) return;
 		editing = false;
 		if (result.kind === 'ready') {
 			profile = result.value;
 			if (target === 'me') language.account(profile.preferred_locale ?? undefined);
-			notice = 'Profile saved.';
+			notice = 'profile.saved';
 		} else fail(result);
 		pending = false;
 	}
 	async function saveLanguage(locale: Locale | null) {
 		if (!profile || pending || blocked || target !== 'me') return;
 		pending = true;
-		error = '';
-		notice = '';
+		error = null;
+		notice = null;
 		const result = await api.language(profile.revision, locale);
 		if (!alive) return;
 		languageEditing = false;
 		if (result.kind === 'ready') {
 			profile = result.value;
 			language.account(profile.preferred_locale ?? undefined);
-			notice = 'Language preference saved.';
+			notice = 'profile.languageSaved';
 		} else fail(result);
 		pending = false;
 	}
@@ -114,16 +119,20 @@
 </script>
 
 <section class="glass profile-panel" aria-labelledby="profile-title">
-	<p class="eyebrow">DIRECTORY / PROFILE</p>
-	<h1 id="profile-title">{target === 'me' ? 'My profile' : 'User profile'}</h1>
-	<p>Contact details and the name shared with connected applications.</p>
-	{#if error}<p role="alert">{error}</p>{/if}{#if notice}<p role="status">{notice}</p>{/if}
-	{#if pending}<p role="status">Loading…</p>{/if}
+	<p class="eyebrow">{$language.t('profile.eyebrow')}</p>
+	<h1 id="profile-title">{$language.t(target === 'me' ? 'profile.mine' : 'profile.user')}</h1>
+	<p>{$language.t('profile.intro')}</p>
+	{#if error}<p role="alert">{$language.t(`profile.error.${error.kind}`)}</p>{/if}{#if notice}<p
+			role="status"
+		>
+			{$language.t(notice)}
+		</p>{/if}
+	{#if pending}<p role="status">{$language.t('common.loading')}</p>{/if}
 	{#if profile}
 		{#key profile.revision}<img
 				class="avatar"
 				src={pictureFailed ? avatar : `/api/profiles/${encodeURIComponent(target)}/picture`}
-				alt="User avatar"
+				alt={$language.t('profile.avatar')}
 				width="96"
 				height="96"
 				onerror={() => {
@@ -132,54 +141,63 @@
 			/>{/key}
 		<dl class="profile-details">
 			<div>
-				<dt>Email / username</dt>
-				<dd>{profile.email} ({profile.email_verified ? 'verified' : 'unverified'})</dd>
-			</div>
-			<div>
-				<dt>Status</dt>
-				<dd>{profile.active ? 'Active' : 'Inactive'}</dd>
-			</div>
-			<div>
-				<dt>First name</dt>
-				<dd>{profile.first_name}</dd>
-			</div>
-			<div>
-				<dt>Second name</dt>
-				<dd>{profile.second_name || 'Not specified'}</dd>
-			</div>
-			<div>
-				<dt>Last name</dt>
-				<dd>{profile.last_name}</dd>
-			</div>
-			<div>
-				<dt>Second last name</dt>
-				<dd>{profile.second_last_name || 'Not specified'}</dd>
-			</div>
-			<div>
-				<dt>Country</dt>
-				<dd>{profile.country || 'Not specified'}</dd>
-			</div>
-			<div>
-				<dt>Phone (unverified)</dt>
+				<dt>{$language.t('profile.email')}</dt>
 				<dd>
-					{profile.calling_code
-						? `+${profile.calling_code} ${profile.national_number}`
-						: 'Not specified'}
+					{$language.t('profile.emailValue', {
+						email: profile.email,
+						status: $language.t(profile.email_verified ? 'profile.verified' : 'profile.unverified')
+					})}
 				</dd>
 			</div>
 			<div>
-				<dt>Preferred language</dt>
+				<dt>{$language.t('common.status')}</dt>
+				<dd>{$language.t(profile.active ? 'common.active' : 'common.inactive')}</dd>
+			</div>
+			<div>
+				<dt>{$language.t('profile.firstName')}</dt>
+				<dd>{profile.first_name}</dd>
+			</div>
+			<div>
+				<dt>{$language.t('profile.secondName')}</dt>
+				<dd>{profile.second_name || $language.t('common.unspecified')}</dd>
+			</div>
+			<div>
+				<dt>{$language.t('profile.lastName')}</dt>
+				<dd>{profile.last_name}</dd>
+			</div>
+			<div>
+				<dt>{$language.t('profile.secondLastName')}</dt>
+				<dd>{profile.second_last_name || $language.t('common.unspecified')}</dd>
+			</div>
+			<div>
+				<dt>{$language.t('profile.country')}</dt>
+				<dd>
+					{profile.country
+						? `${countryLabel} (${profile.country})`
+						: $language.t('common.unspecified')}
+				</dd>
+			</div>
+			<div>
+				<dt>{$language.t('profile.phone')}</dt>
+				<dd>
+					{profile.calling_code
+						? `+${profile.calling_code} ${profile.national_number}`
+						: $language.t('common.unspecified')}
+				</dd>
+			</div>
+			<div>
+				<dt>{$language.t('profile.language')}</dt>
 				<dd>
 					{profile.preferred_locale === 'es'
 						? 'Español'
 						: profile.preferred_locale === 'en'
 							? 'English'
-							: 'Automatic'}
+							: $language.t('profile.automatic')}
 				</dd>
 			</div>
 			<div class="bio">
-				<dt>Bio</dt>
-				<dd>{profile.bio || 'Not specified'}</dd>
+				<dt>{$language.t('profile.bio')}</dt>
+				<dd>{profile.bio || $language.t('common.unspecified')}</dd>
 			</div>
 		</dl>
 		{#if target === 'me'}<Button
@@ -187,22 +205,24 @@
 				disabled={pending || blocked}
 				onclick={() => {
 					languageEditing = true;
-				}}>Change language</Button
+				}}>{$language.t('profile.changeLanguage')}</Button
 			>{/if}
 	{/if}
 	<div class="modal-actions">
-		<Button variant="outline" disabled={pending} onclick={load}>Reload profile</Button
-		>{#if profile}<Button disabled={pending || blocked} onclick={edit}>Edit profile</Button
+		<Button variant="outline" disabled={pending} onclick={load}
+			>{$language.t('profile.reload')}</Button
+		>{#if profile}<Button disabled={pending || blocked} onclick={edit}
+				>{$language.t('profile.edit')}</Button
 			>{#if images}<Button
 					variant="outline"
 					disabled={pending || blocked}
 					onclick={() => {
 						pictureEditing = true;
-					}}>Change picture</Button
+					}}>{$language.t('profile.changePicture')}</Button
 				>{/if}{/if}
 	</div>
 	{#if editing && profile && options}<Modal
-			title="Edit profile"
+			title={$language.t('profile.edit')}
 			{pending}
 			close={() => {
 				editing = false;
@@ -218,7 +238,7 @@
 			/></Modal
 		>{/if}
 	{#if pictureEditing && profile && images}<Modal
-			title="Profile picture"
+			title={$language.t('profile.picture')}
 			{pending}
 			close={() => {
 				pictureEditing = false;
@@ -241,7 +261,7 @@
 </section>
 
 {#if languageEditing && profile}<Modal
-		title="Account language"
+		title={$language.t('profile.accountLanguage')}
 		{pending}
 		close={() => {
 			languageEditing = false;
@@ -257,6 +277,9 @@
 	>{/if}
 
 <style>
+	.profile-panel .modal-actions {
+		flex-wrap: wrap;
+	}
 	.avatar {
 		border-radius: 1rem;
 		object-fit: cover;

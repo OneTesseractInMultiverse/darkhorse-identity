@@ -174,21 +174,3 @@ async function failure(r: Response): Promise<Failure> {
 	if (r.status === 400) return { kind: 'invalid' };
 	return { kind: 'uncertain' };
 }
-export function message(error: Failure): string {
-	switch (error.kind) {
-		case 'signed-out':
-			return 'Sign in to view this profile.';
-		case 'denied':
-			return 'You do not have access to this profile.';
-		case 'recent':
-			return 'Sign out and sign in again before editing. A sign-in within five minutes is required.';
-		case 'changed':
-			return 'This profile changed. Reload before editing again.';
-		case 'invalid':
-			return 'Check the profile values and phone number, then reload before editing again.';
-		case 'uncertain':
-			return 'The change could not be confirmed. Reload the profile before making another change.';
-		case 'unavailable':
-			return 'The profile is temporarily unavailable. Try reloading.';
-	}
-}

@@ -1,8 +1,8 @@
 # Language and localization
 
 Darkhorse's first supported presentation languages are English (`en`) and Spanish
-(`es`). The sign-in page and account overview offer both. Other account and
-management pages, email, consent and the operator CLI still use English. Their
+(`es`). The sign-in page, account overview, profile and session pages offer both. Other
+account and management pages, email, consent and the operator CLI still use English. Their
 translation and qualification are tracked separately. A language choice changes
 presentation; it never changes identity, permissions or protocol behavior.
 
@@ -90,7 +90,7 @@ deployment default from the bounded public `/api/presentation` response. The
 existing session response supplies any saved account preference. Late configuration
 responses cannot override a higher-priority choice. This permits a
 brief English first paint; it avoids a second runtime server, an inline executable
-preference script and a hydration mismatch. The root page updates document `lang`
+preference script and a hydration mismatch. Translated routes update document `lang`
 to the rendered language and `dir` to `ltr`. Routes still written in English keep
 `lang="en"`. No right-to-left support is claimed. The selector uses language names,
 a native keyboard-accessible select, a visible label and associated help text.
@@ -254,3 +254,53 @@ and 56.4 ms respectively. This small sample does not establish stable percentile
 or a speedup. Real primary-state, shared limiter, profile mutation and HTTPS browser
 checks run separately; production request-cost and capacity qualification remain
 open.
+
+## Web translation inventory
+
+| Route or surface                                                                                        | English/Spanish state                                                                                                       |
+| ------------------------------------------------------------------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------- |
+| `/` — login and account overview                                                                        | Translated, including current errors and logout uncertainty                                                                 |
+| `/account/profile` — read/edit/language/image dialogs                                                   | Translated; names and bios remain literal text; country names/order use browser `Intl` while submitted codes stay unchanged |
+| `/security/sessions` — list, pagination, confirmation, failures                                         | Translated; selected-language dates explicitly remain in UTC                                                                |
+| `/security/keys` and key creation/reveal/revocation                                                     | Pending                                                                                                                     |
+| `/security/email` and confirmation/account switching                                                    | Pending                                                                                                                     |
+| `/invitation` and enrollment failures                                                                   | Pending                                                                                                                     |
+| `/authorization` and consent                                                                            | Pending; OIDC language hints are separate in #40                                                                            |
+| `/console/users` and directory/access dialogs                                                           | Pending                                                                                                                     |
+| `/console/applications`, `/console/clients` and registration/credential dialogs                         | Pending                                                                                                                     |
+| `/console/resources`, `/console/scopes`, `/console/roles`, `/console/capabilities` and bindings/pickers | Pending                                                                                                                     |
+| `/console/profile`, `/console/settings` and console navigation                                          | Pending; shared profile/image dialogs already use catalog messages                                                          |
+| Verification/invitation email and CLI                                                                   | Separate #39/#41 work                                                                                                       |
+
+Profile failures and image outcomes map typed results to catalog keys at rendering
+time; a language change also updates an existing error. Language changes do not
+remount an editor, discard a draft or repeat an operation. Pending and uncertain
+mutations remain blocked. Image transport now returns a fixed outcome code rather
+than an English message; HTTP formats and status codes remain unchanged.
+
+Country labels use the browser's `Intl.DisplayNames`, with only the server-provided
+country choices. `Intl.Collator` orders their labels with a code tie-breaker.
+If platform display support is unavailable, original metadata names and code order
+provide a deterministic fallback. Canonical country and calling-code values, source
+versions and backend validation are unchanged. Country labels may vary with the
+browser's locale-data version. Dates use an explicitly UTC `Intl.DateTimeFormat`
+created once per language change, with an ISO/UTC fallback.
+
+A direct session-page visit restores the account preference with one existing
+session GET. The layout ignores an older response after a newer profile preference
+or sign-out update. Profile pages already receive the preference through their
+profile read. These reads affect presentation only and add no positive authority
+cache. Client-side navigation can retain the last presentation choice until the
+next session/profile read.
+
+### Account-page observations — 2026-09-26
+
+The [account-page presentation sample](measurements/account-localization-2026-09-26.json)
+records 129,665 summed gzip JavaScript bytes: 20,512 above the English-only baseline,
+within the unchanged 36 KiB budget. The added messages are currently included in the
+shared catalogs; navigation still does not fetch translation files. Five cold/warm
+pairs use the same presentation-only fixture as the previous measurements. Median
+cold readiness was 72.1 ms baseline, 71.7 ms localized English and 71.9 ms Spanish;
+warm medians were 39.9, 55.6 and 55.7 ms. These samples do not demonstrate a speedup
+or qualify production latency. Reconsider route-specific catalog loading before
+console translation growth consumes the remaining payload budget.

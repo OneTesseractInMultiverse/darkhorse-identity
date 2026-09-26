@@ -34,7 +34,7 @@ it('selects valid files, records pending state, and publishes only a confirmed c
 });
 it('blocks another mutation after failure and discards a late result after unmount', async () => {
 	const service = api();
-	service.remove.mockResolvedValue({ kind: 'failed', message: 'Reload required' });
+	service.remove.mockResolvedValue({ kind: 'failed', code: 'changed' });
 	render(ImageControl, {
 		cancel: vi.fn(),
 		api: service,
@@ -44,7 +44,7 @@ it('blocks another mutation after failure and discards a late result after unmou
 		busy: vi.fn()
 	});
 	await fireEvent.click(screen.getByRole('button', { name: 'Remove image' }));
-	expect(await screen.findByRole('alert')).toHaveTextContent('Reload required');
+	expect(await screen.findByRole('alert')).toHaveTextContent('This record changed');
 	expect(screen.getByRole('button', { name: 'Remove image' })).toBeDisabled();
 	cleanup();
 	let finish!: (v: unknown) => void;

@@ -1,4 +1,7 @@
 <script lang="ts">
+	import { useLocalization } from '$lib/i18n/context';
+	import { countries } from '$lib/i18n/display';
+	const language = useLocalization();
 	import { untrack } from 'svelte';
 	import { Button } from '$lib/components/ui/button';
 	import { fields, type Profile, type Fields, type Options } from '$lib/profiles';
@@ -15,6 +18,7 @@
 		save: (fields: Fields) => void;
 		cancel: () => void;
 	} = $props();
+	const countryChoices = $derived(countries($language.locale, options.countries));
 	let draft = $state(untrack(() => fields(profile)));
 </script>
 
@@ -27,36 +31,48 @@
 	<fieldset disabled={pending}>
 		<div class="profile-grid">
 			<label
-				>First name<input required autocomplete="given-name" bind:value={draft.first_name} /></label
+				>{$language.t('profile.firstName')}<input
+					required
+					autocomplete="given-name"
+					bind:value={draft.first_name}
+				/></label
 			>
 			<label
-				>Second name (optional)<input
+				>{$language.t('profile.secondNameOptional')}<input
 					autocomplete="additional-name"
 					bind:value={draft.second_name}
 				/></label
 			>
 			<label
-				>Last name<input required autocomplete="family-name" bind:value={draft.last_name} /></label
+				>{$language.t('profile.lastName')}<input
+					required
+					autocomplete="family-name"
+					bind:value={draft.last_name}
+				/></label
 			>
-			<label>Second last name (optional)<input bind:value={draft.second_last_name} /></label>
+			<label
+				>{$language.t('profile.secondLastNameOptional')}<input
+					bind:value={draft.second_last_name}
+				/></label
+			>
 			<div>
-				<label for="profile-country">Country (optional)</label>
+				<label for="profile-country">{$language.t('profile.countryOptional')}</label>
 				<select id="profile-country" bind:value={draft.country}>
-					<option value="">Not specified</option>
-					{#each options.countries as country (country.code)}<option value={country.code}
+					<option value="">{$language.t('common.unspecified')}</option>
+					{#each countryChoices as country (country.code)}<option value={country.code}
 							>{country.name}</option
 						>{/each}
 				</select>
 			</div>
 			<div>
-				<label for="profile-calling-code">Calling code (optional)</label>
+				<label for="profile-calling-code">{$language.t('profile.callingCodeOptional')}</label>
 				<select id="profile-calling-code" bind:value={draft.calling_code}>
-					<option value="">Not specified</option>
+					<option value="">{$language.t('common.unspecified')}</option>
 					{#each options.calling_codes as code (code)}<option value={code}>+{code}</option>{/each}
 				</select>
 			</div>
 			<label
-				>National phone number (optional)<input
+				>{$language.t('profile.nationalNumberOptional')}<input
 					inputmode="numeric"
 					autocomplete="tel-national"
 					bind:value={draft.national_number}
@@ -65,18 +81,19 @@
 			>
 		</div>
 		<p id="phone-guidance">
-			Choose a calling code and enter the national number using digits only. Preserve meaningful
-			leading zeros. Phone numbers are unverified contact information.
+			{$language.t('profile.phoneHelp')}
 		</p>
 		<label
-			>Bio (optional)<textarea rows="7" bind:value={draft.bio} aria-describedby="bio-guidance"
-			></textarea></label
+			>{$language.t('profile.bioOptional')}<textarea
+				rows="7"
+				bind:value={draft.bio}
+				aria-describedby="bio-guidance"></textarea></label
 		>
-		<p id="bio-guidance">{[...draft.bio].length} / 2,000 characters. Plain text only.</p>
+		<p id="bio-guidance">{$language.t('profile.bioLength', { count: [...draft.bio].length })}</p>
 		<div class="modal-actions">
-			<Button variant="outline" type="button" onclick={cancel}>Cancel</Button><Button type="submit"
-				>{pending ? 'Saving…' : 'Save profile'}</Button
-			>
+			<Button variant="outline" type="button" onclick={cancel}
+				>{$language.t('common.cancel')}</Button
+			><Button type="submit">{$language.t(pending ? 'common.saving' : 'profile.save')}</Button>
 		</div>
 	</fieldset>
 </form>

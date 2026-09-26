@@ -1,11 +1,5 @@
 import { describe, it, expect, vi } from 'vitest';
-import {
-	profileApi,
-	decodeProfile,
-	decodeOptions,
-	fields,
-	message
-} from '../../../src/lib/profiles';
+import { profileApi, decodeProfile, decodeOptions, fields } from '../../../src/lib/profiles';
 export const profile = {
 	id: '00000000-0000-0000-0000-000000000001',
 	revision: '0',
@@ -93,16 +87,6 @@ describe('profile transport', () => {
 		expect((await profileApi(recent).load()).kind).toBe('recent');
 		const malformed = vi.fn().mockResolvedValue(new Response('broken'));
 		expect((await profileApi(malformed).load()).kind).toBe('unavailable');
-		for (const kind of [
-			'signed-out',
-			'denied',
-			'changed',
-			'invalid',
-			'recent',
-			'uncertain',
-			'unavailable'
-		] as const)
-			expect(message({ kind })).toBeTruthy();
 	});
 });
 

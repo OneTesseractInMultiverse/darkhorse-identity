@@ -1,6 +1,9 @@
 [
 	["language.label", "Idioma"],
-	["language.help", "Se aplica al inicio de sesión y al resumen de tu cuenta en este navegador."],
+	[
+		"language.help",
+		"Se aplica a las páginas traducidas en este navegador. Algunas páginas aún están en inglés."
+	],
 	["language.unsaved", "Se cambió el idioma en esta página. El navegador no pudo recordarlo."],
 	["login.secure", "ACCESO SEGURO"],
 	["login.identity", "IDENTIDAD / 01"],
@@ -57,5 +60,145 @@
 	[
 		"account.emailDescription",
 		"Confirma tu correo electrónico y consulta su estado de verificación."
+	],
+	["common.cancel", "Cancelar"],
+	["common.close", "Cerrar"],
+	["common.loading", "Cargando…"],
+	["common.saving", "Guardando…"],
+	["common.unspecified", "Sin especificar"],
+	["common.active", "Activo"],
+	["common.inactive", "Inactivo"],
+	["common.status", "Estado"],
+	["common.actions", "Acciones"],
+	["profile.title", "Mi perfil — Darkhorse"],
+	["profile.edition", "MI CUENTA / PERFIL"],
+	["profile.eyebrow", "DIRECTORIO / PERFIL"],
+	["profile.mine", "Mi perfil"],
+	["profile.user", "Perfil de usuario"],
+	[
+		"profile.intro",
+		"Información de contacto y nombre compartidos con las aplicaciones conectadas."
+	],
+	["profile.avatar", "Imagen de perfil"],
+	["profile.email", "Correo electrónico / nombre de usuario"],
+	["profile.emailValue", "{email} ({status})"],
+	["profile.verified", "verificado"],
+	["profile.unverified", "sin verificar"],
+	["profile.firstName", "Nombre"],
+	["profile.secondName", "Segundo nombre"],
+	["profile.lastName", "Primer apellido"],
+	["profile.secondLastName", "Segundo apellido"],
+	["profile.country", "País"],
+	["profile.phone", "Teléfono (sin verificar)"],
+	["profile.bio", "Biografía"],
+	["profile.language", "Idioma preferido"],
+	["profile.automatic", "Automático"],
+	["profile.changeLanguage", "Cambiar idioma"],
+	["profile.reload", "Recargar perfil"],
+	["profile.edit", "Editar perfil"],
+	["profile.changePicture", "Cambiar imagen"],
+	["profile.picture", "Imagen de perfil"],
+	["profile.accountLanguage", "Idioma de la cuenta"],
+	["profile.saved", "Se guardó el perfil."],
+	["profile.languageSaved", "Se guardó el idioma preferido."],
+	["profile.secondNameOptional", "Segundo nombre (opcional)"],
+	["profile.secondLastNameOptional", "Segundo apellido (opcional)"],
+	["profile.countryOptional", "País (opcional)"],
+	["profile.callingCodeOptional", "Código de llamada (opcional)"],
+	["profile.nationalNumberOptional", "Número de teléfono nacional (opcional)"],
+	[
+		"profile.phoneHelp",
+		"Elige un código de llamada e introduce el número nacional solo con dígitos. Conserva los ceros iniciales que formen parte del número. Los teléfonos son información de contacto sin verificar."
+	],
+	["profile.bioOptional", "Biografía (opcional)"],
+	["profile.bioLength", "{count, number} / 2000 caracteres. Solo texto sin formato."],
+	["profile.save", "Guardar perfil"],
+	["profile.saveLanguage", "Guardar idioma"],
+	[
+		"profile.languageHelp",
+		"Guarda un idioma para esta cuenta en todos los navegadores. Automático usa las preferencias del navegador y el idioma predeterminado de la instalación. Una selección explícita al iniciar sesión tiene prioridad durante esa visita. Algunas páginas de administración aún están en inglés."
+	],
+	["profile.error.signed-out", "Inicia sesión para ver este perfil."],
+	["profile.error.denied", "No tienes acceso a este perfil."],
+	[
+		"profile.error.recent",
+		"Cierra sesión y vuelve a iniciarla antes de editar. Debes haber iniciado sesión en los últimos cinco minutos."
+	],
+	["profile.error.changed", "Este perfil cambió. Recárgalo antes de volver a editarlo."],
+	[
+		"profile.error.invalid",
+		"Revisa los datos del perfil y el teléfono; después, recarga el perfil antes de volver a editarlo."
+	],
+	[
+		"profile.error.uncertain",
+		"No se pudo confirmar el cambio. Recarga el perfil antes de hacer otro cambio."
+	],
+	["profile.error.unavailable", "El perfil no está disponible temporalmente. Intenta recargarlo."],
+	["sessions.title", "Darkhorse — Tus sesiones"],
+	["sessions.description", "Revisa y administra tus sesiones de Darkhorse"],
+	["sessions.security", "SEGURIDAD DE LA CUENTA"],
+	["sessions.edition", "SESIONES / 01"],
+	["sessions.shortEdition", "/ SESIONES"],
+	["sessions.heading", "Tus sesiones."],
+	["sessions.intro", "Revisa tus accesos a Darkhorse y cierra las sesiones que ya no uses."],
+	["sessions.refresh", "Actualizar sesiones"],
+	["sessions.loading", "Cargando sesiones…"],
+	["sessions.signedOut", "Tu sesión ha finalizado. Inicia sesión para administrar tus sesiones."],
+	["sessions.caption", "Historial de sesiones · horas en UTC"],
+	["sessions.started", "Inicio"],
+	["sessions.lastActivity", "Última actividad"],
+	["sessions.current", "Esta sesión"],
+	["sessions.inactive", "Finalizada o vencida"],
+	["sessions.endCurrent", "Cerrar esta sesión"],
+	["sessions.end", "Cerrar sesión"],
+	["sessions.noAction", "No se requiere ninguna acción"],
+	["sessions.empty", "No hay sesiones en esta página."],
+	["sessions.pages", "Páginas de sesiones"],
+	["sessions.newest", "Sesiones más recientes"],
+	["sessions.older", "Sesiones anteriores"],
+	[
+		"sessions.help",
+		"Cerrar una sesión detiene de inmediato su acceso a Darkhorse y a las API conectadas. Las aplicaciones pueden seguir mostrando su propia página de sesión hasta la siguiente comprobación de acceso."
+	],
+	["sessions.confirmTitle", "¿Cerrar esta sesión?"],
+	["sessions.confirmDetail", "La sesión se inició el {time}. Se detendrá su acceso conectado."],
+	["sessions.confirmCurrent", "También se cerrará tu sesión en esta página."],
+	["sessions.ending", "Cerrando sesión…"],
+	["sessions.confirm", "Confirmar cierre de sesión"],
+	[
+		"sessions.unavailable",
+		"Las sesiones no están disponibles temporalmente. Actualiza la lista para volver a intentarlo."
+	],
+	[
+		"sessions.uncertain",
+		"No se pudo confirmar el cambio. Actualiza la lista de sesiones antes de volver a intentarlo."
+	],
+	["common.console", "CONSOLA DE ADMINISTRACIÓN"],
+	["common.closeDialog", "Cerrar diálogo"],
+	[
+		"media.help",
+		"PNG o JPEG, hasta 4 MiB y 2048 píxeles por lado. Se eliminan los metadatos. Reemplazar o eliminar la imagen tiene efecto inmediato."
+	],
+	["media.choose", "Elegir imagen"],
+	["media.remove", "Eliminar imagen"],
+	["media.upload", "Subir imagen"],
+	["media.error.file", "Elige una imagen PNG o JPEG de hasta 4 MiB."],
+	[
+		"media.error.uncertain",
+		"No se pudo confirmar el cambio. Cierra este diálogo y recarga la página antes de hacer otro cambio."
+	],
+	[
+		"media.error.unavailable",
+		"La configuración no está disponible temporalmente. Inicia sesión como administrador y recarga la página."
+	],
+	["media.error.signed-out", "Vuelve a iniciar sesión para continuar."],
+	[
+		"media.error.denied",
+		"Debes haber iniciado sesión recientemente y tener permiso para cambiar esta imagen."
+	],
+	["media.error.changed", "Este registro cambió. Cierra este diálogo y recarga la página."],
+	[
+		"media.error.invalid",
+		"Usa una imagen PNG o JPEG válida de hasta 4 MiB y 2048 píxeles por lado. Se permiten como máximo cuatro cargas por minuto."
 	]
 ]

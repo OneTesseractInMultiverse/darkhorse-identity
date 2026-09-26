@@ -1,13 +1,12 @@
 <script lang="ts">
+	import { useLocalization } from '$lib/i18n/context';
+	import { dateTime } from '$lib/i18n/display';
+	const language = useLocalization();
+	const formatTime = $derived(dateTime($language.locale));
 	import { onMount, tick } from 'svelte';
 	import { resolve } from '$app/paths';
 	import { Button } from '$lib/components/ui/button';
-	import {
-		formatTime,
-		type SessionRecord,
-		type SessionsState,
-		type Termination
-	} from '$lib/sessions';
+	import { type SessionRecord, type SessionsState, type Termination } from '$lib/sessions';
 	let {
 		read,
 		end
@@ -21,22 +20,29 @@
 	let older = $state(false);
 	let selected = $state<SessionRecord | null>(null);
 	let dialog = $state<HTMLDialogElement>();
-	let message = $state('');
+	let message = $state<'sessions.unavailable' | 'sessions.uncertain' | null>(null);
 	let alert = $state<HTMLParagraphElement>();
+	let alive = false;
 	onMount(() => {
+		alive = true;
 		void load();
+		return () => {
+			alive = false;
+		};
 	});
 	$effect(() => {
 		if (selected && dialog && !dialog.open) dialog.showModal();
 	});
 	async function load(after?: string) {
 		pending = true;
-		message = '';
-		sessionState = await read(after);
+		message = null;
+		const result = await read(after);
+		if (!alive) return;
+		sessionState = result;
 		older = after !== undefined;
+		if (sessionState.kind === 'signed-out') language.account(undefined);
 		if (sessionState.kind === 'ready') uncertain = false;
-		else if (sessionState.kind === 'unavailable')
-			message = 'Sessions are temporarily unavailable. Refresh the list to try again.';
+		else if (sessionState.kind === 'unavailable') message = 'sessions.unavailable';
 		pending = false;
 	}
 	function cancel() {
@@ -47,9 +53,11 @@
 		if (!selected || pending) return;
 		pending = true;
 		const result = await end(selected.id);
+		if (!alive) return;
 		cancel();
 		if (result.kind === 'signed-out' || (result.kind === 'ended' && result.current)) {
 			sessionState = { kind: 'signed-out' };
+			language.account(undefined);
 			pending = false;
 			return;
 		}
@@ -59,7 +67,7 @@
 		}
 		uncertain = true;
 		pending = false;
-		message = 'The change could not be confirmed. Refresh the session list before trying again.';
+		message = 'sessions.uncertain';
 		await tick();
 		alert?.focus();
 	}
@@ -67,33 +75,39 @@
 
 <section class="glass session-panel" aria-labelledby="sessions-title" aria-busy={pending}>
 	<div class="panel-top">
-		<span><span class="dot"></span> ACCOUNT SECURITY</span><span>SESSIONS / 01</span>
+		<span><span class="dot"></span> {$language.t('sessions.security')}</span><span
+			>{$language.t('sessions.edition')}</span
+		>
 	</div>
 	<div class="session-body">
 		<div class="session-heading">
 			<div>
-				<h1 id="sessions-title">Your sessions.</h1>
-				<p>Review your Darkhorse sign-ins and end a session you no longer use.</p>
+				<h1 id="sessions-title">{$language.t('sessions.heading')}</h1>
+				<p>{$language.t('sessions.intro')}</p>
 			</div>
 			{#if sessionState.kind !== 'signed-out'}<Button
 					variant="outline"
 					onclick={() => load()}
-					disabled={pending}>Refresh sessions</Button
+					disabled={pending}>{$language.t('sessions.refresh')}</Button
 				>{/if}
 		</div>
-		{#if pending && sessionState.kind !== 'ready'}<p role="status">Loading sessions…</p>
+		{#if pending && sessionState.kind !== 'ready'}<p role="status">
+				{$language.t('sessions.loading')}
+			</p>
 		{:else if sessionState.kind === 'signed-out'}
-			<p>Your session has ended. Sign in to manage your sessions.</p>
-			<a class="security-link" href={resolve('/')}>Sign in</a>
+			<p>{$language.t('sessions.signedOut')}</p>
+			<a class="security-link" href={resolve('/')}>{$language.t('login.submit')}</a>
 		{:else if sessionState.kind === 'ready'}
 			<div class="table-wrap">
 				<table>
-					<caption>Sign-in history · times shown in UTC</caption>
+					<caption>{$language.t('sessions.caption')}</caption>
 					<thead
 						><tr
-							><th scope="col">Started</th><th scope="col">Last activity</th><th scope="col"
-								>Status</th
-							><th scope="col">Actions</th></tr
+							><th scope="col">{$language.t('sessions.started')}</th><th scope="col"
+								>{$language.t('sessions.lastActivity')}</th
+							><th scope="col">{$language.t('common.status')}</th><th scope="col"
+								>{$language.t('common.actions')}</th
+							></tr
 						></thead
 					>
 					<tbody
@@ -102,7 +116,7 @@
 									><time datetime={new Date(session.created_ms).toISOString()}
 										>{formatTime(session.created_ms)}</time
 									>{#if session.id === sessionState.page.current}<span class="current"
-											>This session</span
+											>{$language.t('sessions.current')}</span
 										>{/if}</th
 								>
 								<td
@@ -112,7 +126,9 @@
 								>
 								<td
 									><span class:active={session.status === 'active'} class="state"
-										>{session.status === 'active' ? 'Active' : 'Ended or expired'}</span
+										>{$language.t(
+											session.status === 'active' ? 'common.active' : 'sessions.inactive'
+										)}</span
 									></td
 								>
 								<td
@@ -123,18 +139,20 @@
 												selected = session;
 											}}
 											>{session.id === sessionState.page.current
-												? 'End this session'
-												: 'End session'}</Button
-										>{:else}<span aria-label="No action needed">—</span>{/if}</td
+												? $language.t('sessions.endCurrent')
+												: $language.t('sessions.end')}</Button
+										>{:else}<span aria-label={$language.t('sessions.noAction')}>—</span>{/if}</td
 								>
 							</tr>{/each}</tbody
 					>
 				</table>
 			</div>
-			{#if sessionState.page.items.length === 0}<p class="empty">No sessions on this page.</p>{/if}
-			<nav class="pagination" aria-label="Session pages">
+			{#if sessionState.page.items.length === 0}<p class="empty">
+					{$language.t('sessions.empty')}
+				</p>{/if}
+			<nav class="pagination" aria-label={$language.t('sessions.pages')}>
 				{#if older}<Button variant="outline" disabled={pending} onclick={() => load()}
-						>Newest sessions</Button
+						>{$language.t('sessions.newest')}</Button
 					>{/if}
 				{#if sessionState.page.next}<Button
 						variant="outline"
@@ -142,16 +160,15 @@
 						onclick={() => {
 							if (sessionState.kind === 'ready' && sessionState.page.next)
 								void load(sessionState.page.next);
-						}}>Older sessions</Button
+						}}>{$language.t('sessions.older')}</Button
 					>{/if}
 			</nav>
 			<p class="session-help">
-				Ending a session immediately stops its access to Darkhorse and connected APIs. Applications
-				may still show their own signed-in page until their next access check.
+				{$language.t('sessions.help')}
 			</p>
 		{/if}
 		{#if message}<p role="alert" tabindex="-1" bind:this={alert} class="login-error">
-				{message}
+				{$language.t(message)}
 			</p>{/if}
 	</div>
 </section>
@@ -167,17 +184,18 @@
 		aria-labelledby="end-session-title"
 		aria-describedby="end-session-detail"
 	>
-		<h2 id="end-session-title">End this session?</h2>
+		<h2 id="end-session-title">{$language.t('sessions.confirmTitle')}</h2>
 		<p id="end-session-detail">
-			The sign-in started at {formatTime(selected.created_ms)}. Its connected access will stop.
+			{$language.t('sessions.confirmDetail', { time: formatTime(selected.created_ms) })}
 		</p>
 		{#if sessionState.kind === 'ready' && selected.id === sessionState.page.current}<p>
-				You will also be signed out of this page.
+				{$language.t('sessions.confirmCurrent')}
 			</p>{/if}
 		<div class="dialog-actions">
-			<Button variant="outline" onclick={cancel} disabled={pending}>Cancel</Button><Button
-				onclick={confirm}
-				disabled={pending}>{pending ? 'Ending session…' : 'Confirm end session'}</Button
+			<Button variant="outline" onclick={cancel} disabled={pending}
+				>{$language.t('common.cancel')}</Button
+			><Button onclick={confirm} disabled={pending}
+				>{$language.t(pending ? 'sessions.ending' : 'sessions.confirm')}</Button
 			>
 		</div>
 	</dialog>

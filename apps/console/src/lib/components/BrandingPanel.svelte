@@ -1,25 +1,27 @@
 <script lang="ts">
+	import { useLocalization } from '$lib/i18n/context';
+	const language = useLocalization();
 	import { onMount } from 'svelte';
 	import { Button } from '$lib/components/ui/button';
-	import { type Settings, type MediaApi } from '$lib/media';
+	import { type Settings, type MediaApi, type MediaFailure } from '$lib/media';
 	import Modal from './admin/Modal.svelte';
 	import ImageControl from './ImageControl.svelte';
 	let { api }: { api: MediaApi } = $props();
 	let settings = $state<Settings | null>(null),
 		pending = $state(false),
-		error = $state(''),
+		error = $state<MediaFailure | null>(null),
 		selected = $state<'logo' | 'background' | null>(null);
 	let alive = true;
 	async function load() {
 		pending = true;
 		selected = null;
-		error = '';
+		error = null;
 		const result = await api.settings();
 		if (!alive) return;
 		if (result.kind === 'ready') settings = result.value;
 		else {
 			settings = null;
-			error = result.message;
+			error = result.code;
 		}
 		pending = false;
 	}
@@ -36,7 +38,11 @@
 	<p class="eyebrow">SYSTEM / APPEARANCE</p>
 	<h1>Login branding</h1>
 	<p>These images are visible to everyone visiting the sign-in page.</p>
-	{#if error}<p role="alert">{error}</p>{/if}{#if pending}<p role="status">Loading…</p>{/if}
+	{#if error}<p role="alert">{$language.t(`media.error.${error}`)}</p>{/if}{#if pending}<p
+			role="status"
+		>
+			Loading…
+		</p>{/if}
 	{#if settings}<p>
 			Image storage: {settings.storage_enabled ? `enabled (${settings.bucket})` : 'disabled'}.
 			Storage connection details are managed through deployment settings.

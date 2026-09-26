@@ -7,6 +7,7 @@
 	import { browserStorage, readPreference } from '$lib/i18n/browser';
 	import { localeList } from '$lib/i18n/input';
 	import { presentation } from '$lib/i18n/presentation';
+	import { currentSession } from '$lib/authentication';
 	let { children } = $props();
 	const language = provideLocalization();
 	let mounted = $state(false);
@@ -19,6 +20,12 @@
 		void presentation(fetch).then((locale) => {
 			if (alive) language.deployment(locale);
 		});
+		if (page.url.pathname === '/security/sessions') {
+			void language.restoreAccount(async () => {
+				const result = await currentSession(fetch);
+				return result.kind === 'signed-in' ? result.locale : undefined;
+			});
+		}
 		mounted = true;
 		return () => {
 			alive = false;
@@ -27,7 +34,11 @@
 	$effect(() => {
 		if (mounted) {
 			// Other routes remain English until their complete translation is delivered.
-			document.documentElement.lang = page.url.pathname === '/' ? $language.locale : 'en';
+			document.documentElement.lang = ['/', '/account/profile', '/security/sessions'].includes(
+				page.url.pathname
+			)
+				? $language.locale
+				: 'en';
 			document.documentElement.dir = 'ltr';
 		}
 	});

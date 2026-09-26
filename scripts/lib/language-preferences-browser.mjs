@@ -1,4 +1,5 @@
 import assert from "node:assert/strict";
+import { resolve } from "node:path";
 import { expect } from "@playwright/test";
 
 const principal = "00000000-0000-0000-0000-00000000e037";
@@ -17,16 +18,22 @@ async function signIn(page, origin, password) {
 async function choose(page, origin, locale) {
   await page.goto(`${origin}/account/profile`);
   await page
-    .getByRole("button", { name: "Change language", exact: true })
+    .getByRole("button", {
+      name: /^(Change language|Cambiar idioma)$/,
+      exact: true,
+    })
     .click();
   await page
-    .getByLabel("Preferred language", { exact: true })
+    .getByLabel(/^(Preferred language|Idioma preferido)$/, { exact: true })
     .selectOption(locale);
   await page
-    .getByRole("button", { name: "Save language", exact: true })
+    .getByRole("button", {
+      name: /^(Save language|Guardar idioma)$/,
+      exact: true,
+    })
     .click();
   await expect(page.getByRole("status")).toHaveText(
-    "Language preference saved.",
+    /^(Language preference saved\.|Se guardó el idioma preferido\.)$/,
   );
   await expect(page.locator("dialog")).toHaveCount(0);
 }
@@ -75,6 +82,7 @@ INSERT INTO password_credentials(credential_id,verifier) SELECT '${credential}',
     const saved = await profile(page);
     assert.equal(saved.preferred_locale, "es");
     assert.equal(BigInt(saved.revision), BigInt(before.revision) + 1n);
+    await verifySpanishProfile(page, origin);
     await signIn(other, origin, password);
     await expect(other.getByRole("combobox")).toHaveValue("es");
     assert.equal(
@@ -113,9 +121,10 @@ INSERT INTO password_credentials(credential_id,verifier) SELECT '${credential}',
     });
     assert.equal(denied, 403);
     assert.equal((await profile(other)).preferred_locale, null);
+    await verifySpanishSessions(other, origin);
     await runSql(`DO $$ BEGIN
 IF (SELECT credential_epoch FROM principals WHERE id='${principal}') <> 0 THEN RAISE EXCEPTION 'language changed credential epoch'; END IF;
-IF (SELECT count(*) FROM profile_audit WHERE target_id='${principal}') <> 2 THEN RAISE EXCEPTION 'unexpected language mutation'; END IF;
+IF (SELECT count(*) FROM profile_audit WHERE target_id='${principal}') <> 3 THEN RAISE EXCEPTION 'unexpected profile mutation'; END IF;
 END $$;`);
   } finally {
     await first.close();
@@ -125,4 +134,92 @@ END $$;`);
   console.log(
     "Saved/cleared account language, cross-browser precedence, private-state logout, CSRF and deployment fallback passed.",
   );
+}
+
+async function verifySpanishProfile(page, origin) {
+  await page.goto(`${origin}/account/profile`);
+  await expect(page.locator("html")).toHaveAttribute("lang", "es");
+  await page
+    .getByRole("button", { name: "Editar perfil", exact: true })
+    .click();
+  await page.getByLabel("País (opcional)", { exact: true }).selectOption("DE");
+  await expect(
+    page.getByRole("option", { name: "Alemania", exact: true }),
+  ).toHaveAttribute("value", "DE");
+  await page
+    .getByLabel("Biografía (opcional)", { exact: true })
+    .fill("María 🦀 <script>texto</script>");
+  await page
+    .getByRole("button", { name: "Guardar perfil", exact: true })
+    .click();
+  await expect(page.getByRole("status")).toHaveText("Se guardó el perfil.");
+  assert.equal((await profile(page)).country, "DE");
+  await expect(page.locator(".bio dd")).toHaveText(
+    "María 🦀 <script>texto</script>",
+  );
+  await page.setViewportSize({ width: 390, height: 844 });
+  assert.equal(
+    await page.evaluate(
+      () => document.documentElement.scrollWidth > innerWidth,
+    ),
+    false,
+  );
+  assert.equal(
+    await page.locator(".profile-panel button").evaluateAll((buttons) =>
+      buttons.every((button) => {
+        const bounds = button.getBoundingClientRect();
+        return bounds.x >= 0 && bounds.right <= innerWidth;
+      }),
+    ),
+    true,
+    "Profile actions must remain inside the viewport",
+  );
+  await page.screenshot({
+    path: resolve(".local/profile-es-mobile.png"),
+    fullPage: true,
+  });
+  await page.setViewportSize({ width: 1280, height: 900 });
+  await page.screenshot({
+    path: resolve(".local/profile-es-desktop.png"),
+    fullPage: true,
+  });
+}
+async function verifySpanishSessions(page, origin) {
+  await page.getByRole("combobox").selectOption("es");
+  await page.goto(`${origin}/security/sessions`);
+  await expect(page.locator("html")).toHaveAttribute("lang", "es");
+  await expect(
+    page.getByRole("heading", { name: "Tus sesiones.", exact: true }),
+  ).toBeVisible();
+  await expect(page.locator("caption")).toHaveText(
+    "Historial de sesiones · horas en UTC",
+  );
+  assert.ok((await page.locator("time").first().textContent()).includes("UTC"));
+  await page.setViewportSize({ width: 390, height: 844 });
+  assert.equal(
+    await page.evaluate(
+      () => document.documentElement.scrollWidth > innerWidth,
+    ),
+    false,
+  );
+  await page.screenshot({
+    path: resolve(".local/sessions-es-mobile.png"),
+    fullPage: true,
+  });
+  await page
+    .getByRole("button", { name: "Cerrar esta sesión", exact: true })
+    .click();
+  await expect(page.getByRole("dialog")).toBeVisible();
+  await expect(
+    page.getByText("También se cerrará tu sesión en esta página.", {
+      exact: true,
+    }),
+  ).toBeVisible();
+  await page
+    .getByRole("button", { name: "Confirmar cierre de sesión", exact: true })
+    .click();
+  await expect(
+    page.getByRole("link", { name: "Iniciar sesión", exact: true }),
+  ).toBeVisible();
+  await expect(page.getByRole("table")).toHaveCount(0);
 }

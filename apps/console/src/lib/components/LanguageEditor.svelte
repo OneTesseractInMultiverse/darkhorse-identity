@@ -1,4 +1,6 @@
 <script lang="ts">
+	import { useLocalization } from '$lib/i18n/context';
+	const language = useLocalization();
 	import { untrack } from 'svelte';
 	import { Button } from '$lib/components/ui/button';
 	import type { Locale } from '$lib/i18n/locale';
@@ -23,20 +25,20 @@
 	}}
 >
 	<fieldset disabled={pending}>
-		<label for="account-language">Preferred language</label>
+		<label for="account-language">{$language.t('profile.language')}</label>
 		<select id="account-language" bind:value={selected} aria-describedby="account-language-help">
-			<option value="">Automatic</option>
+			<option value="">{$language.t('profile.automatic')}</option>
 			<option value="en" lang="en">English</option>
 			<option value="es" lang="es">Español</option>
 		</select>
 		<p id="account-language-help">
-			Save a language for this account across browsers. Automatic uses your browser preferences and
-			the deployment default. An explicit choice in the sign-in page takes precedence for that
-			visit. The sign-in page and account overview currently support both languages.
+			{$language.t('profile.languageHelp')}
 		</p>
 		<div class="modal-actions">
-			<Button type="button" variant="outline" onclick={cancel}>Cancel</Button><Button type="submit"
-				>{pending ? 'Saving…' : 'Save language'}</Button
+			<Button type="button" variant="outline" onclick={cancel}
+				>{$language.t('common.cancel')}</Button
+			><Button type="submit"
+				>{$language.t(pending ? 'common.saving' : 'profile.saveLanguage')}</Button
 			>
 		</div>
 	</fieldset>

@@ -8,7 +8,12 @@ import Harness from './Harness.svelte';
 function fake() {
 	const en = Object.keys(contract).map((key) => [
 		key,
-		key === 'login.welcome' ? 'Welcome {name}' : key
+		key === 'login.welcome'
+			? 'Welcome {name}'
+			: [
+					key,
+					...Object.keys(contract[key as keyof typeof contract]).map((name) => `{${name}}`)
+				].join(' ')
 	]);
 	const es = en.map(([key, value]) => [key, `ES ${value}`]);
 	return createLocalization(createFormatter(contract, { en, es }));
@@ -63,7 +68,12 @@ it('renders interpolated profile content as text rather than markup', async () =
 it('uses the rendered English fallback when the optional Spanish catalog is unavailable', () => {
 	const en = Object.keys(contract).map((key) => [
 		key,
-		key === 'login.welcome' ? 'Welcome {name}' : key
+		key === 'login.welcome'
+			? 'Welcome {name}'
+			: [
+					key,
+					...Object.keys(contract[key as keyof typeof contract]).map((name) => `{${name}}`)
+				].join(' ')
 	]);
 	const language = createLocalization(createFormatter(contract, { en }));
 	language.select('es');
@@ -97,6 +107,20 @@ it('ignores session restoration after leaving a render tree', async () => {
 	});
 	view.unmount();
 	finish({ kind: 'signed-in', name: 'Previous account', locale: 'es' });
+	await pending;
+	expect(get(language).locale).toBe('en');
+});
+it('does not allow an older session preference read to replace a confirmed profile change', async () => {
+	const language = fake();
+	let finish!: (locale: 'es') => void;
+	const pending = language.restoreAccount(
+		() =>
+			new Promise<'es'>((resolve) => {
+				finish = resolve;
+			})
+	);
+	language.account('en');
+	finish('es');
 	await pending;
 	expect(get(language).locale).toBe('en');
 });

@@ -31,7 +31,9 @@ beforeEach(() => {
 it('loads a bounded table, confirms ending a session, and reloads after success', async () => {
 	const p = props();
 	render(SessionsPanel, p);
-	expect(await screen.findByRole('cell', { name: '1970-01-01 00:00:02 UTC' })).toBeInTheDocument();
+	expect(
+		await screen.findByRole('cell', { name: /Jan 01, 1970.*00:00:02 UTC/ })
+	).toBeInTheDocument();
 	await fireEvent.click(screen.getByRole('button', { name: 'End session' }));
 	expect(p.end).not.toHaveBeenCalled();
 	await fireEvent.click(screen.getByRole('button', { name: 'Cancel' }));

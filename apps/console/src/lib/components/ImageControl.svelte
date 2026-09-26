@@ -1,7 +1,9 @@
 <script lang="ts">
+	import { useLocalization } from '$lib/i18n/context';
+	const language = useLocalization();
 	import { onMount } from 'svelte';
 	import { Button } from '$lib/components/ui/button';
-	import { validImage, type MediaApi } from '$lib/media';
+	import { validImage, type MediaApi, type MediaFailure } from '$lib/media';
 	let {
 		api,
 		path,
@@ -20,13 +22,13 @@
 	let file = $state<File | null>(null),
 		pending = $state(false),
 		blocked = $state(false),
-		error = $state('');
+		error = $state<MediaFailure | null>(null);
 	let alive = true;
 	async function submit(remove: boolean) {
 		if (pending || blocked || (!remove && !file)) return;
 		pending = true;
 		busy(true);
-		error = '';
+		error = null;
 		const result = remove
 			? await api.remove(path, revision)
 			: await api.upload(path, revision, file!);
@@ -36,14 +38,14 @@
 		file = null;
 		if (result.kind === 'ready') changed();
 		else {
-			error = result.message;
+			error = result.code;
 			blocked = true;
 		}
 	}
 	function select(files: FileList | null) {
 		const value = files?.[0];
 		file = value && validImage(value) ? value : null;
-		error = value && !file ? 'Choose a PNG or JPEG image up to 4 MiB.' : '';
+		error = value && !file ? 'file' : null;
 	}
 	onMount(() => () => {
 		alive = false;
@@ -52,12 +54,11 @@
 </script>
 
 <p>
-	PNG or JPEG, up to 4 MiB and 2,048 pixels per side. Image metadata is removed. Replacing or
-	removing the image takes effect immediately.
+	{$language.t('media.help')}
 </p>
-{#if error}<p role="alert">{error}</p>{/if}
+{#if error}<p role="alert">{$language.t(`media.error.${error}`)}</p>{/if}
 <label
-	>Choose image<input
+	>{$language.t('media.choose')}<input
 		type="file"
 		accept="image/png,image/jpeg"
 		disabled={pending || blocked}
@@ -65,11 +66,13 @@
 	/></label
 >
 <div class="modal-actions">
-	<Button variant="outline" disabled={pending} onclick={cancel}>Close</Button>
+	<Button variant="outline" disabled={pending} onclick={cancel}
+		>{$language.t('common.close')}</Button
+	>
 	<Button variant="outline" disabled={pending || blocked} onclick={() => submit(true)}
-		>Remove image</Button
+		>{$language.t('media.remove')}</Button
 	><Button disabled={pending || blocked || !file} onclick={() => submit(false)}
-		>{pending ? 'Saving…' : 'Upload image'}</Button
+		>{$language.t(pending ? 'common.saving' : 'media.upload')}</Button
 	>
 </div>
 

@@ -6,7 +6,9 @@ export type Settings = {
 	storage_enabled: boolean;
 	bucket: string | null;
 };
-export type Result<T> = { kind: 'ready'; value: T } | { kind: 'failed'; message: string };
+export type MediaFailure =
+	'file' | 'uncertain' | 'unavailable' | 'signed-out' | 'denied' | 'changed' | 'invalid';
+export type Result<T> = { kind: 'ready'; value: T } | { kind: 'failed'; code: MediaFailure };
 export type MediaApi = {
 	settings: () => Promise<Result<Settings>>;
 	upload: (path: string, revision: string, file: File) => Promise<Result<string>>;
@@ -75,37 +77,34 @@ export function mediaApi(fetcher: typeof fetch): MediaApi {
 		upload: (path, revision, file) =>
 			validImage(file)
 				? change(path, revision, file)
-				: Promise.resolve({ kind: 'failed', message: 'Choose a PNG or JPEG image up to 4 MiB.' }),
+				: Promise.resolve({ kind: 'failed', code: 'file' }),
 		remove: (path, revision) => change(path, revision)
 	};
 }
 function uncertain(): Result<never> {
 	return {
 		kind: 'failed',
-		message:
-			'The change could not be confirmed. Close this dialog and reload before making another change.'
+		code: 'uncertain'
 	};
 }
 function unavailable(): Result<never> {
 	return {
 		kind: 'failed',
-		message: 'Settings are temporarily unavailable. Sign in as an administrator and reload.'
+		code: 'unavailable'
 	};
 }
 async function failure(response: Response): Promise<Result<never>> {
-	if (response.status === 401) return { kind: 'failed', message: 'Sign in again to continue.' };
+	if (response.status === 401) return { kind: 'failed', code: 'signed-out' };
 	if (response.status === 403)
 		return {
 			kind: 'failed',
-			message: 'A recent sign-in and permission to change this image are required.'
+			code: 'denied'
 		};
-	if (response.status === 409)
-		return { kind: 'failed', message: 'This record changed. Close this dialog and reload.' };
+	if (response.status === 409) return { kind: 'failed', code: 'changed' };
 	if (response.status === 400 || response.status === 413)
 		return {
 			kind: 'failed',
-			message:
-				'Use a valid PNG or JPEG up to 4 MiB and 2,048 pixels per side. At most four uploads per minute are allowed.'
+			code: 'invalid'
 		};
 	return uncertain();
 }

@@ -13,5 +13,5 @@ export function provideLocalization(localization = create()) {
 	return setContext(key, localization);
 }
 export function useLocalization(): Localization {
-	return getContext<Localization | undefined>(key) ?? create();
+	return getContext<Localization | undefined>(key) ?? provideLocalization();
 }

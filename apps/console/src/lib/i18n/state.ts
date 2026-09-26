@@ -15,6 +15,7 @@ export function createLocalization(format: Formatter<typeof contract>) {
 		return { locale, t };
 	}
 	let preferences: Preferences = {};
+	let accountVersion = 0;
 	const state = writable(view('en'));
 	function publish() {
 		state.set(view(resolveLocale(preferences)));
@@ -29,7 +30,15 @@ export function createLocalization(format: Formatter<typeof contract>) {
 			preferences.deployment = locale;
 			publish();
 		},
+		async restoreAccount(read: () => Promise<Locale | undefined>) {
+			const version = ++accountVersion;
+			const locale = await read();
+			if (version !== accountVersion) return;
+			preferences.saved = locale;
+			publish();
+		},
 		account(locale?: Locale) {
+			accountVersion++;
 			preferences.saved = locale;
 			publish();
 		},

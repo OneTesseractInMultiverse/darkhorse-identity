@@ -30,7 +30,7 @@ it('uses focused branding dialogs and reloads current authority after a change',
 	await fireEvent.click(screen.getByRole('button', { name: 'Remove image' }));
 	await waitFor(() => expect(api.settings).toHaveBeenCalledTimes(2));
 	expect(api.remove).toHaveBeenCalledWith('/api/admin/branding/logo', '0');
-	api.settings.mockResolvedValue({ kind: 'failed', message: 'Sign in again' });
+	api.settings.mockResolvedValue({ kind: 'failed', code: 'signed-out' });
 	await fireEvent.click(screen.getByRole('button', { name: 'Reload settings' }));
 	await screen.findByRole('alert');
 	expect(screen.queryByText(/private-test/)).not.toBeInTheDocument();
