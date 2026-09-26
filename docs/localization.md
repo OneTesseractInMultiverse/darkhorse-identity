@@ -71,7 +71,8 @@ Stale state requires reloading. A timeout or lost response may follow a committe
 write: the form blocks further writes and offers reload, without automatic retry.
 The frontend applies only confirmed/read preferences. Other devices receive the
 saved value on their next session/profile read; there is no push synchronization.
-Untranslated routes remain marked English even when an account prefers Spanish.
+All shipped account and console routes support both languages; see the translation
+inventory below.
 
 ## Deployment default
 
@@ -119,6 +120,11 @@ instead of silently overwriting them during JSON parsing. The code-reviewed
 rejects missing, extra or incorrectly typed call arguments. The separate catalog
 check rejects missing/extra/duplicate keys, unknown placeholders, invalid ICU,
 unsupported plural branches, excessive nesting and HTML/control characters.
+A message may contain at most 256 total syntax-tree nodes across all alternatives,
+with at most eight nested selection levels. Each visit consumes the shared node
+budget; a wide set of individually small alternatives cannot bypass it. Trusted
+source text also rejects Arabic and left/right directional marks as well as bidi
+embeddings, overrides and isolates. Interpolation remains literal text.
 Messages are bounded to 2,048 characters, each catalog group to 512 messages and
 each source file to 256 KiB. The shared group contains 365 messages per language;
 the administration group contains 203. Both retain the same validation limits. Interpolated strings are bounded to 4,096 characters; numbers must be
@@ -447,3 +453,17 @@ registration, graph changes, secret rotation/retirement, lost-response reconcili
 stale-policy rejection and read denial in Spanish. Its local rerun remains pending
 Docker recovery; presentation fixtures do not replace it. Fluent translation review,
 accessibility review and the complete release qualification remain open.
+
+### Catalog validation follow-up — 2026-09-26
+
+The original node limit applied separately to each alternative. A source-defined
+regression now accepts 256 total nodes and rejects 257 split across sibling
+alternatives. A second regression rejects previously accepted invisible directional
+marks. Both tests failed before the validator correction; malformed entries,
+numeric select arguments and excessive nesting are also covered. Session-language
+checks now cover the successful asynchronous restore and competing restore order.
+
+The complete static build remains within the same 36 KiB regression budget;
+[`catalog-validation-2026-09-26.json`](measurements/catalog-validation-2026-09-26.json)
+records the rebuilt asset hashes and presentation-only observations. These checks
+do not substitute for full browser, linguistic review or whole-project coverage.

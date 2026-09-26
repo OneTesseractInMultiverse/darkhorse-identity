@@ -30,7 +30,7 @@ export function compileCatalog(contract: Contract, value: unknown, locale: Local
 			invalid();
 		}
 		const names = new Set<string>();
-		inspect(ast, contract[key], names, locale, 0);
+		inspect(ast, contract[key], names, locale, 0, { remaining: 256 });
 		if (names.size !== Object.keys(contract[key]).length) invalid();
 		catalog.set(key, ast);
 	}
@@ -64,10 +64,12 @@ function inspect(
 	args: Contract[string],
 	names: Set<string>,
 	locale: Locale,
-	depth: number
+	depth: number,
+	budget: { remaining: number }
 ): void {
 	if (depth > 8 || ast.length > 256) invalid();
 	for (const node of ast) {
+		if (--budget.remaining < 0) invalid();
 		if (node.type === TYPE.literal || node.type === TYPE.pound) continue;
 		if (node.type === TYPE.tag || node.type === TYPE.date || node.type === TYPE.time) invalid();
 		if (!Object.hasOwn(args, node.value)) invalid();
@@ -92,7 +94,7 @@ function inspect(
 		}
 		if (!Object.hasOwn(node.options, 'other')) invalid();
 		for (const branch of Object.values(node.options))
-			inspect(branch.value, args, names, locale, depth + 1);
+			inspect(branch.value, args, names, locale, depth + 1, budget);
 	}
 }
 
@@ -103,6 +105,9 @@ function unsafeText(text: string): boolean {
 			code === 60 ||
 			code === 62 ||
 			code === 127 ||
+			code === 0x061c ||
+			code === 0x200e ||
+			code === 0x200f ||
 			(code < 32 && code !== 9 && code !== 10) ||
 			(code >= 0x202a && code <= 0x202e) ||
 			(code >= 0x2066 && code <= 0x2069)

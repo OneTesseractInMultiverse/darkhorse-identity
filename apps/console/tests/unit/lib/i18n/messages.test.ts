@@ -89,3 +89,37 @@ it('supports plain numeric formatting, ordinal categories and select without cus
 		Reflect.apply(t, undefined, ['en', 'number', { count: 'credential-like-value' }])
 	).toThrow('Invalid message arguments');
 });
+it('bounds the entire parsed message across sibling branches', () => {
+	const c = { choice: { name: 'string' } } as const;
+	const branch = (count: number) => '{name}'.repeat(count);
+	const message = (left: number, right: number) =>
+		`{name, select, a {${branch(left)}} other {${branch(right)}}}`;
+	const accepted = createFormatter(c, { en: [['choice', message(127, 128)]] });
+	expect(accepted('en', 'choice', { name: 'a' }).text).toBe('a'.repeat(127));
+	expect(accepted('en', 'choice', { name: 'z' }).text).toBe('z'.repeat(128));
+	expect(() => compileCatalog(c, [['choice', message(128, 128)]], 'en')).toThrow(
+		'Invalid message catalog'
+	);
+});
+it('rejects invisible directional controls in trusted catalog text', () => {
+	for (const control of ['\u061c', '\u200e', '\u200f', '\u202a', '\u202e', '\u2066', '\u2069'])
+		expect(() => compileCatalog({ plain: {} }, [['plain', `Safe${control}text`]], 'en')).toThrow(
+			'Invalid message catalog'
+		);
+});
+it('rejects malformed entries, invalid select arguments and excessive nesting', () => {
+	for (const entry of [null, ['hello'], ['hello', 'ok', 'extra'], [1, 'text'], ['hello', 1]])
+		expect(() => compileCatalog({ hello: {} }, [entry], 'en')).toThrow('Invalid message catalog');
+	expect(() =>
+		compileCatalog(
+			{ choice: { count: 'number' } },
+			[['choice', '{count, select, other {Any}}']],
+			'en'
+		)
+	).toThrow('Invalid message catalog');
+	let nested = 'value';
+	for (let depth = 0; depth < 9; depth++) nested = `{name, select, other {${nested}}}`;
+	expect(() => compileCatalog({ choice: { name: 'string' } }, [['choice', nested]], 'en')).toThrow(
+		'Invalid message catalog'
+	);
+});

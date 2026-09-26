@@ -141,3 +141,27 @@ it('scopes link hints to their page and preserves explicit and saved choices', (
 	clear();
 	expect(get(language).locale).toBe('es');
 });
+it('applies public defaults below account authority and accepts only the latest session restore', async () => {
+	const language = fake();
+	language.deployment('es');
+	expect(get(language).locale).toBe('es');
+	await language.restoreAccount(async () => 'en');
+	expect(get(language).locale).toBe('en');
+	language.deployment('es');
+	expect(get(language).locale).toBe('en');
+	let earlier!: (value: 'es') => void;
+	const old = language.restoreAccount(
+		() =>
+			new Promise<'es'>((resolve) => {
+				earlier = resolve;
+			})
+	);
+	await language.restoreAccount(async () => 'en');
+	earlier('es');
+	await old;
+	expect(get(language).locale).toBe('en');
+	language.account();
+	expect(get(language).locale).toBe('es');
+	language.deployment();
+	expect(get(language).locale).toBe('en');
+});
