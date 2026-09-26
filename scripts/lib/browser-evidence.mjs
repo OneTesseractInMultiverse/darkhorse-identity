@@ -11,6 +11,7 @@ export const browserPhases = Object.freeze([
   "personal-keys",
   "profiles",
   "console-language",
+  "api-documentation",
   "email",
   "invitations",
   "sessions",

@@ -32,6 +32,7 @@ import { verifySessionManagement } from "./lib/sessions-browser.mjs";
 import { verifyLanguagePreferences } from "./lib/language-preferences-browser.mjs";
 import { verifyLocalization } from "./lib/localization-browser.mjs";
 import { verifyAccountOverview } from "./lib/account-overview-browser.mjs";
+import { verifyApiDocumentation } from "./lib/api-docs-browser.mjs";
 
 async function freePort() {
   const server = createServer();
@@ -372,6 +373,9 @@ async function exerciseBrowser({
   );
   await browserPhase("console-language", () =>
     verifyConsoleLanguages(page, origin),
+  );
+  await browserPhase("api-documentation", () =>
+    verifyApiDocumentation(browser, origin, ca),
   );
   await browserPhase("email", () => verifyEmail(page, origin, mailbox));
   await browserPhase("invitations", () =>

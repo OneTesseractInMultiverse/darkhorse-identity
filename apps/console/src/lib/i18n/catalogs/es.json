@@ -481,12 +481,56 @@
 		"apiDocs.personalKeyDescription",
 		"La clave de API personal de un usuario se limita a capacidades y recursos seleccionados explícitamente. Es distinta del secreto de cliente OIDC y del secreto de introspección del servidor de recursos."
 	],
+	["apiDocs.walkthroughTitle", "Guía para una aplicación web confidencial"],
+	[
+		"apiDocs.walkthroughIntro",
+		"Mantén el secreto del cliente OIDC, el intercambio del código, la validación del token ID y los tokens de Darkhorse en el backend de tu aplicación. El navegador solo sigue la redirección de autorización y regresa al callback registrado."
+	],
+	["apiDocs.walkthroughRegisterTitle", "1. Registra el cliente del backend"],
+	[
+		"apiDocs.walkthroughRegister",
+		"Crea una aplicación y un cliente OIDC confidencial. Registra la URL HTTPS exacta del callback. Guarda el ID de cliente y el secreto de un solo uso en el gestor de secretos del backend; el ID de aplicación no es el ID de cliente. Solicita únicamente los ámbitos de identidad necesarios."
+	],
+	["apiDocs.walkthroughAuthorizeTitle", "2. Inicia el acceso en el navegador"],
+	[
+		"apiDocs.walkthroughAuthorize",
+		"Lee el emisor y las URL de los endpoints del documento de descubrimiento OIDC. Genera state, nonce y un verificador PKCE impredecibles en el backend; luego envía el navegador a /authorize con response_type=code, el redirect_uri exacto, scope=openid y code_challenge_method=S256. Calcula code_challenge con el verificador usando SHA-256 y base64url sin relleno. Añade profile o email solo si hacen falta. No se pueden combinar ámbitos de identidad y recursos en la misma solicitud."
+	],
+	["apiDocs.walkthroughCallbackTitle", "3. Valida el callback"],
+	[
+		"apiDocs.walkthroughCallback",
+		"El código de autorización llega necesariamente en la consulta del callback y es una credencial de corta duración. Vincula el callback a la transacción del navegador, compara state antes de usar el código, exige que iss coincida con el emisor configurado y procesa los errores de protocolo. Canjéalo inmediatamente desde el backend, excluye de los registros de acceso los valores de la consulta, redirige a una URL limpia y evita contenido de terceros en la página de callback. El código es de un solo uso y caduca a los 60 segundos."
+	],
+	["apiDocs.walkthroughExchangeTitle", "4. Intercambia el código en el backend"],
+	[
+		"apiDocs.walkthroughExchange",
+		"Envía POST a /token mediante HTTPS verificado con client_secret_basic y los campos del formulario de código de autorización: el código, el mismo redirect_uri exacto y el verificador PKCE. Valida el token ID RS256 firmado con una biblioteca OIDC mantenida: verifica la firma mediante el JWKS del emisor y comprueba emisor, audiencia del cliente, caducidad y el nonce enviado. El token de acceso es opaco; no lo interpretes como JWT."
+	],
+	["apiDocs.walkthroughSessionTitle", "5. Crea la sesión de la aplicación"],
+	[
+		"apiDocs.walkthroughSession",
+		"Crea la cookie de sesión de tu aplicación con Secure, HttpOnly y una política SameSite adecuada para su flujo. Mantén los tokens de Darkhorse en el servidor. Si la aplicación necesita datos del perfil, llama a /userinfo desde el backend con el token de identidad como credencial Bearer; los datos devueltos se limitan según el consentimiento y los ámbitos. Nunca copies la cookie del navegador de Darkhorse a tu aplicación."
+	],
+	["apiDocs.walkthroughResourceTitle", "6. Solicita acceso a API protegidas por separado"],
+	[
+		"apiDocs.walkthroughResource",
+		"Usa una solicitud de autorización separada con un recurso registrado y sus ámbitos permitidos, junto con openid. Envía su token de acceso opaco únicamente a esa API de recursos. La API comprueba la audiencia exacta mediante /introspect con su propio ID y secreto de servidor de recursos; deniega el acceso si la comprobación es inactiva o no está disponible. No uses un token de identidad, un secreto de cliente ni el token del usuario como credencial de introspección."
+	],
+	["apiDocs.walkthroughRefreshTitle", "7. Rota tokens de renovación solo si están habilitados"],
+	[
+		"apiDocs.walkthroughRefresh",
+		"Los tokens de renovación solo se emiten cuando el administrador habilita esa opción para el cliente. La rotación es de un solo uso y está vinculada a la sesión original activa del navegador de Darkhorse. Conserva el token en el backend. Si una solicitud de tokens pudo confirmarse, pero se perdió la respuesta, no la repitas automáticamente; inicia un nuevo flujo del navegador."
+	],
+	[
+		"apiDocs.logoutNote",
+		"Esta referencia actualmente no publica un endpoint OIDC de cierre de sesión ni la entrega de Logout Tokens por canal posterior. Finaliza explícitamente la sesión de tu aplicación; cerrar la sesión del navegador de Darkhorse no finaliza la sesión local de una aplicación."
+	],
 	["apiDocs.operationGroups", "Operaciones de protocolo compatibles"],
 	["apiDocs.authentication", "Autenticación y seguridad"],
 	["apiDocs.parameters", "Parámetros"],
 	["apiDocs.request", "Cuerpo de solicitud y ejemplos"],
 	["apiDocs.responses", "Respuestas y errores"],
-	["apiDocs.copyExample", "Copiar ejemplo de {operation}"],
+	["apiDocs.copyExample", "Copiar ejemplo {example} de {operation}"],
 	["apiDocs.copyLink", "Copiar enlace a {operation}"],
 	["apiDocs.copied", "Se copió el ejemplo."],
 	[

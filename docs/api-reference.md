@@ -87,13 +87,15 @@ Use verified HTTPS throughout. Keep credentials out of URLs, browser storage,
 command arguments, and logs. Read each operation's documented failure and
 uncertain-outcome behavior before retrying a write or credential exchange.
 
+The console now includes a step-by-step confidential web-client flow and
+separates identity UserInfo from protected-resource authorization and
+introspection. It is a protocol outline rather than a runnable client sample.
 For implementation and operations detail, consult the
 [provider flow](provider.md), [registration](registration.md),
 [token checks](token-checks.md), [resource introspection](resource-introspection.md),
 [personal API keys](personal-api-keys.md), [console](console.md), and the
-feature-specific guides. These guides currently provide the integration
-walkthroughs; the console reader's additional end-to-end examples and
-deployment qualification remain in progress under issue #43.
+feature-specific guides. Runnable end-to-end examples and deployment
+qualification remain in progress under issue #43.
 
 ## Generate and verify
 
@@ -128,6 +130,10 @@ or fetch schemas. The specification format follows the
 
 `make check` includes the deterministic route and contract drift checks. The
 API reference page is a route-specific lazy-loaded frontend feature; unrelated
-console pages do not fetch its JSON documents. Performance measurements,
-browser-level mobile/zoom checks, end-to-end integration walkthroughs, and
-mechanical runtime-schema parity are tracked as remaining work for issue #43.
+console pages do not fetch its JSON documents. The disposable HTTPS browser suite
+checks the documented flow, search, direct links and reloads, keyboard
+disclosure, clipboard and download actions, safe text rendering, Spanish
+presentation, signed-out behavior, cookie omission on static-reference fetches,
+and mobile/zoom-sized viewports. Runnable application examples, screen-reader
+review, repeatable bundle/load performance budgets, and mechanical
+runtime-schema parity remain tracked work for issue #43.

@@ -126,6 +126,7 @@ const browserPhases = [
   "personal-keys",
   "profiles",
   "console-language",
+  "api-documentation",
   "email",
   "invitations",
   "sessions",

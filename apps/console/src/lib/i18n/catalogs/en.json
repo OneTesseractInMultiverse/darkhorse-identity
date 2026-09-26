@@ -442,12 +442,56 @@
 		"apiDocs.personalKeyDescription",
 		"A user's personal API key is limited to explicitly selected capabilities and resources. It is distinct from an OIDC client secret and from a resource-server introspection secret."
 	],
+	["apiDocs.walkthroughTitle", "Confidential web application walkthrough"],
+	[
+		"apiDocs.walkthroughIntro",
+		"Keep the OIDC client secret, code exchange, ID-token validation and Darkhorse tokens on your application backend. The browser only follows the authorization redirect and returns to your registered callback."
+	],
+	["apiDocs.walkthroughRegisterTitle", "1. Register the backend client"],
+	[
+		"apiDocs.walkthroughRegister",
+		"Create an application and a confidential OIDC client. Register the exact HTTPS callback URL. Store the client ID and one-time secret in your backend secret manager; the application ID is not the client ID. Request only the identity scopes you need."
+	],
+	["apiDocs.walkthroughAuthorizeTitle", "2. Start sign-in in the browser"],
+	[
+		"apiDocs.walkthroughAuthorize",
+		"Read the issuer and endpoint URLs from OpenID discovery. Generate unpredictable state, nonce and a PKCE verifier on the backend, then send the browser to /authorize with response_type=code, the exact redirect_uri, scope=openid and code_challenge_method=S256. Compute code_challenge from the verifier using SHA-256 and unpadded base64url. Add profile or email only when needed. Identity and resource scopes cannot be mixed in one request."
+	],
+	["apiDocs.walkthroughCallbackTitle", "3. Validate the callback"],
+	[
+		"apiDocs.walkthroughCallback",
+		"The authorization code necessarily arrives in the callback query and is a short-lived credential. Bind the callback to the browser transaction, compare state before using the code, require iss to match the configured issuer, and handle protocol errors. Redeem it immediately from the backend, redact callback query values from access logs, redirect to a clean URL, and avoid third-party content on the callback page. A code is single-use and expires after 60 seconds."
+	],
+	["apiDocs.walkthroughExchangeTitle", "4. Exchange the code on the backend"],
+	[
+		"apiDocs.walkthroughExchange",
+		"POST to /token over verified HTTPS with client_secret_basic and the authorization-code form fields: the code, the exact same redirect_uri and the PKCE verifier. Validate the signed RS256 ID token with a maintained OIDC library: verify its signature through the issuer's JWKS and check issuer, client audience, expiry and the nonce you sent. The access token is opaque; do not parse it as a JWT."
+	],
+	["apiDocs.walkthroughSessionTitle", "5. Create the application session"],
+	[
+		"apiDocs.walkthroughSession",
+		"Create your application's own Secure, HttpOnly session cookie with a SameSite policy suited to its flow. Keep Darkhorse tokens server-side. If the app needs profile claims, call /userinfo from the backend with the identity access token as a Bearer credential; returned claims are limited by consent and scope. Never copy Darkhorse's browser cookie to your app."
+	],
+	["apiDocs.walkthroughResourceTitle", "6. Request protected API access separately"],
+	[
+		"apiDocs.walkthroughResource",
+		"Use a separate authorization request with one registered resource and its allowed scopes, together with openid. Send its opaque access token only to that resource API. The API checks the exact audience through /introspect using its own resource-server ID and secret; it denies access if the check is inactive or unavailable. Do not use an identity token, client secret or end-user token as the introspection credential."
+	],
+	["apiDocs.walkthroughRefreshTitle", "7. Rotate refresh tokens only when enabled"],
+	[
+		"apiDocs.walkthroughRefresh",
+		"Refresh tokens are issued only when the administrator opts the client in. Rotation is one-use and bound to the original live Darkhorse browser session. Keep the refresh token on your backend. If a token request may have committed but its reply was lost, do not retry it automatically; start a new browser flow."
+	],
+	[
+		"apiDocs.logoutNote",
+		"This reference currently publishes no OIDC logout endpoint or back-channel Logout Token delivery. End your application's own session explicitly; ending a Darkhorse browser session does not end an application's local session."
+	],
 	["apiDocs.operationGroups", "Supported protocol operations"],
 	["apiDocs.authentication", "Authentication and security"],
 	["apiDocs.parameters", "Parameters"],
 	["apiDocs.request", "Request body and examples"],
 	["apiDocs.responses", "Responses and errors"],
-	["apiDocs.copyExample", "Copy example for {operation}"],
+	["apiDocs.copyExample", "Copy {example} example for {operation}"],
 	["apiDocs.copyLink", "Copy link to {operation}"],
 	["apiDocs.copied", "Example copied."],
 	["apiDocs.copyFailed", "Clipboard access is unavailable. Select and copy the example text."],

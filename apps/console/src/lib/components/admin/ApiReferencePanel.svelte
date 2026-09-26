@@ -215,6 +215,42 @@
 			</div>
 		</section>
 
+		<section aria-labelledby="api-walkthrough-title" class="api-section api-walkthrough">
+			<h2 id="api-walkthrough-title">{$language.t('apiDocs.walkthroughTitle')}</h2>
+			<p>{$language.t('apiDocs.walkthroughIntro')}</p>
+			<ol>
+				<li>
+					<h3>{$language.t('apiDocs.walkthroughRegisterTitle')}</h3>
+					<p>{$language.t('apiDocs.walkthroughRegister')}</p>
+				</li>
+				<li>
+					<h3>{$language.t('apiDocs.walkthroughAuthorizeTitle')}</h3>
+					<p>{$language.t('apiDocs.walkthroughAuthorize')}</p>
+				</li>
+				<li>
+					<h3>{$language.t('apiDocs.walkthroughCallbackTitle')}</h3>
+					<p>{$language.t('apiDocs.walkthroughCallback')}</p>
+				</li>
+				<li>
+					<h3>{$language.t('apiDocs.walkthroughExchangeTitle')}</h3>
+					<p>{$language.t('apiDocs.walkthroughExchange')}</p>
+				</li>
+				<li>
+					<h3>{$language.t('apiDocs.walkthroughSessionTitle')}</h3>
+					<p>{$language.t('apiDocs.walkthroughSession')}</p>
+				</li>
+				<li>
+					<h3>{$language.t('apiDocs.walkthroughResourceTitle')}</h3>
+					<p>{$language.t('apiDocs.walkthroughResource')}</p>
+				</li>
+				<li>
+					<h3>{$language.t('apiDocs.walkthroughRefreshTitle')}</h3>
+					<p>{$language.t('apiDocs.walkthroughRefresh')}</p>
+				</li>
+			</ol>
+			<p class="api-callout api-walkthrough-note">{$language.t('apiDocs.logoutNote')}</p>
+		</section>
+
 		<section id="operations" aria-labelledby="api-operations-title" class="api-section">
 			<div class="api-section-heading">
 				<div>
@@ -275,7 +311,8 @@
 															)}
 													>
 														{$language.t('apiDocs.copyExample', {
-															operation: operation.operationId
+															operation: operation.operationId,
+															example: name
 														})}
 													</button>
 												</div>
@@ -430,6 +467,35 @@
 		font-size: 13px;
 		line-height: 1.6;
 		margin-bottom: 0;
+	}
+	.api-walkthrough ol {
+		list-style: none;
+		margin: 0;
+		padding: 0;
+		display: grid;
+		grid-template-columns: repeat(2, minmax(0, 1fr));
+		gap: 12px;
+	}
+	.api-walkthrough li {
+		min-width: 0;
+		padding: 18px;
+		border: 1px solid var(--color-border);
+		border-radius: 14px;
+		background: #101914b8;
+	}
+	.api-walkthrough h3 {
+		margin: 0 0 8px;
+		font-size: 15px;
+	}
+	.api-walkthrough li p,
+	.api-walkthrough-note {
+		margin: 0;
+		color: var(--color-muted-foreground);
+		font-size: 13px;
+		line-height: 1.6;
+	}
+	.api-walkthrough-note {
+		padding: 14px 18px;
 	}
 	.api-section-heading {
 		align-items: end;
@@ -646,6 +712,9 @@
 		}
 		.api-downloads {
 			min-width: 0;
+			grid-template-columns: 1fr;
+		}
+		.api-walkthrough ol {
 			grid-template-columns: 1fr;
 		}
 		.api-result-count {

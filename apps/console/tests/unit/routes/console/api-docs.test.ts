@@ -17,7 +17,8 @@ const specification = {
 					content: {
 						'application/x-www-form-urlencoded': {
 							examples: {
-								opaqueAccess: { value: { token: 'da_<64 lowercase hexadecimal characters>' } }
+								opaqueAccess: { value: { token: 'da_<64 lowercase hexadecimal characters>' } },
+								inactive: { value: { token: 'opaque example that is inactive' } }
 							}
 						}
 					}
@@ -81,6 +82,12 @@ describe('API documentation page', () => {
 		render(ApiReferencePanel);
 
 		expect(await screen.findByRole('heading', { name: 'API documentation' })).toBeInTheDocument();
+		expect(
+			screen.getByRole('heading', { name: 'Confidential web application walkthrough' })
+		).toBeInTheDocument();
+		expect(screen.getByText(/code_challenge_method=S256/)).toBeInTheDocument();
+		expect(screen.getAllByText(/client_secret_basic/).length).toBeGreaterThan(0);
+		expect(screen.getByText(/currently publishes no OIDC logout endpoint/)).toBeInTheDocument();
 		expect(screen.getByText('Application release 0.1.0')).toBeInTheDocument();
 		expect(fetcher).toHaveBeenNthCalledWith(1, '/reference/openapi-v1.json', {
 			credentials: 'omit',
@@ -106,8 +113,11 @@ describe('API documentation page', () => {
 		expect(screen.queryByText('/userinfo')).not.toBeInTheDocument();
 		await fireEvent.click(screen.getByText('/introspect'));
 		await fireEvent.click(
-			screen.getByRole('button', { name: 'Copy example for postIntrospection' })
+			screen.getByRole('button', { name: 'Copy opaqueAccess example for postIntrospection' })
 		);
+		expect(
+			screen.getByRole('button', { name: 'Copy inactive example for postIntrospection' })
+		).toBeInTheDocument();
 		await waitFor(() =>
 			expect(writeText).toHaveBeenCalledWith(
 				JSON.stringify({ token: 'da_<64 lowercase hexadecimal characters>' }, null, 2)
