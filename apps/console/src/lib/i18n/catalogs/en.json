@@ -410,5 +410,98 @@
 	["branding.changeBackground", "Change background"],
 	["branding.changeLogoTitle", "Change login logo"],
 	["branding.changeBackgroundTitle", "Change login background"],
-	["branding.reload", "Reload settings"]
+	["branding.reload", "Reload settings"],
+	["directory.title", "User directory — Darkhorse"],
+	["directory.description", "Manage your organization’s user directory"],
+	["directory.eyebrow", "IDENTITY / DIRECTORY"],
+	["directory.intro", "The people behind every connection."],
+	["directory.refresh", "Refresh directory"],
+	["directory.saved", "Change saved."],
+	["directory.signIn", "Return to sign in"],
+	["directory.searchForm", "Search directory"],
+	["directory.searchUsers", "Search users"],
+	["directory.searchPlaceholder", "Name or email prefix"],
+	["directory.allStatuses", "All statuses"],
+	["directory.search", "Search"],
+	["directory.loading", "Loading directory…"],
+	["directory.table", "User directory table"],
+	["directory.caption", "Organization users, oldest accounts first"],
+	["directory.user", "User"],
+	["directory.administrator", "Administrator"],
+	["directory.yes", "Yes"],
+	["directory.no", "No"],
+	["directory.you", "You"],
+	["directory.viewName", "View {name}"],
+	["directory.assignName", "Assign access to {name}"],
+	["directory.deactivateName", "Deactivate {name}"],
+	["directory.reactivateName", "Reactivate {name}"],
+	["directory.view", "View"],
+	["directory.access", "Access"],
+	["directory.deactivate", "Deactivate"],
+	["directory.reactivate", "Reactivate"],
+	["directory.empty", "No users match this page. Change the filters or return to an earlier page."],
+	[
+		"directory.count",
+		"{count, plural, one {# user shown · Oldest first} other {# users shown · Oldest first}}"
+	],
+	["directory.previous", "Previous page"],
+	["directory.next", "Next page"],
+	["directory.profile", "User profile"],
+	["directory.editName", "Edit name"],
+	["directory.applicationAccess", "Application access"],
+	["directory.deactivateTitle", "Deactivate account?"],
+	["directory.reactivateTitle", "Reactivate account?"],
+	[
+		"directory.deactivateHelp",
+		"This account will lose sign-in and access immediately. Its profile and assignments will be retained."
+	],
+	[
+		"directory.reactivateHelp",
+		"This account can sign in again. Previously revoked sessions remain invalid."
+	],
+	["directory.confirmDeactivation", "Confirm deactivation"],
+	["directory.confirmReactivation", "Confirm reactivation"],
+	["directory.name", "Name"],
+	["directory.email", "Email / username"],
+	["directory.emailOwnership", "Email ownership"],
+	["directory.platformAdministrator", "Platform administrator"],
+	["directory.fullProfile", "View and edit full profile"],
+	["directory.nameHelp", "Email and sign-in credentials stay the same."],
+	["directory.saveName", "Save name"],
+	["directory.loadingRoles", "Loading application roles…"],
+	["directory.retryAccess", "Retry access lookup"],
+	["directory.application", "Application"],
+	["directory.inactiveApplication", "{name} (inactive)"],
+	["directory.role", "Role"],
+	["directory.assignRole", "Assign this role"],
+	[
+		"directory.inactiveHelp",
+		"This application is inactive. You can remove an existing assignment."
+	],
+	["directory.noRoles", "No roles are available for this application."],
+	["directory.noApplications", "No applications have been registered."],
+	["directory.saveAccess", "Save access"],
+	["directory.error.signed-out", "Sign in to continue."],
+	["directory.error.forbidden", "Administrator access is required."],
+	["directory.error.unavailable", "The directory is temporarily unavailable. Try refreshing."],
+	[
+		"directory.error.recent",
+		"For this change, sign out and sign in again, then reopen the directory."
+	],
+	[
+		"directory.error.conflict",
+		"This record or its access policy changed. Refresh the directory before trying again."
+	],
+	[
+		"directory.error.last-administrator",
+		"Keep at least one active administrator with a working credential."
+	],
+	[
+		"directory.error.invalid",
+		"The change was rejected. Check the values and refresh the directory."
+	],
+	[
+		"directory.error.uncertain",
+		"The change could not be confirmed. Refresh the directory before making another change."
+	]
 ]

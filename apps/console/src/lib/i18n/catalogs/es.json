@@ -455,5 +455,107 @@
 	["branding.changeBackground", "Cambiar fondo"],
 	["branding.changeLogoTitle", "Cambiar logotipo del inicio de sesión"],
 	["branding.changeBackgroundTitle", "Cambiar fondo del inicio de sesión"],
-	["branding.reload", "Volver a cargar la configuración"]
+	["branding.reload", "Volver a cargar la configuración"],
+	["directory.title", "Directorio de usuarios — Darkhorse"],
+	["directory.description", "Administra el directorio de usuarios de tu organización"],
+	["directory.eyebrow", "IDENTIDAD / DIRECTORIO"],
+	["directory.intro", "Las personas detrás de cada conexión."],
+	["directory.refresh", "Actualizar directorio"],
+	["directory.saved", "Cambio guardado."],
+	["directory.signIn", "Volver al inicio de sesión"],
+	["directory.searchForm", "Buscar en el directorio"],
+	["directory.searchUsers", "Buscar usuarios"],
+	["directory.searchPlaceholder", "Inicio del nombre o correo electrónico"],
+	["directory.allStatuses", "Todos los estados"],
+	["directory.search", "Buscar"],
+	["directory.loading", "Cargando directorio…"],
+	["directory.table", "Tabla del directorio de usuarios"],
+	["directory.caption", "Usuarios de la organización, cuentas más antiguas primero"],
+	["directory.user", "Usuario"],
+	["directory.administrator", "Administrador"],
+	["directory.yes", "Sí"],
+	["directory.no", "No"],
+	["directory.you", "Tú"],
+	["directory.viewName", "Ver a {name}"],
+	["directory.assignName", "Asignar acceso a {name}"],
+	["directory.deactivateName", "Desactivar a {name}"],
+	["directory.reactivateName", "Reactivar a {name}"],
+	["directory.view", "Ver"],
+	["directory.access", "Acceso"],
+	["directory.deactivate", "Desactivar"],
+	["directory.reactivate", "Reactivar"],
+	[
+		"directory.empty",
+		"No hay usuarios que coincidan en esta página. Cambia los filtros o vuelve a una página anterior."
+	],
+	[
+		"directory.count",
+		"{count, plural, one {# usuario mostrado · Más antiguos primero} other {# usuarios mostrados · Más antiguos primero}}"
+	],
+	["directory.previous", "Página anterior"],
+	["directory.next", "Página siguiente"],
+	["directory.profile", "Perfil del usuario"],
+	["directory.editName", "Editar nombre"],
+	["directory.applicationAccess", "Acceso a aplicaciones"],
+	["directory.deactivateTitle", "¿Desactivar la cuenta?"],
+	["directory.reactivateTitle", "¿Reactivar la cuenta?"],
+	[
+		"directory.deactivateHelp",
+		"Esta cuenta perderá inmediatamente el inicio de sesión y el acceso. Se conservarán su perfil y sus asignaciones."
+	],
+	[
+		"directory.reactivateHelp",
+		"Esta cuenta podrá volver a iniciar sesión. Las sesiones revocadas seguirán siendo inválidas."
+	],
+	["directory.confirmDeactivation", "Confirmar desactivación"],
+	["directory.confirmReactivation", "Confirmar reactivación"],
+	["directory.name", "Nombre"],
+	["directory.email", "Correo electrónico / nombre de usuario"],
+	["directory.emailOwnership", "Titularidad del correo electrónico"],
+	["directory.platformAdministrator", "Administrador de la plataforma"],
+	["directory.fullProfile", "Ver y editar el perfil completo"],
+	[
+		"directory.nameHelp",
+		"El correo electrónico y las credenciales de inicio de sesión no cambian."
+	],
+	["directory.saveName", "Guardar nombre"],
+	["directory.loadingRoles", "Cargando roles de la aplicación…"],
+	["directory.retryAccess", "Reintentar consulta de acceso"],
+	["directory.application", "Aplicación"],
+	["directory.inactiveApplication", "{name} (inactiva)"],
+	["directory.role", "Rol"],
+	["directory.assignRole", "Asignar este rol"],
+	[
+		"directory.inactiveHelp",
+		"Esta aplicación está inactiva. Puedes quitar una asignación existente."
+	],
+	["directory.noRoles", "No hay roles disponibles para esta aplicación."],
+	["directory.noApplications", "No se han registrado aplicaciones."],
+	["directory.saveAccess", "Guardar acceso"],
+	["directory.error.signed-out", "Inicia sesión para continuar."],
+	["directory.error.forbidden", "Se requiere acceso de administrador."],
+	[
+		"directory.error.unavailable",
+		"El directorio no está disponible temporalmente. Intenta actualizarlo."
+	],
+	[
+		"directory.error.recent",
+		"Para realizar este cambio, cierra sesión, vuelve a iniciarla y abre el directorio de nuevo."
+	],
+	[
+		"directory.error.conflict",
+		"Este registro o su política de acceso cambió. Actualiza el directorio antes de volver a intentarlo."
+	],
+	[
+		"directory.error.last-administrator",
+		"Debe quedar al menos un administrador activo con una credencial válida."
+	],
+	[
+		"directory.error.invalid",
+		"El cambio fue rechazado. Revisa los valores y actualiza el directorio."
+	],
+	[
+		"directory.error.uncertain",
+		"No se pudo confirmar el cambio. Actualiza el directorio antes de hacer otro cambio."
+	]
 ]

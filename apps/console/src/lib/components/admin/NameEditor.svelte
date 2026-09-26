@@ -1,4 +1,6 @@
 <script lang="ts">
+	import { useLocalization } from '$lib/i18n/context';
+	const language = useLocalization();
 	import { onMount, tick } from 'svelte';
 	import { Button } from '$lib/components/ui/button';
 	import type { User, Change } from '$lib/admin/directory';
@@ -25,7 +27,7 @@
 </script>
 
 <form class="admin-form" onsubmit={submit}>
-	<label for="first-name">First name</label><input
+	<label for="first-name">{$language.t('profile.firstName')}</label><input
 		id="first-name"
 		bind:this={firstInput}
 		bind:value={first}
@@ -34,7 +36,7 @@
 		disabled={pending}
 		autocomplete="off"
 	/>
-	<label for="last-name">Last name</label><input
+	<label for="last-name">{$language.t('profile.lastName')}</label><input
 		id="last-name"
 		bind:value={last}
 		required
@@ -42,11 +44,12 @@
 		disabled={pending}
 		autocomplete="off"
 	/>
-	<p class="muted">Email and sign-in credentials stay the same.</p>
+	<p class="muted">{$language.t('directory.nameHelp')}</p>
 	<div class="modal-actions">
-		<Button variant="outline" onclick={close} disabled={pending}>Cancel</Button><Button
-			type="submit"
-			disabled={pending}>{pending ? 'Saving…' : 'Save name'}</Button
+		<Button variant="outline" onclick={close} disabled={pending}
+			>{$language.t('common.cancel')}</Button
+		><Button type="submit" disabled={pending}
+			>{$language.t(pending ? 'common.saving' : 'directory.saveName')}</Button
 		>
 	</div>
 </form>

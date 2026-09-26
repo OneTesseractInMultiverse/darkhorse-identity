@@ -1,8 +1,9 @@
 <script lang="ts">
+	import { useLocalization } from '$lib/i18n/context';
+	const language = useLocalization();
 	import { onMount } from 'svelte';
 	import { Button } from '$lib/components/ui/button';
 	import {
-		failureMessage,
 		type DirectoryApi,
 		type User,
 		type Access,
@@ -26,7 +27,7 @@
 	} = $props();
 	let view = $state<Access | null>(null),
 		loading = $state(true),
-		error = $state(''),
+		error = $state<Failure | null>(null),
 		roleId = $state(''),
 		assigned = $state(false);
 	let mounted = false;
@@ -40,7 +41,7 @@
 	});
 	async function load(application?: string) {
 		loading = true;
-		error = '';
+		error = null;
 		const result = await api.access(user.id, application);
 		if (!mounted) return;
 		if (result.kind === 'ready') {
@@ -49,7 +50,7 @@
 			assigned = view.roles[0]?.assigned ?? false;
 		} else {
 			view = null;
-			error = failureMessage[result.kind];
+			error = result.kind;
 			if (result.kind !== 'unavailable') denied(result.kind);
 		}
 		loading = false;
@@ -74,23 +75,25 @@
 	}
 </script>
 
-{#if loading}<p role="status">Loading application roles…</p>{/if}
-{#if error}<p role="alert" class="admin-error">{error}</p>
-	<Button onclick={() => load()}>Retry access lookup</Button>{/if}
+{#if loading}<p role="status">{$language.t('directory.loadingRoles')}</p>{/if}
+{#if error}<p role="alert" class="admin-error">{$language.t(`directory.error.${error}`)}</p>
+	<Button onclick={() => load()}>{$language.t('directory.retryAccess')}</Button>{/if}
 {#if view}
 	<form class="admin-form" onsubmit={submit}>
 		{#if view.applications.length}
-			<label for="role-application">Application</label><select
+			<label for="role-application">{$language.t('directory.application')}</label><select
 				id="role-application"
 				value={view.selected ?? ''}
 				onchange={(event) => load(event.currentTarget.value)}
 				disabled={loading || pending}
 				>{#each view.applications as app (app.id)}<option value={app.id}
-						>{app.name}{app.active ? '' : ' (inactive)'}</option
+						>{app.active
+							? app.name
+							: $language.t('directory.inactiveApplication', { name: app.name })}</option
 					>{/each}</select
 			>
 			{#if view.roles.length}
-				<label for="application-role">Role</label><select
+				<label for="application-role">{$language.t('directory.role')}</label><select
 					id="application-role"
 					value={roleId}
 					onchange={chooseRole}
@@ -106,21 +109,24 @@
 							pending ||
 							(!activeApplication?.active &&
 								!view.roles.find((role) => role.id === roleId)?.assigned)}
-					/> Assign this role</label
+					/>
+					{$language.t('directory.assignRole')}</label
 				>
 				{#if !activeApplication?.active}<p class="muted">
-						This application is inactive. You can remove an existing assignment.
+						{$language.t('directory.inactiveHelp')}
 					</p>{/if}
-			{:else}<p class="muted">No roles are available for this application.</p>{/if}
-		{:else}<p class="muted">No applications have been registered.</p>{/if}
+			{:else}<p class="muted">{$language.t('directory.noRoles')}</p>{/if}
+		{:else}<p class="muted">{$language.t('directory.noApplications')}</p>{/if}
 		<div class="modal-actions">
-			<Button variant="outline" onclick={close} disabled={pending}>Cancel</Button><Button
+			<Button variant="outline" onclick={close} disabled={pending}
+				>{$language.t('common.cancel')}</Button
+			><Button
 				type="submit"
 				disabled={pending || loading || !roleId || (!activeApplication?.active && assigned)}
-				>{pending ? 'Saving…' : 'Save access'}</Button
+				>{$language.t(pending ? 'common.saving' : 'directory.saveAccess')}</Button
 			>
 		</div>
 	</form>
 {:else if !loading}<div class="modal-actions">
-		<Button variant="outline" onclick={close}>Close</Button>
+		<Button variant="outline" onclick={close}>{$language.t('common.close')}</Button>
 	</div>{/if}

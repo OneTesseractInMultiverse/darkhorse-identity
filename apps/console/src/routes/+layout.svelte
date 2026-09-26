@@ -48,6 +48,7 @@
 				'/invitation',
 				'/authorization',
 				'/console/settings',
+				'/console/users',
 				'/console/profile'
 			].includes(page.url.pathname)
 				? $language.locale

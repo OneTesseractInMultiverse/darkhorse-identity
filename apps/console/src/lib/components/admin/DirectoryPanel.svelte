@@ -1,15 +1,17 @@
 <script lang="ts">
+	import { useLocalization } from '$lib/i18n/context';
+	const language = useLocalization();
 	import { onMount, tick } from 'svelte';
 	import { resolve } from '$app/paths';
 	import { Button } from '$lib/components/ui/button';
 	import {
-		failureMessage,
 		type DirectoryApi,
 		type Page,
 		type User,
 		type Query,
 		type Change,
-		type Failure
+		type Failure,
+		type Write
 	} from '$lib/admin/directory';
 	import Modal from './Modal.svelte';
 	import ProfileView from './ProfileView.svelte';
@@ -20,8 +22,8 @@
 	let page = $state<Page | null>(null),
 		pending = $state(true),
 		blocked = $state(false),
-		error = $state(''),
-		message = $state('');
+		error = $state<Failure | Exclude<Write['kind'], 'saved'> | null>(null),
+		message = $state(false);
 	let search = $state(''),
 		status = $state<Query['status']>(''),
 		applied = $state<Query>({ search: '', status: '' });
@@ -42,7 +44,7 @@
 	});
 	async function load(query: Query = applied, history = cursors, index = position) {
 		pending = true;
-		error = '';
+		error = null;
 		page = null;
 		const result = await api.list({ ...query, after: history[index] });
 		if (!mounted) return;
@@ -61,12 +63,12 @@
 		page = null;
 		selected = null;
 		mode = null;
-		error = failureMessage[kind];
+		error = kind;
 	}
 	function searchUsers(event: SubmitEvent) {
 		event.preventDefault();
 		if (!pending) {
-			message = '';
+			message = false;
 			void load({ search: search.trim(), status }, [undefined], 0);
 		}
 	}
@@ -78,8 +80,8 @@
 		if (pending || blocked) return;
 		trigger = origin;
 		pending = true;
-		error = '';
-		message = '';
+		error = null;
+		message = false;
 		const result = await api.user(target.id);
 		if (!mounted) return;
 		if (result.kind === 'ready') {
@@ -97,19 +99,19 @@
 	async function save(change: Change, target = selected) {
 		if (!target || pending || blocked) return;
 		pending = true;
-		error = '';
-		message = '';
+		error = null;
+		message = false;
 		const result = await api.update(target, change);
 		if (!mounted) return;
 		mode = null;
 		selected = null;
 		pending = false;
 		if (result.kind === 'saved') {
-			message = 'Change saved.';
+			message = true;
 			await load();
 		} else if (result.kind === 'signed-out' || result.kind === 'forbidden') deny(result.kind);
 		else {
-			error = failureMessage[result.kind];
+			error = result.kind;
 			blocked = true;
 		}
 		await tick();
@@ -119,53 +121,66 @@
 
 <div class="directory-heading">
 	<div>
-		<p class="eyebrow">IDENTITY / DIRECTORY</p>
-		<h1>User directory</h1>
-		<p class="muted">The people behind every connection.</p>
+		<p class="eyebrow">{$language.t('directory.eyebrow')}</p>
+		<h1>{$language.t('console.users')}</h1>
+		<p class="muted">{$language.t('directory.intro')}</p>
 	</div>
-	<Button variant="outline" onclick={() => load()} disabled={pending}>Refresh directory</Button>
+	<Button variant="outline" onclick={() => load()} disabled={pending}
+		>{$language.t('directory.refresh')}</Button
+	>
 </div>
 {#if message}<p class="admin-success" role="status" tabindex="-1" bind:this={notification}>
-		{message}
+		{$language.t('directory.saved')}
 	</p>{/if}
 {#if error}<p class="admin-error" role="alert" tabindex="-1" bind:this={notification}>
-		{error}
+		{$language.t(`directory.error.${error}`)}
 	</p>{/if}
 {#if failed === 'signed-out' || failed === 'forbidden'}<a class="admin-link" href={resolve('/')}
-		>Return to sign in</a
+		>{$language.t('directory.signIn')}</a
 	>{/if}
-<form class="directory-toolbar" aria-label="Search directory" onsubmit={searchUsers}>
+<form
+	class="directory-toolbar"
+	aria-label={$language.t('directory.searchForm')}
+	onsubmit={searchUsers}
+>
 	<div class="search-field">
-		<label for="user-search">Search users</label><input
+		<label for="user-search">{$language.t('directory.searchUsers')}</label><input
 			id="user-search"
 			bind:value={search}
-			placeholder="Name or email prefix"
+			placeholder={$language.t('directory.searchPlaceholder')}
 			maxlength="100"
 			disabled={pending}
 			autocomplete="off"
 		/>
 	</div>
 	<div>
-		<label for="user-status">Status</label><select
+		<label for="user-status">{$language.t('common.status')}</label><select
 			id="user-status"
 			bind:value={status}
 			disabled={pending}
-			><option value="">All statuses</option><option value="active">Active</option><option
-				value="inactive">Inactive</option
-			></select
+			><option value="">{$language.t('directory.allStatuses')}</option><option value="active"
+				>{$language.t('common.active')}</option
+			><option value="inactive">{$language.t('common.inactive')}</option></select
 		>
 	</div>
-	<Button type="submit" disabled={pending}>Search</Button>
+	<Button type="submit" disabled={pending}>{$language.t('directory.search')}</Button>
 </form>
-{#if pending && !selected}<p role="status" class="muted">Loading directory…</p>{/if}
+{#if pending && !selected}<p role="status" class="muted">{$language.t('directory.loading')}</p>{/if}
 {#if page}
 	<!-- svelte-ignore a11y_no_noninteractive_tabindex (keyboard users must be able to scroll the table horizontally) -->
-	<div class="directory-table" role="region" aria-label="User directory table" tabindex="0">
+	<div
+		class="directory-table"
+		role="region"
+		aria-label={$language.t('directory.table')}
+		tabindex="0"
+	>
 		<table>
-			<caption class="sr-only">Organization users, oldest accounts first</caption><thead
+			<caption class="sr-only">{$language.t('directory.caption')}</caption><thead
 				><tr
-					><th scope="col">User</th><th scope="col">Status</th><th scope="col">Administrator</th><th
-						scope="col">Actions</th
+					><th scope="col">{$language.t('directory.user')}</th><th scope="col"
+						>{$language.t('common.status')}</th
+					><th scope="col">{$language.t('directory.administrator')}</th><th scope="col"
+						>{$language.t('common.actions')}</th
 					></tr
 				></thead
 			><tbody>
@@ -177,28 +192,42 @@
 							></td
 						><td
 							><span class:inactive={!user.active} class="status-badge"
-								>{user.active ? 'Active' : 'Inactive'}</span
+								>{$language.t(user.active ? 'common.active' : 'common.inactive')}</span
 							></td
-						><td>{user.administrator ? 'Yes' : '—'}{user.id === page.actor ? ' · You' : ''}</td><td
+						><td
+							>{user.administrator ? $language.t('directory.yes') : '—'}{#if user.id === page.actor}
+								· {$language.t('directory.you')}{/if}</td
+						><td
 							><div class="row-actions">
 								<Button
 									variant="ghost"
 									disabled={pending || blocked}
-									aria-label={`View ${user.first_name} ${user.last_name}`}
-									onclick={(event) => open('profile', user, event.currentTarget)}>View</Button
+									aria-label={$language.t('directory.viewName', {
+										name: `${user.first_name} ${user.last_name}`
+									})}
+									onclick={(event) => open('profile', user, event.currentTarget)}
+									>{$language.t('directory.view')}</Button
 								>
 								<Button
 									variant="outline"
 									disabled={pending || blocked}
-									aria-label={`Assign access to ${user.first_name} ${user.last_name}`}
-									onclick={(event) => open('access', user, event.currentTarget)}>Access</Button
+									aria-label={$language.t('directory.assignName', {
+										name: `${user.first_name} ${user.last_name}`
+									})}
+									onclick={(event) => open('access', user, event.currentTarget)}
+									>{$language.t('directory.access')}</Button
 								>
 								<Button
 									variant={user.active ? 'destructive' : 'secondary'}
 									disabled={pending || blocked}
-									aria-label={`${user.active ? 'Deactivate' : 'Reactivate'} ${user.first_name} ${user.last_name}`}
+									aria-label={$language.t(
+										user.active ? 'directory.deactivateName' : 'directory.reactivateName',
+										{ name: `${user.first_name} ${user.last_name}` }
+									)}
 									onclick={(event) => open('status', user, event.currentTarget)}
-									>{user.active ? 'Deactivate' : 'Reactivate'}</Button
+									>{$language.t(
+										user.active ? 'directory.deactivate' : 'directory.reactivate'
+									)}</Button
 								>
 							</div></td
 						></tr
@@ -207,31 +236,35 @@
 			</tbody>
 		</table>
 		{#if page.items.length === 0}<p class="directory-empty">
-				No users match this page. Change the filters or return to an earlier page.
+				{$language.t('directory.empty')}
 			</p>{/if}
 	</div>
 	<div class="directory-pagination">
-		<span>{page.items.length} users shown · Oldest first</span>
+		<span>{$language.t('directory.count', { count: page.items.length })}</span>
 		<div>
 			<Button
 				variant="ghost"
 				onclick={() => load(applied, cursors, position - 1)}
-				disabled={pending || position === 0}>Previous page</Button
-			><Button variant="outline" onclick={next} disabled={pending || !page.next}>Next page</Button>
+				disabled={pending || position === 0}>{$language.t('directory.previous')}</Button
+			><Button variant="outline" onclick={next} disabled={pending || !page.next}
+				>{$language.t('directory.next')}</Button
+			>
 		</div>
 	</div>
 {/if}
 {#if mode && selected}
 	<Modal
-		title={mode === 'profile'
-			? 'User profile'
-			: mode === 'names'
-				? 'Edit name'
-				: mode === 'access'
-					? 'Application access'
-					: selected.active
-						? 'Deactivate account?'
-						: 'Reactivate account?'}
+		title={$language.t(
+			mode === 'profile'
+				? 'directory.profile'
+				: mode === 'names'
+					? 'directory.editName'
+					: mode === 'access'
+						? 'directory.applicationAccess'
+						: selected.active
+							? 'directory.deactivateTitle'
+							: 'directory.reactivateTitle'
+		)}
 		{pending}
 		{close}
 	>
@@ -257,20 +290,22 @@
 				{selected.last_name} <span class="muted">({selected.email})</span>
 			</p>
 			<p class="muted">
-				{selected.active
-					? 'This account will lose sign-in and access immediately. Its profile and assignments will be retained.'
-					: 'This account can sign in again. Previously revoked sessions remain invalid.'}
+				{$language.t(selected.active ? 'directory.deactivateHelp' : 'directory.reactivateHelp')}
 			</p>
 			<div class="modal-actions">
-				<Button variant="outline" onclick={close} disabled={pending}>Cancel</Button><Button
+				<Button variant="outline" onclick={close} disabled={pending}
+					>{$language.t('common.cancel')}</Button
+				><Button
 					variant={selected.active ? 'destructive' : 'default'}
 					onclick={() => save({ kind: 'status', active: !selected!.active })}
 					disabled={pending}
-					>{pending
-						? 'Saving…'
-						: selected.active
-							? 'Confirm deactivation'
-							: 'Confirm reactivation'}</Button
+					>{$language.t(
+						pending
+							? 'common.saving'
+							: selected.active
+								? 'directory.confirmDeactivation'
+								: 'directory.confirmReactivation'
+					)}</Button
 				>
 			</div>
 		{/if}

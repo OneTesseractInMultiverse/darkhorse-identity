@@ -2,8 +2,8 @@
 
 Darkhorse's first supported presentation languages are English (`en`) and Spanish
 (`es`). The sign-in page, account overview, profile, sessions, email verification, invitation,
-consent and personal-key pages offer both. Console navigation, administrator profile views and branding settings also support both.
-The directory/catalog workflows and operator CLI still require translation. Verification and invitation
+consent and personal-key pages offer both. Console navigation, the user directory, administrator profile views and branding settings also support both.
+The application/access catalog workflows and operator CLI still require translation. Verification and invitation
 email now use [pinned delivery languages](email-localization.md). Their
 translation and qualification are tracked separately. A language choice changes
 presentation; it never changes identity, permissions or protocol behavior.
@@ -268,7 +268,7 @@ open.
 | `/security/email` and confirmation/account switching                                                    | Translated; requesting, account binding, explicit confirmation and uncertainty remain unchanged                             |
 | `/invitation` and enrollment failures                                                                   | Translated; switching language preserves the unsent form and never accepts the invitation                                   |
 | `/authorization` and consent                                                                            | Translated; exact scopes stay visible; OIDC `ui_locales` hint/discovery support remains separate in #40                     |
-| `/console/users` and directory/access dialogs                                                           | Pending                                                                                                                     |
+| `/console/users` and directory/access dialogs                                                           | Translated; literal names, role selections, revisions and uncertain writes remain unchanged                                 |
 | `/console/applications`, `/console/clients` and registration/credential dialogs                         | Pending                                                                                                                     |
 | `/console/resources`, `/console/scopes`, `/console/roles`, `/console/capabilities` and bindings/pickers | Pending                                                                                                                     |
 | `/console/profile`, `/console/settings` and console navigation                                          | Translated; navigation labels have their own language attribute on otherwise English console pages                          |
@@ -373,3 +373,23 @@ static browser fixture cover switching, literal routes, Escape/focus restoration
 header bounds and mobile layout. That fixture uses fixed API responses and does not
 qualify server authority or image storage; the same browser assertions are also
 included in the full HTTPS suite.
+
+### Directory observations — 2026-09-26
+
+User search, pagination, profile/name dialogs, activation confirmations and role
+assignments use the selected language. Singular/plural result counts follow ICU
+rules. Failure states retain typed result codes, so an existing stale or uncertain
+outcome also changes language without repeating a request. Locale selection does
+not change names, email addresses, application/role identifiers, stored revisions
+or the policy revision accompanying a role assignment. The editor remains mounted
+and preserves its draft during a language change.
+
+The [directory presentation sample](measurements/directory-localization-2026-09-26.json)
+records 137,964 summed gzip JavaScript bytes, 28,811 above the English-only baseline,
+within the unchanged 36 KiB budget. The same five cold/warm pairs use the local
+anonymous HTTP fixture; these observations do not measure real authorization or
+production capacity. Production-build Spanish desktop/mobile presentation, draft
+cancellation and focus were checked separately. The actual HTTPS directory suite
+now exercises mutations, stale revisions, credential-epoch behavior and read
+denials in Spanish; its local rerun remains pending Docker recovery. Presentation
+fixtures do not substitute for that primary-state integration check.

@@ -1,4 +1,6 @@
 <script lang="ts">
+	import { useLocalization } from '$lib/i18n/context';
+	const language = useLocalization();
 	import { resolve } from '$app/paths';
 	import { Button } from '$lib/components/ui/button';
 	import type { User } from '$lib/admin/directory';
@@ -7,27 +9,31 @@
 
 <dl class="profile-fields">
 	<div>
-		<dt>Name</dt>
+		<dt>{$language.t('directory.name')}</dt>
 		<dd>{user.first_name} {user.last_name}</dd>
 	</div>
 	<div>
-		<dt>Email / username</dt>
+		<dt>{$language.t('directory.email')}</dt>
 		<dd>{user.email}</dd>
 	</div>
 	<div>
-		<dt>Status</dt>
-		<dd>{user.active ? 'Active' : 'Inactive'}</dd>
+		<dt>{$language.t('common.status')}</dt>
+		<dd>{$language.t(user.active ? 'common.active' : 'common.inactive')}</dd>
 	</div>
 	<div>
-		<dt>Email ownership</dt>
-		<dd>{user.email_verified ? 'Verified' : 'Unverified'}</dd>
+		<dt>{$language.t('directory.emailOwnership')}</dt>
+		<dd>{$language.t(user.email_verified ? 'profile.verified' : 'profile.unverified')}</dd>
 	</div>
 	<div>
-		<dt>Platform administrator</dt>
-		<dd>{user.administrator ? 'Yes' : 'No'}</dd>
+		<dt>{$language.t('directory.platformAdministrator')}</dt>
+		<dd>{$language.t(user.administrator ? 'directory.yes' : 'directory.no')}</dd>
 	</div>
 </dl>
-<p><a href={resolve(`/console/profile?user=${user.id}`)}>View and edit full profile</a></p>
+<p>
+	<a href={resolve(`/console/profile?user=${user.id}`)}>{$language.t('directory.fullProfile')}</a>
+</p>
 <div class="modal-actions">
-	<Button variant="outline" onclick={close}>Close</Button><Button onclick={edit}>Edit name</Button>
+	<Button variant="outline" onclick={close}>{$language.t('common.close')}</Button><Button
+		onclick={edit}>{$language.t('directory.editName')}</Button
+	>
 </div>

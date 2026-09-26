@@ -1,4 +1,6 @@
 <script lang="ts">
+	import { useLocalization } from '$lib/i18n/context';
+	const language = useLocalization();
 	import ConsoleShell from '$lib/components/admin/ConsoleShell.svelte';
 	import DirectoryPanel from '$lib/components/admin/DirectoryPanel.svelte';
 	import { directoryApi } from '$lib/admin/directory';
@@ -6,9 +8,9 @@
 </script>
 
 <svelte:head
-	><title>User directory — Darkhorse</title><meta
+	><title>{$language.t('directory.title')}</title><meta
 		name="description"
-		content="Manage your organization’s user directory"
+		content={$language.t('directory.description')}
 	/></svelte:head
 >
 <ConsoleShell><DirectoryPanel {api} /></ConsoleShell>

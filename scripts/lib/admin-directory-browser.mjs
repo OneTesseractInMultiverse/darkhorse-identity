@@ -1,3 +1,4 @@
+import { verifyDirectoryPresentation } from "./directory-localization-browser.mjs";
 import assert from "node:assert/strict";
 import { expect } from "@playwright/test";
 import { resolve } from "node:path";
@@ -26,12 +27,15 @@ async function call(page, path, body) {
   );
 }
 async function search(page, value) {
-  await page.getByLabel("Search users").fill(value);
-  await page.getByRole("button", { name: "Search", exact: true }).click();
+  await page.getByLabel("Buscar usuarios").fill(value);
+  await page.getByRole("button", { name: "Buscar", exact: true }).click();
   await page.getByRole("table").waitFor();
 }
 async function saved(page) {
-  await page.getByRole("status").filter({ hasText: "Change saved." }).waitFor();
+  await page
+    .getByRole("status")
+    .filter({ hasText: "Cambio guardado." })
+    .waitFor();
   await page.getByRole("table").waitFor();
 }
 export async function verifyDirectory(page, origin, principal, runSql) {
@@ -40,9 +44,13 @@ export async function verifyDirectory(page, origin, principal, runSql) {
   await runSql(
     `INSERT INTO principals(id,email,first_name,last_name) VALUES('${target}','directory@example.com','Directory','Fixture'); INSERT INTO applications(id,name,owner_id,active) VALUES('${app}','Directory application','${principal}',true); INSERT INTO roles(id,name) VALUES('${role}','Directory reader'); INSERT INTO role_applications(application_id,role_id) VALUES('${app}','${role}');`,
   );
+  await verifyDirectoryPresentation(page, origin);
   await page.goto(`${origin}/console/users`);
   await page
-    .getByRole("heading", { name: "User directory", exact: true })
+    .getByRole("combobox", { name: /^(Language|Idioma)$/ })
+    .selectOption("es");
+  await page
+    .getByRole("heading", { name: "Directorio de usuarios", exact: true })
     .waitFor();
   await page.getByRole("table").waitFor();
   const list = await call(page, "/api/admin/users");
@@ -64,7 +72,7 @@ export async function verifyDirectory(page, origin, principal, runSql) {
   });
   await page.setViewportSize({ width: 1280, height: 900 });
   await search(page, "directory@");
-  const view = page.getByRole("button", { name: "View Directory Fixture" });
+  const view = page.getByRole("button", { name: "Ver a Directory Fixture" });
   await view.click();
   await page.getByRole("dialog").waitFor();
   await page.keyboard.press("Escape");
@@ -73,11 +81,13 @@ export async function verifyDirectory(page, origin, principal, runSql) {
   await page.locator("dialog").waitFor({ state: "detached" });
   await expect(view).toBeFocused();
   await view.click();
-  await page.getByRole("button", { name: "Edit name", exact: true }).click();
-  await page.getByLabel("First name").fill("Directory updated");
+  await page
+    .getByRole("button", { name: "Editar nombre", exact: true })
+    .click();
+  await page.getByLabel("Nombre", { exact: true }).fill("Directory updated");
   assert.equal(
     await page
-      .getByLabel("First name")
+      .getByLabel("Nombre", { exact: true })
       .evaluate((node) => node === document.activeElement),
     true,
   );
@@ -85,42 +95,44 @@ export async function verifyDirectory(page, origin, principal, runSql) {
     path: resolve(".local/directory-edit.png"),
     fullPage: true,
   });
-  await page.getByRole("button", { name: "Save name", exact: true }).click();
+  await page
+    .getByRole("button", { name: "Guardar nombre", exact: true })
+    .click();
   await saved(page);
   let user = (await call(page, `/api/admin/users/${target}`)).body;
   assert.equal(user.first_name, "Directory updated");
   assert.equal(user.email, "directory@example.com");
   const deactivate = page.getByRole("button", {
-    name: "Deactivate Directory updated Fixture",
+    name: "Desactivar a Directory updated Fixture",
   });
   await deactivate.click();
-  await page.getByRole("button", { name: "Cancel", exact: true }).click();
+  await page.getByRole("button", { name: "Cancelar", exact: true }).click();
   assert.equal(
     (await call(page, `/api/admin/users/${target}`)).body.active,
     true,
   );
   await deactivate.click();
-  await page.getByRole("button", { name: "Confirm deactivation" }).click();
+  await page.getByRole("button", { name: "Confirmar desactivación" }).click();
   await saved(page);
   assert.equal(
     (await call(page, `/api/admin/users/${target}`)).body.active,
     false,
   );
   await page
-    .getByRole("button", { name: "Reactivate Directory updated Fixture" })
+    .getByRole("button", { name: "Reactivar a Directory updated Fixture" })
     .click();
-  await page.getByRole("button", { name: "Confirm reactivation" }).click();
+  await page.getByRole("button", { name: "Confirmar reactivación" }).click();
   await saved(page);
   await runSql(
     `DO $$ BEGIN IF (SELECT credential_epoch FROM principals WHERE id='${target}')<>1 THEN RAISE EXCEPTION 'revocation epoch changed on reactivation'; END IF; END $$;`,
   );
   await page
-    .getByRole("button", { name: "Assign access to Directory updated Fixture" })
+    .getByRole("button", { name: "Asignar acceso a Directory updated Fixture" })
     .click();
-  await page.getByLabel("Application", { exact: true }).selectOption(app);
-  await page.getByLabel("Role", { exact: true }).selectOption(role);
-  await page.getByLabel("Assign this role").check();
-  await page.getByRole("button", { name: "Save access" }).click();
+  await page.getByLabel("Aplicación", { exact: true }).selectOption(app);
+  await page.getByLabel("Rol", { exact: true }).selectOption(role);
+  await page.getByLabel("Asignar este rol").check();
+  await page.getByRole("button", { name: "Guardar acceso" }).click();
   await saved(page);
   let access = (
     await call(page, `/api/admin/users/${target}/access?application=${app}`)
@@ -144,18 +156,20 @@ export async function verifyDirectory(page, origin, principal, runSql) {
   );
   // A concurrent edit makes the form stale; the failed write cannot overwrite it.
   await page
-    .getByRole("button", { name: "View Directory updated Fixture" })
+    .getByRole("button", { name: "Ver a Directory updated Fixture" })
     .click();
-  await page.getByRole("button", { name: "Edit name", exact: true }).click();
-  await page.getByLabel("First name").fill("Stale replacement");
+  await page
+    .getByRole("button", { name: "Editar nombre", exact: true })
+    .click();
+  await page.getByLabel("Nombre", { exact: true }).fill("Stale replacement");
   await runSql(
     `UPDATE principals SET first_name='Concurrent',revision=revision+1 WHERE id='${target}'`,
   );
-  await page.getByRole("button", { name: "Save name" }).click();
-  await page.getByRole("alert").filter({ hasText: "changed" }).waitFor();
+  await page.getByRole("button", { name: "Guardar nombre" }).click();
+  await page.getByRole("alert").filter({ hasText: "cambió" }).waitFor();
   assert.equal(
     await page
-      .getByRole("button", { name: "View Directory updated Fixture" })
+      .getByRole("button", { name: "Ver a Directory updated Fixture" })
       .isDisabled(),
     true,
   );
@@ -163,8 +177,10 @@ export async function verifyDirectory(page, origin, principal, runSql) {
     (await call(page, `/api/admin/users/${target}`)).body.first_name,
     "Concurrent",
   );
-  await page.getByRole("button", { name: "Refresh directory" }).click();
-  await page.getByRole("button", { name: "View Concurrent Fixture" }).waitFor();
+  await page.getByRole("button", { name: "Actualizar directorio" }).click();
+  await page
+    .getByRole("button", { name: "Ver a Concurrent Fixture" })
+    .waitFor();
   // A read denial clears private records already rendered by the page.
   const directoryRequests = (url) => url.pathname === "/api/admin/users";
   await page.route(directoryRequests, (route) =>
@@ -174,13 +190,16 @@ export async function verifyDirectory(page, origin, principal, runSql) {
       body: '{"error":"administrator_required"}',
     }),
   );
-  await page.getByRole("button", { name: "Refresh directory" }).click();
+  await page.getByRole("button", { name: "Actualizar directorio" }).click();
   await page
     .getByRole("alert")
-    .filter({ hasText: "Administrator access" })
+    .filter({ hasText: "Se requiere acceso de administrador" })
     .waitFor();
   assert.equal(await page.getByRole("table").count(), 0);
   await page.unroute(directoryRequests);
+  await page
+    .getByRole("combobox", { name: /^(Language|Idioma)$/ })
+    .selectOption("en");
   await page.goto(origin);
   await page.getByRole("heading", { name: "Welcome, Browser." }).waitFor();
   console.log(
