@@ -71,7 +71,7 @@ export async function verifyConsoleLanguages(page, origin) {
       "es",
     );
     await expect(page).toHaveURL(`${origin}/console/applications`);
-    await expect(page.locator("html")).toHaveAttribute("lang", "en");
+    await expect(page.locator("html")).toHaveAttribute("lang", "es");
     assert.deepEqual(
       writes,
       [],
@@ -85,6 +85,6 @@ export async function verifyConsoleLanguages(page, origin) {
     await page.setViewportSize({ width: 1280, height: 900 });
   }
   console.log(
-    "Console navigation and branding language, literal paths, keyboard, mixed-page language and mobile checks passed.",
+    "Console navigation and branding language, literal paths, keyboard, document language and mobile checks passed.",
   );
 }

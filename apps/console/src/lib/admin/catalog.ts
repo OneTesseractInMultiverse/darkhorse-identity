@@ -1,4 +1,4 @@
-import { failureMessage as directoryMessages, type Read } from './directory';
+import type { Read } from './directory';
 import {
 	item,
 	page,
@@ -22,22 +22,6 @@ export type CatalogApi = {
 	detail(target: Item): Promise<Read<Item | View>>;
 	register(command: Command): Promise<Write<Registered>>;
 	change(revision: string, command: Command): Promise<Write<{ policy_revision: string }>>;
-};
-export const titles: Record<Kind, string> = {
-	applications: 'Applications',
-	clients: 'Clients',
-	resources: 'Resources',
-	scopes: 'Scopes',
-	roles: 'Roles',
-	capabilities: 'Capabilities'
-};
-export const failureMessage: Record<Failure, string> = {
-	...directoryMessages,
-	unavailable: 'The catalog is unavailable. Refresh to try again.',
-	conflict: 'This record or access policy changed. Refresh before making another change.',
-	invalid: 'The change was rejected. Check the values and required bindings, then refresh.',
-	uncertain:
-		'The change could not be confirmed. Refresh and inspect the record before making another change. A lost secret cannot be retrieved; rotate it after checking the client.'
 };
 export function parameters(query: Query = {}): string {
 	const p = new URLSearchParams({ limit: '25' });

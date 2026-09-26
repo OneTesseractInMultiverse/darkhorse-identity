@@ -1,9 +1,9 @@
 # Language and localization
 
 Darkhorse's first supported presentation languages are English (`en`) and Spanish
-(`es`). The sign-in page, account overview, profile, sessions, email verification, invitation,
-consent and personal-key pages offer both. Console navigation, the user directory, administrator profile views and branding settings also support both.
-The application/access catalog workflows and operator CLI still require translation. Verification and invitation
+(`es`). All shipped portal and management-console routes offer both languages, including
+application/client registration, access-policy bindings and secret lifecycle dialogs.
+The operator CLI still requires translation. Verification and invitation
 email now use [pinned delivery languages](email-localization.md). Their
 translation and qualification are tracked separately. A language choice changes
 presentation; it never changes identity, permissions or protocol behavior.
@@ -119,8 +119,9 @@ instead of silently overwriting them during JSON parsing. The code-reviewed
 rejects missing, extra or incorrectly typed call arguments. The separate catalog
 check rejects missing/extra/duplicate keys, unknown placeholders, invalid ICU,
 unsupported plural branches, excessive nesting and HTML/control characters.
-Messages are bounded to 2,048 characters, catalogs to 512 messages and source files
-to 256 KiB. Interpolated strings are bounded to 4,096 characters; numbers must be
+Messages are bounded to 2,048 characters, each catalog group to 512 messages and
+each source file to 256 KiB. The shared group contains 365 messages per language;
+the administration group contains 203. Both retain the same validation limits. Interpolated strings are bounded to 4,096 characters; numbers must be
 finite and within the safe numeric range.
 
 Messages render as ordinary Svelte text/attributes, never `{@html}`. HTML, functions,
@@ -185,7 +186,7 @@ authentication or authorization logic.
 - `make test-i18n`: isolated locale, formatter, storage and component behavior;
   catalog fakes are defined in test source.
 - `make i18n-check`: production source catalogs, separate from unit fixtures. It
-  runs in `make check`, `make ci` and `make build-web`. A build-only Vite hook also validates both catalogs for direct package and container builds.
+  runs in `make check`, `make ci` and `make build-web`. A build-only Vite hook also validates all four fixed catalogs for direct package and container builds.
 - `make test-browser`: actual static output and verified HTTPS authentication;
   language, reload, error, keyboard and route-preservation checks run in Chromium.
 
@@ -218,7 +219,7 @@ separate functional check.
 | Median warm ready observation     |               55.0 ms |           55.0 ms |           56.5 ms |
 
 The total JavaScript increase is 14,594 compressed bytes, below the provisional
-36 KiB cap. The root loads two additional local chunks; both catalogs are bundled
+36 KiB cap. The root loads two additional local chunks; both shared catalogs are bundled
 and switching languages fetches no catalog or account preference. Warm observation
 ranges overlap and the readiness probe includes two animation frames. These small
 samples do not establish a speedup or stable latency percentiles. Warm rendering
@@ -269,9 +270,9 @@ open.
 | `/invitation` and enrollment failures                                                                   | Translated; switching language preserves the unsent form and never accepts the invitation                                   |
 | `/authorization` and consent                                                                            | Translated; exact scopes stay visible; OIDC `ui_locales` hint/discovery support remains separate in #40                     |
 | `/console/users` and directory/access dialogs                                                           | Translated; literal names, role selections, revisions and uncertain writes remain unchanged                                 |
-| `/console/applications`, `/console/clients` and registration/credential dialogs                         | Pending                                                                                                                     |
-| `/console/resources`, `/console/scopes`, `/console/roles`, `/console/capabilities` and bindings/pickers | Pending                                                                                                                     |
-| `/console/profile`, `/console/settings` and console navigation                                          | Translated; navigation labels have their own language attribute on otherwise English console pages                          |
+| `/console/applications`, `/console/clients` and registration/credential dialogs                         | Translated; original callback URLs, identifiers, revision checks and one-time secret handling remain intact                 |
+| `/console/resources`, `/console/scopes`, `/console/roles`, `/console/capabilities` and bindings/pickers | Translated; literal definitions and typed binding commands remain unchanged                                                 |
+| `/console/profile`, `/console/settings` and console navigation                                          | Translated; navigation and catalog subtrees also declare their actual presentation language                                 |
 | Verification/invitation email and CLI                                                                   | Email implemented with pinned delivery metadata (#39); CLI remains #41                                                      |
 
 Profile failures and image outcomes map typed results to catalog keys at rendering
@@ -393,3 +394,56 @@ cancellation and focus were checked separately. The actual HTTPS directory suite
 now exercises mutations, stale revisions, credential-epoch behavior and read
 denials in Spanish; its local rerun remains pending Docker recovery. Presentation
 fixtures do not substitute for that primary-state integration check.
+
+### Application-administration observations — 2026-09-26
+
+Applications, clients, resources, scopes, roles and capabilities now use reviewed
+message contracts throughout list, detail, creation, editing, picker and confirmation
+views. Failure and success state holds message identifiers rather than rendered
+English strings. Changing language also updates an open confirmation or existing
+error while preserving the original operation and expected revision. Client-secret
+expiry dates use the selected language and an explicit UTC label. Client secrets
+remain outside interpolation values, catalogs, storage and URLs.
+
+The administration catalog loads with these routes. Its formatter follows the
+layout's language without owning account preferences, and child dialogs reuse the
+same route context. Sign-in imports only the shared catalog. Both groups have fixed
+imports; neither user input nor locale tags construct an import path. An invalid
+optional Spanish catalog falls back as a whole to English, and the scoped formatter
+reports that actual language.
+
+```mermaid
+flowchart LR
+  Layout["Layout language and shared messages"] --> Portal["Sign-in and account pages"]
+  Layout --> Choice["Read-only locale subscription"]
+  Admin["Administration route and fixed catalogs"] --> Scoped["Route-owned formatter"]
+  Choice --> Scoped
+  Scoped --> Views["Catalog pages and child dialogs"]
+  Views --> Commands["Original typed commands and revisions"]
+```
+
+Readable source catalogs retain string keys. The build validates them and replaces
+repeated key names with indices into the same bundled contract. The runtime expands
+those indices and performs the normal complete-catalog validation before formatting.
+Invalid indices, duplicate/missing keys, malformed entries and unsafe ICU content
+remain errors. This internal encoding is not an API or external translation format.
+It uses a build-only [Vite post-transform](https://vite.dev/guide/api-plugin#plugin-ordering)
+for four fixed catalog modules, with ordinary static JavaScript and no dynamic code
+evaluation. Deploy the generated HTML and hashed assets as one build.
+
+The [catalog presentation sample](measurements/catalog-localization-2026-09-26.json)
+records 145,210 summed gzip JavaScript bytes: 36,057 above the original English-only
+baseline, below the unchanged 36 KiB budget. The first expanded catalog build exceeded
+the budget; shared explanations, one common page-title template and indexed keys
+reduced duplication. The same five cold/warm pairs measure anonymous loopback HTTP
+presentation only. They establish neither production capacity nor a latency SLO.
+
+Source-defined component tests cover exact callback/allowance values through pending
+writes, uncertain outcomes, a secret reveal across language changes, and a binding
+confirmation with the fresh policy revision. Production-build fixtures checked both
+languages, Unicode drafts, literal identifiers, UTC dates, keyboard focus and narrow
+screens without issuing mutations. The complete HTTPS catalog suite now performs
+registration, graph changes, secret rotation/retirement, lost-response reconciliation,
+stale-policy rejection and read denial in Spanish. Its local rerun remains pending
+Docker recovery; presentation fixtures do not replace it. Fluent translation review,
+accessibility review and the complete release qualification remain open.

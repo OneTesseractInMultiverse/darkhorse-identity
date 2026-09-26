@@ -234,14 +234,3 @@ function access(value: unknown): Access | null {
 		roles: roles as Role[]
 	};
 }
-export const failureMessage = {
-	'signed-out': 'Sign in to continue.',
-	forbidden: 'Administrator access is required.',
-	unavailable: 'The directory is temporarily unavailable. Try refreshing.',
-	recent: 'For this change, sign out and sign in again, then reopen the directory.',
-	conflict: 'This record or its access policy changed. Refresh the directory before trying again.',
-	'last-administrator': 'Keep at least one active administrator with a working credential.',
-	invalid: 'The change was rejected. Check the values and refresh the directory.',
-	uncertain:
-		'The change could not be confirmed. Refresh the directory before making another change.'
-};

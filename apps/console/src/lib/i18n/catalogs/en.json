@@ -1,6 +1,9 @@
 [
 	["language.label", "Language"],
-	["language.help", "Applies to translated pages in this browser. Some pages still use English."],
+	[
+		"language.help",
+		"Applies to pages in this browser. Your saved account language is managed in My profile."
+	],
 	["language.unsaved", "Language changed for this page. Your browser could not remember it."],
 	["login.secure", "SECURE ACCESS"],
 	["login.identity", "IDENTITY / 01"],
@@ -503,5 +506,6 @@
 	[
 		"directory.error.uncertain",
 		"The change could not be confirmed. Refresh the directory before making another change."
-	]
+	],
+	["console.pageTitle", "{name} — Darkhorse"]
 ]

@@ -265,6 +265,7 @@ export const contract = {
 	'account.keysDescription': {},
 	'account.email': {},
 	'account.emailDescription': {},
+	'console.pageTitle': { name: 'string' },
 	'console.skip': {},
 	'console.edition': {},
 	'console.account': {},

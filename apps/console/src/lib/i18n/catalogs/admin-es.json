@@ -1,0 +1,382 @@
+[
+	["create.applications", "Crear aplicación"],
+	["search.applications", "Buscar aplicaciones"],
+	["create.clients", "Crear cliente"],
+	["search.clients", "Buscar clientes"],
+	["create.resources", "Crear recurso"],
+	["search.resources", "Buscar recursos"],
+	["create.scopes", "Crear ámbito"],
+	["search.scopes", "Buscar ámbitos"],
+	["create.roles", "Crear rol"],
+	["search.roles", "Buscar roles"],
+	["create.capabilities", "Crear capacidad"],
+	["search.capabilities", "Buscar capacidades"],
+	[
+		"intro.applications",
+		"Registra las aplicaciones que usan Darkhorse para iniciar sesión. Abre una aplicación para configurar sus clientes OIDC y políticas de acceso."
+	],
+	[
+		"intro.clients",
+		"Configura cómo inicia sesión una aplicación con OpenID Connect (OIDC). Cada cliente tiene su propio identificador, secreto, URLs de retorno y configuración de tokens."
+	],
+	[
+		"intro.resources",
+		"Define las APIs protegidas y las capacidades que exponen. Cada recurso recibe una audiencia estable que identifica la API a la que se destina un token de acceso."
+	],
+	[
+		"intro.scopes",
+		"Define límites con nombre sobre las capacidades que un cliente puede solicitar para un recurso. Un ámbito nunca concede al usuario permisos que no tenga ya."
+	],
+	[
+		"intro.roles",
+		"Agrupa capacidades en roles asignables, como lector o administrador. Vincula un rol a una aplicación antes de asignarlo desde el directorio de usuarios."
+	],
+	[
+		"intro.capabilities",
+		"Define permisos individuales, como invoices.read. Sus claves y significados son permanentes; vincúlalos explícitamente a las aplicaciones que los usan."
+	],
+	[
+		"nameHelp.applications",
+		"Un nombre reconocible, como Portal de clientes. Es independiente del registro del cliente OIDC."
+	],
+	[
+		"nameHelp.clients",
+		"Un nombre, como Portal de clientes — producción. Al crearlo, se generan el ID del cliente y un secreto que se muestra una sola vez."
+	],
+	[
+		"nameHelp.resources",
+		"Un nombre para la API protegida, como API de pedidos. Su nombre y la audiencia generada no se pueden cambiar después de crearla."
+	],
+	[
+		"nameHelp.scopes",
+		"Un nombre permanente para el ámbito, como orders.read. Usa un único valor sin espacios. Los ámbitos de identidad integrados, como openid, están reservados."
+	],
+	[
+		"nameHelp.roles",
+		"Una etiqueta permanente para un grupo de permisos, como Lector de facturación. Añade capacidades después de crear el rol."
+	],
+	[
+		"nameHelp.capabilities",
+		"Una clave permanente de permiso, como invoices.read. Elige una acción precisa que tu aplicación pueda hacer cumplir."
+	],
+	["applicationValue", "Aplicación: {value}"],
+	["viewName", "Ver {name}"],
+	["page", "Página {number, number}"],
+	["editName", "Editar {name}"],
+	["recordId", "ID del registro: {id}"],
+	[
+		"retireHelp",
+		"¿Retirar {name} de forma permanente? Las nuevas comprobaciones de autorización dejarán de conceder esta capacidad."
+	],
+	["clientIdValue", "ID del cliente: {id}"],
+	["picker.searchLabel", "Buscar: {label}"],
+	["picker.selectName", "Seleccionar {name}"],
+	["removeResource", "Quitar recurso {name}"],
+	["removeScope", "Quitar ámbito {name}"],
+	["ownerValue", "Propietario: {name}"],
+	["resourceValue", "Recurso: {name}"],
+	["error.reference", "Referencia de aplicación inválida."],
+	["error.signed-out", "Inicia sesión para continuar."],
+	["error.forbidden", "Se requiere acceso de administrador."],
+	["error.unavailable", "El catálogo no está disponible. Actualízalo para volver a intentarlo."],
+	[
+		"error.recent",
+		"Para realizar este cambio, cierra sesión, vuelve a iniciarla y abre el directorio de nuevo."
+	],
+	[
+		"error.conflict",
+		"Este registro o su política de acceso cambió. Actualiza antes de hacer otro cambio."
+	],
+	[
+		"error.invalid",
+		"El cambio fue rechazado. Revisa los valores y los vínculos requeridos; luego actualiza."
+	],
+	[
+		"error.uncertain",
+		"No se pudo confirmar el cambio. Actualiza y revisa el registro antes de hacer otro cambio. Un secreto perdido no se puede recuperar; rótalo después de revisar el cliente."
+	],
+	[
+		"message.hidden",
+		"Se descartó el secreto mientras la página estaba oculta. Actualiza y rótalo después de revisar el cliente."
+	],
+	["message.store", "Guarda este secreto antes de cerrar."],
+	["message.saved", "Cambio guardado."],
+	["message.policy", "Política de acceso guardada."],
+	["message.dismissed", "Secreto descartado. No se puede volver a recuperar."],
+	["message.refresh", "Secreto descartado. Actualiza el catálogo antes de hacer otro cambio."],
+	["retired", "Retirada"],
+	["details", "Detalles"],
+	["detailDescription", "Resumen de la aplicación · Gestión de inicio de sesión y acceso"],
+	[
+		"requiredHelp",
+		"Los campos obligatorios tienen un asterisco (*). Para hacer cambios debes haber iniciado sesión en los últimos cinco minutos."
+	],
+	["picker.error", "No se pudieron cargar las opciones. Actualiza o vuelve a iniciar sesión."],
+	["picker.loading", "Cargando opciones…"],
+	["selectOwner", "Selecciona un usuario activo"],
+	["selectResource", "Selecciona un recurso"],
+	["permissionKey", "Clave de permiso"],
+	["name", "Nombre"],
+	[
+		"activateApplication",
+		"Permite que los clientes de esta aplicación se autentiquen. Al desactivarla, se bloquea la autenticación de todos sus clientes."
+	],
+	[
+		"activateClient",
+		"Permite que este cliente se autentique mientras su aplicación también esté activa. Al desactivarlo, se bloquea este cliente."
+	],
+	["boundDefinition", "La definición se vinculará explícitamente a esta aplicación."],
+	[
+		"sharedDefinition",
+		"Esta definición compartida no concede acceso hasta que se vincule explícitamente a una aplicación."
+	],
+	["saveChanges", "Guardar cambios"],
+	["create", "Crear"],
+	["remove", "Quitar"],
+	["eyebrow", "IDENTIDAD / DIRECTORIO DE APLICACIONES"],
+	["refresh", "Actualizar catálogo"],
+	["account", "Mi cuenta / iniciar sesión"],
+	["chooseApplication", "Elegir aplicación"],
+	["sharedCatalog", "Mostrar catálogo compartido"],
+	["all", "Todos"],
+	["loading", "Cargando catálogo…"],
+	["reference", "Referencia"],
+	["empty", "No hay registros que coincidan."],
+	["previous", "Anterior"],
+	["next", "Siguiente"],
+	["editApplication", "Editar aplicación"],
+	["editClient", "Editar cliente"],
+	["retireCapability", "Retirar capacidad"],
+	["cancelRetirement", "Cancelar retiro"],
+	["confirmRetirement", "Confirmar retiro de capacidad"],
+	[
+		"revealHelp",
+		"Se muestra una sola vez. Guarda el secreto en el gestor de secretos de tu aplicación antes de cerrar. Al salir de la página, se borra."
+	],
+	[
+		"revealMethod",
+		"Usa este secreto con el ID del cliente y client_secret_basic en tu backend. Nunca lo incluyas en código del navegador, URLs ni control de versiones. Rótalo si lo pierdes."
+	],
+	["stored", "He guardado el secreto"],
+	["searchForm", "Buscar en el catálogo"],
+	["searchPlaceholder", "Inicio del nombre"],
+	["table", "Tabla del catálogo"],
+	["revealTitle", "Guarda el secreto del cliente"],
+	["secret", "Secreto del cliente"],
+	["picker.search", "Buscar opciones"],
+	["picker.empty", "No hay opciones que coincidan."],
+	["picker.more", "Más opciones"],
+	["picker.select", "Seleccionar"],
+	["general", "General"],
+	[
+		"ownerHelp",
+		"El propietario es un contacto de la organización. La propiedad no concede derechos de administración."
+	],
+	["meaning", "Significado"],
+	[
+		"meaningHelp",
+		"Describe con precisión qué acción permite este permiso. La clave y el significado son permanentes. Retira una capacidad si su significado cambia."
+	],
+	["protectedResource", "Recurso protegido"],
+	[
+		"resourceHelp",
+		"Obligatorio. Selecciona la API a la que se aplica este ámbito. No se puede reasignar el recurso después de crearlo."
+	],
+	[
+		"scopeHelp",
+		"Después de crear el ámbito, añade capacidades que su recurso ya exponga. Solicitar un ámbito no asigna un rol al usuario."
+	],
+	["callbacksHeading", "Inicio de sesión y URLs de retorno"],
+	[
+		"clientHelp",
+		"Para aplicaciones web cuyo backend pueda guardar un secreto de forma segura. Usa Authorization Code con PKCE (S256) y client_secret_basic sobre HTTPS."
+	],
+	["callbacks", "URLs de retorno"],
+	[
+		"callbacksHelp",
+		"Darkhorse redirige aquí al usuario después de la autorización. Introduce hasta ocho URLs HTTPS exactas, una por línea, con su ruta y cadena de consulta. Tu aplicación debe coincidir exactamente. Sin comodines ni fragmentos."
+	],
+	["allowRefresh", "Permitir tokens de renovación"],
+	[
+		"refreshHelp",
+		"Permite que el backend renueve el acceso con tokens de renovación rotativos mientras la sesión del usuario siga siendo válida. Está desactivado de forma predeterminada. No habilita acceso sin conexión."
+	],
+	["apiAccess", "Acceso a APIs protegidas"],
+	["optional", "Opcional"],
+	[
+		"allowancesHelp",
+		"Deja estas listas vacías si solo necesitas iniciar sesión con openid, profile y email. Estos ámbitos integrados no se crean aquí. El acceso a recursos personalizados necesita autorizaciones del cliente y permisos del usuario por separado."
+	],
+	["allowedResources", "Recursos permitidos"],
+	[
+		"resourcesHelp",
+		"Selecciona hasta 32 APIs de esta aplicación para las que el cliente pueda solicitar tokens."
+	],
+	["allowedScopes", "Ámbitos permitidos"],
+	[
+		"scopesHelp",
+		"Selecciona hasta 128 ámbitos personalizados que el cliente pueda solicitar. Cada uno debe pertenecer a un recurso permitido."
+	],
+	[
+		"allowancesCaution",
+		"Permitir un recurso o ámbito no concede acceso a un usuario. Los límites de permisos existentes siguen aplicándose cuando cambian las políticas."
+	],
+	["owner", "Propietario de la aplicación"],
+	["scopeResource", "Recurso del ámbito"],
+	["clientResources", "Recursos del cliente"],
+	["clientScopes", "Ámbitos del cliente"],
+	["sectionTag.clients", "EMPIEZA AQUÍ"],
+	["sectionTag.resources", "APIs PROTEGIDAS"],
+	["sectionTag.scopes", "LÍMITES DE SOLICITUD"],
+	["sectionTag.roles", "ACCESO DE USUARIOS"],
+	["sectionTag.capabilities", "PERMISOS"],
+	["applicationId", "ID de la aplicación"],
+	[
+		"applicationIdHelp",
+		"Identifica esta aplicación en Darkhorse. Usa un ID de cliente de la sección Clientes para configurar el inicio de sesión OIDC."
+	],
+	["ownerLabel", "Propietario"],
+	["ownerContact", "El contacto responsable. La propiedad no concede acceso de administrador."],
+	["configureApplication", "Configura esta aplicación"],
+	[
+		"configureHelp",
+		"Empieza con un cliente para iniciar sesión. Añade recursos y permisos si la aplicación también necesita acceso a APIs protegidas."
+	],
+	["connectHeading", "Conectar tu aplicación"],
+	[
+		"connectHelp",
+		"Crea un cliente y guarda su secreto de única visualización en tu backend. Configura tu biblioteca OIDC con el ID del cliente, el emisor y la URL de retorno exacta. El operador del servidor debe habilitar OIDC en el emisor."
+	],
+	[
+		"applicationActive",
+		"Los clientes registrados pueden autenticarse si su propia configuración también lo permite."
+	],
+	[
+		"applicationInactive",
+		"Los clientes de esta aplicación no pueden autenticarse mientras esté inactiva."
+	],
+	["applicationCatalogs", "Catálogos de la aplicación"],
+	["clientId", "ID del cliente"],
+	[
+		"clientIdHelp",
+		"Usa este valor como client_id en la configuración OIDC de tu aplicación. No cambia al rotar el secreto."
+	],
+	["clientParent", "La aplicación a la que pertenece este registro."],
+	["clientActive", "Tanto este cliente como su aplicación deben estar activos para autenticarse."],
+	["signInConfiguration", "Configuración de inicio de sesión"],
+	["confidential", "Cliente web confidencial · Flujo Authorization Code con PKCE (S256)."],
+	["clientAuthentication", "Autenticación del cliente"],
+	[
+		"clientAuthenticationHelp",
+		"Tu backend envía el ID del cliente y el secreto mediante autenticación HTTP Basic sobre HTTPS al intercambiar un código de autorización. No incluyas el secreto en código del navegador ni en URLs."
+	],
+	[
+		"callbackMatch",
+		"Darkhorse devuelve al usuario a una de estas URLs exactas después de la autorización."
+	],
+	["refreshTokens", "Tokens de renovación"],
+	["allowances", "Autorizaciones para APIs protegidas"],
+	[
+		"identityAllowances",
+		"Estas listas limitan lo que el cliente puede solicitar. No conceden permisos a los usuarios. Para un inicio de sesión de identidad, pueden quedar vacías y usarse los ámbitos integrados openid, profile y email."
+	],
+	["resourceIds", "IDs de recursos permitidos"],
+	["scopeIds", "IDs de ámbitos permitidos"],
+	["noResources", "No hay recursos protegidos permitidos."],
+	["noScopes", "No hay ámbitos de recursos personalizados permitidos."],
+	["allowed", "Permitidos"],
+	["disabled", "Desactivados"],
+	[
+		"refreshAllowed",
+		"Este cliente puede renovar el acceso con tokens de renovación rotativos mientras la sesión del usuario siga siendo válida."
+	],
+	[
+		"refreshDisabled",
+		"Este cliente debe iniciar otro flujo de autorización cuando necesite nuevos tokens de acceso."
+	],
+	[
+		"allowanceCount",
+		"{resources, plural, one {# recurso} other {# recursos}} · {scopes, plural, one {# ámbito} other {# ámbitos}}"
+	],
+	["binding.addApplication", "¿Añadir el vínculo con la aplicación {name}?"],
+	["binding.removeApplication", "¿Quitar el vínculo con la aplicación {name}?"],
+	["binding.addCapability", "¿Añadir la capacidad {name}?"],
+	["binding.removeCapability", "¿Quitar la capacidad {name}?"],
+	["binding.unbindName", "Desvincular {name}"],
+	["binding.removeName", "Quitar {name}"],
+	["binding.retired", "{name} (retirada)"],
+	[
+		"binding.meaningHelp",
+		"El significado es permanente. El retiro se aplica a las nuevas comprobaciones de autorización."
+	],
+	["binding.audience", "Audiencia del recurso"],
+	[
+		"binding.audienceHelp",
+		"El identificador permanente de esta API. Los tokens de acceso a recursos están restringidos a su audiencia prevista."
+	],
+	["binding.applications", "Vínculos con aplicaciones"],
+	[
+		"binding.help",
+		"Elige qué aplicaciones pueden usar esta definición compartida. Cada aplicación necesita su propio vínculo; las aplicaciones futuras no heredan acceso."
+	],
+	["binding.bind", "Vincular aplicación"],
+	["binding.add", "Añadir capacidad"],
+	["binding.cancelSelection", "Cancelar selección"],
+	[
+		"binding.confirmHelp",
+		"Los cambios afectan inmediatamente a las nuevas comprobaciones de autorización. Primero deben quitarse los vínculos dependientes existentes."
+	],
+	["binding.cancel", "Cancelar cambio"],
+	["binding.confirm", "Confirmar cambio"],
+	["binding.grants", "Capacidades concedidas"],
+	["binding.bounds", "Límites de capacidades"],
+	["binding.exposed", "Capacidades expuestas"],
+	[
+		"binding.roleHelp",
+		"Los usuarios con este rol reciben estas capacidades dentro de la aplicación asignada. Cada capacidad debe vincularse a todas las aplicaciones que usan este rol."
+	],
+	[
+		"binding.scopeHelp",
+		"Estas capacidades establecen el acceso máximo que este ámbito puede solicitar. Su recurso debe exponer cada capacidad y el usuario ya debe tener el permiso."
+	],
+	[
+		"binding.resourceHelp",
+		"Elige los permisos que reconoce esta API. Cada capacidad debe vincularse primero a esta aplicación; exponerla aquí no concede acceso a un usuario."
+	],
+	["binding.chooseApplications", "Aplicaciones para vincular"],
+	["binding.chooseCapabilities", "Capacidades para vincular"],
+	["binding.unbind", "Desvincular"],
+	["binding.confirmTitle", "Confirmar cambio de acceso"],
+	["credentials.heading", "Credenciales del cliente"],
+	[
+		"credentials.help",
+		"El ID del cliente no cambia. Los secretos se muestran una vez, al crearlos o rotarlos. Guárdalos en el almacén de secretos de tu backend. Rota un secreto perdido para reemplazarlo."
+	],
+	[
+		"credentials.idsHelp",
+		"Los IDs de registro que aparecen abajo identifican las credenciales para administrarlas; no son los valores secretos."
+	],
+	["credentials.retire", "Retirar secreto"],
+	[
+		"credentials.empty",
+		"No hay registros de secretos actuales. Rota el secreto para emitir una credencial nueva."
+	],
+	["credentials.rotate", "Rotar secreto"],
+	[
+		"credentials.retireHelp",
+		"Los clientes que usen este secreto dejarán de autenticarse inmediatamente. Esta acción no se puede deshacer y puede dejar al cliente sin una credencial utilizable."
+	],
+	["credentials.overlap", "Vigencia simultánea del secreto anterior (segundos)"],
+	[
+		"credentials.overlapHelp",
+		"Permite de 0 a 300 segundos para desplegar el secreto nuevo. Cero retira el anterior inmediatamente; un valor positivo acepta ambos brevemente. Se retira cualquier otro secreto anterior aún vigente."
+	],
+	["credentials.cancel", "Cancelar cambio de credencial"],
+	["credentials.current", "Actual"],
+	["credentials.retireTitle", "¿Retirar este secreto?"],
+	["credentials.rotateTitle", "¿Rotar el secreto del cliente?"],
+	["credentials.record", "ID del registro del secreto: {id}"],
+	["credentials.expires", "Vence {time}"],
+	["credentials.confirmRetirement", "Confirmar retiro"],
+	["credentials.confirmRotation", "Confirmar rotación"]
+]

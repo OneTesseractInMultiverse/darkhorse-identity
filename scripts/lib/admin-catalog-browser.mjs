@@ -29,37 +29,48 @@ async function call(page, path, body) {
 async function saved(page, access = false) {
   await page
     .getByRole("status")
-    .filter({ hasText: access ? "Access policy saved." : "Change saved." })
+    .filter({
+      hasText: access ? "Política de acceso guardada." : "Cambio guardado.",
+    })
     .waitFor();
   await page.getByRole("table").waitFor();
 }
 async function create(page, kind, name) {
   await page
-    .getByRole("button", { name: `Create ${kind}`, exact: true })
+    .getByRole("button", {
+      name: `Crear ${{ application: "aplicación", resource: "recurso", scope: "ámbito", role: "rol", client: "cliente" }[kind]}`,
+      exact: true,
+    })
     .click();
-  await page.getByLabel("Name", { exact: true }).fill(name);
+  await page.getByLabel("Nombre", { exact: true }).fill(name);
 }
 async function close(page) {
-  await page.getByRole("button", { name: "Close", exact: true }).click();
+  await page.getByRole("button", { name: "Cerrar", exact: true }).click();
   await page.getByRole("dialog").waitFor({ state: "detached" });
 }
 async function edge(page, button, label) {
   await page.getByRole("button", { name: button, exact: true }).click();
   await page
-    .getByRole("button", { name: `Select ${label}`, exact: true })
+    .getByRole("button", { name: `Seleccionar ${label}`, exact: true })
     .click();
   await page
-    .getByRole("button", { name: "Confirm change", exact: true })
+    .getByRole("button", { name: "Confirmar cambio", exact: true })
     .click();
   await saved(page, true);
 }
 export async function verifyCatalog(page, origin, ca) {
   await page.goto(`${origin}/console/applications`);
+  await page
+    .getByRole("combobox", { name: /^(Language|Idioma)$/ })
+    .selectOption("es");
   await create(page, "application", "Console portal");
   await page
-    .getByRole("button", { name: "Select browser@example.com", exact: true })
+    .getByRole("button", {
+      name: "Seleccionar browser@example.com",
+      exact: true,
+    })
     .click();
-  await page.getByRole("button", { name: "Create", exact: true }).click();
+  await page.getByRole("button", { name: "Crear", exact: true }).click();
   await saved(page);
   const apps = await call(
     page,
@@ -86,77 +97,81 @@ export async function verifyCatalog(page, origin, ca) {
   await page.setViewportSize({ width: 1280, height: 900 });
   const route = (kind) => `${origin}/console/${kind}?application_id=${app.id}`;
   await page
-    .getByRole("button", { name: "View Console portal", exact: true })
+    .getByRole("button", { name: "Ver Console portal", exact: true })
     .click();
-  await verifyApplicationOverview(page, app.id);
+  await verifyApplicationOverview(page, app.id, "es");
   await page
-    .getByRole("button", { name: "Edit application", exact: true })
+    .getByRole("button", { name: "Editar aplicación", exact: true })
     .click();
-  await page.getByLabel("Name", { exact: true }).fill("Console portal edited");
-  await page.getByRole("button", { name: "Save changes", exact: true }).click();
+  await page
+    .getByLabel("Nombre", { exact: true })
+    .fill("Console portal edited");
+  await page
+    .getByRole("button", { name: "Guardar cambios", exact: true })
+    .click();
   await saved(page);
   await page.goto(route("resources"));
   await create(page, "resource", "Console API");
-  await page.getByRole("button", { name: "Create", exact: true }).click();
+  await page.getByRole("button", { name: "Crear", exact: true }).click();
   await saved(page);
   await page.goto(route("scopes"));
   await create(page, "scope", "console.read");
   await page
-    .getByRole("button", { name: "Select Console API", exact: true })
+    .getByRole("button", { name: "Seleccionar Console API", exact: true })
     .click();
-  await page.getByRole("button", { name: "Create", exact: true }).click();
+  await page.getByRole("button", { name: "Crear", exact: true }).click();
   await saved(page);
   await page.goto(route("capabilities"));
   await page
-    .getByRole("button", { name: "Create capability", exact: true })
+    .getByRole("button", { name: "Crear capacidad", exact: true })
     .click();
-  await page.getByLabel("Permission key").fill("console.read");
+  await page.getByLabel("Clave de permiso").fill("console.read");
   await page
-    .getByLabel("Meaning", { exact: true })
+    .getByLabel("Significado", { exact: true })
     .fill("Read console records");
-  await page.getByRole("button", { name: "Create", exact: true }).click();
+  await page.getByRole("button", { name: "Crear", exact: true }).click();
   await saved(page, true);
   await page.goto(route("roles"));
   await create(page, "role", "Console reader");
-  await page.getByRole("button", { name: "Create", exact: true }).click();
+  await page.getByRole("button", { name: "Crear", exact: true }).click();
   await saved(page, true);
   await page
-    .getByRole("button", { name: "View Console reader", exact: true })
+    .getByRole("button", { name: "Ver Console reader", exact: true })
     .click();
-  await edge(page, "Add capability", "console.read");
+  await edge(page, "Añadir capacidad", "console.read");
   await page.goto(route("resources"));
   await page
-    .getByRole("button", { name: "View Console API", exact: true })
+    .getByRole("button", { name: "Ver Console API", exact: true })
     .click();
-  await edge(page, "Add capability", "console.read");
+  await edge(page, "Añadir capacidad", "console.read");
   await page.goto(route("scopes"));
   await page
-    .getByRole("button", { name: "View console.read", exact: true })
+    .getByRole("button", { name: "Ver console.read", exact: true })
     .click();
-  await edge(page, "Add capability", "console.read");
+  await edge(page, "Añadir capacidad", "console.read");
   await page.goto(route("clients"));
   await create(page, "client", "Console web");
-  await verifyClientFormGuidance(page);
+  await verifyClientFormGuidance(page, "es");
   await page
-    .getByLabel("Callback URLs")
+    .getByLabel("URLs de retorno")
     .fill("https://console.example/callback");
   await page
-    .getByRole("button", { name: "Select Console API", exact: true })
+    .getByRole("button", { name: "Seleccionar Console API", exact: true })
     .click();
   await page
-    .getByRole("button", { name: "Select console.read", exact: true })
+    .getByRole("button", { name: "Seleccionar console.read", exact: true })
     .click();
-  await page.getByRole("button", { name: "Create", exact: true }).click();
-  await page.getByLabel("Client secret", { exact: true }).waitFor();
+  await page.getByRole("button", { name: "Crear", exact: true }).click();
+  await page.getByLabel("Secreto del cliente", { exact: true }).waitFor();
   const secret = await page
-    .getByLabel("Client secret", { exact: true })
+    .getByLabel("Secreto del cliente", { exact: true })
     .inputValue();
   assert.match(secret, /^[a-f0-9]{64}$/);
   await page
-    .getByRole("button", { name: "I have stored the secret", exact: true })
+    .getByRole("button", { name: "He guardado el secreto", exact: true })
     .click();
   assert.equal(
-    await page.getByLabel("Client secret", { exact: true }).count(),
+    await page.getByLabel("Secreto del cliente", { exact: true }).count(),
     0,
   );
   assert.equal(
@@ -178,48 +193,54 @@ export async function verifyCatalog(page, origin, ca) {
   assert.equal(detail.body.client_secret, undefined);
   assert.ok(!JSON.stringify(detail).includes(secret));
   await page
-    .getByRole("button", { name: "View Console web", exact: true })
+    .getByRole("button", { name: "Ver Console web", exact: true })
     .click();
-  await page.getByRole("button", { name: "Edit client", exact: true }).click();
   await page
-    .getByLabel("Callback URLs")
+    .getByRole("button", { name: "Editar cliente", exact: true })
+    .click();
+  await page
+    .getByLabel("URLs de retorno")
     .fill("https://console.example/new-callback");
-  await page.getByRole("button", { name: "Save changes", exact: true }).click();
+  await page
+    .getByRole("button", { name: "Guardar cambios", exact: true })
+    .click();
   await saved(page);
   await page
-    .getByRole("button", { name: "View Console web", exact: true })
+    .getByRole("button", { name: "Ver Console web", exact: true })
     .click();
   await page
-    .getByRole("button", { name: "Rotate secret", exact: true })
+    .getByRole("button", { name: "Rotar secreto", exact: true })
     .click();
-  await page.getByLabel("Previous secret overlap (seconds)").fill("60");
   await page
-    .getByRole("button", { name: "Confirm rotation", exact: true })
+    .getByLabel("Vigencia simultánea del secreto anterior (segundos)")
+    .fill("60");
+  await page
+    .getByRole("button", { name: "Confirmar rotación", exact: true })
     .click();
-  await page.getByLabel("Client secret", { exact: true }).waitFor();
+  await page.getByLabel("Secreto del cliente", { exact: true }).waitFor();
   assert.notEqual(
-    await page.getByLabel("Client secret", { exact: true }).inputValue(),
+    await page.getByLabel("Secreto del cliente", { exact: true }).inputValue(),
     secret,
   );
   await page
-    .getByRole("button", { name: "I have stored the secret", exact: true })
+    .getByRole("button", { name: "He guardado el secreto", exact: true })
     .click();
   await page
-    .getByRole("button", { name: "View Console web", exact: true })
+    .getByRole("button", { name: "Ver Console web", exact: true })
     .click();
   await page
-    .getByRole("button", { name: "Retire secret", exact: true })
+    .getByRole("button", { name: "Retirar secreto", exact: true })
     .first()
     .click();
   await page
-    .getByRole("button", { name: "Confirm retirement", exact: true })
+    .getByRole("button", { name: "Confirmar retiro", exact: true })
     .click();
   await saved(page);
   await page
-    .getByRole("button", { name: "View Console web", exact: true })
+    .getByRole("button", { name: "Ver Console web", exact: true })
     .click();
   await page
-    .getByRole("button", { name: "Rotate secret", exact: true })
+    .getByRole("button", { name: "Rotar secreto", exact: true })
     .click();
   const beforeLoss = await call(page, clientPath);
   let mutations = 0,
@@ -234,11 +255,11 @@ export async function verifyCatalog(page, origin, ca) {
     await route.abort("failed");
   });
   await page
-    .getByRole("button", { name: "Confirm rotation", exact: true })
+    .getByRole("button", { name: "Confirmar rotación", exact: true })
     .click();
   await page
     .getByRole("alert")
-    .filter({ hasText: "could not be confirmed" })
+    .filter({ hasText: "No se pudo confirmar" })
     .waitFor();
   assert.equal(mutations, 1);
   assert.equal(forwardingFailed, false);
@@ -249,25 +270,25 @@ export async function verifyCatalog(page, origin, ca) {
   );
   assert.ok(
     await page
-      .getByRole("button", { name: "View Console web", exact: true })
+      .getByRole("button", { name: "Ver Console web", exact: true })
       .isDisabled(),
   );
   assert.equal(
-    await page.getByLabel("Client secret", { exact: true }).count(),
+    await page.getByLabel("Secreto del cliente", { exact: true }).count(),
     0,
   );
   await page.unroute("**/api/admin/console/registration");
   await page
-    .getByRole("button", { name: "Refresh catalog", exact: true })
+    .getByRole("button", { name: "Actualizar catálogo", exact: true })
     .click();
   await page
-    .getByRole("button", { name: "View Console web", exact: true })
+    .getByRole("button", { name: "Ver Console web", exact: true })
     .click();
   await close(page);
   // A stale policy snapshot must not remove an application binding.
   await page.goto(route("roles"));
   await page
-    .getByRole("button", { name: "View Console reader", exact: true })
+    .getByRole("button", { name: "Ver Console reader", exact: true })
     .click();
   const catalog = await call(page, "/api/admin/catalog/roles");
   assert.equal(
@@ -280,15 +301,18 @@ export async function verifyCatalog(page, origin, ca) {
     200,
   );
   await page
-    .getByRole("button", { name: "Unbind Console portal edited", exact: true })
+    .getByRole("button", {
+      name: "Desvincular Console portal edited",
+      exact: true,
+    })
     .click();
   await page
-    .getByRole("button", { name: "Confirm change", exact: true })
+    .getByRole("button", { name: "Confirmar cambio", exact: true })
     .click();
-  await page.getByRole("alert").filter({ hasText: "changed" }).waitFor();
+  await page.getByRole("alert").filter({ hasText: "cambió" }).waitFor();
   assert.ok(
     await page
-      .getByRole("button", { name: "View Console reader", exact: true })
+      .getByRole("button", { name: "Ver Console reader", exact: true })
       .isDisabled(),
   );
   await page.route("**/api/admin/catalog/roles?**", (route) =>
@@ -299,14 +323,17 @@ export async function verifyCatalog(page, origin, ca) {
     }),
   );
   await page
-    .getByRole("button", { name: "Refresh catalog", exact: true })
+    .getByRole("button", { name: "Actualizar catálogo", exact: true })
     .click();
   await page
     .getByRole("alert")
-    .filter({ hasText: "Administrator access" })
+    .filter({ hasText: "Se requiere acceso de administrador" })
     .waitFor();
   assert.equal(await page.getByRole("table").count(), 0);
   await page.unroute("**/api/admin/catalog/roles?**");
+  await page
+    .getByRole("combobox", { name: /^(Language|Idioma)$/ })
+    .selectOption("en");
 }
 
 async function discardResponse(original, ca) {

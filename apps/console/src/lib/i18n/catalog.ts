@@ -36,6 +36,29 @@ export function compileCatalog(contract: Contract, value: unknown, locale: Local
 	}
 	return catalog;
 }
+/** Build-only encoding: validate readable source before replacing repeated keys. */
+export function packCatalog(
+	contract: Contract,
+	value: unknown,
+	locale: Locale
+): [number, string][] {
+	compileCatalog(contract, value, locale);
+	const keys = Object.keys(contract);
+	return (value as [string, string][]).map(([key, text]) => [keys.indexOf(key), text]);
+}
+
+/** The normal validator still rejects duplicate/missing keys and malformed messages. */
+export function expandCatalog(contract: Contract, value: unknown): unknown {
+	if (!Array.isArray(value) || value.length > 512) return value;
+	const keys = Object.keys(contract);
+	return value.map((entry) => {
+		if (!Array.isArray(entry) || entry.length !== 2) return entry;
+		const [key, text] = entry;
+		return typeof key === 'number' && Number.isInteger(key) && key >= 0 && key < keys.length
+			? [keys[key], text]
+			: entry;
+	});
+}
 function inspect(
 	ast: MessageFormatElement[],
 	args: Contract[string],

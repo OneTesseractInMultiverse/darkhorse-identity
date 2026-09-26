@@ -2,7 +2,7 @@
 	["language.label", "Idioma"],
 	[
 		"language.help",
-		"Se aplica a las páginas traducidas en este navegador. Algunas páginas aún están en inglés."
+		"Se aplica a las páginas de este navegador. El idioma guardado de tu cuenta se administra en Mi perfil."
 	],
 	["language.unsaved", "Se cambió el idioma en esta página. El navegador no pudo recordarlo."],
 	["login.secure", "ACCESO SEGURO"],
@@ -557,5 +557,6 @@
 	[
 		"directory.error.uncertain",
 		"No se pudo confirmar el cambio. Actualiza el directorio antes de hacer otro cambio."
-	]
+	],
+	["console.pageTitle", "{name} — Darkhorse"]
 ]

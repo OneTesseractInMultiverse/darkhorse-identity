@@ -1,4 +1,6 @@
 <script lang="ts">
+	import { useCatalogLocalization } from '$lib/i18n/catalog-context';
+	const catalog = useCatalogLocalization();
 	import { onMount } from 'svelte';
 	import { Button } from '$lib/components/ui/button';
 	import type { Read } from '$lib/admin/directory';
@@ -20,7 +22,7 @@
 		items = $state<{ id: string; name: string }[]>([]),
 		next = $state<string | null>(null),
 		pending = $state(false),
-		error = $state('');
+		error = $state(false);
 	let mounted = false;
 	onMount(() => {
 		mounted = true;
@@ -31,7 +33,7 @@
 	});
 	async function refresh(after?: string) {
 		pending = true;
-		error = '';
+		error = false;
 		items = [];
 		const result = await load(search.trim(), after);
 		if (!mounted) return;
@@ -40,7 +42,7 @@
 			next = result.data.next;
 		} else {
 			next = null;
-			error = 'Options could not be loaded. Refresh or sign in again.';
+			error = true;
 		}
 		pending = false;
 	}
@@ -50,15 +52,19 @@
 	<legend>{label}</legend>
 	<div class="catalog-search">
 		<input
-			aria-label={`Search ${label}`}
+			aria-label={$catalog.t('picker.searchLabel', { label })}
 			bind:value={search}
 			maxlength="100"
 			autocomplete="off"
-		/><Button type="button" variant="outline" onclick={() => refresh()}>Search options</Button>
+		/><Button type="button" variant="outline" onclick={() => refresh()}
+			>{$catalog.t('picker.search')}</Button
+		>
 	</div>
-	{#if error}<p role="alert" class="admin-error">{error}</p>{/if}
-	{#if pending}<p role="status">Loading options…</p>{:else if !items.length}<p class="muted">
-			No matching options.
+	{#if error}<p role="alert" class="admin-error">{$catalog.t('picker.error')}</p>{/if}
+	{#if pending}<p role="status">{$catalog.t('picker.loading')}</p>{:else if !items.length}<p
+			class="muted"
+		>
+			{$catalog.t('picker.empty')}
 		</p>{/if}
 	<ul class="catalog-options">
 		{#each items as item (item.id)}<li>
@@ -66,11 +72,12 @@
 					type="button"
 					variant="outline"
 					onclick={() => choose(item)}
-					aria-label={`Select ${item.name}`}>Select</Button
+					aria-label={$catalog.t('picker.selectName', { name: item.name })}
+					>{$catalog.t('picker.select')}</Button
 				>
 			</li>{/each}
 	</ul>
 	{#if next}<Button type="button" variant="outline" onclick={() => refresh(next!)}
-			>More options</Button
+			>{$catalog.t('picker.more')}</Button
 		>{/if}
 </fieldset>

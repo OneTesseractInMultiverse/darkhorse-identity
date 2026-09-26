@@ -1,5 +1,5 @@
 import { IntlMessageFormat } from 'intl-messageformat';
-import { compileCatalog, type Contract } from './catalog';
+import { compileCatalog, expandCatalog, type Contract } from './catalog';
 import type { Locale } from './locale';
 export type Arguments<C extends Contract, K extends keyof C> = {
 	[P in keyof C[K]]: C[K][P] extends 'number' ? number : string;
@@ -31,7 +31,7 @@ export function createFormatter<C extends Contract>(
 }
 function messages(contract: Contract, value: unknown, locale: Locale) {
 	return new Map(
-		[...compileCatalog(contract, value, locale)].map(([key, ast]) => [
+		[...compileCatalog(contract, expandCatalog(contract, value), locale)].map(([key, ast]) => [
 			key,
 			new IntlMessageFormat(ast, locale, undefined, { ignoreTag: true })
 		])

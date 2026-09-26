@@ -16,21 +16,28 @@ async function fits(dialog) {
   );
 }
 
-export async function verifyApplicationOverview(page, application) {
+export async function verifyApplicationOverview(
+  page,
+  application,
+  locale = "en",
+) {
   const dialog = page.getByRole("dialog");
   await dialog.waitFor();
   assert.ok((await dialog.boundingBox()).width >= 800);
-  for (const section of [
-    "Clients",
-    "Resources",
-    "Scopes",
-    "Roles",
-    "Capabilities",
+  for (const [path, en, es] of [
+    ["clients", "Clients", "Clientes"],
+    ["resources", "Resources", "Recursos"],
+    ["scopes", "Scopes", "Ámbitos"],
+    ["roles", "Roles", "Roles"],
+    ["capabilities", "Capabilities", "Capacidades"],
   ]) {
-    const link = dialog.getByRole("link", { name: section, exact: true });
+    const link = dialog.getByRole("link", {
+      name: locale === "es" ? es : en,
+      exact: true,
+    });
     assert.equal(
       await link.getAttribute("href"),
-      `/console/${section.toLowerCase()}?application_id=${application}`,
+      `/console/${path}?application_id=${application}`,
     );
     assert.ok(await link.getAttribute("aria-describedby"));
   }
@@ -39,7 +46,10 @@ export async function verifyApplicationOverview(page, application) {
     path: resolve(".local/catalog-overview-desktop.png"),
   });
   await dialog
-    .getByRole("button", { name: "Close dialog", exact: true })
+    .getByRole("button", {
+      name: locale === "es" ? "Cerrar diálogo" : "Close dialog",
+      exact: true,
+    })
     .press("Tab");
   assert.equal(
     await page.evaluate(() => document.activeElement?.getAttribute("href")),
@@ -50,7 +60,12 @@ export async function verifyApplicationOverview(page, application) {
   await page.screenshot({
     path: resolve(".local/catalog-overview-mobile.png"),
   });
-  await dialog.getByRole("link", { name: "Capabilities", exact: true }).focus();
+  await dialog
+    .getByRole("link", {
+      name: locale === "es" ? "Capacidades" : "Capabilities",
+      exact: true,
+    })
+    .focus();
   await fits(dialog);
   await page.screenshot({
     path: resolve(".local/catalog-overview-mobile-options.png"),
@@ -58,22 +73,29 @@ export async function verifyApplicationOverview(page, application) {
   await page.keyboard.press("Escape");
   await page.locator("dialog").waitFor({ state: "detached" });
   await expect(
-    page.getByRole("button", { name: "View Console portal", exact: true }),
+    page.getByRole("button", {
+      name: locale === "es" ? "Ver Console portal" : "View Console portal",
+      exact: true,
+    }),
   ).toBeFocused();
   await page.setViewportSize({ width: 1280, height: 900 });
   await page
-    .getByRole("button", { name: "View Console portal", exact: true })
+    .getByRole("button", {
+      name: locale === "es" ? "Ver Console portal" : "View Console portal",
+      exact: true,
+    })
     .click();
 }
 
-export async function verifyClientFormGuidance(page) {
+export async function verifyClientFormGuidance(page, locale = "en") {
   const dialog = page.getByRole("dialog");
-  for (const label of [
-    "Name",
-    "Active",
-    "Callback URLs",
-    "Allow refresh tokens",
+  for (const [en, es] of [
+    ["Name", "Nombre"],
+    ["Active", "Activo"],
+    ["Callback URLs", "URLs de retorno"],
+    ["Allow refresh tokens", "Permitir tokens de renovación"],
   ]) {
+    const label = locale === "es" ? es : en;
     const input = dialog.getByLabel(label, { exact: true });
     const description = await input.getAttribute("aria-describedby");
     assert.ok(description);

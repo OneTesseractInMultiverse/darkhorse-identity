@@ -1,4 +1,8 @@
 <script lang="ts">
+	import { useCatalogLocalization } from '$lib/i18n/catalog-context';
+	const catalog = useCatalogLocalization();
+	import { dateTime as createDateTimeFormatter } from '$lib/i18n/display';
+	const dateTime = $derived(createDateTimeFormatter($catalog.locale));
 	import { Button } from '$lib/components/ui/button';
 	import type { Item, Command } from '$lib/admin/catalog';
 	let {
@@ -33,31 +37,29 @@
 </script>
 
 <section class="catalog-section credential-section">
-	<h3>Client credentials</h3>
+	<h3>{$catalog.t('credentials.heading')}</h3>
 	<p class="muted">
-		The client ID stays the same. A secret is shown only once, when created or rotated. Save it in
-		your application’s backend secret store. If you lost it, rotate the secret to create a
-		replacement.
+		{$catalog.t('credentials.help')}
 	</p>
 	<p class="catalog-help">
-		The record IDs below identify credentials for management; they are not the secret values.
+		{$catalog.t('credentials.idsHelp')}
 	</p>
 	<ul class="catalog-options">
 		{#each client.secrets ?? [] as secret (secret.id)}<li>
 				<span class="catalog-id"
-					>Secret record ID: {secret.id}<br />{secret.expires_ms === null
-						? 'Current'
-						: `Expires ${new Date(secret.expires_ms).toISOString()}`}</span
+					>{$catalog.t('credentials.record', { id: secret.id })}<br />{secret.expires_ms === null
+						? $catalog.t('credentials.current')
+						: $catalog.t('credentials.expires', { time: dateTime(secret.expires_ms) })}</span
 				><Button
 					variant="outline"
 					disabled={pending}
 					onclick={() => {
 						retire = secret.id;
 						rotate = false;
-					}}>Retire secret</Button
+					}}>{$catalog.t('credentials.retire')}</Button
 				>
 			</li>{:else}<li class="catalog-help">
-				No current secret records. Rotate the secret to issue a new credential.
+				{$catalog.t('credentials.empty')}
 			</li>{/each}
 	</ul>
 	<Button
@@ -66,14 +68,15 @@
 		onclick={() => {
 			rotate = true;
 			retire = null;
-		}}>Rotate secret</Button
+		}}>{$catalog.t('credentials.rotate')}</Button
 	>
 	{#if rotate || retire}<form class="catalog-confirm admin-form" onsubmit={submit}>
-			<h3>{retire ? 'Retire this secret?' : 'Rotate the client secret?'}</h3>
+			<h3>
+				{retire ? $catalog.t('credentials.retireTitle') : $catalog.t('credentials.rotateTitle')}
+			</h3>
 			{#if retire}<p>
-					Clients using this secret will stop authenticating immediately. This cannot be undone and
-					may leave the client without a usable credential.
-				</p>{:else}<label for="secret-overlap">Previous secret overlap (seconds)</label><input
+					{$catalog.t('credentials.retireHelp')}
+				</p>{:else}<label for="secret-overlap">{$catalog.t('credentials.overlap')}</label><input
 					id="secret-overlap"
 					aria-describedby="secret-overlap-help"
 					type="number"
@@ -85,9 +88,7 @@
 					disabled={pending}
 				/>
 				<p id="secret-overlap-help" class="catalog-help">
-					Choose 0–300 seconds to deploy the new secret. Zero retires the previous secret
-					immediately; a positive value briefly accepts both. Any older overlapping secret is
-					retired.
+					{$catalog.t('credentials.overlapHelp')}
 				</p>{/if}
 			<div class="modal-actions">
 				<Button
@@ -97,9 +98,11 @@
 					onclick={() => {
 						rotate = false;
 						retire = null;
-					}}>Cancel credential change</Button
+					}}>{$catalog.t('credentials.cancel')}</Button
 				><Button type="submit" disabled={pending}
-					>Confirm {retire ? 'retirement' : 'rotation'}</Button
+					>{$catalog.t(
+						retire ? 'credentials.confirmRetirement' : 'credentials.confirmRotation'
+					)}</Button
 				>
 			</div>
 		</form>{/if}

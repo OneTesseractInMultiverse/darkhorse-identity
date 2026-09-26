@@ -49,6 +49,12 @@
 				'/authorization',
 				'/console/settings',
 				'/console/users',
+				'/console/applications',
+				'/console/clients',
+				'/console/resources',
+				'/console/scopes',
+				'/console/roles',
+				'/console/capabilities',
 				'/console/profile'
 			].includes(page.url.pathname)
 				? $language.locale

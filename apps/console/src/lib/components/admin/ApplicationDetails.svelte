@@ -1,90 +1,55 @@
 <script lang="ts">
+	import { useCatalogLocalization } from '$lib/i18n/catalog-context';
+	import { useLocalization } from '$lib/i18n/context';
+	const language = useLocalization();
+	const catalog = useCatalogLocalization();
 	import { resolve } from '$app/paths';
 	import type { Item } from '$lib/admin/catalog';
 	let { application }: { application: Item } = $props();
 	const sections = [
-		{
-			path: 'clients',
-			title: 'Clients',
-			tag: 'START HERE',
-			description:
-				'Register an OIDC client to get a client ID and secret. Configure callbacks and token settings for your application.',
-			icon: '↗'
-		},
-		{
-			path: 'resources',
-			title: 'Resources',
-			tag: 'PROTECTED APIs',
-			description:
-				'Define the APIs this application protects. Each resource has its own token audience and exposed capabilities.',
-			icon: '◇'
-		},
-		{
-			path: 'scopes',
-			title: 'Scopes',
-			tag: 'REQUEST LIMITS',
-			description:
-				'Define the permissions a client may request for a resource. Scopes limit access to permissions the user already has.',
-			icon: '⌘'
-		},
-		{
-			path: 'roles',
-			title: 'Roles',
-			tag: 'USER ACCESS',
-			description:
-				'Group capabilities into roles. Bind roles to applications, then assign them to people in the user directory.',
-			icon: '☷'
-		},
-		{
-			path: 'capabilities',
-			title: 'Capabilities',
-			tag: 'PERMISSIONS',
-			description:
-				'Define individual actions, such as invoices.read. Bind them to this application and use them in roles, resources and scopes.',
-			icon: '＋'
-		}
+		{ path: 'clients', icon: '↗' },
+		{ path: 'resources', icon: '◇' },
+		{ path: 'scopes', icon: '⌘' },
+		{ path: 'roles', icon: '☷' },
+		{ path: 'capabilities', icon: '＋' }
 	] as const;
 </script>
 
 <div class="catalog-detail">
 	<dl class="catalog-facts">
 		<div class="catalog-fact-wide">
-			<dt>Application ID</dt>
+			<dt>{$catalog.t('applicationId')}</dt>
 			<dd class="catalog-id">{application.id}</dd>
 			<dd class="catalog-help">
-				Identifies this application in Darkhorse. Use a client ID from Clients when configuring OIDC
-				sign-in.
+				{$catalog.t('applicationIdHelp')}
 			</dd>
 		</div>
 		<div>
-			<dt>Owner</dt>
+			<dt>{$catalog.t('ownerLabel')}</dt>
 			<dd>{application.owner_email}</dd>
 			<dd class="catalog-help">
-				The accountable contact. Ownership does not grant administrator access.
+				{$catalog.t('ownerContact')}
 			</dd>
 		</div>
 		<div>
-			<dt>Status</dt>
+			<dt>{$language.t('common.status')}</dt>
 			<dd>
 				<span class="catalog-status" class:inactive={!application.active}
-					>{application.active ? 'Active' : 'Inactive'}</span
+					>{$language.t(application.active ? 'common.active' : 'common.inactive')}</span
 				>
 			</dd>
 			<dd class="catalog-help">
-				{application.active
-					? 'Registered clients can authenticate when their own settings also permit it.'
-					: 'Clients in this application cannot authenticate while it is inactive.'}
+				{application.active ? $catalog.t('applicationActive') : $catalog.t('applicationInactive')}
 			</dd>
 		</div>
 	</dl>
 	<div class="catalog-section-heading">
-		<h3>Configure this application</h3>
+		<h3>{$catalog.t('configureApplication')}</h3>
 		<p class="catalog-help">
-			Start with a client for sign-in. Add resources and permissions when the application also needs
-			protected API access.
+			{$catalog.t('configureHelp')}
 		</p>
 	</div>
-	<nav class="catalog-cards" aria-label="Application catalogs">
+	<nav class="catalog-cards" aria-label={$catalog.t('applicationCatalogs')}>
 		{#each sections as section (section.path)}
 			<a
 				class="catalog-card"
@@ -97,21 +62,21 @@
 			>
 				<span class="catalog-card-icon" aria-hidden="true">{section.icon}</span>
 				<div>
-					<span class="catalog-kicker">{section.tag}</span>
+					<span class="catalog-kicker">{$catalog.t(`sectionTag.${section.path}`)}</span>
 					<h4 id={`catalog-card-${section.path}`}>
-						{section.title} <span aria-hidden="true">↗</span>
+						{$language.t(`console.${section.path}`)} <span aria-hidden="true">↗</span>
 					</h4>
-					<p id={`catalog-card-${section.path}-help`}>{section.description}</p>
+					<p id={`catalog-card-${section.path}-help`}>
+						{$catalog.t(`intro.${section.path}`)}
+					</p>
 				</div>
 			</a>
 		{/each}
 	</nav>
 	<aside class="catalog-note">
-		<strong>Connecting your application</strong>
+		<strong>{$catalog.t('connectHeading')}</strong>
 		<p>
-			Create a client, save its one-time secret in your application’s backend, and configure your
-			OIDC library with the client ID, issuer and exact callback URL. The issuer must have OIDC
-			enabled by your server operator.
+			{$catalog.t('connectHelp')}
 		</p>
 	</aside>
 </div>

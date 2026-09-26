@@ -2,19 +2,52 @@ import tailwindcss from '@tailwindcss/vite';
 import { defineConfig } from 'vitest/config';
 import adapter from '@sveltejs/adapter-static';
 import { sveltekit } from '@sveltejs/kit/vite';
-import { compileCatalog } from './src/lib/i18n/catalog.ts';
+import { compileCatalog, packCatalog } from './src/lib/i18n/catalog.ts';
 import { contract } from './src/lib/i18n/contract.ts';
+import { adminContract } from './src/lib/i18n/admin-contract.ts';
 import en from './src/lib/i18n/catalogs/en.json' with { type: 'json' };
 import es from './src/lib/i18n/catalogs/es.json' with { type: 'json' };
+import adminEn from './src/lib/i18n/catalogs/admin-en.json' with { type: 'json' };
+import adminEs from './src/lib/i18n/catalogs/admin-es.json' with { type: 'json' };
+
+const bundledCatalogs = [
+	{ path: '/src/lib/i18n/catalogs/en.json', contract, value: en, locale: 'en' },
+	{ path: '/src/lib/i18n/catalogs/es.json', contract, value: es, locale: 'es' },
+	{
+		path: '/src/lib/i18n/catalogs/admin-en.json',
+		contract: adminContract,
+		value: adminEn,
+		locale: 'en'
+	},
+	{
+		path: '/src/lib/i18n/catalogs/admin-es.json',
+		contract: adminContract,
+		value: adminEs,
+		locale: 'es'
+	}
+] as const;
 
 export default defineConfig({
 	plugins: [
 		{
 			name: 'darkhorse-catalogs',
 			apply: 'build',
+			enforce: 'post',
 			buildStart() {
 				compileCatalog(contract, en, 'en');
 				compileCatalog(contract, es, 'es');
+				compileCatalog(adminContract, adminEn, 'en');
+				compileCatalog(adminContract, adminEs, 'es');
+			},
+			transform(_source, id) {
+				const catalog = bundledCatalogs.find((entry) =>
+					id.replaceAll('\\', '/').endsWith(entry.path)
+				);
+				if (!catalog) return;
+				return {
+					code: `export default ${JSON.stringify(packCatalog(catalog.contract, catalog.value, catalog.locale))};`,
+					map: null
+				};
 			}
 		},
 		tailwindcss(),

@@ -1,0 +1,367 @@
+[
+	["create.applications", "Create application"],
+	["search.applications", "Search applications"],
+	["create.clients", "Create client"],
+	["search.clients", "Search clients"],
+	["create.resources", "Create resource"],
+	["search.resources", "Search resources"],
+	["create.scopes", "Create scope"],
+	["search.scopes", "Search scopes"],
+	["create.roles", "Create role"],
+	["search.roles", "Search roles"],
+	["create.capabilities", "Create capability"],
+	["search.capabilities", "Search capabilities"],
+	[
+		"intro.applications",
+		"Register the applications that trust Darkhorse for sign-in. Open an application to configure its OIDC clients and access policies."
+	],
+	[
+		"intro.clients",
+		"Configure how an application signs in with OpenID Connect (OIDC). Each client has its own client ID, secret, callback URLs and token settings."
+	],
+	[
+		"intro.resources",
+		"Define protected APIs and the capabilities they expose. Each resource gets a stable audience that identifies the API an access token is intended for."
+	],
+	[
+		"intro.scopes",
+		"Define named limits on the capabilities a client can request for a resource. A scope never gives a user permissions they do not already have."
+	],
+	[
+		"intro.roles",
+		"Group capabilities into assignable roles, such as Reader or Administrator. Bind a role to an application before assigning it through the user directory."
+	],
+	[
+		"intro.capabilities",
+		"Define individual permissions, such as invoices.read. Their keys and meanings are permanent; bind them explicitly to the applications that use them."
+	],
+	[
+		"nameHelp.applications",
+		"A recognizable display name, such as Customer portal. This is separate from the OIDC client registration."
+	],
+	[
+		"nameHelp.clients",
+		"A display name, such as Customer portal — production. Creation generates the client ID and a secret shown only once."
+	],
+	[
+		"nameHelp.resources",
+		"A name for the protected API, such as Orders API. Its name and generated audience cannot be changed after creation."
+	],
+	[
+		"nameHelp.scopes",
+		"A permanent scope name, such as orders.read. Use a single value without spaces. Built-in identity scopes such as openid are reserved."
+	],
+	[
+		"nameHelp.roles",
+		"A permanent label for a group of permissions, such as Billing reader. Add capabilities after creating the role."
+	],
+	[
+		"nameHelp.capabilities",
+		"A permanent permission key, such as invoices.read. Choose a precise action that your application can enforce."
+	],
+	["applicationValue", "Application: {value}"],
+	["viewName", "View {name}"],
+	["page", "Page {number}"],
+	["editName", "Edit {name}"],
+	["recordId", "Record ID: {id}"],
+	[
+		"retireHelp",
+		"Retire {name} permanently? New authorization checks will no longer grant this capability."
+	],
+	["clientIdValue", "Client ID: {id}"],
+	["picker.searchLabel", "Search {label}"],
+	["picker.selectName", "Select {name}"],
+	["removeResource", "Remove resource {name}"],
+	["removeScope", "Remove scope {name}"],
+	["ownerValue", "Owner: {name}"],
+	["resourceValue", "Resource: {name}"],
+	["error.reference", "Invalid application reference."],
+	["error.signed-out", "Sign in to continue."],
+	["error.forbidden", "Administrator access is required."],
+	["error.unavailable", "The catalog is unavailable. Refresh to try again."],
+	["error.recent", "For this change, sign out and sign in again, then reopen the directory."],
+	["error.conflict", "This record or access policy changed. Refresh before making another change."],
+	[
+		"error.invalid",
+		"The change was rejected. Check the values and required bindings, then refresh."
+	],
+	[
+		"error.uncertain",
+		"The change could not be confirmed. Refresh and inspect the record before making another change. A lost secret cannot be retrieved; rotate it after checking the client."
+	],
+	[
+		"message.hidden",
+		"Secret dismissed while the page was hidden. Refresh and rotate after checking the client."
+	],
+	["message.store", "Store this secret before closing."],
+	["message.saved", "Change saved."],
+	["message.policy", "Access policy saved."],
+	["message.dismissed", "Secret dismissed. It cannot be retrieved again."],
+	["message.refresh", "Secret dismissed. Refresh the catalog before making another change."],
+	["retired", "Retired"],
+	["details", "Details"],
+	["detailDescription", "Application overview · Sign-in and access management"],
+	[
+		"requiredHelp",
+		"Required fields have an asterisk (*). Changes require signing in within the last five minutes."
+	],
+	["picker.error", "Options could not be loaded. Refresh or sign in again."],
+	["picker.loading", "Loading options…"],
+	["selectOwner", "Select an active user"],
+	["selectResource", "Select a resource"],
+	["permissionKey", "Permission key"],
+	["name", "Name"],
+	[
+		"activateApplication",
+		"Allow clients in this application to authenticate. Turning this off blocks authentication for all of its clients."
+	],
+	[
+		"activateClient",
+		"Allow this client to authenticate while its parent application is also active. Turning this off blocks this client."
+	],
+	["boundDefinition", "The definition will be explicitly bound to this application."],
+	[
+		"sharedDefinition",
+		"This shared definition grants no access until it is explicitly bound to an application."
+	],
+	["saveChanges", "Save changes"],
+	["create", "Create"],
+	["remove", "Remove"],
+	["eyebrow", "IDENTITY / APPLICATION DIRECTORY"],
+	["refresh", "Refresh catalog"],
+	["account", "My account / sign in"],
+	["chooseApplication", "Choose application"],
+	["sharedCatalog", "Show shared catalog"],
+	["all", "All"],
+	["loading", "Loading catalog…"],
+	["reference", "Reference"],
+	["empty", "No matching records."],
+	["previous", "Previous"],
+	["next", "Next"],
+	["editApplication", "Edit application"],
+	["editClient", "Edit client"],
+	["retireCapability", "Retire capability"],
+	["cancelRetirement", "Cancel retirement"],
+	["confirmRetirement", "Confirm capability retirement"],
+	[
+		"revealHelp",
+		"Shown only once. Save this secret in your application’s secret manager before closing. Leaving this page clears it."
+	],
+	[
+		"revealMethod",
+		"Use this secret with the client ID and client_secret_basic in your backend. Never put it in browser code, URLs or source control. Rotate a lost secret."
+	],
+	["stored", "I have stored the secret"],
+	["searchForm", "Search catalog"],
+	["searchPlaceholder", "Name prefix"],
+	["table", "Catalog table"],
+	["revealTitle", "Save the client secret"],
+	["secret", "Client secret"],
+	["picker.search", "Search options"],
+	["picker.empty", "No matching options."],
+	["picker.more", "More options"],
+	["picker.select", "Select"],
+	["general", "General"],
+	[
+		"ownerHelp",
+		"The owner is an organizational contact. Ownership does not grant administration rights."
+	],
+	["meaning", "Meaning"],
+	[
+		"meaningHelp",
+		"Describe exactly which action this permission permits. The key and meaning are permanent. Retire a capability when its meaning changes."
+	],
+	["protectedResource", "Protected resource"],
+	[
+		"resourceHelp",
+		"Required. Select the API this scope applies to. The resource cannot be reassigned after creation."
+	],
+	[
+		"scopeHelp",
+		"After creating the scope, add capabilities already exposed by its resource. Requesting a scope does not assign a role to the user."
+	],
+	["callbacksHeading", "Sign-in & callbacks"],
+	[
+		"clientHelp",
+		"For web applications with a backend that can securely store a secret. Uses Authorization Code with PKCE (S256) and client_secret_basic over HTTPS."
+	],
+	["callbacks", "Callback URLs"],
+	[
+		"callbacksHelp",
+		"Darkhorse redirects the user here after authorization. Enter up to eight exact HTTPS URLs, one per line, including the path and any query string. Your application must match them exactly. No wildcards or fragments."
+	],
+	["allowRefresh", "Allow refresh tokens"],
+	[
+		"refreshHelp",
+		"Let the backend renew access with rotating refresh tokens while the user’s session remains valid. Disabled by default. This does not enable offline access."
+	],
+	["apiAccess", "Protected API access"],
+	["optional", "Optional"],
+	[
+		"allowancesHelp",
+		"Leave these lists empty for identity-only sign-in with openid, profile and email. These built-in scopes do not need to be created here. Custom resource access needs separate allowances and user permissions."
+	],
+	["allowedResources", "Allowed resources"],
+	[
+		"resourcesHelp",
+		"Select up to 32 APIs from this application that the client may request tokens for."
+	],
+	["allowedScopes", "Allowed scopes"],
+	[
+		"scopesHelp",
+		"Select up to 128 custom scopes the client may request. Each must belong to an allowed resource."
+	],
+	[
+		"allowancesCaution",
+		"Allowing a resource or scope does not grant access to a user. Existing permission limits remain enforced when policies change."
+	],
+	["owner", "Application owner"],
+	["scopeResource", "Scope resource"],
+	["clientResources", "Client resources"],
+	["clientScopes", "Client scopes"],
+	["sectionTag.clients", "START HERE"],
+	["sectionTag.resources", "PROTECTED APIs"],
+	["sectionTag.scopes", "REQUEST LIMITS"],
+	["sectionTag.roles", "USER ACCESS"],
+	["sectionTag.capabilities", "PERMISSIONS"],
+	["applicationId", "Application ID"],
+	[
+		"applicationIdHelp",
+		"Identifies this application in Darkhorse. Use a client ID from Clients when configuring OIDC sign-in."
+	],
+	["ownerLabel", "Owner"],
+	["ownerContact", "The accountable contact. Ownership does not grant administrator access."],
+	["configureApplication", "Configure this application"],
+	[
+		"configureHelp",
+		"Start with a client for sign-in. Add resources and permissions when the application also needs protected API access."
+	],
+	["connectHeading", "Connecting your application"],
+	[
+		"connectHelp",
+		"Create a client and save its one-time secret in your backend. Configure your OIDC library with the client ID, issuer and exact callback URL. Your server operator must enable OIDC on the issuer."
+	],
+	[
+		"applicationActive",
+		"Registered clients can authenticate when their own settings also permit it."
+	],
+	["applicationInactive", "Clients in this application cannot authenticate while it is inactive."],
+	["applicationCatalogs", "Application catalogs"],
+	["clientId", "Client ID"],
+	[
+		"clientIdHelp",
+		"Use this value as client_id in your application’s OIDC configuration. It stays the same when you rotate the secret."
+	],
+	["clientParent", "The application that owns this registration."],
+	["clientActive", "Both this client and its parent application must be active to authenticate."],
+	["signInConfiguration", "Sign-in configuration"],
+	["confidential", "Confidential web client · Authorization Code flow with PKCE (S256)."],
+	["clientAuthentication", "Client authentication"],
+	[
+		"clientAuthenticationHelp",
+		"Your backend sends the client ID and secret using HTTP Basic authentication over HTTPS when exchanging an authorization code. Keep the secret out of browser code and URLs."
+	],
+	["callbackMatch", "Darkhorse returns the user to one of these exact URLs after authorization."],
+	["refreshTokens", "Refresh tokens"],
+	["allowances", "Protected API allowances"],
+	[
+		"identityAllowances",
+		"These allowlists limit what the client may request. They do not grant permissions to users. Identity-only sign-in can leave both empty and use the built-in openid, profile and email scopes."
+	],
+	["resourceIds", "Allowed resource IDs"],
+	["scopeIds", "Allowed scope IDs"],
+	["noResources", "No protected resources allowed."],
+	["noScopes", "No custom resource scopes allowed."],
+	["allowed", "Allowed"],
+	["disabled", "Disabled"],
+	[
+		"refreshAllowed",
+		"This client may renew access using rotating refresh tokens while the user’s session remains valid."
+	],
+	[
+		"refreshDisabled",
+		"This client must start another authorization flow when it needs new access tokens."
+	],
+	[
+		"allowanceCount",
+		"{resources, plural, one {# resource} other {# resources}} · {scopes, plural, one {# scope} other {# scopes}}"
+	],
+	["binding.addApplication", "Add {name} application binding?"],
+	["binding.removeApplication", "Remove {name} application binding?"],
+	["binding.addCapability", "Add {name} capability?"],
+	["binding.removeCapability", "Remove {name} capability?"],
+	["binding.unbindName", "Unbind {name}"],
+	["binding.removeName", "Remove {name}"],
+	["binding.retired", "{name} (retired)"],
+	[
+		"binding.meaningHelp",
+		"Meaning is permanent. Retirement takes effect for new authorization checks."
+	],
+	["binding.audience", "Resource audience"],
+	[
+		"binding.audienceHelp",
+		"The permanent identifier for this API. Resource access tokens are restricted to their intended audience."
+	],
+	["binding.applications", "Application bindings"],
+	[
+		"binding.help",
+		"Choose which applications can use this shared definition. Each application needs its own binding; future applications do not inherit access."
+	],
+	["binding.bind", "Bind application"],
+	["binding.add", "Add capability"],
+	["binding.cancelSelection", "Cancel selection"],
+	[
+		"binding.confirmHelp",
+		"Changes affect new authorization checks immediately. Existing dependent bindings must be removed first."
+	],
+	["binding.cancel", "Cancel change"],
+	["binding.confirm", "Confirm change"],
+	["binding.grants", "Granted capabilities"],
+	["binding.bounds", "Capability bounds"],
+	["binding.exposed", "Exposed capabilities"],
+	[
+		"binding.roleHelp",
+		"Users assigned this role receive these capabilities within the assigned application. Each capability must be bound to every application that uses this role."
+	],
+	[
+		"binding.scopeHelp",
+		"These capabilities set the maximum access this scope can request. Each must be exposed by its resource, and the user must already hold the permission."
+	],
+	[
+		"binding.resourceHelp",
+		"Choose the permissions this API recognizes. Each capability must first be bound to this application; exposing it here does not grant access to a user."
+	],
+	["binding.chooseApplications", "Binding applications"],
+	["binding.chooseCapabilities", "Binding capabilities"],
+	["binding.unbind", "Unbind"],
+	["binding.confirmTitle", "Confirm access change"],
+	["credentials.heading", "Client credentials"],
+	[
+		"credentials.help",
+		"The client ID does not change. Secrets appear once, at creation or rotation. Save them in your backend’s secret store. Rotate a lost secret to replace it."
+	],
+	[
+		"credentials.idsHelp",
+		"The record IDs below identify credentials for management; they are not the secret values."
+	],
+	["credentials.retire", "Retire secret"],
+	["credentials.empty", "No current secret records. Rotate the secret to issue a new credential."],
+	["credentials.rotate", "Rotate secret"],
+	[
+		"credentials.retireHelp",
+		"Clients using this secret will stop authenticating immediately. This cannot be undone and may leave the client without a usable credential."
+	],
+	["credentials.overlap", "Previous secret overlap (seconds)"],
+	[
+		"credentials.overlapHelp",
+		"Allow 0–300 seconds to deploy the new secret. Zero retires the previous secret immediately; a positive value briefly accepts both. Any older overlapping secret is retired."
+	],
+	["credentials.cancel", "Cancel credential change"],
+	["credentials.current", "Current"],
+	["credentials.retireTitle", "Retire this secret?"],
+	["credentials.rotateTitle", "Rotate the client secret?"],
+	["credentials.record", "Secret record ID: {id}"],
+	["credentials.expires", "Expires {time}"],
+	["credentials.confirmRetirement", "Confirm retirement"],
+	["credentials.confirmRotation", "Confirm rotation"]
+]
