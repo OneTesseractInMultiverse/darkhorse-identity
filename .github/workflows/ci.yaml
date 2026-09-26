@@ -71,3 +71,55 @@ jobs:
           include-hidden-files: true
           if-no-files-found: error
           retention-days: 14
+
+  boundaries:
+    name: ${{ matrix.name }}
+    runs-on: ubuntu-24.04
+    timeout-minutes: 40
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - suite: postgres
+            name: PostgreSQL boundary verification
+          - suite: redis
+            name: Redis and native security verification
+    env:
+      CARGO_INCREMENTAL: "0"
+      CARGO_PROFILE_DEV_DEBUG: "0"
+      CARGO_PROFILE_TEST_DEBUG: "0"
+      CARGO_BUILD_JOBS: "2"
+      BOUNDARY_SUITE: ${{ matrix.suite }}
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
+        with:
+          node-version: 24.19.0
+          package-manager-cache: false
+      - name: Prepare locked Rust dependencies
+        timeout-minutes: 10
+        run: |
+          rustup show active-toolchain
+          cargo fetch --locked
+      - name: Verify boundary supervision and cleanup
+        timeout-minutes: 5
+        run: make test-ci-boundary-tools
+      - name: Run complete boundary suite
+        id: boundary
+        timeout-minutes: 27
+        run: exec node scripts/ci-boundary.mjs "$BOUNDARY_SUITE"
+      - name: Verify owned resource cleanup
+        if: ${{ always() && steps.boundary.outcome != 'skipped' }}
+        timeout-minutes: 2
+        run: make cleanup-ci-boundary
+      - name: Preserve bounded boundary evidence
+        if: ${{ always() && steps.boundary.outcome != 'skipped' }}
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: boundary-${{ matrix.suite }}-${{ github.run_id }}-${{ github.run_attempt }}
+          path: .local/ci-boundary/${{ matrix.suite }}/report.json
+          include-hidden-files: true
+          if-no-files-found: error
+          retention-days: 14

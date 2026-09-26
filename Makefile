@@ -124,6 +124,17 @@ test-unit-web: ## Test: frontend computations and component interactions in memo
 test-tooling: ## Test: architecture and process-supervision contracts with fakes
 	$(NODE) --test scripts/tests/unit/*.test.mjs
 
+.PHONY: test-ci-boundary test-ci-boundary-tools cleanup-ci-boundary
+
+test-ci-boundary: ## CI: run a full boundary suite with bounded evidence (BOUNDARY_SUITE=postgres or redis)
+	$(NODE) scripts/ci-boundary.mjs "$(BOUNDARY_SUITE)"
+
+cleanup-ci-boundary: ## CI: verify cleanup for the exact recorded boundary owner
+	$(NODE) scripts/ci-boundary.mjs cleanup "$(BOUNDARY_SUITE)"
+
+test-ci-boundary-tools: ## Test: real process failures, interruption and owned Docker cleanup
+	$(NODE) scripts/ci-boundary-test.mjs
+
 .PHONY: audit-tools audit-dependencies source-package-check test-release-tools
 audit-tools: ## Security: explicitly install pinned cargo-audit (network required)
 	cargo install cargo-audit --version 0.22.2 --locked

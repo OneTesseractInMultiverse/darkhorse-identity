@@ -1,4 +1,6 @@
+import { postgresImage } from "./lib/boundary-images.mjs";
 import { randomBytes } from "node:crypto";
+import { resourceLabels } from "./lib/boundary-ci.mjs";
 import { setTimeout as delay } from "node:timers/promises";
 import { resolve } from "node:path";
 import assert from "node:assert/strict";
@@ -7,8 +9,7 @@ import { verifySecretFiles } from "./lib/configuration-file-test.mjs";
 import { verifyDatabaseAuthority } from "./lib/database-authority-test.mjs";
 
 process.chdir(resolve(import.meta.dirname, ".."));
-const image =
-  "percona/percona-distribution-postgresql:18.6@sha256:dae47360e8137cafc1e8d66f9a1be348f1405e3cf51daa383b94e6c277e6b256";
+const image = postgresImage;
 const suffix = randomBytes(8).toString("hex");
 const database = `darkhorse-test-${suffix}`;
 const network = `darkhorse-net-${suffix}`;
@@ -21,6 +22,7 @@ const command = (name, args, options = {}) =>
   run(name, args, { signal: abort.signal, ...options });
 const docker = (args, options = {}) =>
   command("docker", args, { capture: true, ...options });
+const labels = resourceLabels(process.env.DARKHORSE_TEST_RUN_ID);
 const owned = [];
 
 async function ready() {
@@ -147,6 +149,7 @@ async function imageChecks(tag) {
     docker(
       [
         "run",
+        ...labels,
         "--rm",
         "--interactive",
         "--network",
@@ -165,6 +168,7 @@ async function imageChecks(tag) {
   owned.push(server);
   await docker([
     "run",
+    ...labels,
     "--detach",
     "--rm",
     "--name",
@@ -239,12 +243,13 @@ async function imageChecks(tag) {
 async function main() {
   let createdNetwork = false;
   try {
-    await docker(["network", "create", network]);
+    await docker(["network", "create", ...labels, network]);
     createdNetwork = true;
     owned.push(database);
     await docker(
       [
         "run",
+        ...labels,
         "--detach",
         "--rm",
         "--name",

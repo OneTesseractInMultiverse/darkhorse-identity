@@ -32,7 +32,18 @@ Follow the toolchain and setup instructions in the [README](README.md#quick-star
 make ci
 ```
 
-This runs formatting, lint, type and architecture checks, self-contained unit tests, and release/static builds. The versioned [CI workflow](.github/workflows/ci.yaml) runs source-package and release-tooling checks. A separate dependency qualification job runs strict live advisory scans. Record local validation and all hosted results in the pull request. A passing source check does not clear a blocked dependency gate. See [release qualification](docs/release-readiness.md) for commands, scope and outstanding requirements.
+This runs formatting, lint, type and architecture checks, self-contained unit
+tests, and release/static builds. The versioned [CI workflow](.github/workflows/ci.yaml)
+also runs source-package and release-tooling checks. Separate PostgreSQL and
+Redis/native boundary jobs run the complete database and shared-security suites.
+See the [hosted boundary contract](docs/hosted-boundary-tests.md) for budgets,
+failure evidence and cleanup.
+
+A separate dependency qualification job runs strict live advisory scans. Record
+local validation and all hosted results in the pull request. A passing source
+check does not clear a blocked dependency gate. See
+[release qualification](docs/release-readiness.md) for commands, scope and
+outstanding requirements.
 
 Start behavior changes with a meaningful failing test, then implement and refactor. Verify failures and security boundaries and successful results. Add checks at the affected boundary:
 

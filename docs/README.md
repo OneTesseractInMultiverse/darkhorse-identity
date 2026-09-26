@@ -63,6 +63,7 @@ can still require load testing, protocol conformance, or an independent security
 - [Architecture](architecture.md) explains code dependencies and transaction boundaries.
 - [Development](development.md) provides the local workflow.
 - [Verification](verification.md) maps tests to the claims they support.
+- [Hosted boundary tests](hosted-boundary-tests.md) explains database/native CI jobs, budgets, reports and cleanup.
 - [Performance](performance.md) records measurement methods and dated results.
 - [Dependencies](dependencies.md) records library choices and advisory evidence.
 - [Engineering rules](engineering.md) defines implementation and review requirements.

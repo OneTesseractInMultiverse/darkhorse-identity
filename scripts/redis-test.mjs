@@ -1,4 +1,6 @@
+import { postgresImage, redisImage } from "./lib/boundary-images.mjs";
 import { randomBytes } from "node:crypto";
+import { resourceLabels } from "./lib/boundary-ci.mjs";
 import { createServer } from "node:net";
 import { mkdir, mkdtemp, writeFile, rm } from "node:fs/promises";
 import { resolve, join, basename } from "node:path";
@@ -12,9 +14,9 @@ import {
 import { run } from "./lib/command.mjs";
 import { lostReplyProxy, tlsProxy } from "./lib/redis-test-proxy.mjs";
 process.chdir(resolve(import.meta.dirname, ".."));
-const image =
-  "redis:8.10.1@sha256:298e5b3bc566bade82f46ad5511777a4a07a294097ce16ada2f6a42be5239df5";
+const image = redisImage;
 const prefix = `darkhorse-redis-test-${randomBytes(8).toString("hex")}`;
+const labels = resourceLabels(process.env.DARKHORSE_TEST_RUN_ID);
 const owned = [];
 const networks = [];
 const proxies = [];
@@ -50,12 +52,13 @@ async function availablePort() {
 async function service(role, directory) {
   const name = `${prefix}-${role}`,
     network = `${name}-net`;
-  await docker(["network", "create", network]);
+  await docker(["network", "create", ...labels, network]);
   networks.push(network);
   owned.push(name);
   const requestedPort = await availablePort();
   await docker([
     "run",
+    ...labels,
     "--detach",
     "--name",
     name,
@@ -92,6 +95,7 @@ async function database(network, profiling) {
   await docker(
     [
       "run",
+      ...labels,
       "--detach",
       "--name",
       name,
@@ -103,7 +107,7 @@ async function database(network, profiling) {
       "POSTGRES_PASSWORD",
       "--env",
       "POSTGRES_INITDB_ARGS=--encoding=UTF8",
-      "percona/percona-distribution-postgresql:18.6@sha256:dae47360e8137cafc1e8d66f9a1be348f1405e3cf51daa383b94e6c277e6b256",
+      postgresImage,
       ...(profiling
         ? [
             "postgres",
@@ -338,6 +342,7 @@ async function imageChecks(tag, env, cache, limiter, db) {
     await docker(
       [
         "create",
+        ...labels,
         "--name",
         name,
         "--read-only",

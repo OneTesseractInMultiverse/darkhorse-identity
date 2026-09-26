@@ -68,18 +68,24 @@ strict live advisory gate independently and retains its summary for 14 days.
 A known advisory warning remains a failed qualification check until resolved.
 Another passing job does not clear it.
 
+**PostgreSQL boundary verification** and **Redis and native security verification**
+run the complete `make test-postgres` and `make test-redis` suites in separate
+bounded jobs. Their [execution and evidence contract](hosted-boundary-tests.md)
+covers exact-owner cleanup, test counts, intentional worker handling and redacted
+reports. They preserve the service-free isolated test contract.
+
 The workflow uses read-only repository permission, immutable official action
 commit references, no persisted checkout credentials, no dependency caches,
 and no repository secrets. Untrusted pull requests never use `pull_request_target`.
 The workflow does not publish packages, container images or releases. Artifact
-uploads contain only the dependency summary, not local configuration, credentials
-or service logs. [GitHub's workflow security guidance](https://docs.github.com/en/actions/reference/security/secure-use).
+uploads contain only dependency and boundary summaries, not local configuration,
+credentials or service logs. [GitHub's workflow security guidance](https://docs.github.com/en/actions/reference/security/secure-use).
 
 Branch protection, fork-policy behavior and an independent approval process must
 be verified separately. Adding a workflow does not configure those settings.
 Select required checks only after observing their actual behavior and resolving
-their blockers. CI covers the database-role fixture but omits the broader PostgreSQL, Redis,
-browser, and deployment suites. Coverage qualification and independent review
+their blockers. CI includes the complete PostgreSQL and Redis/native suites. Browser and deployment
+suites still require separate evidence. Coverage qualification and independent review
 remain separate. Their evidence is still required at the
 affected boundary and before a production release.
 

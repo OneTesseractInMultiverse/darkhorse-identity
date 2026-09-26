@@ -52,6 +52,11 @@ Integration suites own disposable services and clean only their own resources.
 `make help` lists focused policy suites and benchmark targets. `make browser-install`
 installs the pinned browser. Integration prerequisites never become unit-test prerequisites.
 
+The [hosted boundary jobs](hosted-boundary-tests.md) invoke the complete PostgreSQL
+and Redis/native targets with bounded, redacted evidence and exact-owner cleanup.
+Their test counts and deliberate worker exclusion are recorded per run. Hosted
+execution is not a coverage report or a production performance benchmark.
+
 ## Security properties under test
 
 | Property                | Representative evidence                                             | Practical limit                                             |
