@@ -2,10 +2,10 @@ import tailwindcss from '@tailwindcss/vite';
 import { defineConfig } from 'vitest/config';
 import adapter from '@sveltejs/adapter-static';
 import { sveltekit } from '@sveltejs/kit/vite';
-import { compileCatalog } from './src/lib/i18n/catalog';
-import { contract } from './src/lib/i18n/contract';
-import en from './src/lib/i18n/catalogs/en.json';
-import es from './src/lib/i18n/catalogs/es.json';
+import { compileCatalog } from './src/lib/i18n/catalog.ts';
+import { contract } from './src/lib/i18n/contract.ts';
+import en from './src/lib/i18n/catalogs/en.json' with { type: 'json' };
+import es from './src/lib/i18n/catalogs/es.json' with { type: 'json' };
 
 export default defineConfig({
 	plugins: [

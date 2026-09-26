@@ -1,5 +1,5 @@
 import { parse, TYPE, type MessageFormatElement } from '@formatjs/icu-messageformat-parser';
-import type { Locale } from './locale';
+import type { Locale } from './locale.ts';
 export type Contract = Readonly<Record<string, Readonly<Record<string, 'string' | 'number'>>>>;
 export type Catalog = Map<string, MessageFormatElement[]>;
 function invalid(): never {
