@@ -12,6 +12,21 @@ const route = {
   operation_id: "getAuthorization",
   surface: "integration",
 };
+const formRequestSchema = (required, rejected = []) => ({
+  type: "object",
+  additionalProperties: true,
+  required,
+  properties: {},
+  not: {
+    anyOf: [
+      { required: ["client_id"] },
+      { required: ["client_secret"] },
+      { required: ["client_assertion"] },
+      { required: ["client_assertion_type"] },
+      ...rejected.map((field) => ({ required: [field] })),
+    ],
+  },
+});
 const fixture = (overrides = {}) => ({
   specification: {
     openapi: "3.2.1",
@@ -24,7 +39,21 @@ const fixture = (overrides = {}) => ({
         },
       },
     },
-    components: { schemas: { Authorization: { type: "object" } } },
+    components: {
+      schemas: {
+        Authorization: { type: "object" },
+        AuthorizationCodeGrant: formRequestSchema(
+          ["grant_type", "code"],
+          ["refresh_token"],
+        ),
+        RefreshTokenGrant: formRequestSchema(
+          ["grant_type", "refresh_token"],
+          ["code", "redirect_uri", "code_verifier"],
+        ),
+        IntrospectionRequest: formRequestSchema(["token"]),
+        RevocationRequest: formRequestSchema(["token"]),
+      },
+    },
   },
   classification: { version: "1.2.3", entries: [route] },
   releaseVersion: "1.2.3",
@@ -78,6 +107,36 @@ test("rejects unresolved and remote references without fetching them", () => {
     input.specification.paths["/authorize"].get.parameters = [{ $ref: ref }];
     assert.match(validateApiReference(input).error, /reference/);
   }
+});
+
+test("requires OAuth form schemas to allow extensions and reject body client credentials", () => {
+  const input = fixture();
+  input.specification.components.schemas.AuthorizationCodeGrant.additionalProperties = false;
+  assert.match(
+    validateApiReference(input).error,
+    /OAuth form parameter policy/,
+  );
+
+  const missingDenial = fixture();
+  missingDenial.specification.components.schemas.IntrospectionRequest.not.anyOf =
+    [{ required: ["client_secret"] }];
+  assert.match(
+    validateApiReference(missingDenial).error,
+    /OAuth form parameter policy/,
+  );
+
+  const mixedGrant = fixture();
+  mixedGrant.specification.components.schemas.AuthorizationCodeGrant.not.anyOf =
+    mixedGrant.specification.components.schemas.AuthorizationCodeGrant.not.anyOf.filter(
+      (entry) => !entry.required.includes("refresh_token"),
+    );
+  assert.match(
+    validateApiReference(mixedGrant).error,
+    /OAuth form parameter policy/,
+  );
+
+  const valid = fixture();
+  assert.equal(validateApiReference(valid).ok, true);
 });
 
 test("bounded API inputs reject symlinks, oversized sources, invalid UTF-8 and oversized reads", async () => {

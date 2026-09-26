@@ -37,6 +37,12 @@ bounds, errors, cache behavior, and security notes for this implemented
 protocol slice. It does not describe browser logout, back-channel logout-token
 delivery, recovery, or an unimplemented feature as an available endpoint.
 
+OAuth request parsing follows the protocol's extension rule: bounded parameters
+that Darkhorse does not recognize are ignored, while duplicate recognized
+parameters and the supported endpoints' explicitly forbidden body-authentication
+fields are rejected. This preserves interoperability for OAuth extensions
+without accepting client credentials in a form body. See [RFC 6749 §3.2](https://www.rfc-editor.org/rfc/rfc6749.html#section-3.2).
+
 The OpenAPI schemas are a reviewed publication of the transport contract rather
 than Rust-generated request or response types. The check verifies their release
 version, local references, and exact operation parity with the source-derived

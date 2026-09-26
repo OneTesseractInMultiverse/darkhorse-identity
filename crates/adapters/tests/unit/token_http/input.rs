@@ -32,6 +32,13 @@ fn refresh_input_binds_basic_authentication_and_rejects_mixed_grants() {
     );
     assert_eq!(parsed.scopes, Some(vec!["openid".into(), "email".into()]));
     assert_eq!(parsed.resource.as_deref(), Some("urn:target"));
+    assert!(matches!(
+        request(
+            &headers,
+            format!("{body}&vendor_extension=accepted").as_bytes()
+        ),
+        Ok(Grant::Refresh(_))
+    ));
     let Grant::Refresh(parsed) = request(
         &headers,
         format!("grant_type=refresh_token&refresh_token={token}").as_bytes(),
@@ -60,6 +67,13 @@ fn refresh_input_binds_basic_authentication_and_rejects_mixed_grants() {
     assert!(
         matches!(management(&headers,format!("token={token}&token_type_hint=access_token").as_bytes()).unwrap().token,
         Some(darkhorse_application::tokens::ManagedToken::Refresh(digest)) if digest==material::digest(&token,Purpose::Refresh).unwrap())
+    );
+    assert!(
+        management(
+            &headers,
+            format!("token={token}&vendor_extension=accepted").as_bytes()
+        )
+        .is_ok()
     );
     assert!(
         super::token(&format!("token={token}").into_bytes())
@@ -125,6 +139,13 @@ fn token_input_keeps_authentication_and_credential_purposes_separate() {
     let parsed = code_request(&headers, body.as_bytes()).unwrap();
     assert_eq!(parsed.redirect, "https://app.example/cb");
     assert_eq!(parsed.resource, None);
+    assert!(
+        code_request(
+            &headers,
+            format!("{body}&vendor_extension=accepted").as_bytes()
+        )
+        .is_ok()
+    );
     assert_eq!(
         code_request(
             &headers,
@@ -255,7 +276,7 @@ fn introspection_credentials_have_an_explicit_purpose_and_cannot_authenticate_to
         .parse()
         .unwrap(),
     );
-    let input = introspection(&headers, b"token=unknown").unwrap();
+    let input = introspection(&headers, b"token=unknown&vendor_extension=accepted").unwrap();
     match input {
         Inquiry::Resource(probe) => {
             assert_eq!(probe.resource.as_u128(), 0x30);
@@ -279,6 +300,7 @@ fn introspection_credentials_have_an_explicit_purpose_and_cannot_authenticate_to
     }
     assert!(management(&headers, b"token=unknown").is_err());
     assert!(introspection(&headers, b"token=unknown&token=duplicate").is_err());
+    assert!(introspection(&headers, b"token=unknown&client_secret=secret").is_err());
     assert_ne!(
         crate::resource_servers::secret_digest(&"ab".repeat(32)).unwrap(),
         crate::registration::secret_digest(&"ab".repeat(32)).unwrap()

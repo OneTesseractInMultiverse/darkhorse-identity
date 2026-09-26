@@ -86,9 +86,49 @@ export function validateApiReference({
   }
 
   const refError = checkReferences(specification);
-  return refError
-    ? fail(refError)
+  if (refError) return fail(refError);
+  const parameterError = checkOAuthFormParameterPolicy(specification);
+  return parameterError
+    ? fail(parameterError)
     : { ok: true, operationCount: documented.size };
+}
+
+function checkOAuthFormParameterPolicy(specification) {
+  const schemas = specification.components?.schemas;
+  const schemaPolicies = [
+    ["AuthorizationCodeGrant", "refresh_token"],
+    ["RefreshTokenGrant", "code", "redirect_uri", "code_verifier"],
+    ["IntrospectionRequest"],
+    ["RevocationRequest"],
+  ];
+  const forbiddenCredentials = [
+    "client_id",
+    "client_secret",
+    "client_assertion",
+    "client_assertion_type",
+  ];
+  for (const [name, ...grantFields] of schemaPolicies) {
+    const schema = schemas?.[name];
+    const denied = new Set(
+      Array.isArray(schema?.not?.anyOf)
+        ? schema.not.anyOf
+            .filter((entry) => Array.isArray(entry?.required))
+            .flatMap((entry) => entry.required)
+        : [],
+    );
+    const rejectedFields = [...forbiddenCredentials, ...grantFields];
+    if (
+      !isRecord(schema) ||
+      schema.type !== "object" ||
+      schema.additionalProperties !== true ||
+      rejectedFields.some((field) => !denied.has(field)) ||
+      rejectedFields.some((field) =>
+        Object.hasOwn(schema.properties ?? {}, field),
+      )
+    )
+      return "OAuth form parameter policy must allow extensions and reject body client credentials.";
+  }
+  return null;
 }
 
 export async function readBoundedApiInput(path, { lstat, readFile }) {

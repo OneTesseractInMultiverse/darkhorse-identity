@@ -74,7 +74,7 @@
         "operationId": "getAuthorization",
         "tags": ["Authorization"],
         "summary": "Start or continue an authorization request",
-        "description": "Use a top-level browser navigation. This endpoint accepts only response_type=code, response_mode=query, and code_challenge_method=S256. A browser may already have the host-only Darkhorse session cookie; the confidential client must not copy or forward that cookie. The endpoint redirects the browser to login or consent when needed, or to the exact registered callback after completion. It does not support public clients, implicit/password grants, request objects, request_uri, claims, login_hint, or id_token_hint. Identity and resource access profiles are mutually exclusive. Supply unpredictable state and nonce values and validate state, issuer, and nonce at the callback.",
+        "description": "Use a top-level browser navigation. This endpoint accepts only response_type=code, response_mode=query, and code_challenge_method=S256. Bounded unknown query parameters are ignored; duplicate recognized parameters and explicitly unsupported OIDC parameters are rejected. A browser may already have the host-only Darkhorse session cookie; the confidential client must not copy or forward that cookie. The endpoint redirects the browser to login or consent when needed, or to the exact registered callback after completion. It does not support public clients, implicit/password grants, request objects, request_uri, claims, login_hint, or id_token_hint. Identity and resource access profiles are mutually exclusive. Supply unpredictable state and nonce values and validate state, issuer, and nonce at the callback.",
         "security": [],
         "parameters": [
           { "$ref": "#/components/parameters/ClientId" },
@@ -112,7 +112,7 @@
         "operationId": "postToken",
         "tags": ["Tokens"],
         "summary": "Exchange an authorization code or rotate a refresh token",
-        "description": "Call only from the confidential application's backend over verified HTTPS. Authenticate with one client_secret_basic HTTP Basic header. The client identifier and secret use OAuth form encoding before Base64 encoding; never put either in the body, query, URL, browser storage, or logs. Bodies are limited to 4096 bytes and 16 parameters; duplicate fields and query credentials are rejected. An authorization code is one-use, expires after 60 seconds, and must be redeemed with its original exact redirect_uri and PKCE verifier. A lost response after commit is uncertain: do not retry credential issuance automatically; start a new browser flow. Refresh rotation requires explicit client opt-in and remains bound to the original live browser session.",
+        "description": "Call only from the confidential application's backend over verified HTTPS. Authenticate with one client_secret_basic HTTP Basic header. The client identifier and secret use OAuth form encoding before Base64 encoding; never put either in the body, query, URL, browser storage, or logs. Bodies are limited to 4096 bytes and 16 parameters; duplicate fields, query credentials, and parameters from the other grant are rejected. Bounded unrecognized form parameters are ignored for OAuth interoperability; recognized client-authentication parameters in the body are rejected. An authorization code is one-use, expires after 60 seconds, and must be redeemed with its original exact redirect_uri and PKCE verifier. A lost response after commit is uncertain: do not retry credential issuance automatically; start a new browser flow. Refresh rotation requires explicit client opt-in and remains bound to the original live browser session.",
         "security": [{ "ClientSecretBasic": [] }],
         "requestBody": {
           "required": true,
@@ -194,7 +194,7 @@
         "operationId": "postIntrospection",
         "tags": ["Tokens"],
         "summary": "Check a credential with its authorized caller",
-        "description": "Send one token in an application/x-www-form-urlencoded body over verified HTTPS. A confidential issuing client authenticates with client_secret_basic and can inspect only its own issued credentials. A resource server authenticates with Basic username rs_<resource UUID> and its resource secret; this is required for resource access tokens and personal API keys. Inactive, expired, revoked, foreign, or wrong-purpose credentials return active=false after valid caller authentication. Authenticated checks consume shared admission budgets; 429 includes Retry-After. Resource servers must deny access when the decision is unavailable and must not fall back to cached positive decisions. Bodies are limited to 4096 bytes and 16 parameters; token text is limited to 2048 bytes. Never send a credential in a URL or log it.",
+        "description": "Send one token in an application/x-www-form-urlencoded body over verified HTTPS. A confidential issuing client authenticates with client_secret_basic and can inspect only its own issued credentials. A resource server authenticates with Basic username rs_<resource UUID> and its resource secret; this is required for resource access tokens and personal API keys. Inactive, expired, revoked, foreign, or wrong-purpose credentials return active=false after valid caller authentication. Authenticated checks consume shared admission budgets; 429 includes Retry-After. Resource servers must deny access when the decision is unavailable and must not fall back to cached positive decisions. Bodies are limited to 4096 bytes and 16 parameters; bounded unrecognized parameters are ignored and client-authentication parameters in the body are rejected. Token text is limited to 2048 bytes. Never send a credential in a URL or log it.",
         "security": [
           { "ClientSecretBasic": [] },
           { "ResourceServerBasic": [] }
@@ -239,7 +239,7 @@
         "operationId": "postRevocation",
         "tags": ["Tokens"],
         "summary": "Revoke an issued access or refresh credential",
-        "description": "Call from the confidential application's backend over verified HTTPS and authenticate with client_secret_basic. The client can revoke only credentials from its own issuance context. Refresh-token revocation terminates its credential family and invalidates associated access credentials. A valid request returns 200 even if the credential is unknown, expired, already revoked, or belongs elsewhere. This endpoint does not revoke ID tokens or browser sessions. Bodies are limited to 4096 bytes and 16 parameters. Do not automatically retry if the response was lost after the request may have committed; re-check state through an authorized flow.",
+        "description": "Call from the confidential application's backend over verified HTTPS and authenticate with client_secret_basic. The client can revoke only credentials from its own issuance context. Refresh-token revocation terminates its credential family and invalidates associated access credentials. A valid request returns 200 even if the credential is unknown, expired, already revoked, or belongs elsewhere. This endpoint does not revoke ID tokens or browser sessions. Bodies are limited to 4096 bytes and 16 parameters; bounded unrecognized parameters are ignored and client-authentication parameters in the body are rejected. Do not automatically retry if the response was lost after the request may have committed; re-check state through an authorized flow.",
         "security": [{ "ClientSecretBasic": [] }],
         "requestBody": {
           "required": true,
@@ -623,7 +623,17 @@
       },
       "AuthorizationCodeGrant": {
         "type": "object",
-        "additionalProperties": false,
+        "description": "Unknown bounded OAuth extension parameters are ignored. Client-authentication parameters in the form body and refresh_token from the other grant are rejected; authenticate with client_secret_basic.",
+        "additionalProperties": true,
+        "not": {
+          "anyOf": [
+            { "required": ["client_id"] },
+            { "required": ["client_secret"] },
+            { "required": ["client_assertion"] },
+            { "required": ["client_assertion_type"] },
+            { "required": ["refresh_token"] }
+          ]
+        },
         "required": ["grant_type", "code", "redirect_uri", "code_verifier"],
         "properties": {
           "grant_type": { "const": "authorization_code", "type": "string" },
@@ -645,7 +655,19 @@
       },
       "RefreshTokenGrant": {
         "type": "object",
-        "additionalProperties": false,
+        "description": "Unknown bounded OAuth extension parameters are ignored. Client-authentication parameters in the form body and code, redirect_uri, or code_verifier from the other grant are rejected; authenticate with client_secret_basic.",
+        "additionalProperties": true,
+        "not": {
+          "anyOf": [
+            { "required": ["client_id"] },
+            { "required": ["client_secret"] },
+            { "required": ["client_assertion"] },
+            { "required": ["client_assertion_type"] },
+            { "required": ["code"] },
+            { "required": ["redirect_uri"] },
+            { "required": ["code_verifier"] }
+          ]
+        },
         "required": ["grant_type", "refresh_token"],
         "properties": {
           "grant_type": { "const": "refresh_token", "type": "string" },
@@ -704,7 +726,16 @@
       },
       "IntrospectionRequest": {
         "type": "object",
-        "additionalProperties": false,
+        "description": "Unknown bounded OAuth extension parameters are ignored. Client-authentication parameters in the form body are rejected; authenticate with the documented HTTP Basic credential.",
+        "additionalProperties": true,
+        "not": {
+          "anyOf": [
+            { "required": ["client_id"] },
+            { "required": ["client_secret"] },
+            { "required": ["client_assertion"] },
+            { "required": ["client_assertion_type"] }
+          ]
+        },
         "required": ["token"],
         "properties": {
           "token": { "type": "string", "minLength": 1, "maxLength": 2048 },
@@ -823,7 +854,16 @@
       },
       "RevocationRequest": {
         "type": "object",
-        "additionalProperties": false,
+        "description": "Unknown bounded OAuth extension parameters are ignored. Client-authentication parameters in the form body are rejected; authenticate with client_secret_basic.",
+        "additionalProperties": true,
+        "not": {
+          "anyOf": [
+            { "required": ["client_id"] },
+            { "required": ["client_secret"] },
+            { "required": ["client_assertion"] },
+            { "required": ["client_assertion_type"] }
+          ]
+        },
         "required": ["token"],
         "properties": {
           "token": { "type": "string", "minLength": 1, "maxLength": 2048 },
