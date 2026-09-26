@@ -486,7 +486,15 @@ async fn http_resource_flow_binds_the_target_and_separates_userinfo_from_api_aut
         .unwrap();
     let origin = url::Url::parse(ISSUER).unwrap();
     let browser = darkhorse_adapters::provider_http::router(db.store.clone(), origin.clone());
-    let backend = darkhorse_adapters::token_http::router(db.store.clone(), signer, origin);
+    let backend = darkhorse_adapters::token_http::router(
+        db.store.clone(),
+        signer,
+        origin,
+        darkhorse_application::introspection_admission::Service {
+            store: db.store.clone(),
+            budgets: TestBudgets,
+        },
+    );
     let verifier = "a".repeat(43);
     let mut authorize = url::Url::parse(&format!("{ISSUER}/authorize")).unwrap();
     authorize.query_pairs_mut().extend_pairs([
@@ -915,4 +923,18 @@ async fn database_rejects_access_grants_that_exceed_or_change_the_code_profile()
         .await
         .unwrap();
     db.store.close().await;
+}
+
+// Redis enforcement is exercised by the separate combined boundary suite.
+struct TestBudgets;
+impl darkhorse_application::introspection_admission::Budgets for TestBudgets {
+    async fn global(&self) -> Result<(), Error> {
+        Ok(())
+    }
+    async fn caller(
+        &self,
+        _: darkhorse_application::introspection_admission::Caller,
+    ) -> Result<(), Error> {
+        Ok(())
+    }
 }

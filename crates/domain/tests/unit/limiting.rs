@@ -225,3 +225,28 @@ fn wire_integer_ceiling_accepts_the_last_complete_window_and_rejects_overflow() 
         Err(LimitError::InvalidInput)
     );
 }
+
+#[test]
+fn a_shared_budget_binds_related_policy_even_after_its_window_expires() {
+    let old = BudgetRule::new(100, 1000).unwrap().bound_to(10);
+    let changed = BudgetRule::new(100, 1000).unwrap().bound_to(20);
+    let request = Attempt::new(vec![Budget {
+        key: [1; 32],
+        rule: changed,
+    }])
+    .unwrap();
+    let counter = Counter {
+        rule: old,
+        used: 1,
+        started_ms: 0,
+        last_ms: 0,
+    };
+    for now in [1, 1000, 2000] {
+        assert_eq!(
+            plan(&request, &[Some(counter)], now),
+            Err(LimitError::UnsafeState)
+        );
+    }
+    assert_eq!(old.binding(), 10);
+    assert_eq!(BudgetRule::new(100, 1000).unwrap().binding(), 0);
+}

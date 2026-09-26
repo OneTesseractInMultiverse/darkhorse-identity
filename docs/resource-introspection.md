@@ -160,7 +160,7 @@ permissions. Oversized or unreadable policy returns 503 instead of truncated acc
 
 The shared fence, multiple database reads and catalog construction need sustained
 load/contended-write measurement before cache work. Token routes have bounded HTTP
-admission and deadlines, but no distributed introspection attempt budget yet.
+admission and deadlines, plus required [shared introspection attempt budgets](introspection-admission.md). Quota exhaustion returns 429 with `Retry-After`; uncertain enforcement returns 503. OAuth tokens and personal keys share the authenticated resource budget.
 Retention, ingress abuse controls and production resource sizing remain required.
 
 ## Verification

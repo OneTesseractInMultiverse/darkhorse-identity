@@ -21,14 +21,21 @@ pub(super) fn unhex<const N: usize>(text: &str) -> Result<[u8; N], LimiterUnavai
 pub(super) fn encode(counter: Option<Counter>) -> String {
     match counter {
         None => String::new(),
-        Some(c) => format!(
-            "{},{},{},{},{}",
-            c.rule.limit(),
-            c.rule.window_ms(),
-            c.used,
-            c.started_ms,
-            c.last_ms
-        ),
+        Some(c) => {
+            let legacy = format!(
+                "{},{},{},{},{}",
+                c.rule.limit(),
+                c.rule.window_ms(),
+                c.used,
+                c.started_ms,
+                c.last_ms
+            );
+            if c.rule.binding() == 0 {
+                legacy
+            } else {
+                format!("{legacy},{}", c.rule.binding())
+            }
+        }
     }
 }
 pub(super) fn decode(text: &str) -> Result<Option<Counter>, LimiterUnavailable> {
@@ -39,12 +46,17 @@ pub(super) fn decode(text: &str) -> Result<Option<Counter>, LimiterUnavailable> 
         return Err(LimiterUnavailable);
     }
     let parts: Vec<_> = text.split(',').collect();
-    if parts.len() != 5 {
+    if !matches!(parts.len(), 5 | 6) {
         return Err(LimiterUnavailable);
     }
     let c = Counter {
         rule: BudgetRule::new(number(parts[0])?, number(parts[1])?)
-            .map_err(|_| LimiterUnavailable)?,
+            .map_err(|_| LimiterUnavailable)?
+            .bound_to(if parts.len() == 6 {
+                number(parts[5])?
+            } else {
+                0
+            }),
         used: number(parts[2])?,
         started_ms: number(parts[3])?,
         last_ms: number(parts[4])?,

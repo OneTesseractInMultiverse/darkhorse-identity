@@ -10,6 +10,17 @@ profile returns inactive for them. Dedicated [resource-server credentials](resou
 provide current capability checks for protected APIs.
 The issuing client can revoke its resource credentials through the same endpoint.
 
+## Shared introspection admission
+
+`/introspect` requires the [deployment and authenticated-caller budgets](introspection-admission.md)
+in addition to transport bounds. An exhausted budget returns HTTP 429 with a
+bounded `Retry-After`; uncertain or unavailable enforcement returns HTTP 503.
+Clients must deny the protected operation when a current decision is unavailable.
+Honor the retry delay and apply bounded backoff; never replace an unavailable check
+with a previously accepted positive result. Invalid client authentication keeps
+the generic HTTP 401 contract. UserInfo, code exchange and revocation do not consume
+these introspection quotas.
+
 ## Approved identity claims
 
 Every identity authorization request includes `openid`. It may request

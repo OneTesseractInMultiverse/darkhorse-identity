@@ -51,4 +51,5 @@ pub mod media_http;
 
 pub mod deployment_environment;
 
+pub mod introspection_admission;
 pub mod readiness;

@@ -92,6 +92,7 @@ pub async fn runtime(
                 store.clone(),
                 darkhorse_adapters::tokens::signer::Signer::new(wrap),
                 settings.public_origin.clone(),
+                introspection_admission(&store, authentication.key)?,
             ),
         )
     } else {
@@ -232,4 +233,29 @@ async fn object_storage(
         )?;
     darkhorse_adapters::media::objects::Storage::new(settings)
         .map_err(|_| "Invalid object storage configuration.")
+}
+
+fn introspection_admission(
+    store: &PostgresStore,
+    key: [u8; 32],
+) -> Result<
+    darkhorse_application::introspection_admission::Service<
+        PostgresStore,
+        darkhorse_adapters::introspection_admission::SharedBudgets,
+    >,
+    &'static str,
+> {
+    use darkhorse_adapters::{
+        deployment_environment::DeploymentEnvironment, introspection_admission,
+    };
+    let policy = introspection_admission::load(DeploymentEnvironment)
+        .map_err(|_| "Invalid introspection admission configuration.")?;
+    let redis = redis_configuration::load(DeploymentEnvironment)
+        .map_err(|_| "Invalid Redis configuration.")?;
+    let limiter = RedisLimiter::new(store.clone(), redis)
+        .map_err(|_| "Cannot initialize introspection limiter.")?;
+    Ok(darkhorse_application::introspection_admission::Service {
+        store: store.clone(),
+        budgets: introspection_admission::SharedBudgets::new(limiter, key, policy),
+    })
 }

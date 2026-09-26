@@ -133,3 +133,16 @@ do not complete production qualification. See [verification](verification.md).
 [application admission](../crates/application/src/shared_limiting.rs),
 [Redis adapter](../crates/adapters/src/redis_limiter/mod.rs),
 [atomic script](../crates/adapters/src/redis_limiter/atomic.lua).
+
+## Introspection attempt admission
+
+The provider requires [shared introspection budgets](introspection-admission.md).
+They use the same durable enforcement generation and keyed identity secret as
+login, with different counter namespaces. They add no dynamic Redis key per
+submitted identifier. The HTTP provider creates a separate limiter pool with
+`DARKHORSE_REDIS_LIMITER_CONNECTIONS` permits, in addition to the login pool.
+Budget **twice** that setting per provider-enabled HTTP replica; operator commands
+still create only their existing pool. Cache connections are separate. Shared
+Redis/database capacity and the 16,384-counter hash ceiling remain finite; separate
+local permits do not guarantee latency isolation. Existing recovery commands
+initialize and fence all counters together. No schema or ACL change is required.

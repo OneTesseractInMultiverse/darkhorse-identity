@@ -47,3 +47,16 @@ test("completed resource checks must be represented even when the phase includes
     );
   }
 });
+
+test("credential denials before the token adapter remain visible without being counted as token inspections", () => {
+  const { profile, summary } = fixture();
+  summary.credentialDenials = 2;
+  profile.rust.stages.total.count = 3;
+  profile.rust.stages.pool_acquire.count = 3;
+  verifyPhaseProfile(profile, summary);
+  summary.credentialDenials = 0;
+  assert.throws(
+    () => verifyPhaseProfile(profile, summary),
+    /Incomplete benchmark profiling/,
+  );
+});

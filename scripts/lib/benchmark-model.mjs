@@ -95,6 +95,9 @@ export function summarize(rows, wallMs) {
   );
   return {
     attempts: rows.length,
+    credentialDenials: rows.filter(
+      (r) => r.status === 401 && r.outcome === "denied",
+    ).length,
     wallMs,
     outcomes,
     attemptsPerSecond: rows.length / (wallMs / 1000),

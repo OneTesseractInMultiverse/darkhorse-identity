@@ -14,6 +14,7 @@ pub enum Error {
     InvalidScope,
     InvalidToken,
     UnsupportedGrant,
+    Limited { retry_after_ms: u32 },
     Unavailable,
 }
 pub struct CodeFacts<'a> {

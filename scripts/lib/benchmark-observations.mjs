@@ -1,3 +1,4 @@
+import { redisMetrics } from "./benchmark-redis-model.mjs";
 import {
   cpus,
   totalmem,
@@ -107,7 +108,16 @@ export async function metadata({
       httpsVerification: true,
       clientAuthentication: "client_secret_basic",
       loginSharedRedisLimiter: true,
-      introspectionSharedRedisLimiter: false,
+      introspectionSharedRedisLimiter: true,
+      introspectionBudgets: {
+        windowMs: 60_000,
+        global: Number(env.DARKHORSE_INTROSPECTION_GLOBAL_PER_MINUTE ?? 60_000),
+        caller: Number(env.DARKHORSE_INTROSPECTION_CALLER_PER_MINUTE ?? 6_000),
+        separateLocalPool: true,
+        globalQueueCapacity: 16,
+        globalUpdateConcurrency: 2,
+        queueIncludedInDeadlineMs: 1000,
+      },
       tokenRouteConcurrency: 16,
       databasePoolConnections: poolSize,
       positiveDecisionCache: false,
@@ -131,7 +141,7 @@ export async function metadata({
     ],
   };
 }
-export async function snapshot({ command, docker, db, serverPid }) {
+export async function snapshot({ command, docker, db, serverPid, env }) {
   const sql = `SELECT json_build_object(
     'database', (SELECT row_to_json(s) FROM (SELECT xact_commit,xact_rollback,blks_read,blks_hit,tup_returned,tup_fetched,tup_inserted,tup_updated,tup_deleted,deadlocks,temp_bytes FROM pg_stat_database WHERE datname=current_database()) s),
     'activity', (SELECT json_agg(s) FROM (SELECT state,wait_event_type,count(*) FROM pg_stat_activity WHERE datname=current_database() AND application_name='darkhorse' GROUP BY state,wait_event_type) s),
@@ -163,6 +173,7 @@ export async function snapshot({ command, docker, db, serverPid }) {
   ]);
   const row = JSON.parse(containers.stdout.trim());
   return {
+    redis: await redisSnapshots(docker, env),
     database: JSON.parse(database.stdout),
     server: { cpuTimeAndRssKiB: server.stdout.trim() },
     databaseContainer: {
@@ -171,4 +182,37 @@ export async function snapshot({ command, docker, db, serverPid }) {
       blockIO: row.BlockIO,
     },
   };
+}
+
+async function redisSnapshots(docker, env) {
+  const result = {};
+  for (const [role, key] of [
+    ["cache", "CACHE"],
+    ["limiter", "LIMITER"],
+  ]) {
+    const url = new URL(env[`DARKHORSE_REDIS_${key}_URL`]);
+    const observed = await docker(
+      [
+        "exec",
+        "--env",
+        "REDISCLI_AUTH",
+        env[`DARKHORSE_TEST_REDIS_${key}_CONTAINER`],
+        "redis-cli",
+        "--user",
+        decodeURIComponent(url.username),
+        "--no-auth-warning",
+        "--raw",
+        "INFO",
+        "all",
+      ],
+      {
+        env: {
+          ...process.env,
+          REDISCLI_AUTH: decodeURIComponent(url.password),
+        },
+      },
+    );
+    result[role] = redisMetrics(observed.stdout);
+  }
+  return result;
 }

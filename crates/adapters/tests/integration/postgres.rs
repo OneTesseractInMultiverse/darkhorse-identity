@@ -515,4 +515,5 @@ mod operator_applications;
 mod operator_client_secrets;
 mod operator_clients;
 
+mod introspection_authentication;
 mod operator_access_catalog;

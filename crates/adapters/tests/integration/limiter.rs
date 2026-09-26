@@ -15,6 +15,7 @@ use redis::aio::MultiplexedConnection;
 use sqlx::PgPool;
 use std::{sync::Arc, time::Duration};
 static SERIAL: tokio::sync::Mutex<()> = tokio::sync::Mutex::const_new(());
+mod introspection_admission;
 mod limiter_activation_redis;
 mod login;
 mod operator_process;
@@ -689,10 +690,17 @@ async fn separate_processes_share_one_budget_without_shared_connection_pools() {
         );
     }
     let mut admitted = 0;
+    let mut introspection_admitted = 0;
     for child in children {
         let result = child.wait_with_output().unwrap();
         assert!(result.status.success(), "independent limiter worker failed");
         let stdout = String::from_utf8(result.stdout).unwrap();
+        introspection_admitted += stdout
+            .lines()
+            .find_map(|line| line.strip_prefix("introspection_admitted="))
+            .unwrap()
+            .parse::<usize>()
+            .unwrap();
         admitted += stdout
             .lines()
             .find_map(|line| line.strip_prefix("worker_admitted="))
@@ -701,6 +709,7 @@ async fn separate_processes_share_one_budget_without_shared_connection_pools() {
             .unwrap();
     }
     assert_eq!(admitted, 5);
+    assert_eq!(introspection_admitted, 5);
     assert!(matches!(
         f.limiter().consume(&attempt(22, 5, 30_000)).await,
         Ok(Admission::Limited { .. })
@@ -748,4 +757,15 @@ async fn multiprocess_worker() {
         }
     }
     println!("worker_admitted={admitted}");
+    use darkhorse_adapters::introspection_admission::{Policy, SharedBudgets};
+    use darkhorse_application::introspection_admission::{Budgets, Caller};
+    let budgets = SharedBudgets::new(limiter, [7; 32], Policy::new(100, 5).unwrap());
+    let caller = Caller::Resource(darkhorse_domain::identity::ResourceId::from_u128(999).unwrap());
+    let mut introspection_admitted = 0;
+    for _ in 0..20 {
+        if budgets.caller(caller).await.is_ok() {
+            introspection_admitted += 1;
+        }
+    }
+    println!("introspection_admitted={introspection_admitted}");
 }

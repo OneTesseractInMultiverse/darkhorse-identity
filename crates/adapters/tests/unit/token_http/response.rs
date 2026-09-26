@@ -138,3 +138,19 @@ fn resource_projection_discloses_only_the_exact_audience_and_effective_capabilit
         serde_json::json!({"active":true,"token_type":"Bearer","iss":"https://issuer.example","aud":"urn:darkhorse:resource:00000000-0000-0000-0000-000000000003","client_id":"00000000-0000-0000-0000-000000000002","sub":"00000000-0000-0000-0000-000000000001","scope":"openid operate","iat":1000,"exp":1300,"capabilities":["00000000-0000-0000-0000-000000000004","00000000-0000-0000-0000-000000000005"]})
     );
 }
+
+#[tokio::test]
+async fn admission_rejections_have_bounded_generic_errors_and_rounded_retry_times() {
+    use axum::body::to_bytes;
+    for (ms, seconds) in [(0, 1), (1, 1), (1000, 1), (1001, 2), (60000, 60)] {
+        let response = failure(Error::Limited { retry_after_ms: ms });
+        assert_eq!(response.status(), StatusCode::TOO_MANY_REQUESTS);
+        assert_eq!(response.headers()[header::RETRY_AFTER], seconds.to_string());
+        assert!(!response.headers().contains_key(header::WWW_AUTHENTICATE));
+        let body = to_bytes(response.into_body(), 1024).await.unwrap();
+        assert_eq!(
+            serde_json::from_slice::<serde_json::Value>(&body).unwrap(),
+            serde_json::json!({"error":"temporarily_unavailable"})
+        );
+    }
+}

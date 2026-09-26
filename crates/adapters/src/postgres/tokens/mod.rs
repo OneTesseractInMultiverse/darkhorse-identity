@@ -10,6 +10,7 @@ use darkhorse_domain::{
 use sqlx::{Postgres, Row, Transaction, postgres::PgRow};
 use uuid::Uuid;
 mod access;
+mod admission;
 mod management;
 mod reads;
 mod refresh;

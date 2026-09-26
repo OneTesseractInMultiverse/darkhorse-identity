@@ -232,3 +232,25 @@ fn fields(value: &str) -> Result<BTreeMap<String, String>, Error> {
 #[cfg(test)]
 #[path = "../../tests/unit/token_http/input.rs"]
 mod tests;
+
+impl Inquiry {
+    pub(super) fn credentials(
+        &self,
+    ) -> darkhorse_application::introspection_admission::Credentials {
+        use darkhorse_application::introspection_admission::{Caller, Credentials};
+        match self {
+            Self::Client(input) => Credentials {
+                caller: Caller::Client(input.client),
+                secret: input.secret,
+            },
+            Self::Resource(input) => Credentials {
+                caller: Caller::Resource(input.resource),
+                secret: input.secret,
+            },
+            Self::PersonalKey(input) => Credentials {
+                caller: Caller::Resource(input.resource),
+                secret: input.secret,
+            },
+        }
+    }
+}

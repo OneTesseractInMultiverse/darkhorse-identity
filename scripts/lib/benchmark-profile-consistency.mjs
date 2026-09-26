@@ -1,7 +1,10 @@
 // Completed HTTP checks must not disappear from adapter/SQL measurements.
 export function verifyPhaseProfile(profile, summary) {
   const { total, pool_acquire, decision } = profile.rust.stages;
-  const completed = summary.outcomes.authorized + summary.outcomes.denied;
+  const completed =
+    summary.outcomes.authorized +
+    summary.outcomes.denied -
+    (summary.credentialDenials ?? 0);
   if (
     total.count < completed ||
     total.count > summary.attempts - summary.outcomes.healthy ||

@@ -9,6 +9,7 @@ use axum::{
     routing::{get, post},
 };
 use darkhorse_application::{
+    introspection_admission::Gate,
     refresh::RefreshStore,
     resource_servers::{ActiveResourceToken, ResourceTokenStore},
     signing::SigningStore,
@@ -16,9 +17,10 @@ use darkhorse_application::{
 };
 use darkhorse_domain::{signing::Phase, tokens::Error};
 use std::sync::Arc;
-struct Endpoint<S, K> {
+struct Endpoint<S, K, A> {
     store: S,
     signer: K,
+    admission: A,
     issuer: String,
 }
 pub fn router<
@@ -30,22 +32,28 @@ pub fn router<
         + darkhorse_application::personal_keys::Introspection
         + 'static,
     K: IdSigner + 'static,
+    A: Gate + 'static,
 >(
     store: S,
     signer: K,
     origin: url::Url,
+    admission: A,
 ) -> Router {
     let endpoint = Arc::new(Endpoint {
         store,
         signer,
+        admission,
         issuer: origin.origin().ascii_serialization(),
     });
     let routes = Router::new()
-        .route("/token", post(redeem::<S, K>))
-        .route("/userinfo", get(userinfo::<S, K>))
-        .route("/introspect", post(introspect::<S, K>))
-        .route("/revoke", post(revoke::<S, K>))
-        .route("/.well-known/openid-configuration", get(discovery::<S, K>))
+        .route("/token", post(redeem::<S, K, A>))
+        .route("/userinfo", get(userinfo::<S, K, A>))
+        .route("/introspect", post(introspect::<S, K, A>))
+        .route("/revoke", post(revoke::<S, K, A>))
+        .route(
+            "/.well-known/openid-configuration",
+            get(discovery::<S, K, A>),
+        )
         .with_state(endpoint);
     authentication_http::protect_service(routes, origin, 4096, 16)
         .layer(tower_http::set_header::SetResponseHeaderLayer::overriding(
@@ -57,8 +65,8 @@ pub fn router<
             HeaderValue::from_static("no-cache"),
         ))
 }
-async fn redeem<S: TokenStore + RefreshStore, K: IdSigner>(
-    State(e): State<Arc<Endpoint<S, K>>>,
+async fn redeem<S: TokenStore + RefreshStore, K: IdSigner, A>(
+    State(e): State<Arc<Endpoint<S, K, A>>>,
     headers: HeaderMap,
     body: Bytes,
 ) -> Response {
@@ -97,8 +105,8 @@ fn token_fields(tokens: Tokens) -> serde_json::Value {
     }
     fields
 }
-async fn userinfo<S: TokenStore, K>(
-    State(e): State<Arc<Endpoint<S, K>>>,
+async fn userinfo<S: TokenStore, K, A>(
+    State(e): State<Arc<Endpoint<S, K, A>>>,
     headers: HeaderMap,
 ) -> Response {
     let digest = match input::bearer(&headers) {
@@ -127,15 +135,22 @@ fn profile_response(profile: UserInfo) -> serde_json::Value {
 async fn introspect<
     S: TokenManagementStore + ResourceTokenStore + darkhorse_application::personal_keys::Introspection,
     K,
+    A: Gate,
 >(
-    State(e): State<Arc<Endpoint<S, K>>>,
+    State(e): State<Arc<Endpoint<S, K, A>>>,
     headers: HeaderMap,
     body: Bytes,
 ) -> Response {
+    if let Err(error) = e.admission.before().await {
+        return failure(error);
+    }
     let input = match input::introspection(&headers, &body) {
         Ok(input) => input,
         Err(error) => return failure(error),
     };
+    if let Err(error) = e.admission.authenticated(input.credentials()).await {
+        return failure(error);
+    }
     match input {
         input::Inquiry::PersonalKey(input) => {
             match e.store.introspect_key(input, &e.issuer).await {
@@ -192,8 +207,8 @@ fn resource_response(active: Option<ActiveResourceToken>, issuer: &str) -> serde
     }
 }
 
-async fn revoke<S: TokenManagementStore, K>(
-    State(e): State<Arc<Endpoint<S, K>>>,
+async fn revoke<S: TokenManagementStore, K, A>(
+    State(e): State<Arc<Endpoint<S, K, A>>>,
     headers: HeaderMap,
     body: Bytes,
 ) -> Response {
@@ -217,7 +232,7 @@ fn introspection_response(active: Option<ActiveToken>, issuer: &str) -> serde_js
         }),
     }
 }
-async fn discovery<S: SigningStore, K>(State(e): State<Arc<Endpoint<S, K>>>) -> Response {
+async fn discovery<S: SigningStore, K, A>(State(e): State<Arc<Endpoint<S, K, A>>>) -> Response {
     match e.store.inventory(&e.issuer).await {
         Ok(inventory)
             if inventory
@@ -266,8 +281,14 @@ fn failure(error: Error) -> Response {
         Error::InvalidToken => (StatusCode::UNAUTHORIZED, "invalid_token"),
         Error::UnsupportedGrant => (StatusCode::BAD_REQUEST, "unsupported_grant_type"),
         Error::Unavailable => (StatusCode::SERVICE_UNAVAILABLE, "temporarily_unavailable"),
+        Error::Limited { .. } => (StatusCode::TOO_MANY_REQUESTS, "temporarily_unavailable"),
     };
     let mut response = (status, Json(serde_json::json!({"error":name}))).into_response();
+    if let Error::Limited { retry_after_ms } = error
+        && let Ok(value) = HeaderValue::from_str(&retry_after_ms.div_ceil(1000).max(1).to_string())
+    {
+        response.headers_mut().insert(header::RETRY_AFTER, value);
+    }
     if error == Error::InvalidClient {
         response.headers_mut().insert(
             header::WWW_AUTHENTICATE,

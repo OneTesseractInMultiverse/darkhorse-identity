@@ -26,3 +26,23 @@ fn counter_wire_is_bounded_canonical_and_preserves_large_exact_times() {
         assert!(unhex::<2>(text).is_err());
     }
 }
+
+#[test]
+fn counter_policy_binding_is_canonical_and_legacy_counters_keep_their_format() {
+    let legacy = Counter {
+        rule: BudgetRule::new(100, 60000).unwrap(),
+        used: 1,
+        started_ms: 100,
+        last_ms: 101,
+    };
+    assert_eq!(encode(Some(legacy)), "100,60000,1,100,101");
+    let bound = Counter {
+        rule: legacy.rule.bound_to(10),
+        ..legacy
+    };
+    assert_eq!(encode(Some(bound)), "100,60000,1,100,101,10");
+    assert_eq!(decode(&encode(Some(bound))), Ok(Some(bound)));
+    for suffix in ["0", "01", "-1", "4294967296", "10,20"] {
+        assert!(decode(&format!("100,60000,1,100,101,{suffix}")).is_err());
+    }
+}

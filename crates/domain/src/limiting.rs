@@ -13,13 +13,27 @@ pub enum LimitError {
 pub struct BudgetRule {
     limit: u32,
     window_ms: u32,
+    binding: u32,
 }
 impl BudgetRule {
     pub fn new(limit: u32, window_ms: u32) -> Result<Self, LimitError> {
         if !(1..=1_000_000).contains(&limit) || !(1000..=MAX_WINDOW_MS).contains(&window_ms) {
             return Err(LimitError::InvalidInput);
         }
-        Ok(Self { limit, window_ms })
+        Ok(Self {
+            limit,
+            window_ms,
+            binding: 0,
+        })
+    }
+    /// Bind related admission policy without changing counter identity or granting a new budget.
+    /// Zero preserves the original unbound representation.
+    pub fn bound_to(mut self, binding: u32) -> Self {
+        self.binding = binding;
+        self
+    }
+    pub fn binding(self) -> u32 {
+        self.binding
     }
     pub fn limit(self) -> u32 {
         self.limit
