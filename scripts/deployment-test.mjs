@@ -372,7 +372,7 @@ async function sso(origin, ca, principal, password) {
       const key = pair.split("=")[0];
       cookie = [
         ...cookie.split("; ").filter((c) => c && !c.startsWith(`${key}=`)),
-        pair,
+        ...(pair.slice(key.length + 1) ? [pair] : []),
       ].join("; ");
     }
     return { ...r, body: r.text.startsWith("{") ? JSON.parse(r.text) : null };
@@ -424,12 +424,21 @@ async function sso(origin, ca, principal, password) {
     code_challenge: createHash("sha256").update(verifier).digest("base64url"),
     code_challenge_method: "S256",
   });
-  assert.equal((await browser(`/authorize?${query}`)).status, 303);
-  const pending = (await browser("/api/authorization")).body;
-  const decision = await browser("/api/authorization/decision", {
-    request_id: pending.request_id,
-    decision: "approve",
-  });
+  const started = await browser(`/authorize?${query}`);
+  assert.equal(started.status, 303);
+  const reference = new URL(started.headers.location, origin).searchParams.get(
+    "request",
+  );
+  assert.match(reference, /^[0-9a-f]{64}$/);
+  const pending = (await browser(`/api/authorization?request=${reference}`))
+    .body;
+  const decision = await browser(
+    `/api/authorization/decision?request=${reference}`,
+    {
+      request_id: pending.request_id,
+      decision: "approve",
+    },
+  );
   assert.equal(decision.status, 200, "decision HTTP status");
   const code = validateCallback(decision.body.redirect, expected);
   const authorization = `Basic ${Buffer.from(`${encodeURIComponent(expected.client)}:${encodeURIComponent(client.body.client_secret)}`).toString("base64")}`;

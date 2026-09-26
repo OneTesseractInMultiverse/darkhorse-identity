@@ -348,7 +348,11 @@ async fn transport_enforces_origin_cookie_confirmation_and_no_false_discovery() 
         .unwrap();
     let response = router.clone().oneshot(request).await.unwrap();
     assert_eq!(response.status(), StatusCode::SEE_OTHER);
-    assert_eq!(response.headers()[header::LOCATION], "/authorization");
+    let location = response.headers()[header::LOCATION].to_str().unwrap();
+    let reference = location.strip_prefix("/authorization?request=").unwrap();
+    assert_eq!(reference.len(), 64);
+    let inspect_path = format!("/api/authorization?request={reference}");
+    let decision_path = format!("/api/authorization/decision?request={reference}");
     let transaction = response.headers()[header::SET_COOKIE]
         .to_str()
         .unwrap()
@@ -361,7 +365,7 @@ async fn transport_enforces_origin_cookie_confirmation_and_no_false_discovery() 
         .clone()
         .oneshot(
             HttpRequest::builder()
-                .uri("/api/authorization")
+                .uri(&inspect_path)
                 .header("host", "issuer.example")
                 .header("cookie", &cookies)
                 .body(Body::empty())
@@ -378,7 +382,7 @@ async fn transport_enforces_origin_cookie_confirmation_and_no_false_discovery() 
         (view["request_id"].as_str().unwrap(), true, 200),
     ] {
         let mut request = HttpRequest::builder()
-            .uri("/api/authorization/decision")
+            .uri(&decision_path)
             .method("POST")
             .header("host", "issuer.example")
             .header("origin", "https://issuer.example")

@@ -526,6 +526,13 @@ async fn http_resource_flow_binds_the_target_and_separates_userinfo_from_api_aut
         .await
         .unwrap();
     assert_eq!(response.status(), 303);
+    let reference = response.headers()["location"]
+        .to_str()
+        .unwrap()
+        .strip_prefix("/authorization?request=")
+        .unwrap();
+    let inspect_path = format!("/api/authorization?request={reference}");
+    let decision_path = format!("/api/authorization/decision?request={reference}");
     let cookie = response.headers()["set-cookie"]
         .to_str()
         .unwrap()
@@ -537,7 +544,7 @@ async fn http_resource_flow_binds_the_target_and_separates_userinfo_from_api_aut
         .clone()
         .oneshot(
             HttpRequest::builder()
-                .uri("/api/authorization")
+                .uri(&inspect_path)
                 .header("host", "issuer.example")
                 .header("cookie", &cookies)
                 .body(Body::empty())
@@ -555,7 +562,7 @@ async fn http_resource_flow_binds_the_target_and_separates_userinfo_from_api_aut
         .oneshot(
             HttpRequest::builder()
                 .method("POST")
-                .uri("/api/authorization/decision")
+                .uri(&decision_path)
                 .header("host", "issuer.example")
                 .header("origin", ISSUER)
                 .header("cookie", &cookies)
