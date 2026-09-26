@@ -1,0 +1,15 @@
+[package]
+name = "darkhorse-reference"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+publish.workspace = true
+autotests = false
+
+[dependencies]
+syn.workspace = true
+serde.workspace = true
+serde_json.workspace = true
+
+[lints]
+workspace = true

@@ -1,0 +1,532 @@
+{
+  "entries": [
+    {
+      "function": "router",
+      "handler": "write",
+      "method": "POST",
+      "path": "/api/admin/catalog",
+      "source": "crates/adapters/src/admin_catalog_http/mod.rs"
+    },
+    {
+      "function": "router",
+      "handler": "list",
+      "method": "GET",
+      "path": "/api/admin/catalog/{kind}",
+      "source": "crates/adapters/src/admin_catalog_http/mod.rs"
+    },
+    {
+      "function": "router",
+      "handler": "view",
+      "method": "GET",
+      "path": "/api/admin/catalog/{kind}/{id}",
+      "source": "crates/adapters/src/admin_catalog_http/mod.rs"
+    },
+    {
+      "function": "router",
+      "handler": "application",
+      "method": "GET",
+      "path": "/api/admin/console/applications/{app}",
+      "source": "crates/adapters/src/admin_catalog_http/mod.rs"
+    },
+    {
+      "function": "router",
+      "handler": "client",
+      "method": "GET",
+      "path": "/api/admin/console/applications/{app}/clients/{client}",
+      "source": "crates/adapters/src/admin_catalog_http/mod.rs"
+    },
+    {
+      "function": "router",
+      "handler": "register",
+      "method": "POST",
+      "path": "/api/admin/console/registration",
+      "source": "crates/adapters/src/admin_catalog_http/mod.rs"
+    },
+    {
+      "function": "router",
+      "handler": "list",
+      "method": "GET",
+      "path": "/api/admin/users",
+      "source": "crates/adapters/src/admin_directory_http.rs"
+    },
+    {
+      "function": "router",
+      "handler": "detail",
+      "method": "GET",
+      "path": "/api/admin/users/{id}",
+      "source": "crates/adapters/src/admin_directory_http.rs"
+    },
+    {
+      "function": "router",
+      "handler": "update",
+      "method": "POST",
+      "path": "/api/admin/users/{id}",
+      "source": "crates/adapters/src/admin_directory_http.rs"
+    },
+    {
+      "function": "router",
+      "handler": "access",
+      "method": "GET",
+      "path": "/api/admin/users/{id}/access",
+      "source": "crates/adapters/src/admin_directory_http.rs"
+    },
+    {
+      "function": "disabled_router",
+      "handler": "unavailable",
+      "method": "POST",
+      "path": "/api/auth/login",
+      "source": "crates/adapters/src/authentication_http.rs"
+    },
+    {
+      "function": "disabled_router",
+      "handler": "unavailable",
+      "method": "POST",
+      "path": "/api/auth/logout",
+      "source": "crates/adapters/src/authentication_http.rs"
+    },
+    {
+      "function": "disabled_router",
+      "handler": "unavailable",
+      "method": "GET",
+      "path": "/api/auth/session",
+      "source": "crates/adapters/src/authentication_http.rs"
+    },
+    {
+      "function": "router",
+      "handler": "login",
+      "method": "POST",
+      "path": "/api/auth/login",
+      "source": "crates/adapters/src/authentication_http.rs"
+    },
+    {
+      "function": "router",
+      "handler": "logout",
+      "method": "POST",
+      "path": "/api/auth/logout",
+      "source": "crates/adapters/src/authentication_http.rs"
+    },
+    {
+      "function": "router",
+      "handler": "session",
+      "method": "GET",
+      "path": "/api/auth/session",
+      "source": "crates/adapters/src/authentication_http.rs"
+    },
+    {
+      "function": "router",
+      "handler": "status",
+      "method": "GET",
+      "path": "/api/security/email",
+      "source": "crates/adapters/src/email_verification_http.rs"
+    },
+    {
+      "function": "router",
+      "handler": "confirm",
+      "method": "POST",
+      "path": "/api/security/email/confirm",
+      "source": "crates/adapters/src/email_verification_http.rs"
+    },
+    {
+      "function": "router",
+      "handler": "request",
+      "method": "POST",
+      "path": "/api/security/email/request",
+      "source": "crates/adapters/src/email_verification_http.rs"
+    },
+    {
+      "function": "with_authentication",
+      "handler": "static-service",
+      "method": "SERVICE",
+      "path": "/",
+      "source": "crates/adapters/src/http.rs"
+    },
+    {
+      "function": "with_authentication",
+      "handler": "static-service",
+      "method": "SERVICE_PREFIX",
+      "path": "/_app",
+      "source": "crates/adapters/src/http.rs"
+    },
+    {
+      "function": "with_authentication",
+      "handler": "static-service",
+      "method": "SERVICE",
+      "path": "/account/profile",
+      "source": "crates/adapters/src/http.rs"
+    },
+    {
+      "function": "with_authentication",
+      "handler": "static-service",
+      "method": "SERVICE",
+      "path": "/authorization",
+      "source": "crates/adapters/src/http.rs"
+    },
+    {
+      "function": "with_authentication",
+      "handler": "static-service",
+      "method": "SERVICE",
+      "path": "/console/applications",
+      "source": "crates/adapters/src/http.rs"
+    },
+    {
+      "function": "with_authentication",
+      "handler": "static-service",
+      "method": "SERVICE",
+      "path": "/console/capabilities",
+      "source": "crates/adapters/src/http.rs"
+    },
+    {
+      "function": "with_authentication",
+      "handler": "static-service",
+      "method": "SERVICE",
+      "path": "/console/clients",
+      "source": "crates/adapters/src/http.rs"
+    },
+    {
+      "function": "with_authentication",
+      "handler": "static-service",
+      "method": "SERVICE",
+      "path": "/console/profile",
+      "source": "crates/adapters/src/http.rs"
+    },
+    {
+      "function": "with_authentication",
+      "handler": "static-service",
+      "method": "SERVICE",
+      "path": "/console/resources",
+      "source": "crates/adapters/src/http.rs"
+    },
+    {
+      "function": "with_authentication",
+      "handler": "static-service",
+      "method": "SERVICE",
+      "path": "/console/roles",
+      "source": "crates/adapters/src/http.rs"
+    },
+    {
+      "function": "with_authentication",
+      "handler": "static-service",
+      "method": "SERVICE",
+      "path": "/console/scopes",
+      "source": "crates/adapters/src/http.rs"
+    },
+    {
+      "function": "with_authentication",
+      "handler": "static-service",
+      "method": "SERVICE",
+      "path": "/console/settings",
+      "source": "crates/adapters/src/http.rs"
+    },
+    {
+      "function": "with_authentication",
+      "handler": "static-service",
+      "method": "SERVICE",
+      "path": "/console/users",
+      "source": "crates/adapters/src/http.rs"
+    },
+    {
+      "function": "with_authentication",
+      "handler": "liveness",
+      "method": "GET",
+      "path": "/health/live",
+      "source": "crates/adapters/src/http.rs"
+    },
+    {
+      "function": "with_authentication",
+      "handler": "static-service",
+      "method": "SERVICE",
+      "path": "/invitation",
+      "source": "crates/adapters/src/http.rs"
+    },
+    {
+      "function": "with_authentication",
+      "handler": "static-service",
+      "method": "SERVICE",
+      "path": "/security/email",
+      "source": "crates/adapters/src/http.rs"
+    },
+    {
+      "function": "with_authentication",
+      "handler": "static-service",
+      "method": "SERVICE",
+      "path": "/security/keys",
+      "source": "crates/adapters/src/http.rs"
+    },
+    {
+      "function": "with_authentication",
+      "handler": "static-service",
+      "method": "SERVICE",
+      "path": "/security/sessions",
+      "source": "crates/adapters/src/http.rs"
+    },
+    {
+      "function": "router",
+      "handler": "list",
+      "method": "GET",
+      "path": "/api/admin/invitations",
+      "source": "crates/adapters/src/invitations_http.rs"
+    },
+    {
+      "function": "router",
+      "handler": "invite",
+      "method": "POST",
+      "path": "/api/admin/invitations",
+      "source": "crates/adapters/src/invitations_http.rs"
+    },
+    {
+      "function": "router",
+      "handler": "revoke",
+      "method": "POST",
+      "path": "/api/admin/invitations/revoke",
+      "source": "crates/adapters/src/invitations_http.rs"
+    },
+    {
+      "function": "router",
+      "handler": "accept",
+      "method": "POST",
+      "path": "/api/invitations/accept",
+      "source": "crates/adapters/src/invitations_http.rs"
+    },
+    {
+      "function": "router",
+      "handler": "presentation",
+      "method": "GET",
+      "path": "/api/presentation",
+      "source": "crates/adapters/src/localization_http.rs"
+    },
+    {
+      "function": "router",
+      "handler": "settings",
+      "method": "GET",
+      "path": "/api/admin/branding",
+      "source": "crates/adapters/src/media_http/mod.rs"
+    },
+    {
+      "function": "router",
+      "handler": "remove_brand",
+      "method": "DELETE",
+      "path": "/api/admin/branding/{kind}",
+      "source": "crates/adapters/src/media_http/mod.rs"
+    },
+    {
+      "function": "router",
+      "handler": "upload_brand",
+      "method": "POST",
+      "path": "/api/admin/branding/{kind}",
+      "source": "crates/adapters/src/media_http/mod.rs"
+    },
+    {
+      "function": "router",
+      "handler": "public_settings",
+      "method": "GET",
+      "path": "/api/branding",
+      "source": "crates/adapters/src/media_http/mod.rs"
+    },
+    {
+      "function": "router",
+      "handler": "brand",
+      "method": "GET",
+      "path": "/api/branding/{kind}",
+      "source": "crates/adapters/src/media_http/mod.rs"
+    },
+    {
+      "function": "router",
+      "handler": "remove_portrait",
+      "method": "DELETE",
+      "path": "/api/profiles/{target}/picture",
+      "source": "crates/adapters/src/media_http/mod.rs"
+    },
+    {
+      "function": "router",
+      "handler": "portrait",
+      "method": "GET",
+      "path": "/api/profiles/{target}/picture",
+      "source": "crates/adapters/src/media_http/mod.rs"
+    },
+    {
+      "function": "router",
+      "handler": "upload_portrait",
+      "method": "POST",
+      "path": "/api/profiles/{target}/picture",
+      "source": "crates/adapters/src/media_http/mod.rs"
+    },
+    {
+      "function": "router",
+      "handler": "list",
+      "method": "GET",
+      "path": "/api/security/keys",
+      "source": "crates/adapters/src/personal_keys_http/mod.rs"
+    },
+    {
+      "function": "router",
+      "handler": "create",
+      "method": "POST",
+      "path": "/api/security/keys",
+      "source": "crates/adapters/src/personal_keys_http/mod.rs"
+    },
+    {
+      "function": "router",
+      "handler": "options",
+      "method": "GET",
+      "path": "/api/security/keys/options",
+      "source": "crates/adapters/src/personal_keys_http/mod.rs"
+    },
+    {
+      "function": "router",
+      "handler": "revoke",
+      "method": "POST",
+      "path": "/api/security/keys/revoke",
+      "source": "crates/adapters/src/personal_keys_http/mod.rs"
+    },
+    {
+      "function": "router",
+      "handler": "update",
+      "method": "POST",
+      "path": "/api/profiles/me/language",
+      "source": "crates/adapters/src/profiles_http/mod.rs"
+    },
+    {
+      "function": "router",
+      "handler": "options",
+      "method": "GET",
+      "path": "/api/profiles/options",
+      "source": "crates/adapters/src/profiles_http/mod.rs"
+    },
+    {
+      "function": "router",
+      "handler": "read",
+      "method": "GET",
+      "path": "/api/profiles/{target}",
+      "source": "crates/adapters/src/profiles_http/mod.rs"
+    },
+    {
+      "function": "router",
+      "handler": "update",
+      "method": "POST",
+      "path": "/api/profiles/{target}",
+      "source": "crates/adapters/src/profiles_http/mod.rs"
+    },
+    {
+      "function": "router",
+      "handler": "inspect",
+      "method": "GET",
+      "path": "/api/authorization",
+      "source": "crates/adapters/src/provider_http/mod.rs"
+    },
+    {
+      "function": "router",
+      "handler": "decide",
+      "method": "POST",
+      "path": "/api/authorization/decision",
+      "source": "crates/adapters/src/provider_http/mod.rs"
+    },
+    {
+      "function": "router",
+      "handler": "begin",
+      "method": "GET",
+      "path": "/authorize",
+      "source": "crates/adapters/src/provider_http/mod.rs"
+    },
+    {
+      "function": "router",
+      "handler": "jwks",
+      "method": "GET",
+      "path": "/jwks",
+      "source": "crates/adapters/src/provider_http/mod.rs"
+    },
+    {
+      "function": "router",
+      "handler": "check",
+      "method": "GET",
+      "path": "/health/ready",
+      "source": "crates/adapters/src/readiness.rs"
+    },
+    {
+      "function": "router",
+      "handler": "application",
+      "method": "GET",
+      "path": "/api/admin/applications/{application}",
+      "source": "crates/adapters/src/registration_http/mod.rs"
+    },
+    {
+      "function": "router",
+      "handler": "client",
+      "method": "GET",
+      "path": "/api/admin/applications/{application}/clients/{client}",
+      "source": "crates/adapters/src/registration_http/mod.rs"
+    },
+    {
+      "function": "router",
+      "handler": "write",
+      "method": "POST",
+      "path": "/api/admin/registration",
+      "source": "crates/adapters/src/registration_http/mod.rs"
+    },
+    {
+      "function": "router",
+      "handler": "read",
+      "method": "GET",
+      "path": "/api/admin/applications/{application}/resources/{resource}/introspection",
+      "source": "crates/adapters/src/resource_servers_http/mod.rs"
+    },
+    {
+      "function": "router",
+      "handler": "write",
+      "method": "POST",
+      "path": "/api/admin/resource-introspection",
+      "source": "crates/adapters/src/resource_servers_http/mod.rs"
+    },
+    {
+      "function": "router",
+      "handler": "list",
+      "method": "GET",
+      "path": "/api/security/sessions",
+      "source": "crates/adapters/src/sessions_http.rs"
+    },
+    {
+      "function": "router",
+      "handler": "end",
+      "method": "POST",
+      "path": "/api/security/sessions/end",
+      "source": "crates/adapters/src/sessions_http.rs"
+    },
+    {
+      "function": "router",
+      "handler": "discovery",
+      "method": "GET",
+      "path": "/.well-known/openid-configuration",
+      "source": "crates/adapters/src/token_http/mod.rs"
+    },
+    {
+      "function": "router",
+      "handler": "introspect",
+      "method": "POST",
+      "path": "/introspect",
+      "source": "crates/adapters/src/token_http/mod.rs"
+    },
+    {
+      "function": "router",
+      "handler": "revoke",
+      "method": "POST",
+      "path": "/revoke",
+      "source": "crates/adapters/src/token_http/mod.rs"
+    },
+    {
+      "function": "router",
+      "handler": "redeem",
+      "method": "POST",
+      "path": "/token",
+      "source": "crates/adapters/src/token_http/mod.rs"
+    },
+    {
+      "function": "router",
+      "handler": "userinfo",
+      "method": "GET",
+      "path": "/userinfo",
+      "source": "crates/adapters/src/token_http/mod.rs"
+    }
+  ],
+  "schema": 1,
+  "scope": "Explicit Axum registrations and static-service mounts. GET registers Axum HEAD dispatch too; individual handlers can reject HEAD. Configuration and authentication prerequisites require separate contract metadata.",
+  "version": "0.1.0"
+}

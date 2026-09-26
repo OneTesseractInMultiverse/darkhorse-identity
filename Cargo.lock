@@ -573,6 +573,15 @@ name = "darkhorse-domain"
 version = "0.1.0"
 
 [[package]]
+name = "darkhorse-reference"
+version = "0.1.0"
+dependencies = [
+ "serde",
+ "serde_json",
+ "syn 2.0.119",
+]
+
+[[package]]
 name = "darkhorse-server"
 version = "0.1.0"
 dependencies = [

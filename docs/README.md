@@ -18,6 +18,7 @@ can still require load testing, protocol conformance, or an independent security
 
 - [Password authentication](authentication.md) defines session cookies, hashing, and shared attempt limits.
 - [Authorization](authorization.md) defines roles, capabilities, scopes, and immutable credential ceilings.
+- [API reference source inventory](api-reference.md) explains the generated Axum registration snapshot and its strict limits; the integrated OpenAPI reference is tracked in issue #43.
 - [Client registration](registration.md) defines applications, callbacks, client secrets, and resource allowances.
 - [Signing reconciliation](signing-operations.md) explains operation receipts and recovery after lost replies.
 - [OIDC provider](provider.md) covers signing keys, consent, authorization codes, and ID tokens.

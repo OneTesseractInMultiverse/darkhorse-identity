@@ -21,6 +21,7 @@ WEB := $(PNPM) --filter @darkhorse/console
 .PHONY: test-limiting test-mutation-limiting test-mutation-recovery coverage-core coverage-integration
 .PHONY: login-setup dev-login browser-install test-browser
 .PHONY: test-registration test-refresh test-sessions test-catalog test-personal-keys
+.PHONY: api-inventory-generate api-inventory-check
 
 test-personal-keys: ## Test: isolated personal-key policy, transport, and console behavior
 	cargo test --workspace --lib --locked --offline personal_keys
@@ -88,7 +89,7 @@ typecheck: ## Check: strict TypeScript and Svelte diagnostics
 architecture-check: ## Check: inward crate dependencies and static frontend boundaries
 	$(NODE) scripts/architecture-check.mjs
 
-check: fmt-check lint typecheck architecture-check i18n-check test-unit ## Check: complete fast verification; no services or certificate setup
+check: fmt-check lint typecheck architecture-check i18n-check api-inventory-check test-unit ## Check: complete fast verification; no services or certificate setup
 
 ci: check build ## Check: fast verification plus release/static builds
 
@@ -123,6 +124,13 @@ test-unit-web: ## Test: frontend computations and component interactions in memo
 
 test-tooling: ## Test: architecture and process-supervision contracts with fakes
 	$(NODE) --test scripts/tests/unit/*.test.mjs
+
+api-inventory-generate: ## API reference: regenerate the source-derived Axum route inventory
+	mkdir -p docs/api
+	@set -eu; tmp=$$(mktemp docs/api/.route-registration-v1.json.XXXXXX); trap 'rm -f "$$tmp"' EXIT; cargo run --locked --offline -p darkhorse-reference > "$$tmp"; mv "$$tmp" docs/api/route-registration-v1.json
+
+api-inventory-check: ## API reference: fail if Rust route registrations drift from the reviewed inventory
+	@set -o pipefail; cargo run --locked --offline -p darkhorse-reference | cmp -s - docs/api/route-registration-v1.json || { printf 'API route inventory is stale; run make api-inventory-generate and review the diff.\n' >&2; exit 1; }
 
 .PHONY: test-ci-boundary test-ci-boundary-tools cleanup-ci-boundary
 
