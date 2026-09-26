@@ -1,0 +1,17 @@
+{
+  "name": "@darkhorse/confidential-client-example",
+  "private": true,
+  "type": "module",
+  "engines": {
+    "node": "24.19.x"
+  },
+  "scripts": {
+    "test:unit": "node --test tests/unit/*.test.mjs"
+  },
+	"dependencies": {
+		"openid-client": "6.8.8"
+	},
+	"devDependencies": {
+		"undici": "8.11.2"
+	}
+}

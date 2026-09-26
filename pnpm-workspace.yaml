@@ -1,5 +1,6 @@
 packages:
   - apps/console
+  - examples/*
 minimumReleaseAge: 1440
 onlyBuiltDependencies:
   - esbuild

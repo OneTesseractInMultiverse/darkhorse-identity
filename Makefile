@@ -12,7 +12,7 @@ SOURCE_REF ?= HEAD
 PYTHON ?= python3
 WEB := $(PNPM) --filter @darkhorse/console
 
-.PHONY: help doctor deps-install deps-check fmt fmt-check lint typecheck architecture-check check ci test test-unit test-unit-rust test-unit-web test-tooling test-component test-unit-watch build build-api build-web dev-setup dev dev-api dev-web proxy-up https-setup https-check https-trust https-untrust clean
+.PHONY: help doctor deps-install deps-check fmt fmt-check lint typecheck architecture-check check ci test test-unit test-unit-rust test-unit-web test-tooling test-example test-component test-unit-watch build build-api build-web dev-setup dev dev-api dev-web proxy-up https-setup https-check https-trust https-untrust clean
 .PHONY: coverage-unit coverage-rust coverage-web coverage-postgres
 .PHONY: test-authorization test-property test-mutation
 .PHONY: db-setup db-up db-down db-migrate bootstrap test-postgres docker-build docker-smoke
@@ -73,11 +73,11 @@ deps-check: ## Check: verify lockfiles using installed dependencies
 
 fmt: ## Style: format Rust, frontend, scripts, and public documentation
 	cargo fmt --all
-	$(WEB) exec prettier --write . ../../scripts ../../docs ../../deploy/*.yaml ../../deploy/kubernetes/*.json ../../.github ../../README.md ../../CONTRIBUTING.md ../../SECURITY.md ../../package.json ../../pnpm-workspace.yaml
+	$(WEB) exec prettier --write . ../../scripts ../../docs ../../examples ../../deploy/*.yaml ../../deploy/kubernetes/*.json ../../.github ../../README.md ../../CONTRIBUTING.md ../../SECURITY.md ../../package.json ../../pnpm-workspace.yaml
 
 fmt-check: ## Style: verify formatting without edits
 	cargo fmt --all -- --check
-	$(WEB) exec prettier --check . ../../scripts ../../docs ../../deploy/*.yaml ../../deploy/kubernetes/*.json ../../.github ../../README.md ../../CONTRIBUTING.md ../../SECURITY.md ../../package.json ../../pnpm-workspace.yaml
+	$(WEB) exec prettier --check . ../../scripts ../../docs ../../examples ../../deploy/*.yaml ../../deploy/kubernetes/*.json ../../.github ../../README.md ../../CONTRIBUTING.md ../../SECURITY.md ../../package.json ../../pnpm-workspace.yaml
 
 lint: ## Check: Rust Clippy and frontend ESLint
 	cargo clippy --workspace --all-targets --all-features --locked --offline -- -D warnings
@@ -95,7 +95,7 @@ ci: check build ## Check: fast verification plus release/static builds
 
 test: test-unit ## Test: alias for isolated unit suites
 
-test-unit: test-unit-rust test-unit-web test-tooling ## Test: all isolated tests; no services, settings, or browser install
+test-unit: test-unit-rust test-unit-web test-tooling test-example ## Test: all isolated tests; no services, settings, or browser install
 
 test-unit-rust: ## Test: Rust in-memory unit modules; optional TEST_FILTER
 	cargo test --workspace --lib --locked --offline $(TEST_FILTER)
@@ -124,6 +124,9 @@ test-unit-web: ## Test: frontend computations and component interactions in memo
 
 test-tooling: ## Test: architecture and process-supervision contracts with fakes
 	$(NODE) --test scripts/tests/unit/*.test.mjs
+
+test-example: ## Test: confidential OIDC client example in memory
+	$(PNPM) --filter @darkhorse/confidential-client-example test:unit
 
 api-inventory-generate: ## API reference: regenerate the source-derived Axum route inventory
 	mkdir -p docs/api

@@ -93,10 +93,16 @@ Use verified HTTPS throughout. Keep credentials out of URLs, browser storage,
 command arguments, and logs. Read each operation's documented failure and
 uncertain-outcome behavior before retrying a write or credential exchange.
 
-The console now includes a step-by-step confidential web-client flow and
-separates identity UserInfo from protected-resource authorization and
-introspection. It is a protocol outline rather than a runnable client sample.
-For implementation and operations detail, consult the
+The console includes a step-by-step confidential web-client flow and separates
+identity UserInfo from protected-resource authorization and introspection. A
+framework-neutral, server-side Node.js client example using a maintained OIDC
+library is available in
+[examples/confidential-client](../examples/confidential-client/README.md). Its
+unit tests run with `make test-example`; the disposable HTTPS browser suite
+executes the example against Darkhorse with both denied and successful
+authorization outcomes. The sample intentionally leaves HTTP routing and
+application session storage to the integrating framework. For implementation
+and operations detail, consult the
 [provider flow](provider.md), [registration](registration.md),
 [token checks](token-checks.md), [resource introspection](resource-introspection.md),
 [personal API keys](personal-api-keys.md), [console](console.md), and the
@@ -140,6 +146,6 @@ console pages do not fetch its JSON documents. The disposable HTTPS browser suit
 checks the documented flow, search, direct links and reloads, keyboard
 disclosure, clipboard and download actions, safe text rendering, Spanish
 presentation, signed-out behavior, cookie omission on static-reference fetches,
-and mobile/zoom-sized viewports. Runnable application examples, screen-reader
-review, repeatable bundle/load performance budgets, and mechanical
+and mobile/zoom-sized viewports. Further protected-resource examples,
+screen-reader review, repeatable bundle/load performance budgets, and mechanical
 runtime-schema parity remain tracked work for issue #43.

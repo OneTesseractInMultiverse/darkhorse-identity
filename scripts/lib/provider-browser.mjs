@@ -15,6 +15,13 @@ import {
 import { verifyResourceChecks } from "./resource-checks-browser.mjs";
 import { verifyRefresh } from "./refresh-browser.mjs";
 import { verifyIdentityChecks } from "./identity-checks-browser.mjs";
+import {
+  beginAuthorization,
+  completeAuthorization,
+  createConfidentialOidcClient,
+  loadUserInfo,
+} from "../../examples/confidential-client/src/oidc-client.mjs";
+import { trustedFetch } from "../../examples/confidential-client/tests/support/trusted-fetch.mjs";
 export async function call(page, path, body) {
   return page.evaluate(
     async ({ path, body }) => {
@@ -136,7 +143,10 @@ export async function verifyProvider(
     client: {
       name: "Calendar",
       active: true,
-      redirect_uris: [`${origin}/callback?fixed=1`],
+      redirect_uris: [
+        `${origin}/callback?fixed=1`,
+        `${origin}/example-callback`,
+      ],
       resource_ids: [],
       scope_ids: [],
       token_endpoint_auth_method: "client_secret_basic",
@@ -385,9 +395,74 @@ export async function verifyProvider(
   const denied = await page.goto(`${origin}/authorize?${query}`);
   assert.equal(denied.status(), 400);
   assert.equal(new URL(page.url()).origin, origin);
+
+  const oidcTransport = trustedFetch(ca);
+  try {
+    const exampleClient = await createConfidentialOidcClient({
+      issuer: origin,
+      clientId: registered.body.record.id,
+      clientSecret: registered.body.client_secret,
+      redirectUri: `${origin}/example-callback`,
+      fetch: oidcTransport.fetch,
+    });
+    const exampleFlow = await beginAuthorization(exampleClient);
+    exampleFlow.authorizationUrl.searchParams.set("prompt", "none");
+    assert.equal(
+      exampleFlow.authorizationUrl.searchParams.has("client_secret"),
+      false,
+    );
+    await page.route(`${origin}/example-callback?**`, (route) =>
+      route.fulfill({
+        status: 200,
+        body: "Confidential client callback",
+        contentType: "text/plain",
+      }),
+    );
+    await page.goto(exampleFlow.authorizationUrl.href);
+    await page.waitForURL(`${origin}/example-callback?**`);
+    const callback = new URL(page.url());
+    assert.equal(callback.searchParams.get("iss"), origin);
+
+    const mismatchedState = new URL(callback);
+    mismatchedState.searchParams.set("state", "substituted-state");
+    await assert.rejects(
+      completeAuthorization(
+        exampleClient,
+        mismatchedState,
+        exampleFlow.transaction,
+      ),
+    );
+    await assert.rejects(
+      completeAuthorization(exampleClient, callback, {
+        ...exampleFlow.transaction,
+        codeVerifier: "z".repeat(43),
+      }),
+    );
+
+    const exampleTokens = await completeAuthorization(
+      exampleClient,
+      callback,
+      exampleFlow.transaction,
+    );
+    const exampleClaims = exampleTokens.claims();
+    assert.equal(exampleClaims.iss, origin);
+    assert.equal(exampleClaims.aud, registered.body.record.id);
+    assert.equal(exampleClaims.nonce, exampleFlow.transaction.nonce);
+    assert.equal(exampleClaims.sub, principal);
+    assert.match(exampleTokens.access_token, /^da_[a-f0-9]{64}$/);
+    assert.equal(exampleTokens.refresh_token, undefined);
+    assert.deepEqual(
+      await loadUserInfo(exampleClient, exampleTokens.access_token, principal),
+      { sub: principal },
+    );
+    await page.goto(origin);
+    assert.equal(new URL(page.url()).search, "");
+  } finally {
+    await oidcTransport.close();
+  }
   await page.goto(origin);
   await page.getByRole("heading", { name: "Welcome, Browser." }).waitFor();
   console.log(
-    "Provider HTTPS discovery, PKCE code exchange, independent RS256 validation, UserInfo, replay revocation, consent and substitution checks passed.",
+    "Provider HTTPS discovery, PKCE code exchange, maintained-library confidential-client example, independent RS256 validation, UserInfo, replay revocation, consent and substitution checks passed.",
   );
 }
