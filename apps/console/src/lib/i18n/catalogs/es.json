@@ -200,5 +200,92 @@
 	[
 		"media.error.invalid",
 		"Usa una imagen PNG o JPEG válida de hasta 4 MiB y 2048 píxeles por lado. Se permiten como máximo cuatro cargas por minuto."
-	]
+	],
+	["email.title", "Darkhorse — Verifica tu correo"],
+	["email.edition", "CORREO"],
+	["email.shortEdition", "/ CORREO"],
+	["email.heading", "Verifica tu correo."],
+	["email.intro", "Confirma que puedes recibir mensajes en el correo electrónico de tu cuenta."],
+	["email.verified", "Correo verificado"],
+	["email.unverified", "Correo sin verificar"],
+	["email.confirm", "Confirmar correo"],
+	["email.send", "Enviar correo de verificación"],
+	[
+		"email.confirmHelp",
+		"Confirma solo si solicitaste este enlace para la cuenta que se muestra arriba."
+	],
+	["email.changeAccount", "Iniciar sesión con otra cuenta"],
+	["email.disabled", "La verificación de correo no está habilitada en esta instalación."],
+	["email.unavailable", "La verificación de correo no está disponible temporalmente."],
+	["email.refresh", "Actualizar estado"],
+	["email.confirmed", "Se verificó tu correo electrónico."],
+	[
+		"email.queued",
+		"Se puso en cola un mensaje de verificación. Revisa tu bandeja de entrada. El enlace vence 15 minutos después de la solicitud."
+	],
+	["email.wrongAccount", "Inicia sesión en la cuenta que solicitó este enlace."],
+	[
+		"email.uncertain",
+		"No se pudo confirmar el resultado. Actualiza el estado antes de volver a intentarlo."
+	],
+	[
+		"email.limited",
+		"Espera antes de solicitar otro mensaje. Se permite una solicitud cada 15 minutos y cinco por día."
+	],
+	[
+		"email.invalid",
+		"Este enlace venció, ya se usó o pertenece a otra cuenta. Inicia sesión en la cuenta que lo solicitó o vuelve a abrir la configuración de correo para pedir un enlace nuevo."
+	],
+	["invitation.title", "Darkhorse — Aceptar invitación"],
+	["invitation.account", "CUENTA"],
+	["invitation.edition", "/ INVITACIÓN"],
+	["invitation.secure", "REGISTRO SEGURO"],
+	["invitation.new", "IDENTIDAD / NUEVA"],
+	["invitation.tagline", "TU ORGANIZACIÓN. UNA IDENTIDAD."],
+	["invitation.heading", "Crea tu cuenta."],
+	[
+		"invitation.created",
+		"Tu cuenta está lista. Inicia sesión con tu nueva contraseña. El administrador asigna el acceso a las aplicaciones por separado."
+	],
+	[
+		"invitation.invalid",
+		"No se pudo aceptar esta invitación. Revisa el correo y los datos de la cuenta o pide una invitación nueva al administrador."
+	],
+	[
+		"invitation.limited",
+		"Se alcanzó el límite de intentos de la invitación. Espera antes de volver a abrir el enlace del correo o pide una invitación nueva al administrador."
+	],
+	[
+		"invitation.uncertain",
+		"No se pudo confirmar si se creó tu cuenta. Primero intenta iniciar sesión. Si no funciona, vuelve a abrir la invitación más tarde."
+	],
+	[
+		"invitation.intro",
+		"Usa el correo que recibió la invitación. Elige una contraseña de 15 a 128 caracteres."
+	],
+	["invitation.accept", "Aceptar invitación"],
+	["invitation.confirmPassword", "Confirmar contraseña"],
+	["invitation.creating", "Creando cuenta…"],
+	["invitation.create", "Crear cuenta"],
+	[
+		"invitation.openLink",
+		"Abre el enlace de invitación enviado a tu correo para crear una cuenta."
+	],
+	["invitation.goSignIn", "Ir al inicio de sesión"],
+	["invitation.mismatch", "Las contraseñas deben coincidir."],
+	["authorization.title", "Darkhorse — Conectar aplicación"],
+	["authorization.edition", "CONEXIÓN SEGURA"],
+	["authorization.connection", "CONEXIÓN DE APLICACIÓN"],
+	["authorization.connecting", "Conectando…"],
+	["authorization.connect", "¿Conectar {name}?"],
+	["authorization.requesting", "Esta aplicación solicita:"],
+	["authorization.identity", "Tu identidad autenticada"],
+	["authorization.resource", "Recurso: {resource}"],
+	["authorization.allow", "Permitir conexión"],
+	["authorization.unavailable", "No se pudo conectar"],
+	[
+		"authorization.help",
+		"Esta conexión no está disponible. Vuelve a la aplicación e inténtalo de nuevo."
+	],
+	["authorization.cancel", "Cancelar conexión"]
 ]

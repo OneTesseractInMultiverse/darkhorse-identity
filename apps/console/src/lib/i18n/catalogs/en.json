@@ -179,5 +179,83 @@
 	[
 		"media.error.invalid",
 		"Use a valid PNG or JPEG up to 4 MiB and 2,048 pixels per side. At most four uploads per minute are allowed."
-	]
+	],
+	["email.title", "Darkhorse — Verify your email"],
+	["email.edition", "EMAIL"],
+	["email.shortEdition", "/ EMAIL"],
+	["email.heading", "Verify your email."],
+	["email.intro", "Confirm that you can receive messages at your account’s email address."],
+	["email.verified", "Email verified"],
+	["email.unverified", "Email not verified"],
+	["email.confirm", "Confirm email"],
+	["email.send", "Send verification email"],
+	["email.confirmHelp", "Confirm only if you requested this link for the account shown above."],
+	["email.changeAccount", "Sign in with another account"],
+	["email.disabled", "Email verification is not enabled for this deployment."],
+	["email.unavailable", "Email verification is temporarily unavailable."],
+	["email.refresh", "Refresh status"],
+	["email.confirmed", "Your email has been verified."],
+	[
+		"email.queued",
+		"A verification message has been queued. Check your inbox. The link expires 15 minutes after your request."
+	],
+	["email.wrongAccount", "Sign in to the account that requested this link."],
+	["email.uncertain", "The result could not be confirmed. Refresh the status before trying again."],
+	[
+		"email.limited",
+		"Please wait before requesting another message. Requests are limited to one per 15 minutes and five per day."
+	],
+	[
+		"email.invalid",
+		"This link has expired, was used, or belongs to a different account. Sign in to the account that requested it, or open the email settings again to request a new link."
+	],
+	["invitation.title", "Darkhorse — Accept invitation"],
+	["invitation.account", "ACCOUNT"],
+	["invitation.edition", "/ INVITATION"],
+	["invitation.secure", "SECURE ENROLLMENT"],
+	["invitation.new", "IDENTITY / NEW"],
+	["invitation.tagline", "YOUR ORGANIZATION. ONE IDENTITY."],
+	["invitation.heading", "Create your account."],
+	[
+		"invitation.created",
+		"Your account is ready. Sign in with your new password. Your administrator assigns application access separately."
+	],
+	[
+		"invitation.invalid",
+		"This invitation could not be accepted. Check the email and account details, or ask your administrator for a new invitation."
+	],
+	[
+		"invitation.limited",
+		"The invitation attempt limit has been reached. Wait before reopening the email link, or ask your administrator for a new invitation."
+	],
+	[
+		"invitation.uncertain",
+		"We could not confirm whether your account was created. Try signing in first. If that does not work, reopen your invitation later."
+	],
+	[
+		"invitation.intro",
+		"Use the email address that received your invitation. Choose a password with 15–128 characters."
+	],
+	["invitation.accept", "Accept invitation"],
+	["invitation.confirmPassword", "Confirm password"],
+	["invitation.creating", "Creating account…"],
+	["invitation.create", "Create account"],
+	["invitation.openLink", "Open the invitation link sent to your email to create an account."],
+	["invitation.goSignIn", "Go to sign in"],
+	["invitation.mismatch", "The passwords must match."],
+	["authorization.title", "Darkhorse — Connect application"],
+	["authorization.edition", "SECURE CONNECTION"],
+	["authorization.connection", "APPLICATION CONNECTION"],
+	["authorization.connecting", "Connecting…"],
+	["authorization.connect", "Connect {name}?"],
+	["authorization.requesting", "This application is requesting:"],
+	["authorization.identity", "Your signed-in identity"],
+	["authorization.resource", "Resource: {resource}"],
+	["authorization.allow", "Allow connection"],
+	["authorization.unavailable", "Unable to connect"],
+	[
+		"authorization.help",
+		"This connection is unavailable. Return to the application and try again."
+	],
+	["authorization.cancel", "Cancel connection"]
 ]

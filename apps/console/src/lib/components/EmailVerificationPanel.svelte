@@ -1,4 +1,6 @@
 <script lang="ts">
+	import { useLocalization } from '$lib/i18n/context';
+	const language = useLocalization();
 	import { onMount, tick } from 'svelte';
 	import { Button } from '$lib/components/ui/button';
 	import LoginPanel from './LoginPanel.svelte';
@@ -26,10 +28,20 @@
 	let account = $state<EmailStatus>({ kind: 'unavailable' });
 	let pending = $state(true);
 	let token = $state<string | undefined>();
-	let message = $state('');
+	let message = $state<
+		| 'logout.unconfirmed'
+		| 'email.confirmed'
+		| 'email.queued'
+		| 'email.wrongAccount'
+		| 'email.uncertain'
+		| 'email.limited'
+		| 'email.invalid'
+		| null
+	>(null);
 	let uncertain = $state(false);
+	let mounted = false;
 	onMount(() => {
-		let mounted = true;
+		mounted = true;
 		// Initial hydration must finish before the router can replace history.
 		void tick().then(() => {
 			if (mounted) receive();
@@ -46,7 +58,9 @@
 	}
 	async function refresh() {
 		pending = true;
-		account = await read();
+		const result = await read();
+		if (!mounted) return;
+		account = result;
 		if (account.kind === 'ready') {
 			uncertain = false;
 			if (account.verified) token = undefined;
@@ -55,13 +69,21 @@
 	}
 	async function authenticate(email: string, password: string) {
 		const result = await signIn(email, password);
-		if (result.kind === 'signed-in') await refresh();
+		if (!mounted) return result;
+		if (result.kind === 'signed-in') {
+			language.account(result.locale);
+			await refresh();
+		}
 		return result;
 	}
 	async function changeAccount() {
 		pending = true;
-		if (await signOut()) await refresh();
-		else message = 'Sign out could not be confirmed. Please try again.';
+		const confirmed = await signOut();
+		if (!mounted) return;
+		if (confirmed) {
+			language.account(undefined);
+			await refresh();
+		} else message = 'logout.unconfirmed';
 		pending = false;
 	}
 	async function submit() {
@@ -69,61 +91,59 @@
 		pending = true;
 		const confirming = token !== undefined;
 		const result = confirming ? await confirm(token!) : await request();
+		if (!mounted) return;
 		if (result === 'ok') {
-			message = confirming
-				? 'Your email has been verified.'
-				: 'A verification message has been queued. Check your inbox. The link expires 15 minutes after your request.';
+			message = confirming ? 'email.confirmed' : 'email.queued';
 			if (confirming) token = undefined;
 			await refresh();
 		} else if (result === 'signed-out') {
 			account = { kind: 'signed-out' };
-			message = 'Sign in to the account that requested this link.';
+			language.account(undefined);
+			message = 'email.wrongAccount';
 		} else if (result === 'unavailable') {
 			uncertain = true;
-			message = 'The result could not be confirmed. Refresh the status before trying again.';
-		} else if (result === 'limited')
-			message =
-				'Please wait before requesting another message. Requests are limited to one per 15 minutes and five per day.';
-		else
-			message =
-				'This link has expired, was used, or belongs to a different account. Sign in to the account that requested it, or open the email settings again to request a new link.';
+			message = 'email.uncertain';
+		} else if (result === 'limited') message = 'email.limited';
+		else message = 'email.invalid';
 		pending = false;
 	}
 </script>
 
 <section class="glass email-panel" aria-labelledby="email-title" aria-busy={pending}>
 	<div class="panel-top">
-		<span><span class="dot"></span> ACCOUNT SECURITY</span><span>EMAIL</span>
+		<span><span class="dot"></span> {$language.t('sessions.security')}</span><span
+			>{$language.t('email.edition')}</span
+		>
 	</div>
 	<div class="panel-body">
-		<h1 id="email-title">Verify your email.</h1>
-		<p class="intro">Confirm that you can receive messages at your account’s email address.</p>
+		<h1 id="email-title">{$language.t('email.heading')}</h1>
+		<p class="intro">{$language.t('email.intro')}</p>
 		{#if account.kind === 'ready'}
 			<p class="address">{account.email}</p>
 			<p class="verification-status">
-				{account.verified ? 'Email verified' : 'Email not verified'}
+				{$language.t(account.verified ? 'email.verified' : 'email.unverified')}
 			</p>
 			{#if !account.verified}
 				<Button onclick={submit} disabled={pending || uncertain} class="mt-6 h-11 w-full font-mono"
-					>{token ? 'Confirm email' : 'Send verification email'}</Button
+					>{$language.t(token ? 'email.confirm' : 'email.send')}</Button
 				>
 				{#if token}<p class="hint">
-						Confirm only if you requested this link for the account shown above.
+						{$language.t('email.confirmHelp')}
 					</p>{/if}
 			{/if}
 			<Button variant="outline" onclick={changeAccount} disabled={pending} class="mt-3 w-full"
-				>Sign in with another account</Button
+				>{$language.t('email.changeAccount')}</Button
 			>
 		{:else if account.kind === 'disabled'}<p>
-				Email verification is not enabled for this deployment.
+				{$language.t('email.disabled')}
 			</p>
 		{:else if account.kind === 'unavailable' && !pending}<p role="alert">
-				Email verification is temporarily unavailable.
+				{$language.t('email.unavailable')}
 			</p>
 		{/if}
-		{#if message}<p role="status" class="notice">{message}</p>{/if}
+		{#if message}<p role="status" class="notice">{$language.t(message)}</p>{/if}
 		<Button variant="outline" onclick={refresh} disabled={pending} class="mt-3 w-full"
-			>Refresh status</Button
+			>{$language.t('email.refresh')}</Button
 		>
 	</div>
 </section>

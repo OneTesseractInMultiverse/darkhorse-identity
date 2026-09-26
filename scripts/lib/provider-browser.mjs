@@ -204,7 +204,15 @@ export async function verifyProvider(
       contentType: "text/plain",
     }),
   );
-  await page.getByRole("button", { name: "Allow connection" }).click();
+  await page.getByRole("combobox").selectOption("es");
+  await page
+    .getByRole("heading", { name: "¿Conectar Calendar?", exact: true })
+    .waitFor();
+  await page.screenshot({
+    path: ".local/consent-es-desktop.png",
+    fullPage: true,
+  });
+  await page.getByRole("button", { name: "Permitir conexión" }).click();
   await page.waitForURL(`${origin}/callback?**`);
   const expected = {
     issuer: origin,
@@ -215,6 +223,8 @@ export async function verifyProvider(
     redirect: query.get("redirect_uri"),
   };
   const code = validateCallback(page.url(), expected);
+  await page.goto(origin);
+  await page.getByRole("combobox").selectOption("en");
   const redeem = (
     value = code,
     secret = registered.body.client_secret,

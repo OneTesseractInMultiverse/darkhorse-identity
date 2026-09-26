@@ -72,3 +72,17 @@ it('renders unavailable requests without an approval action', async () => {
 	expect(await screen.findByRole('heading', { name: 'Unable to connect' })).toBeInTheDocument();
 	expect(screen.queryByRole('button', { name: 'Allow connection' })).not.toBeInTheDocument();
 });
+it('ignores a late redirect after leaving the authorization page', async () => {
+	const p = props();
+	let finish!: (value: { kind: 'redirect'; url: string }) => void;
+	p.load.mockReturnValue(
+		new Promise((resolve) => {
+			finish = resolve;
+		})
+	);
+	const view = render(AuthorizationPanel, p);
+	view.unmount();
+	finish({ kind: 'redirect', url: 'https://client.example/callback?code=late' });
+	await new Promise((resolve) => setTimeout(resolve, 0));
+	expect(p.navigate).not.toHaveBeenCalled();
+});

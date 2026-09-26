@@ -33,18 +33,27 @@ export async function verifyEmail(page, origin, mailbox) {
   try {
     await fresh.goto(`${origin}/security/email#token=${token}`);
     await fresh.getByRole("button", { name: "Confirm email" }).waitFor();
+    await fresh.getByRole("combobox").selectOption("es");
+    await fresh
+      .getByRole("button", { name: "Confirmar correo", exact: true })
+      .waitFor();
     assert.equal(fresh.url(), `${origin}/security/email`);
     assert.deepEqual(freshErrors, []);
   } finally {
     await fresh.close();
   }
 
+  await page.getByRole("combobox").selectOption("en");
   assert.equal((await call(page, "/api/security/email")).body.verified, false);
   const urls = [];
   const listener = (request) => urls.push(request.url());
   page.on("request", listener);
   await page.goto(`${origin}/security/email#token=${token}`);
   await page.getByRole("button", { name: "Confirm email" }).waitFor();
+  await page.getByRole("combobox").selectOption("es");
+  await page
+    .getByRole("button", { name: "Confirmar correo", exact: true })
+    .waitFor();
   assert.equal(page.url(), `${origin}/security/email`);
   assert.equal((await call(page, "/api/security/email")).body.verified, false);
   await page.screenshot({
@@ -62,8 +71,8 @@ export async function verifyEmail(page, origin, mailbox) {
     path: resolve(".local/email-verification-mobile.png"),
     fullPage: true,
   });
-  await page.getByRole("button", { name: "Confirm email" }).click();
-  await page.getByText("Email verified", { exact: true }).waitFor();
+  await page.getByRole("button", { name: "Confirmar correo" }).click();
+  await page.getByText("Correo verificado", { exact: true }).waitFor();
   assert.equal((await call(page, "/api/security/email")).body.verified, true);
   assert.equal(
     (await call(page, "/api/security/email/confirm", { token })).status,
@@ -85,6 +94,7 @@ export async function verifyEmail(page, origin, mailbox) {
   );
   page.off("request", listener);
   await page.setViewportSize({ width: 1280, height: 900 });
+  await page.getByRole("combobox").selectOption("en");
   await page.goto(origin);
   console.log(
     "HTTPS email request, authenticated TLS SMTP, fragment removal, explicit single-use confirmation and mobile bounds passed.",

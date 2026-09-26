@@ -1,4 +1,6 @@
 <script lang="ts">
+	import { useLocalization } from '$lib/i18n/context';
+	const language = useLocalization();
 	import { onMount, tick } from 'svelte';
 	import { resolve } from '$app/paths';
 	import { Button } from '$lib/components/ui/button';
@@ -20,7 +22,7 @@
 	let confirmation = $state('');
 	let pending = $state(false);
 	let result = $state<InvitationResult>();
-	let error = $state('');
+	let mismatch = $state(false);
 	let message: HTMLParagraphElement | undefined = $state();
 	onMount(() => {
 		let mounted = true;
@@ -41,17 +43,17 @@
 		password = '';
 		confirmation = '';
 		result = undefined;
-		error = '';
+		mismatch = false;
 	}
 	async function submit(event: SubmitEvent) {
 		event.preventDefault();
 		if (pending || !token) return;
 		if (password !== confirmation) {
-			error = 'The passwords must match.';
+			mismatch = true;
 			return;
 		}
 		pending = true;
-		error = '';
+		mismatch = false;
 		const input = { token, email, first_name: firstName, last_name: lastName, password };
 		password = '';
 		confirmation = '';
@@ -65,32 +67,29 @@
 
 <section class="glass invitation-panel" aria-labelledby="invitation-title" aria-busy={pending}>
 	<div class="panel-top">
-		<span><span class="dot"></span> SECURE ENROLLMENT</span><span>IDENTITY / NEW</span>
+		<span><span class="dot"></span> {$language.t('invitation.secure')}</span><span
+			>{$language.t('invitation.new')}</span
+		>
 	</div>
 	<div class="panel-body">
-		<span class="eyebrow">YOUR ORGANIZATION. ONE IDENTITY.</span>
-		<h1 id="invitation-title">Create your<br /><span>account.</span></h1>
+		<span class="eyebrow">{$language.t('invitation.tagline')}</span>
+		<h1 id="invitation-title">{$language.t('invitation.heading')}</h1>
 		{#if result === 'ok'}
 			<p role="status" tabindex="-1" bind:this={message}>
-				Your account is ready. Sign in with your new password. Your administrator assigns
-				application access separately.
+				{$language.t('invitation.created')}
 			</p>
 		{:else if result}
 			<p role="alert" tabindex="-1" bind:this={message}>
-				{#if result === 'invalid'}This invitation could not be accepted. Check the email and account
-					details, or ask your administrator for a new invitation.
-				{:else if result === 'limited'}The invitation attempt limit has been reached. Wait before
-					reopening the email link, or ask your administrator for a new invitation.
-				{:else}We could not confirm whether your account was created. Try signing in first. If that
-					does not work, reopen your invitation later.{/if}
+				{#if result === 'invalid'}{$language.t('invitation.invalid')}
+				{:else if result === 'limited'}{$language.t('invitation.limited')}
+				{:else}{$language.t('invitation.uncertain')}{/if}
 			</p>
 		{:else if token}
 			<p class="intro">
-				Use the email address that received your invitation. Choose a password with 15–128
-				characters.
+				{$language.t('invitation.intro')}
 			</p>
-			<form aria-label="Accept invitation" onsubmit={submit} class="login-form">
-				<label for="invite-email">Email address</label><input
+			<form aria-label={$language.t('invitation.accept')} onsubmit={submit} class="login-form">
+				<label for="invite-email">{$language.t('login.email')}</label><input
 					id="invite-email"
 					type="email"
 					autocomplete="username"
@@ -101,7 +100,7 @@
 					bind:value={email}
 					disabled={pending}
 				/>
-				<label for="invite-first">First name</label><input
+				<label for="invite-first">{$language.t('profile.firstName')}</label><input
 					id="invite-first"
 					autocomplete="given-name"
 					required
@@ -109,7 +108,7 @@
 					bind:value={firstName}
 					disabled={pending}
 				/>
-				<label for="invite-last">Last name</label><input
+				<label for="invite-last">{$language.t('profile.lastName')}</label><input
 					id="invite-last"
 					autocomplete="family-name"
 					required
@@ -117,7 +116,7 @@
 					bind:value={lastName}
 					disabled={pending}
 				/>
-				<label for="invite-password">Password</label><input
+				<label for="invite-password">{$language.t('login.password')}</label><input
 					id="invite-password"
 					type="password"
 					autocomplete="new-password"
@@ -127,7 +126,7 @@
 					bind:value={password}
 					disabled={pending}
 				/>
-				<label for="invite-confirmation">Confirm password</label><input
+				<label for="invite-confirmation">{$language.t('invitation.confirmPassword')}</label><input
 					id="invite-confirmation"
 					type="password"
 					autocomplete="new-password"
@@ -138,15 +137,15 @@
 					disabled={pending}
 				/>
 				<Button type="submit" disabled={pending} class="mt-3 h-12 w-full font-mono"
-					>{pending ? 'Creating account…' : 'Create account'}</Button
+					>{$language.t(pending ? 'invitation.creating' : 'invitation.create')}</Button
 				>
 			</form>
 		{:else}<p class="intro">
-				Open the invitation link sent to your email to create an account.
+				{$language.t('invitation.openLink')}
 			</p>{/if}
-		{#if error}<p role="alert">{error}</p>{/if}
+		{#if mismatch}<p role="alert">{$language.t('invitation.mismatch')}</p>{/if}
 		<a href={resolve('/')} class="mt-6 inline-block text-primary underline underline-offset-4"
-			>Go to sign in</a
+			>{$language.t('invitation.goSignIn')}</a
 		>
 	</div>
 </section>

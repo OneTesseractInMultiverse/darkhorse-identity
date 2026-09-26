@@ -1,8 +1,9 @@
 # Language and localization
 
 Darkhorse's first supported presentation languages are English (`en`) and Spanish
-(`es`). The sign-in page, account overview, profile and session pages offer both. Other
-account and management pages, email, consent and the operator CLI still use English. Their
+(`es`). The sign-in page, account overview, profile, sessions, email verification, invitation
+and consent pages offer both. Personal-key and management pages, outgoing email and
+the operator CLI still require translation. Their
 translation and qualification are tracked separately. A language choice changes
 presentation; it never changes identity, permissions or protocol behavior.
 
@@ -263,9 +264,9 @@ open.
 | `/account/profile` — read/edit/language/image dialogs                                                   | Translated; names and bios remain literal text; country names/order use browser `Intl` while submitted codes stay unchanged |
 | `/security/sessions` — list, pagination, confirmation, failures                                         | Translated; selected-language dates explicitly remain in UTC                                                                |
 | `/security/keys` and key creation/reveal/revocation                                                     | Pending                                                                                                                     |
-| `/security/email` and confirmation/account switching                                                    | Pending                                                                                                                     |
-| `/invitation` and enrollment failures                                                                   | Pending                                                                                                                     |
-| `/authorization` and consent                                                                            | Pending; OIDC language hints are separate in #40                                                                            |
+| `/security/email` and confirmation/account switching                                                    | Translated; requesting, account binding, explicit confirmation and uncertainty remain unchanged                             |
+| `/invitation` and enrollment failures                                                                   | Translated; switching language preserves the unsent form and never accepts the invitation                                   |
+| `/authorization` and consent                                                                            | Translated; exact scopes stay visible; OIDC `ui_locales` hint/discovery support remains separate in #40                     |
 | `/console/users` and directory/access dialogs                                                           | Pending                                                                                                                     |
 | `/console/applications`, `/console/clients` and registration/credential dialogs                         | Pending                                                                                                                     |
 | `/console/resources`, `/console/scopes`, `/console/roles`, `/console/capabilities` and bindings/pickers | Pending                                                                                                                     |
@@ -286,8 +287,8 @@ versions and backend validation are unchanged. Country labels may vary with the
 browser's locale-data version. Dates use an explicitly UTC `Intl.DateTimeFormat`
 created once per language change, with an ISO/UTC fallback.
 
-A direct session-page visit restores the account preference with one existing
-session GET. The layout ignores an older response after a newer profile preference
+A direct session, verification or consent page visit restores the account preference
+with one existing session GET. The layout ignores an older response after a newer profile preference
 or sign-out update. Profile pages already receive the preference through their
 profile read. These reads affect presentation only and add no positive authority
 cache. Client-side navigation can retain the last presentation choice until the
@@ -304,3 +305,28 @@ cold readiness was 72.1 ms baseline, 71.7 ms localized English and 71.9 ms Spani
 warm medians were 39.9, 55.6 and 55.7 ms. These samples do not demonstrate a speedup
 or qualify production latency. Reconsider route-specific catalog loading before
 console translation growth consumes the remaining payload budget.
+
+### Verification, invitation and consent
+
+All three pages translate visible instructions, labels, errors and metadata. Language
+selection preserves the invitation password fields in the current form without
+persisting them. Verification proofs remain fragment-only, are removed from history,
+and still require an explicit confirmation for the correct account. Creating an
+account neither starts a session nor grants administrative/application access.
+Outgoing email content remains English until the durable-language work in #39.
+
+Consent keeps application names, resource audiences and exact scope identifiers
+verbatim, including `openid`; its explanatory text is translated and untrusted
+labels remain escaped. Language switching neither approves a request nor changes
+its request ID, PKCE, nonce, state or callback. A response received after leaving
+the page cannot navigate the new page. Server-side `ui_locales` binding and discovery
+advertisement are not implemented by this presentation increment.
+
+The [security-flow presentation sample](measurements/security-flow-localization-2026-09-26.json)
+records 131,892 summed gzip JavaScript bytes, 22,739 above the English-only baseline
+and within the same 36 KiB budget. Five cold/warm pairs used the unchanged loopback
+presentation fixture. Cold medians were 71.8 ms baseline, 71.8 ms localized English
+and 71.6 ms Spanish; warm medians were 40.0, 55.4 and 56.8 ms. These are small
+presentation samples, not production throughput or stable percentile estimates.
+Actual bilingual SMTP-link confirmation, enrollment and OIDC callback validation
+run in the separate verified-HTTPS browser suite.

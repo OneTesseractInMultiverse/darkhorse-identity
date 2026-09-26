@@ -56,6 +56,11 @@ export async function verifyInvitations(
       ["Confirm password", password],
     ])
       await page.getByLabel(label, { exact: true }).fill(value);
+    await page.getByRole("combobox").selectOption("es");
+    assert.equal(
+      await page.getByLabel("Contraseña", { exact: true }).inputValue(),
+      password,
+    );
     await page.screenshot({
       path: resolve(".local/invitation-desktop.png"),
       fullPage: true,
@@ -72,9 +77,9 @@ export async function verifyInvitations(
       fullPage: true,
     });
     await page
-      .getByRole("button", { name: "Create account", exact: true })
+      .getByRole("button", { name: "Crear cuenta", exact: true })
       .click();
-    await page.getByText(/Your account is ready/).waitFor();
+    await page.getByText(/Tu cuenta está lista/).waitFor();
     assert.equal(
       (await call(page, "/api/auth/session")).status,
       401,
@@ -92,11 +97,13 @@ export async function verifyInvitations(
       ).status,
       400,
     );
-    await page.getByRole("link", { name: "Go to sign in" }).click();
-    await page.getByLabel("Email address").fill("invited@example.com");
-    await page.getByLabel("Password", { exact: true }).fill(password);
-    await page.getByRole("button", { name: "Sign in", exact: true }).click();
-    await page.getByRole("heading", { name: /Welcome, Invited/ }).waitFor();
+    await page.getByRole("link", { name: "Ir al inicio de sesión" }).click();
+    await page.getByLabel("Correo electrónico").fill("invited@example.com");
+    await page.getByLabel("Contraseña", { exact: true }).fill(password);
+    await page
+      .getByRole("button", { name: "Iniciar sesión", exact: true })
+      .click();
+    await page.getByRole("heading", { name: /bienvenida, Invited/ }).waitFor();
     assert.equal((await call(page, "/api/security/email")).body.verified, true);
     assert.equal(
       (await call(page, "/api/admin/invitations")).status,

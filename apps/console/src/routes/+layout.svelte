@@ -20,7 +20,7 @@
 		void presentation(fetch).then((locale) => {
 			if (alive) language.deployment(locale);
 		});
-		if (page.url.pathname === '/security/sessions') {
+		if (['/security/sessions', '/security/email', '/authorization'].includes(page.url.pathname)) {
 			void language.restoreAccount(async () => {
 				const result = await currentSession(fetch);
 				return result.kind === 'signed-in' ? result.locale : undefined;
@@ -34,9 +34,14 @@
 	$effect(() => {
 		if (mounted) {
 			// Other routes remain English until their complete translation is delivered.
-			document.documentElement.lang = ['/', '/account/profile', '/security/sessions'].includes(
-				page.url.pathname
-			)
+			document.documentElement.lang = [
+				'/',
+				'/account/profile',
+				'/security/sessions',
+				'/security/email',
+				'/invitation',
+				'/authorization'
+			].includes(page.url.pathname)
 				? $language.locale
 				: 'en';
 			document.documentElement.dir = 'ltr';

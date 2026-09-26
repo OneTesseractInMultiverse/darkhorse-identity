@@ -1,4 +1,6 @@
 <script lang="ts">
+	import { useLocalization } from '$lib/i18n/context';
+	const language = useLocalization();
 	import { onMount } from 'svelte';
 	import { Button } from '$lib/components/ui/button';
 	import LoginPanel from './LoginPanel.svelte';
@@ -17,8 +19,13 @@
 	} = $props();
 	let flow = $state<AuthorizationState>({ kind: 'unavailable' });
 	let busy = $state(true);
+	let alive = false;
 	onMount(() => {
+		alive = true;
 		void refresh();
+		return () => {
+			alive = false;
+		};
 	});
 	function accept(next: AuthorizationState) {
 		flow = next;
@@ -26,18 +33,26 @@
 	}
 	async function refresh() {
 		busy = true;
-		accept(await load());
+		const result = await load();
+		if (!alive) return;
+		accept(result);
 		busy = false;
 	}
 	async function choose(choice: 'approve' | 'deny') {
 		if (busy || flow.kind !== 'pending') return;
 		busy = true;
-		accept(await decide(flow.request_id, choice));
+		const result = await decide(flow.request_id, choice);
+		if (!alive) return;
+		accept(result);
 		busy = false;
 	}
 	async function authenticate(email: string, password: string) {
 		const result = await signIn(email, password);
-		if (result.kind === 'signed-in') await refresh();
+		if (!alive) return result;
+		if (result.kind === 'signed-in') {
+			language.account(result.locale);
+			await refresh();
+		}
 		return result;
 	}
 	async function signedOut(): Promise<AuthState> {
@@ -49,31 +64,43 @@
 	<LoginPanel signIn={authenticate} checkSession={signedOut} />
 {:else}
 	<section class="glass login-panel" aria-labelledby="authorization-title" aria-busy={busy}>
-		<div class="panel-top"><span>APPLICATION CONNECTION</span></div>
+		<div class="panel-top"><span>{$language.t('authorization.connection')}</span></div>
 		<div class="panel-body">
-			{#if busy}<h1 id="authorization-title" class="break-words">Connecting…</h1>
+			{#if busy}<h1 id="authorization-title" class="break-words">
+					{$language.t('authorization.connecting')}
+				</h1>
 			{:else if flow.kind === 'pending' && flow.status === 'consent'}
-				<h1 id="authorization-title" class="break-words">Connect {flow.client_name}?</h1>
-				<p class="intro">This application is requesting:</p>
+				<h1 id="authorization-title" class="break-words">
+					{$language.t('authorization.connect', { name: flow.client_name })}
+				</h1>
+				<p class="intro">{$language.t('authorization.requesting')}</p>
 				<ul class="my-5 space-y-2">
 					{#each flow.scopes as scope (scope)}<li>
-							{scope === 'openid' ? 'Your signed-in identity' : scope}
+							<code>{scope}</code>{#if scope === 'openid'}<span class="ml-2"
+									>{$language.t('authorization.identity')}</span
+								>{/if}
 						</li>{/each}
 				</ul>
-				{#if flow.resource}<p class="caption break-all">Resource: {flow.resource}</p>{/if}
-				<Button class="mt-5 h-11 w-full" onclick={() => choose('approve')}>Allow connection</Button>
+				{#if flow.resource}<p class="caption break-all">
+						{$language.t('authorization.resource', { resource: flow.resource })}
+					</p>{/if}
+				<Button class="mt-5 h-11 w-full" onclick={() => choose('approve')}
+					>{$language.t('authorization.allow')}</Button
+				>
 				<Button variant="outline" class="mt-3 h-11 w-full" onclick={() => choose('deny')}
-					>Cancel</Button
+					>{$language.t('common.cancel')}</Button
 				>
 			{:else}
-				<h1 id="authorization-title" class="break-words">Unable to connect</h1>
+				<h1 id="authorization-title" class="break-words">
+					{$language.t('authorization.unavailable')}
+				</h1>
 				<p role="status" class="intro">
-					This connection is unavailable. Return to the application and try again.
+					{$language.t('authorization.help')}
 				</p>
 				{#if flow.kind === 'pending'}<Button
 						variant="outline"
 						class="mt-5 h-11 w-full"
-						onclick={() => choose('deny')}>Cancel connection</Button
+						onclick={() => choose('deny')}>{$language.t('authorization.cancel')}</Button
 					>{/if}
 			{/if}
 		</div>
