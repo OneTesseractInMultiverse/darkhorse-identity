@@ -32,6 +32,17 @@ pub fn bounded_total(current: usize, increment: usize, maximum: usize) -> Result
     Ok(current + increment)
 }
 
+/// Render the bounded route inventory as a versioned, deterministic document.
+pub fn document(entries: Vec<Entry>) -> Result<Vec<u8>, String> {
+    serde_json::to_vec_pretty(&serde_json::json!({
+        "schema": 1,
+        "version": env!("CARGO_PKG_VERSION"),
+        "scope": "Explicit Axum registrations and static-service mounts. GET registers Axum HEAD dispatch too; individual handlers can reject HEAD. Configuration and authentication prerequisites require separate contract metadata.",
+        "entries": entries,
+    }))
+    .map_err(|_| "Cannot serialize route inventory.".to_owned())
+}
+
 pub fn parse(source: &str, contents: &str) -> Result<Vec<Entry>, Error> {
     if source.is_empty()
         || source.len() > 4096
@@ -184,3 +195,7 @@ fn method(value: &str) -> Result<String, Error> {
 #[cfg(test)]
 #[path = "../tests/unit/inventory.rs"]
 mod tests;
+
+#[cfg(test)]
+#[path = "../tests/unit/document.rs"]
+mod document_tests;

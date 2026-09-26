@@ -86,20 +86,11 @@ fn read() -> Result<Vec<Entry>, String> {
     }
     inventory::merge(found).map_err(|_| "Invalid aggregate route inventory.".into())
 }
-fn document(entries: Vec<Entry>) -> Result<Vec<u8>, String> {
-    serde_json::to_vec_pretty(&serde_json::json!({
-        "schema": 1,
-        "version": env!("CARGO_PKG_VERSION"),
-        "scope": "Explicit Axum registrations and static-service mounts. GET registers Axum HEAD dispatch too; individual handlers can reject HEAD. Configuration and authentication prerequisites require separate contract metadata.",
-        "entries": entries,
-    }))
-    .map_err(|_| "Cannot serialize route inventory.".into())
-}
 fn run() -> Result<(), String> {
     if std::env::args_os().count() != 1 {
         return Err("Run the inventory without arguments from the repository root.".into());
     }
-    let output = document(read()?)?;
+    let output = inventory::document(read()?)?;
     let mut stdout = std::io::stdout().lock();
     stdout
         .write_all(&output)
@@ -115,6 +106,3 @@ fn main() -> std::process::ExitCode {
         }
     }
 }
-#[cfg(test)]
-#[path = "../tests/unit/document.rs"]
-mod tests;
