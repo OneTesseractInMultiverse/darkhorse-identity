@@ -46,7 +46,7 @@ retry failures, enable a positive authorization cache or disable security checks
 It bounds combined child stdout/stderr to 2 MiB in memory. Overflow, interruption,
 missing commands, nonzero exit or malformed/incomplete summaries fail the check.
 Raw output is not published by the wrapper. Reports include bounded failed test
-identifiers, counts and fixed browser phase identifiers; reproduce with the underlying target for detailed private
+identifiers, counts, fixed browser phase identifiers and bounded source locations; reproduce with the underlying target for detailed private
 diagnostics. Preparation-step compiler/tool errors remain ordinary runner output.
 
 ## Evidence and intentional worker handling
@@ -74,8 +74,10 @@ objects and email. Only the limiter worker described above may be ignored. Every
 fixed browser phase must start and pass in order, followed by the completion marker
 after browser, server, SMTP, object-storage and TLS teardown. Missing, duplicate,
 unknown or out-of-order markers fail qualification even with a zero process exit.
-The report records only the last verified phase boundary, never a raw browser error,
-page content, screenshot or message. Browser launch/version is determined by the
+The report records the last verified phase boundary and, on failure, an allowlisted
+error class plus up to four repository script filenames/line/column positions. It
+discards exception messages, assertion values, unrelated paths and URLs. It never
+uploads raw browser errors, page content, screenshots or messages. Browser launch/version is determined by the
 locked Playwright dependency; the report hashes that lockfile and the harness.
 
 A summary is usable only with the corresponding job's final outcome. A passed
