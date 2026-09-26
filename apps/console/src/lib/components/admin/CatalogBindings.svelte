@@ -31,60 +31,76 @@
 	<p class="muted">
 		Meaning is permanent. Retirement takes effect for new authorization checks.
 	</p>{/if}
-{#if view.item.kind === 'resource'}<p class="catalog-id">Audience: {view.item.audience}</p>{/if}
+{#if view.item.kind === 'resource'}<dl class="catalog-facts">
+		<div class="catalog-fact-wide">
+			<dt>Resource audience</dt>
+			<dd class="catalog-id">{view.item.audience}</dd>
+			<dd class="catalog-help">
+				The permanent identifier for this API. Resource access tokens are restricted to their
+				intended audience.
+			</dd>
+		</div>
+	</dl>{/if}
 {#if view.item.kind === 'role' || view.item.kind === 'capability'}
-	<h3>Application bindings</h3>
-	<p class="muted">Each binding is explicit. New applications inherit no access.</p>
-	<ul class="catalog-options">
-		{#each view.applications as a (a.id)}<li>
-				<span>{a.name}</span><Button
-					type="button"
-					variant="outline"
-					disabled={pending}
-					onclick={() => propose(a.id, a.name, true, false)}
-					aria-label={`Unbind ${a.name}`}>Unbind</Button
-				>
-			</li>{/each}
-	</ul>
-	<Button
-		type="button"
-		variant="outline"
-		disabled={pending || view.item.active === false}
-		onclick={() => (choosing = 'applications')}>Bind application</Button
-	>
+	<section class="catalog-section binding-section">
+		<h3>Application bindings</h3>
+		<p class="muted">
+			Choose which applications can use this shared definition. Each application needs its own
+			binding; future applications do not inherit access.
+		</p>
+		<ul class="catalog-options">
+			{#each view.applications as a (a.id)}<li>
+					<span>{a.name}</span><Button
+						type="button"
+						variant="outline"
+						disabled={pending}
+						onclick={() => propose(a.id, a.name, true, false)}
+						aria-label={`Unbind ${a.name}`}>Unbind</Button
+					>
+				</li>{/each}
+		</ul>
+		<Button
+			type="button"
+			variant="outline"
+			disabled={pending || view.item.active === false}
+			onclick={() => (choosing = 'applications')}>Bind application</Button
+		>
+	</section>
 {/if}
 {#if view.item.kind !== 'capability'}
-	<h3>
-		{view.item.kind === 'role'
-			? 'Granted capabilities'
-			: view.item.kind === 'scope'
-				? 'Capability bounds'
-				: 'Exposed capabilities'}
-	</h3>
-	<p class="muted">
-		{view.item.kind === 'role'
-			? 'Grants require capability bindings in every application bound to this role.'
-			: view.item.kind === 'scope'
-				? 'A scope can include only capabilities exposed by its resource.'
-				: 'Expose only capabilities explicitly bound to this application.'}
-	</p>
-	<ul class="catalog-options">
-		{#each view.capabilities as c (c.id)}<li>
-				<span>{c.name}{c.active === false ? ' (retired)' : ''}</span><Button
-					type="button"
-					variant="outline"
-					disabled={pending}
-					onclick={() => propose(c.id, c.name, false, false)}
-					aria-label={`Remove ${c.name}`}>Remove</Button
-				>
-			</li>{/each}
-	</ul>
-	<Button
-		type="button"
-		variant="outline"
-		disabled={pending}
-		onclick={() => (choosing = 'capabilities')}>Add capability</Button
-	>
+	<section class="catalog-section binding-section">
+		<h3>
+			{view.item.kind === 'role'
+				? 'Granted capabilities'
+				: view.item.kind === 'scope'
+					? 'Capability bounds'
+					: 'Exposed capabilities'}
+		</h3>
+		<p class="muted">
+			{view.item.kind === 'role'
+				? 'Users assigned this role receive these capabilities within the assigned application. Each capability must be bound to every application that uses this role.'
+				: view.item.kind === 'scope'
+					? 'These capabilities set the maximum access this scope can request. Each must be exposed by its resource, and the user must already hold the permission.'
+					: 'Choose the permissions this API recognizes. Each capability must first be bound to this application; exposing it here does not grant access to a user.'}
+		</p>
+		<ul class="catalog-options">
+			{#each view.capabilities as c (c.id)}<li>
+					<span>{c.name}{c.active === false ? ' (retired)' : ''}</span><Button
+						type="button"
+						variant="outline"
+						disabled={pending}
+						onclick={() => propose(c.id, c.name, false, false)}
+						aria-label={`Remove ${c.name}`}>Remove</Button
+					>
+				</li>{/each}
+		</ul>
+		<Button
+			type="button"
+			variant="outline"
+			disabled={pending}
+			onclick={() => (choosing = 'capabilities')}>Add capability</Button
+		>
+	</section>
 {/if}
 {#if choosing}{@const selection = choosing}<CatalogPicker
 		label={selection === 'applications' ? 'Binding applications' : 'Binding capabilities'}

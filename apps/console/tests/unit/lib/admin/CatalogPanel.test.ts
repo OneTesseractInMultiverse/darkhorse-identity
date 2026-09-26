@@ -167,10 +167,16 @@ it('searches and pages live catalogs, resets filters and selects explicit applic
 	await screen.findByRole('group', { name: 'Applications' });
 	rendered.unmount();
 	window.history.replaceState({}, '', `/?application_id=${id}`);
-	render(CatalogPanel, { kind: 'roles', api: api() });
+	const shared = api();
+	render(CatalogPanel, { kind: 'roles', api: shared });
 	await screen.findByRole('table');
 	await fireEvent.click(screen.getByRole('button', { name: 'Show shared catalog' }));
-	await screen.findByText('Shared definitions with explicit application bindings.');
+	await waitFor(() =>
+		expect(shared.list).toHaveBeenLastCalledWith('roles', {
+			after: undefined,
+			application_id: undefined
+		})
+	);
 });
 it('edits application records, clears denied details, and rejects malformed route context', async () => {
 	vi.stubGlobal(

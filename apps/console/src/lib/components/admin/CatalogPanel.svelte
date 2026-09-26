@@ -22,6 +22,9 @@
 	import RegistrationEditor from './RegistrationEditor.svelte';
 	import CatalogBindings from './CatalogBindings.svelte';
 	import ClientCredentials from './ClientCredentials.svelte';
+	import ApplicationDetails from './ApplicationDetails.svelte';
+	import ClientDetails from './ClientDetails.svelte';
+	import { descriptions } from '$lib/admin/catalog-copy';
 	let { kind, api }: { kind: Kind; api: CatalogApi } = $props();
 	let page = $state<Page | null>(null),
 		pending = $state(true),
@@ -213,9 +216,6 @@
 			blocked = true;
 		}
 	}
-	function location(kind: Kind, id: string) {
-		return `/console/${kind}?application_id=${encodeURIComponent(id)}` as const;
-	}
 </script>
 
 <svelte:window onpagehide={hideSecret} />
@@ -228,13 +228,10 @@
 	<div>
 		<p class="eyebrow">IDENTITY / APPLICATION DIRECTORY</p>
 		<h1>{titles[kind]}</h1>
-		<p class="muted">
-			{kind === 'applications'
-				? 'Connect applications to one trusted identity.'
-				: application
-					? `Application: ${applicationName || application}`
-					: 'Shared definitions with explicit application bindings.'}
-		</p>
+		<p class="muted catalog-intro">{descriptions[kind]}</p>
+		{#if application}<p class="catalog-help catalog-id">
+				Application: {applicationName || application}
+			</p>{/if}
 	</div>
 	<Button variant="outline" disabled={pending || !!reveal} onclick={() => load()}
 		>Refresh catalog</Button
@@ -343,6 +340,12 @@
 		>
 	</div>{/if}
 {#if mode}<Modal
+		wide
+		description={mode === 'detail'
+			? kind === 'applications'
+				? 'Application overview · Sign-in and access management'
+				: descriptions[kind]
+			: 'Required fields are marked with an asterisk (*). Changes require a sign-in within the last five minutes.'}
 		title={mode === 'create'
 			? `Create ${kind === 'capabilities' ? 'capability' : kind.slice(0, -1)}`
 			: mode === 'edit'
@@ -360,27 +363,17 @@
 				{save}
 				cancel={close}
 			/>
-		{:else if target}<p class="catalog-id">{target.id}</p>
-			{#if target.kind === 'application'}<p>Owner: {target.owner_email}</p>
-				<p>Status: {target.active ? 'Active' : 'Inactive'}</p>
-				<nav class="catalog-tabs" aria-label="Application catalogs">
-					{#each ['clients', 'resources', 'scopes', 'roles', 'capabilities'] as section (section)}<a
-							class="admin-link"
-							href={resolve(location(section as Kind, target.id))}>{titles[section as Kind]}</a
-						>{/each}
-				</nav>
+		{:else if target}
+			{#if target.kind === 'application'}<ApplicationDetails application={target} />
 				<Button variant="outline" disabled={pending} onclick={() => (mode = 'edit')}
 					>Edit application</Button
 				>
-			{:else if target.kind === 'client'}<h3>Callback URLs</h3>
-				<ul>
-					{#each target.redirect_uris ?? [] as uri (uri)}<li class="catalog-id">{uri}</li>{/each}
-				</ul>
-				<p>Refresh tokens: {target.refresh_tokens ? 'Allowed' : 'Disabled'}</p>
+			{:else if target.kind === 'client'}<ClientDetails client={target} />
 				<Button variant="outline" disabled={pending} onclick={() => (mode = 'edit')}
 					>Edit client</Button
 				><ClientCredentials client={target} {pending} save={register} />
-			{:else if view}<CatalogBindings
+			{:else if view}<p class="catalog-id">Record ID: {target.id}</p>
+				<CatalogBindings
 					{view}
 					{api}
 					{pending}
@@ -410,6 +403,10 @@
 		><p>
 			This secret is shown once. Store it in your application’s secret manager before closing.
 			Switching away from this page clears the reveal.
+		</p>
+		<p class="catalog-help">
+			Your backend uses this secret with the client ID and <code>client_secret_basic</code>. Keep it
+			out of browser code, URLs and source control. A lost secret must be replaced by rotating it.
 		</p>
 		<p class="catalog-id">Client ID: {reveal.record.id}</p>
 		<label for="revealed-secret">Client secret</label><textarea

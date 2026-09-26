@@ -62,6 +62,16 @@ test locations. This catches structural violations, not every architectural defe
 Review policy placement, standard-library side effects, transaction boundaries,
 and coordinator size. See the [architecture guide](architecture.md).
 
+## Interface guidance
+
+Settings explain their purpose, accepted values, defaults and consequences where
+users make the decision. Distinguish display names, identifiers and credentials.
+Describe access boundaries without implying that a configuration grants authority
+or that a saved registration proves an integration works. Connect field guidance
+to inputs for assistive technology. Keep tables focused on discovery; use separate
+forms and confirmations for changes. Group related controls, disclose optional
+detail progressively, and verify keyboard use and narrow-screen layouts.
+
 ## Test-driven development
 
 Start a behavior change with a meaningful failing test. Implement the smallest

@@ -1,6 +1,10 @@
 import assert from "node:assert/strict";
 import { request } from "node:https";
 import { resolve } from "node:path";
+import {
+  verifyApplicationOverview,
+  verifyClientFormGuidance,
+} from "./catalog-presentation-browser.mjs";
 async function call(page, path, body) {
   return page.evaluate(
     async ({ path, body }) => {
@@ -84,6 +88,7 @@ export async function verifyCatalog(page, origin, ca) {
   await page
     .getByRole("button", { name: "View Console portal", exact: true })
     .click();
+  await verifyApplicationOverview(page, app.id);
   await page
     .getByRole("button", { name: "Edit application", exact: true })
     .click();
@@ -131,6 +136,7 @@ export async function verifyCatalog(page, origin, ca) {
   await edge(page, "Add capability", "console.read");
   await page.goto(route("clients"));
   await create(page, "client", "Console web");
+  await verifyClientFormGuidance(page);
   await page
     .getByLabel("Callback URLs")
     .fill("https://console.example/callback");

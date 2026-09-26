@@ -15,6 +15,24 @@ catalogs require an application selection. Tables support literal name-prefix
 search, status where applicable, and cursor pagination. Forms and confirmations
 remain separate from the table.
 
+The application overview labels its application ID, owner and status, with a
+**Clients** setup card and separate explanations for each access catalog. The
+application ID identifies the organizational grouping. Open **Clients**, create
+a client, and use that client's ID and one-time secret in the application's
+backend OIDC configuration. Identity-only sign-in can leave the custom resource
+and scope allowlists empty and request the built-in `openid`, `profile` and
+`email` scopes. Provider operation must be enabled separately; registering an
+application does not activate it.
+
+Registration forms group general settings, ownership, callbacks, token renewal
+options and protected API allowances. Field descriptions explain requirements,
+permanent values and the effects of disabling a registration. They are connected
+to their inputs for assistive technology. Client details identify the client ID,
+parent application, authentication method, callbacks and refresh setting. An
+expandable section lists the exact allowed resource and scope IDs. Credential
+record IDs are labeled separately from secret values. The wider dialogs adapt
+to narrow screens and support keyboard dismissal and focus restoration.
+
 Client forms configure exact HTTPS callback URLs, explicit resource and scope
 allowlists, refresh-token opt-in, and active status. Updates use the freshly read
 client revision. The client ID remains stable. Credential controls rotate or
