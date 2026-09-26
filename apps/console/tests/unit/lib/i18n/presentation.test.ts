@@ -21,6 +21,7 @@ it('reads a bounded public default without credentials and ignores failures or u
 
 it('sets document language only on fully translated routes and keeps current direction left-to-right', () => {
 	expect(documentPresentation('/console/users', 'es')).toEqual(['es', 'ltr']);
+	expect(documentPresentation('/console/api-docs', 'es')).toEqual(['es', 'ltr']);
 	expect(documentPresentation('/authorization', 'en')).toEqual(['en', 'ltr']);
 	expect(documentPresentation('/console/future-page', 'es')).toEqual(['en', 'ltr']);
 });

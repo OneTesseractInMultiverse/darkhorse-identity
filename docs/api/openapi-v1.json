@@ -1,0 +1,863 @@
+{
+  "openapi": "3.2.1",
+  "info": {
+    "title": "Darkhorse Identity Protocol API",
+    "version": "0.1.0",
+    "summary": "The supported third-party OpenID Connect and OAuth token surface.",
+    "description": "This specification covers the supported confidential-client protocol endpoints. Replace the example server with the issuer returned by discovery. The route-classification document inventories private first-party browser APIs, operational routes, public presentation routes, and static files that are not client integration APIs. Access and refresh tokens are opaque; ID tokens are signed JWTs. Examples use synthetic values and are for request shape only; never use them as credentials. This file contains no deployment-specific URLs, client data, or credentials.",
+    "contact": {
+      "name": "Darkhorse maintainers",
+      "url": "https://github.com/OneTesseractInMultiverse/darkhorse-identity/issues"
+    }
+  },
+  "servers": [
+    {
+      "url": "https://identity.example",
+      "description": "Documentation placeholder. Use the exact HTTPS issuer value from the deployment's discovery document."
+    }
+  ],
+  "tags": [
+    {
+      "name": "Discovery",
+      "description": "Deployment metadata and public signing keys."
+    },
+    {
+      "name": "Authorization",
+      "description": "Confidential-client Authorization Code flow with mandatory PKCE S256."
+    },
+    {
+      "name": "Tokens",
+      "description": "Backend token exchange, UserInfo, introspection, and revocation."
+    }
+  ],
+  "paths": {
+    "/.well-known/openid-configuration": {
+      "get": {
+        "operationId": "getDiscovery",
+        "tags": ["Discovery"],
+        "summary": "Read the active issuer's OpenID Provider metadata",
+        "description": "The document is available only when the provider has an active signing key. Values are derived from the configured canonical HTTPS issuer. A deployment without an active key returns 503.",
+        "responses": {
+          "200": {
+            "description": "Supported OIDC and token endpoint metadata.",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/ProviderMetadata" }
+              }
+            }
+          },
+          "503": { "$ref": "#/components/responses/TemporarilyUnavailable" }
+        }
+      }
+    },
+    "/jwks": {
+      "get": {
+        "operationId": "getJwks",
+        "tags": ["Discovery"],
+        "summary": "Read the public JSON Web Key Set",
+        "description": "Returns public RSA signing keys only. The implementation uses RS256 and publishes the key ID, modulus, exponent, use, and algorithm. Private signing material is never returned. Responses currently use no-store caching.",
+        "responses": {
+          "200": {
+            "description": "Public signing keys.",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/JsonWebKeySet" }
+              }
+            }
+          },
+          "503": { "$ref": "#/components/responses/TemporarilyUnavailable" }
+        }
+      }
+    },
+    "/authorize": {
+      "get": {
+        "operationId": "getAuthorization",
+        "tags": ["Authorization"],
+        "summary": "Start or continue an authorization request",
+        "description": "Use a top-level browser navigation. This endpoint accepts only response_type=code, response_mode=query, and code_challenge_method=S256. A browser may already have the host-only Darkhorse session cookie; the confidential client must not copy or forward that cookie. The endpoint redirects the browser to login or consent when needed, or to the exact registered callback after completion. It does not support public clients, implicit/password grants, request objects, request_uri, claims, login_hint, or id_token_hint. Identity and resource access profiles are mutually exclusive. Supply unpredictable state and nonce values and validate state, issuer, and nonce at the callback.",
+        "security": [],
+        "parameters": [
+          { "$ref": "#/components/parameters/ClientId" },
+          { "$ref": "#/components/parameters/RedirectUri" },
+          { "$ref": "#/components/parameters/ResponseType" },
+          { "$ref": "#/components/parameters/ResponseMode" },
+          { "$ref": "#/components/parameters/Scope" },
+          { "$ref": "#/components/parameters/CodeChallenge" },
+          { "$ref": "#/components/parameters/CodeChallengeMethod" },
+          { "$ref": "#/components/parameters/State" },
+          { "$ref": "#/components/parameters/Nonce" },
+          { "$ref": "#/components/parameters/Resource" },
+          { "$ref": "#/components/parameters/Prompt" },
+          { "$ref": "#/components/parameters/MaxAge" },
+          { "$ref": "#/components/parameters/UiLocales" }
+        ],
+        "responses": {
+          "302": {
+            "description": "Redirect to the login/consent page or the validated client callback. Success and protocol errors return to the registered callback with issuer and applicable state parameters."
+          },
+          "400": {
+            "description": "The authorization request is malformed, unsupported, or fails validation before a trusted callback can be selected.",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/ProtocolError" }
+              }
+            }
+          },
+          "503": { "$ref": "#/components/responses/TemporarilyUnavailable" }
+        }
+      }
+    },
+    "/token": {
+      "post": {
+        "operationId": "postToken",
+        "tags": ["Tokens"],
+        "summary": "Exchange an authorization code or rotate a refresh token",
+        "description": "Call only from the confidential application's backend over verified HTTPS. Authenticate with one client_secret_basic HTTP Basic header. The client identifier and secret use OAuth form encoding before Base64 encoding; never put either in the body, query, URL, browser storage, or logs. Bodies are limited to 4096 bytes and 16 parameters; duplicate fields and query credentials are rejected. An authorization code is one-use, expires after 60 seconds, and must be redeemed with its original exact redirect_uri and PKCE verifier. A lost response after commit is uncertain: do not retry credential issuance automatically; start a new browser flow. Refresh rotation requires explicit client opt-in and remains bound to the original live browser session.",
+        "security": [{ "ClientSecretBasic": [] }],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/x-www-form-urlencoded": {
+              "schema": {
+                "oneOf": [
+                  { "$ref": "#/components/schemas/AuthorizationCodeGrant" },
+                  { "$ref": "#/components/schemas/RefreshTokenGrant" }
+                ]
+              },
+              "examples": {
+                "authorizationCode": {
+                  "summary": "Code redeemed by a confidential backend",
+                  "value": {
+                    "grant_type": "authorization_code",
+                    "code": "dc_0000000000000000000000000000000000000000000000000000000000000000",
+                    "redirect_uri": "https://orders.example/callback",
+                    "code_verifier": "AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA",
+                    "resource": "urn:darkhorse:resource:<registered-resource-uuid>"
+                  }
+                },
+                "refresh": {
+                  "summary": "Refresh request for a client that opted in",
+                  "value": {
+                    "grant_type": "refresh_token",
+                    "refresh_token": "<opaque refresh credential>",
+                    "scope": "openid orders.read",
+                    "resource": "urn:darkhorse:resource:<registered-resource-uuid>"
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Opaque access credential and any enabled optional credentials. Identity requests can include a signed RS256 ID token; access and refresh credentials remain opaque.",
+            "headers": {
+              "Cache-Control": { "$ref": "#/components/headers/NoStore" },
+              "Pragma": { "$ref": "#/components/headers/NoCache" }
+            },
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/TokenResponse" }
+              }
+            }
+          },
+          "400": { "$ref": "#/components/responses/InvalidRequest" },
+          "401": { "$ref": "#/components/responses/InvalidClient" },
+          "429": { "$ref": "#/components/responses/RateLimited" },
+          "503": { "$ref": "#/components/responses/TemporarilyUnavailable" }
+        }
+      }
+    },
+    "/userinfo": {
+      "get": {
+        "operationId": "getUserInfo",
+        "tags": ["Tokens"],
+        "summary": "Read claims authorized by an identity access token",
+        "description": "Send one opaque access token in the Authorization: Bearer header. This endpoint accepts only identity-profile access tokens with the UserInfo audience; it does not accept ID tokens, refresh tokens, authorization codes, logout tokens, or resource access tokens. The response reflects only the claim ceiling approved for that token and current profile values. Checks read current primary authority; after a committed revocation, session termination, deactivation, registration change, or consent reduction, new checks reject the token. An unavailable decision must fail closed.",
+        "security": [{ "OpaqueAccessBearer": [] }],
+        "responses": {
+          "200": {
+            "description": "The subject and only the profile/email claims allowed by the issued identity scope ceiling.",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/UserInfo" }
+              }
+            }
+          },
+          "401": { "$ref": "#/components/responses/InvalidBearer" },
+          "503": { "$ref": "#/components/responses/TemporarilyUnavailable" }
+        }
+      }
+    },
+    "/introspect": {
+      "post": {
+        "operationId": "postIntrospection",
+        "tags": ["Tokens"],
+        "summary": "Check a credential with its authorized caller",
+        "description": "Send one token in an application/x-www-form-urlencoded body over verified HTTPS. A confidential issuing client authenticates with client_secret_basic and can inspect only its own issued credentials. A resource server authenticates with Basic username rs_<resource UUID> and its resource secret; this is required for resource access tokens and personal API keys. Inactive, expired, revoked, foreign, or wrong-purpose credentials return active=false after valid caller authentication. Authenticated checks consume shared admission budgets; 429 includes Retry-After. Resource servers must deny access when the decision is unavailable and must not fall back to cached positive decisions. Bodies are limited to 4096 bytes and 16 parameters; token text is limited to 2048 bytes. Never send a credential in a URL or log it.",
+        "security": [
+          { "ClientSecretBasic": [] },
+          { "ResourceServerBasic": [] }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/x-www-form-urlencoded": {
+              "schema": { "$ref": "#/components/schemas/IntrospectionRequest" },
+              "examples": {
+                "opaqueAccess": {
+                  "summary": "Resource server checks a credential without exposing it in a URL",
+                  "value": {
+                    "token": "da_0000000000000000000000000000000000000000000000000000000000000000",
+                    "token_type_hint": "access_token"
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "An authenticated answer. Inactive responses disclose only active=false.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/IntrospectionResponse"
+                }
+              }
+            }
+          },
+          "400": { "$ref": "#/components/responses/InvalidRequest" },
+          "401": { "$ref": "#/components/responses/InvalidClient" },
+          "429": { "$ref": "#/components/responses/RateLimited" },
+          "503": { "$ref": "#/components/responses/TemporarilyUnavailable" }
+        }
+      }
+    },
+    "/revoke": {
+      "post": {
+        "operationId": "postRevocation",
+        "tags": ["Tokens"],
+        "summary": "Revoke an issued access or refresh credential",
+        "description": "Call from the confidential application's backend over verified HTTPS and authenticate with client_secret_basic. The client can revoke only credentials from its own issuance context. Refresh-token revocation terminates its credential family and invalidates associated access credentials. A valid request returns 200 even if the credential is unknown, expired, already revoked, or belongs elsewhere. This endpoint does not revoke ID tokens or browser sessions. Bodies are limited to 4096 bytes and 16 parameters. Do not automatically retry if the response was lost after the request may have committed; re-check state through an authorized flow.",
+        "security": [{ "ClientSecretBasic": [] }],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/x-www-form-urlencoded": {
+              "schema": { "$ref": "#/components/schemas/RevocationRequest" },
+              "examples": {
+                "accessToken": {
+                  "summary": "Revoke an opaque access credential",
+                  "value": {
+                    "token": "da_0000000000000000000000000000000000000000000000000000000000000000",
+                    "token_type_hint": "access_token"
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "The request was accepted; the response body is empty."
+          },
+          "400": { "$ref": "#/components/responses/InvalidRequest" },
+          "401": { "$ref": "#/components/responses/InvalidClient" },
+          "503": { "$ref": "#/components/responses/TemporarilyUnavailable" }
+        }
+      }
+    }
+  },
+  "components": {
+    "securitySchemes": {
+      "ClientSecretBasic": {
+        "type": "http",
+        "scheme": "basic",
+        "description": "OIDC confidential-client authentication. Encode the client ID and secret using application/x-www-form-urlencoded component rules, join with a colon, then Base64 encode for HTTP Basic. TLS is mandatory. Use only the server-side secret store; never expose the secret in a browser or URL."
+      },
+      "ResourceServerBasic": {
+        "type": "http",
+        "scheme": "basic",
+        "description": "Resource-server authentication for introspection only. The Basic username is rs_<resource UUID>; the password is that registered resource's secret. This credential is distinct from a user's personal API key and from an OIDC client secret. TLS is mandatory."
+      },
+      "OpaqueAccessBearer": {
+        "type": "http",
+        "scheme": "bearer",
+        "bearerFormat": "opaque",
+        "description": "An opaque, short-lived identity access token returned by /token. It is not an ID token or refresh token and is not a JWT. Send it only in the Authorization header to the UserInfo endpoint."
+      }
+    },
+    "parameters": {
+      "ClientId": {
+        "name": "client_id",
+        "in": "query",
+        "required": true,
+        "description": "Canonical lowercase UUID of the confidential client, not the owning application ID.",
+        "schema": {
+          "type": "string",
+          "format": "uuid",
+          "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$"
+        }
+      },
+      "RedirectUri": {
+        "name": "redirect_uri",
+        "in": "query",
+        "required": true,
+        "description": "Exact HTTPS callback string registered for this client, including path and any query encoding. Matching does not normalize or resolve the URI.",
+        "schema": {
+          "type": "string",
+          "format": "uri",
+          "pattern": "^https://[^\\s]+$",
+          "maxLength": 2048
+        }
+      },
+      "ResponseType": {
+        "name": "response_type",
+        "in": "query",
+        "required": true,
+        "schema": { "const": "code", "type": "string" }
+      },
+      "ResponseMode": {
+        "name": "response_mode",
+        "in": "query",
+        "required": false,
+        "description": "Only query is supported; omission uses the query response mode.",
+        "schema": { "const": "query", "type": "string", "default": "query" }
+      },
+      "Scope": {
+        "name": "scope",
+        "in": "query",
+        "required": true,
+        "description": "Space-separated scopes. Include openid. Identity requests may additionally request profile/email; resource requests use an explicitly registered resource and allowed resource scopes and cannot mix identity-only scopes beyond openid.",
+        "schema": { "type": "string", "minLength": 1, "maxLength": 3231 }
+      },
+      "CodeChallenge": {
+        "name": "code_challenge",
+        "in": "query",
+        "required": true,
+        "description": "Unpadded base64url encoding of the SHA-256 hash of the high-entropy code_verifier.",
+        "schema": {
+          "type": "string",
+          "pattern": "^[A-Za-z0-9_-]{43}$",
+          "minLength": 43,
+          "maxLength": 43
+        }
+      },
+      "CodeChallengeMethod": {
+        "name": "code_challenge_method",
+        "in": "query",
+        "required": true,
+        "schema": { "const": "S256", "type": "string" }
+      },
+      "State": {
+        "name": "state",
+        "in": "query",
+        "required": false,
+        "description": "Optional printable ASCII value returned unchanged at the callback. Clients should always generate and validate an unpredictable value bound to the browser flow.",
+        "schema": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 512,
+          "pattern": "^[\\x20-\\x7e]+$"
+        }
+      },
+      "Nonce": {
+        "name": "nonce",
+        "in": "query",
+        "required": false,
+        "description": "Optional printable ASCII value copied into the ID token when supplied. Clients should generate a fresh unpredictable nonce and validate it in the ID token.",
+        "schema": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 256,
+          "pattern": "^[\\x20-\\x7e]+$"
+        }
+      },
+      "Resource": {
+        "name": "resource",
+        "in": "query",
+        "required": false,
+        "description": "Optional exact registered resource audience identifier. Required for resource access. It is not a URL to fetch.",
+        "schema": { "type": "string", "maxLength": 256 }
+      },
+      "Prompt": {
+        "name": "prompt",
+        "in": "query",
+        "required": false,
+        "description": "Optional interaction control. none never displays an interaction and returns login_required or consent_required when silent completion is impossible.",
+        "schema": {
+          "type": "string",
+          "enum": ["none", "login", "consent", "login consent", "consent login"]
+        }
+      },
+      "MaxAge": {
+        "name": "max_age",
+        "in": "query",
+        "required": false,
+        "description": "Maximum authentication age in seconds, from 0 to 28800. Zero requires a new sign-in after this authorization request begins.",
+        "schema": { "type": "integer", "minimum": 0, "maximum": 28800 }
+      },
+      "UiLocales": {
+        "name": "ui_locales",
+        "in": "query",
+        "required": false,
+        "description": "Space-separated language tags. The server supports English and Spanish and falls back for unsupported preferences; this changes presentation, not claims or authority.",
+        "schema": { "type": "string", "maxLength": 256 }
+      }
+    },
+    "headers": {
+      "NoStore": {
+        "description": "Responses containing credentials are not stored by caches.",
+        "schema": { "const": "no-store", "type": "string" }
+      },
+      "NoCache": {
+        "description": "Legacy cache directive accompanying no-store on credential responses.",
+        "schema": { "const": "no-cache", "type": "string" }
+      },
+      "RetryAfter": {
+        "description": "Minimum delay in seconds before retrying a rate-limited introspection request.",
+        "schema": { "type": "integer", "minimum": 1 }
+      }
+    },
+    "responses": {
+      "InvalidRequest": {
+        "description": "Malformed, unsupported, or incorrectly bound request.",
+        "content": {
+          "application/json": {
+            "schema": { "$ref": "#/components/schemas/ProtocolError" }
+          }
+        }
+      },
+      "InvalidClient": {
+        "description": "Client or resource-server authentication failed. The response does not identify which credential field was incorrect.",
+        "headers": {
+          "WWW-Authenticate": {
+            "description": "HTTP Basic authentication challenge.",
+            "schema": { "type": "string" }
+          }
+        },
+        "content": {
+          "application/json": {
+            "schema": { "$ref": "#/components/schemas/ProtocolError" }
+          }
+        }
+      },
+      "InvalidBearer": {
+        "description": "Missing, malformed, inactive, expired, revoked, or stale bearer credential.",
+        "headers": {
+          "WWW-Authenticate": {
+            "description": "Bearer authentication challenge.",
+            "schema": { "type": "string" }
+          }
+        },
+        "content": {
+          "application/json": {
+            "schema": { "$ref": "#/components/schemas/ProtocolError" }
+          }
+        }
+      },
+      "RateLimited": {
+        "description": "Admission limit reached. Honor Retry-After. Do not substitute a previous positive authorization decision.",
+        "headers": {
+          "Retry-After": { "$ref": "#/components/headers/RetryAfter" }
+        },
+        "content": {
+          "application/json": {
+            "schema": { "$ref": "#/components/schemas/ProtocolError" }
+          }
+        }
+      },
+      "TemporarilyUnavailable": {
+        "description": "A dependency or current authority decision is unavailable. Protected operations must fail closed.",
+        "content": {
+          "application/json": {
+            "schema": { "$ref": "#/components/schemas/ProtocolError" }
+          }
+        }
+      }
+    },
+    "schemas": {
+      "ProviderMetadata": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "issuer",
+          "authorization_endpoint",
+          "token_endpoint",
+          "userinfo_endpoint",
+          "jwks_uri",
+          "introspection_endpoint",
+          "introspection_endpoint_auth_methods_supported",
+          "revocation_endpoint",
+          "revocation_endpoint_auth_methods_supported",
+          "response_types_supported",
+          "response_modes_supported",
+          "grant_types_supported",
+          "subject_types_supported",
+          "id_token_signing_alg_values_supported",
+          "token_endpoint_auth_methods_supported",
+          "code_challenge_methods_supported",
+          "ui_locales_supported",
+          "scopes_supported",
+          "claims_supported",
+          "claims_parameter_supported",
+          "request_parameter_supported",
+          "request_uri_parameter_supported",
+          "authorization_response_iss_parameter_supported"
+        ],
+        "properties": {
+          "issuer": { "type": "string", "format": "uri" },
+          "authorization_endpoint": { "type": "string", "format": "uri" },
+          "token_endpoint": { "type": "string", "format": "uri" },
+          "userinfo_endpoint": { "type": "string", "format": "uri" },
+          "jwks_uri": { "type": "string", "format": "uri" },
+          "introspection_endpoint": { "type": "string", "format": "uri" },
+          "introspection_endpoint_auth_methods_supported": {
+            "type": "array",
+            "items": { "const": "client_secret_basic", "type": "string" }
+          },
+          "revocation_endpoint": { "type": "string", "format": "uri" },
+          "revocation_endpoint_auth_methods_supported": {
+            "type": "array",
+            "items": { "const": "client_secret_basic", "type": "string" }
+          },
+          "response_types_supported": {
+            "type": "array",
+            "items": { "const": "code", "type": "string" }
+          },
+          "response_modes_supported": {
+            "type": "array",
+            "items": { "const": "query", "type": "string" }
+          },
+          "grant_types_supported": {
+            "type": "array",
+            "items": {
+              "type": "string",
+              "enum": ["authorization_code", "refresh_token"]
+            }
+          },
+          "subject_types_supported": {
+            "type": "array",
+            "items": { "const": "public", "type": "string" }
+          },
+          "id_token_signing_alg_values_supported": {
+            "type": "array",
+            "items": { "const": "RS256", "type": "string" }
+          },
+          "token_endpoint_auth_methods_supported": {
+            "type": "array",
+            "items": { "const": "client_secret_basic", "type": "string" }
+          },
+          "code_challenge_methods_supported": {
+            "type": "array",
+            "items": { "const": "S256", "type": "string" }
+          },
+          "ui_locales_supported": {
+            "type": "array",
+            "items": { "type": "string", "enum": ["en", "es"] }
+          },
+          "scopes_supported": {
+            "type": "array",
+            "items": {
+              "type": "string",
+              "enum": ["openid", "profile", "email"]
+            }
+          },
+          "claims_supported": {
+            "type": "array",
+            "items": {
+              "type": "string",
+              "enum": [
+                "iss",
+                "sub",
+                "aud",
+                "exp",
+                "iat",
+                "auth_time",
+                "nonce",
+                "sid",
+                "name",
+                "given_name",
+                "family_name",
+                "email",
+                "email_verified"
+              ]
+            }
+          },
+          "claims_parameter_supported": { "const": false, "type": "boolean" },
+          "request_parameter_supported": { "const": false, "type": "boolean" },
+          "request_uri_parameter_supported": {
+            "const": false,
+            "type": "boolean"
+          },
+          "authorization_response_iss_parameter_supported": {
+            "const": true,
+            "type": "boolean"
+          }
+        }
+      },
+      "JsonWebKeySet": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["keys"],
+        "properties": {
+          "keys": {
+            "type": "array",
+            "items": { "$ref": "#/components/schemas/RsaSigningKey" }
+          }
+        }
+      },
+      "RsaSigningKey": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["kty", "use", "alg", "kid", "n", "e"],
+        "properties": {
+          "kty": { "const": "RSA", "type": "string" },
+          "use": { "const": "sig", "type": "string" },
+          "alg": { "const": "RS256", "type": "string" },
+          "kid": { "type": "string", "minLength": 1 },
+          "n": { "type": "string", "minLength": 1 },
+          "e": { "type": "string", "const": "AQAB" }
+        }
+      },
+      "AuthorizationCodeGrant": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["grant_type", "code", "redirect_uri", "code_verifier"],
+        "properties": {
+          "grant_type": { "const": "authorization_code", "type": "string" },
+          "code": { "type": "string", "pattern": "^dc_[0-9a-f]{64}$" },
+          "redirect_uri": {
+            "type": "string",
+            "format": "uri",
+            "pattern": "^https://[^\\s]+$",
+            "maxLength": 2048
+          },
+          "code_verifier": {
+            "type": "string",
+            "minLength": 43,
+            "maxLength": 128,
+            "pattern": "^[A-Za-z0-9._~-]+$"
+          },
+          "resource": { "type": "string", "maxLength": 256 }
+        }
+      },
+      "RefreshTokenGrant": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["grant_type", "refresh_token"],
+        "properties": {
+          "grant_type": { "const": "refresh_token", "type": "string" },
+          "refresh_token": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 2048,
+            "description": "Opaque, single-use rotating refresh credential; it is not a JWT."
+          },
+          "scope": {
+            "type": "string",
+            "maxLength": 3231,
+            "description": "Optional requested narrowing. It cannot expand the previous credential's approved scope ceiling."
+          },
+          "resource": { "type": "string", "maxLength": 256 }
+        }
+      },
+      "TokenResponse": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["access_token", "token_type", "expires_in", "scope"],
+        "properties": {
+          "access_token": {
+            "type": "string",
+            "pattern": "^da_[0-9a-f]{64}$",
+            "description": "Opaque access credential. Store and transmit only as a bearer credential over TLS."
+          },
+          "token_type": { "const": "Bearer", "type": "string" },
+          "expires_in": { "type": "integer", "minimum": 1, "maximum": 300 },
+          "scope": { "type": "string" },
+          "refresh_token": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 2048,
+            "description": "Present only when the client opted in and the grant issued a refresh credential."
+          },
+          "id_token": {
+            "type": "string",
+            "minLength": 1,
+            "description": "Signed RS256 JWT for identity; validate its signature, issuer, audience, expiry, nonce when used, auth_time, and session reference. It is not an API access token."
+          }
+        }
+      },
+      "UserInfo": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["sub"],
+        "properties": {
+          "sub": { "type": "string", "format": "uuid" },
+          "name": { "type": "string" },
+          "given_name": { "type": "string" },
+          "family_name": { "type": "string" },
+          "email": { "type": "string", "format": "email" },
+          "email_verified": { "type": "boolean" }
+        }
+      },
+      "IntrospectionRequest": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["token"],
+        "properties": {
+          "token": { "type": "string", "minLength": 1, "maxLength": 2048 },
+          "token_type_hint": {
+            "type": "string",
+            "maxLength": 128,
+            "description": "Optional hint accepted for compatibility and ignored when identifying the supplied credential."
+          }
+        }
+      },
+      "IntrospectionResponse": {
+        "oneOf": [
+          { "$ref": "#/components/schemas/InactiveCredential" },
+          { "$ref": "#/components/schemas/ActiveOAuthCredential" },
+          { "$ref": "#/components/schemas/ActiveResourceCredential" },
+          { "$ref": "#/components/schemas/ActivePersonalKey" }
+        ]
+      },
+      "InactiveCredential": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["active"],
+        "properties": { "active": { "const": false, "type": "boolean" } }
+      },
+      "ActiveOAuthCredential": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "active",
+          "token_type",
+          "iss",
+          "aud",
+          "client_id",
+          "sub",
+          "scope",
+          "iat",
+          "exp"
+        ],
+        "properties": {
+          "active": { "const": true, "type": "boolean" },
+          "token_type": { "const": "Bearer", "type": "string" },
+          "iss": { "type": "string", "format": "uri" },
+          "aud": { "type": "string", "format": "uri" },
+          "client_id": { "type": "string", "format": "uuid" },
+          "sub": { "type": "string", "format": "uuid" },
+          "scope": { "type": "string" },
+          "iat": { "type": "integer", "minimum": 0 },
+          "exp": { "type": "integer", "minimum": 0 }
+        }
+      },
+      "ActiveResourceCredential": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "active",
+          "token_type",
+          "iss",
+          "aud",
+          "client_id",
+          "sub",
+          "scope",
+          "iat",
+          "exp",
+          "capabilities"
+        ],
+        "properties": {
+          "active": { "const": true, "type": "boolean" },
+          "token_type": { "const": "Bearer", "type": "string" },
+          "iss": { "type": "string", "format": "uri" },
+          "aud": {
+            "type": "string",
+            "format": "uri",
+            "pattern": "^urn:darkhorse:resource:[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$"
+          },
+          "client_id": { "type": "string", "format": "uuid" },
+          "sub": { "type": "string", "format": "uuid" },
+          "scope": { "type": "string" },
+          "iat": { "type": "integer", "minimum": 0 },
+          "exp": { "type": "integer", "minimum": 0 },
+          "capabilities": {
+            "type": "array",
+            "items": { "type": "string", "format": "uuid" }
+          }
+        }
+      },
+      "ActivePersonalKey": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "active",
+          "token_type",
+          "credential_type",
+          "iss",
+          "aud",
+          "sub",
+          "iat",
+          "capabilities"
+        ],
+        "properties": {
+          "active": { "const": true, "type": "boolean" },
+          "token_type": { "const": "Bearer", "type": "string" },
+          "credential_type": { "const": "personal_key", "type": "string" },
+          "iss": { "type": "string", "format": "uri" },
+          "aud": {
+            "type": "string",
+            "pattern": "^urn:darkhorse:resource:[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$"
+          },
+          "sub": { "type": "string", "format": "uuid" },
+          "iat": { "type": "integer", "minimum": 0 },
+          "exp": { "type": "integer", "minimum": 0 },
+          "capabilities": {
+            "type": "array",
+            "items": { "type": "string", "format": "uuid" }
+          }
+        }
+      },
+      "RevocationRequest": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["token"],
+        "properties": {
+          "token": { "type": "string", "minLength": 1, "maxLength": 2048 },
+          "token_type_hint": {
+            "type": "string",
+            "maxLength": 128,
+            "description": "Optional hint accepted for compatibility and ignored when identifying the supplied credential."
+          }
+        }
+      },
+      "ProtocolError": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["error"],
+        "properties": {
+          "error": {
+            "type": "string",
+            "enum": [
+              "invalid_request",
+              "invalid_client",
+              "invalid_grant",
+              "invalid_target",
+              "invalid_scope",
+              "invalid_token",
+              "unsupported_grant_type",
+              "invalid_transaction",
+              "login_required",
+              "consent_required",
+              "access_denied",
+              "temporarily_unavailable"
+            ]
+          }
+        }
+      }
+    }
+  }
+}

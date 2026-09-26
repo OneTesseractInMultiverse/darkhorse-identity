@@ -49,6 +49,30 @@ async fn unknown_api_and_protocol_routes_never_use_frontend_fallback() {
 }
 
 #[tokio::test]
+async fn api_reference_page_and_downloads_are_explicit_static_routes() {
+    for path in [
+        "/console/api-docs",
+        "/reference/openapi-v1.json",
+        "/reference/route-classification-v1.json",
+    ] {
+        let response = router("unused-unit-test-path".into())
+            .oneshot(Request::builder().uri(path).body(Body::empty()).unwrap())
+            .await
+            .unwrap();
+        assert_eq!(
+            response.status(),
+            StatusCode::NOT_FOUND,
+            "missing fixture: {path}"
+        );
+        assert_ne!(
+            to_bytes(response.into_body(), 1024).await.unwrap(),
+            r#"{"error":"not_found"}"#,
+            "the static route must not be handled by the JSON API fallback: {path}"
+        );
+    }
+}
+
+#[tokio::test]
 async fn liveness_rejects_writes() {
     let response = router("unused-unit-test-path".into())
         .oneshot(

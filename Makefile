@@ -21,7 +21,7 @@ WEB := $(PNPM) --filter @darkhorse/console
 .PHONY: test-limiting test-mutation-limiting test-mutation-recovery coverage-core coverage-integration
 .PHONY: login-setup dev-login browser-install test-browser
 .PHONY: test-registration test-refresh test-sessions test-catalog test-personal-keys
-.PHONY: api-inventory-generate api-inventory-check
+.PHONY: api-inventory-generate api-inventory-check api-classification-generate api-classification-check api-spec-check api-reference-bundle
 
 test-personal-keys: ## Test: isolated personal-key policy, transport, and console behavior
 	cargo test --workspace --lib --locked --offline personal_keys
@@ -89,7 +89,7 @@ typecheck: ## Check: strict TypeScript and Svelte diagnostics
 architecture-check: ## Check: inward crate dependencies and static frontend boundaries
 	$(NODE) scripts/architecture-check.mjs
 
-check: fmt-check lint typecheck architecture-check i18n-check api-inventory-check test-unit ## Check: complete fast verification; no services or certificate setup
+check: fmt-check lint typecheck architecture-check i18n-check api-inventory-check api-classification-check api-spec-check test-unit ## Check: complete fast verification; no services or certificate setup
 
 ci: check build ## Check: fast verification plus release/static builds
 
@@ -131,6 +131,20 @@ api-inventory-generate: ## API reference: regenerate the source-derived Axum rou
 
 api-inventory-check: ## API reference: fail if Rust route registrations drift from the reviewed inventory
 	@set -o pipefail; cargo run --locked --offline -p darkhorse-reference | cmp -s - docs/api/route-registration-v1.json || { printf 'API route inventory is stale; run make api-inventory-generate and review the diff.\n' >&2; exit 1; }
+
+api-classification-generate: ## API reference: regenerate reviewed caller-surface classifications
+	mkdir -p docs/api
+	@set -eu; tmp=$$(mktemp docs/api/.route-classification-v1.json.XXXXXX); trap 'rm -f "$$tmp"' EXIT; cargo run --locked --offline -p darkhorse-reference -- --classified > "$$tmp"; mv "$$tmp" docs/api/route-classification-v1.json
+
+api-classification-check: ## API reference: fail when a source route is unclassified or classification is stale
+	@set -o pipefail; cargo run --locked --offline -p darkhorse-reference -- --classified | cmp -s - docs/api/route-classification-v1.json || { printf 'API route classification is stale; run make api-classification-generate and review the diff.\n' >&2; exit 1; }
+
+api-spec-check: ## API reference: validate version, route parity, and local OpenAPI references
+	$(NODE) scripts/api-spec-check.mjs
+	$(NODE) scripts/api-reference-bundle.mjs check
+
+api-reference-bundle: ## API reference: validate and bundle public specifications with the static console
+	$(NODE) scripts/api-reference-bundle.mjs generate
 
 .PHONY: test-ci-boundary test-ci-boundary-tools cleanup-ci-boundary
 
@@ -195,7 +209,7 @@ build: build-api build-web ## Build: Rust release binary and static console
 build-api: ## Build: release Rust server (no network after dependency installation)
 	cargo build --release --locked --offline -p darkhorse-server
 
-build-web: i18n-check ## Build: static SvelteKit console, with no runtime Node server
+build-web: i18n-check api-reference-bundle ## Build: static SvelteKit console, with no runtime Node server
 	$(WEB) build
 
 db-setup: ## Database: generate owner-only local credentials; preserve existing files
@@ -264,16 +278,16 @@ dev-setup: https-setup ## Develop: prepare local CA without changing host trust
 login-setup: ## Develop: generate a private local login limiter key; preserve an existing key
 	$(NODE) scripts/login.mjs setup
 
-dev-login: ## Develop: full HTTPS password portal using prepared local database/Redis/key
+dev-login: api-reference-bundle ## Develop: full HTTPS password portal using prepared local database/Redis/key
 	CADDY="$(CADDY)" $(NODE) scripts/login.mjs dev
 
-dev: ## Develop: Rust reload, frontend HMR, and HTTPS proxy; Ctrl-C stops owned processes
+dev: api-reference-bundle ## Develop: Rust reload, frontend HMR, and HTTPS proxy; Ctrl-C stops owned processes
 	CADDY="$(CADDY)" $(NODE) scripts/dev.mjs all
 
 dev-api: ## Develop: Rust with reload on source changes; loopback port 3001
 	$(NODE) scripts/dev.mjs api
 
-dev-web: ## Develop: frontend asset/HMR server; loopback port 5173
+dev-web: api-reference-bundle ## Develop: frontend asset/HMR server; loopback port 5173
 	$(WEB) dev
 
 proxy-up: ## HTTPS: foreground Caddy proxy; Ctrl-C stops it

@@ -15,6 +15,7 @@ const translatedRoutes = [
 	'/console/scopes',
 	'/console/roles',
 	'/console/capabilities',
+	'/console/api-docs',
 	'/console/profile'
 ];
 

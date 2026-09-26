@@ -423,12 +423,99 @@
 	["console.roles", "Roles"],
 	["console.capabilities", "Capacidades"],
 	["console.settings", "Configuración del sistema"],
+	["console.apiDocs", "Documentación de API"],
 	["console.security", "MI SEGURIDAD"],
 	["console.securityNav", "Seguridad de la cuenta"],
 	["console.profile", "Mi perfil"],
 	["console.keys", "Claves de API personales"],
 	["console.sessions", "Sesiones"],
 	["console.email", "Verificación del correo"],
+	["apiDocs.title", "Documentación de API"],
+	[
+		"apiDocs.intro",
+		"Referencia de los endpoints de integración compatibles con Darkhorse. Consulta cada operación para conocer sus entradas, respuestas y fallos exactos. La referencia es estática: nunca envía solicitudes de protocolo ni modifica el estado de una cuenta."
+	],
+	["apiDocs.release", "Versión de la aplicación {version}"],
+	["apiDocs.download", "Descargar especificación OpenAPI"],
+	["apiDocs.downloadRoutes", "Descargar inventario de límites de rutas"],
+	["apiDocs.search", "Buscar operaciones compatibles"],
+	[
+		"apiDocs.searchHelp",
+		"Busca por método, ruta, nombre de operación, propósito, seguridad o término del protocolo. La búsqueda se ejecuta localmente en esta página."
+	],
+	["apiDocs.results", "{count, number} operaciones"],
+	["apiDocs.noResults", "Ninguna operación coincide con esta búsqueda."],
+	["apiDocs.loading", "Cargando la referencia de API incluida…"],
+	[
+		"apiDocs.unavailable",
+		"No se pudo cargar la referencia incluida o su formato no es válido. Recarga la página o pide a un administrador que reconstruya los recursos de la consola."
+	],
+	["apiDocs.reload", "Recargar referencia"],
+	["apiDocs.securityTitle", "Elige la credencial correspondiente al cliente"],
+	[
+		"apiDocs.securityIntro",
+		"Estas credenciales conceden autoridades distintas y no son intercambiables. Usa HTTPS verificado. Nunca incluyas secretos ni tokens bearer en URL, almacenamiento del navegador, argumentos de comandos o registros."
+	],
+	["apiDocs.browserTitle", "Sesión de navegador de Darkhorse"],
+	[
+		"apiDocs.browserDescription",
+		"Darkhorse administra la sesión del navegador y su cookie HTTP-only y same-site. Las mutaciones del navegador usan protección CSRF del mismo origen. La cookie es para páginas de Darkhorse y no debe copiarse al backend de una aplicación."
+	],
+	["apiDocs.clientTitle", "Cliente OIDC confidencial"],
+	[
+		"apiDocs.clientDescription",
+		"Un cliente de aplicación registrado del lado servidor usa su ID y secreto con client_secret_basic a través de HTTPS verificado. Guarda el secreto en el gestor de secretos del backend de la aplicación. El ID de aplicación no es el ID de cliente."
+	],
+	["apiDocs.bearerTitle", "Token de acceso opaco de identidad"],
+	[
+		"apiDocs.bearerDescription",
+		"Un token de acceso de corta duración es una credencial bearer opaca. Envíalo en el encabezado Authorization para UserInfo. No es el token ID JWT firmado, el token de renovación ni una credencial de servidor de recursos."
+	],
+	["apiDocs.resourceTitle", "Credencial de introspección del servidor de recursos"],
+	[
+		"apiDocs.resourceDescription",
+		"Una API protegida se autentica ante introspección con el ID y secreto de su servidor de recursos. Deniega el acceso si la introspección indica inactivo, está limitada o no disponible. Nunca reutilices un token de acceso de usuario como credencial del cliente."
+	],
+	["apiDocs.personalKeyTitle", "Clave de API personal"],
+	[
+		"apiDocs.personalKeyDescription",
+		"La clave de API personal de un usuario se limita a capacidades y recursos seleccionados explícitamente. Es distinta del secreto de cliente OIDC y del secreto de introspección del servidor de recursos."
+	],
+	["apiDocs.operationGroups", "Operaciones de protocolo compatibles"],
+	["apiDocs.authentication", "Autenticación y seguridad"],
+	["apiDocs.parameters", "Parámetros"],
+	["apiDocs.request", "Cuerpo de solicitud y ejemplos"],
+	["apiDocs.responses", "Respuestas y errores"],
+	["apiDocs.copyExample", "Copiar ejemplo de {operation}"],
+	["apiDocs.copyLink", "Copiar enlace a {operation}"],
+	["apiDocs.copied", "Se copió el ejemplo."],
+	[
+		"apiDocs.copyFailed",
+		"El portapapeles no está disponible. Selecciona y copia el texto del ejemplo."
+	],
+	["apiDocs.boundaries", "Otras superficies de rutas registradas"],
+	[
+		"apiDocs.boundaryIntro",
+		"Estas rutas están inventariadas para que los colaboradores puedan revisar el límite HTTP. Su presencia aquí no las convierte en API de integración de terceros compatibles."
+	],
+	["apiDocs.integrationSurface", "API de integración compatible"],
+	["apiDocs.browserSurface", "API de navegador y administración de primera parte"],
+	["apiDocs.presentationSurface", "Datos públicos de presentación del inicio de sesión"],
+	["apiDocs.operationalSurface", "Comprobaciones operativas de salud"],
+	["apiDocs.staticSurface", "Recursos estáticos de la consola"],
+	["apiDocs.boundaryCount", "{count, number} rutas registradas"],
+	[
+		"apiDocs.protocolOnly",
+		"Solo las rutas de operaciones compatibles tienen un contrato documentado de integración de terceros. Las rutas privadas del navegador requieren la sesión habitual y autorización aplicada por el servidor."
+	],
+	[
+		"apiDocs.noExecutor",
+		"Esta página solo es una referencia. No ejecuta solicitudes de protocolo ni usa tus credenciales o tokens para llamar endpoints. La consola puede comprobar tu sesión actual para restaurar el idioma guardado."
+	],
+	[
+		"apiDocs.notConfigured",
+		"Que un endpoint esté documentado no confirma que la implementación tenga habilitados el emisor requerido, la clave de firma, el registro del cliente o la configuración de recursos. Verifica discovery y la configuración de la implementación antes de integrar."
+	],
 	["console.signature", "UNA ORGANIZACIÓN. UNA IDENTIDAD."],
 	["console.profileTitle", "Perfil de usuario — Darkhorse"],
 	["branding.title", "Apariencia del inicio de sesión — Darkhorse"],

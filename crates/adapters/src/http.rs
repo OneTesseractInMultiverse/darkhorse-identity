@@ -72,6 +72,18 @@ pub fn with_authentication(static_dir: PathBuf, authentication: Router) -> Route
             ServeFile::new(static_dir.join("console/capabilities.html")),
         )
         .route_service(
+            "/console/api-docs",
+            ServeFile::new(static_dir.join("console/api-docs.html")),
+        )
+        .route_service(
+            "/reference/openapi-v1.json",
+            ServeFile::new(static_dir.join("reference/openapi-v1.json")),
+        )
+        .route_service(
+            "/reference/route-classification-v1.json",
+            ServeFile::new(static_dir.join("reference/route-classification-v1.json")),
+        )
+        .route_service(
             "/authorization",
             ServeFile::new(static_dir.join("authorization.html")),
         )

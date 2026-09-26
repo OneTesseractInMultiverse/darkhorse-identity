@@ -87,10 +87,19 @@ fn read() -> Result<Vec<Entry>, String> {
     inventory::merge(found).map_err(|_| "Invalid aggregate route inventory.".into())
 }
 fn run() -> Result<(), String> {
-    if std::env::args_os().count() != 1 {
-        return Err("Run the inventory without arguments from the repository root.".into());
-    }
-    let output = inventory::document(read()?)?;
+    let mut arguments = std::env::args_os().skip(1);
+    let classified = match (arguments.next(), arguments.next()) {
+        (None, None) => false,
+        (Some(argument), None) if argument == "--classified" => true,
+        _ => return Err("Run the source inventory with no arguments or --classified.".into()),
+    };
+    let entries = read()?;
+    let output = if classified {
+        darkhorse_reference::classification::document(entries)
+            .map_err(|_| "Cannot classify the source route inventory.")?
+    } else {
+        inventory::document(entries)?
+    };
     let mut stdout = std::io::stdout().lock();
     stdout
         .write_all(&output)

@@ -165,6 +165,13 @@
       "function": "with_authentication",
       "handler": "static-service",
       "method": "SERVICE",
+      "path": "/console/api-docs",
+      "source": "crates/adapters/src/http.rs"
+    },
+    {
+      "function": "with_authentication",
+      "handler": "static-service",
+      "method": "SERVICE",
       "path": "/console/applications",
       "source": "crates/adapters/src/http.rs"
     },
@@ -236,6 +243,20 @@
       "handler": "static-service",
       "method": "SERVICE",
       "path": "/invitation",
+      "source": "crates/adapters/src/http.rs"
+    },
+    {
+      "function": "with_authentication",
+      "handler": "static-service",
+      "method": "SERVICE",
+      "path": "/reference/openapi-v1.json",
+      "source": "crates/adapters/src/http.rs"
+    },
+    {
+      "function": "with_authentication",
+      "handler": "static-service",
+      "method": "SERVICE",
+      "path": "/reference/route-classification-v1.json",
       "source": "crates/adapters/src/http.rs"
     },
     {

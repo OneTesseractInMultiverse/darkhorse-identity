@@ -56,6 +56,11 @@
 				aria-current={active === 'settings' ? 'page' : undefined}
 				><span aria-hidden="true">08</span> {$language.t('console.settings')}</a
 			>
+			<a
+				href={resolve('/console/api-docs')}
+				aria-current={active === 'api-docs' ? 'page' : undefined}
+				><span aria-hidden="true">09</span> {$language.t('console.apiDocs')}</a
+			>
 		</nav>
 		<p class="eyebrow sidebar-section">{$language.t('console.security')}</p>
 		<nav aria-label={$language.t('console.securityNav')}>

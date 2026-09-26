@@ -21,6 +21,8 @@ pub enum Error {
     UnsupportedRoute,
     Duplicate,
     Limit,
+    Unclassified,
+    Serialization,
 }
 pub const MAX_ENTRIES: usize = 512;
 

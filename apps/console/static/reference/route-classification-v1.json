@@ -1,0 +1,716 @@
+{
+  "entries": [
+    {
+      "function": "router",
+      "handler": "write",
+      "method": "POST",
+      "path": "/api/admin/catalog",
+      "rationale": "First-party browser, account, or administration workflow; this route does not grant third-party API authority.",
+      "source": "crates/adapters/src/admin_catalog_http/mod.rs",
+      "surface": "first_party_browser"
+    },
+    {
+      "function": "router",
+      "handler": "list",
+      "method": "GET",
+      "path": "/api/admin/catalog/{kind}",
+      "rationale": "First-party browser, account, or administration workflow; this route does not grant third-party API authority.",
+      "source": "crates/adapters/src/admin_catalog_http/mod.rs",
+      "surface": "first_party_browser"
+    },
+    {
+      "function": "router",
+      "handler": "view",
+      "method": "GET",
+      "path": "/api/admin/catalog/{kind}/{id}",
+      "rationale": "First-party browser, account, or administration workflow; this route does not grant third-party API authority.",
+      "source": "crates/adapters/src/admin_catalog_http/mod.rs",
+      "surface": "first_party_browser"
+    },
+    {
+      "function": "router",
+      "handler": "application",
+      "method": "GET",
+      "path": "/api/admin/console/applications/{app}",
+      "rationale": "First-party browser, account, or administration workflow; this route does not grant third-party API authority.",
+      "source": "crates/adapters/src/admin_catalog_http/mod.rs",
+      "surface": "first_party_browser"
+    },
+    {
+      "function": "router",
+      "handler": "client",
+      "method": "GET",
+      "path": "/api/admin/console/applications/{app}/clients/{client}",
+      "rationale": "First-party browser, account, or administration workflow; this route does not grant third-party API authority.",
+      "source": "crates/adapters/src/admin_catalog_http/mod.rs",
+      "surface": "first_party_browser"
+    },
+    {
+      "function": "router",
+      "handler": "register",
+      "method": "POST",
+      "path": "/api/admin/console/registration",
+      "rationale": "First-party browser, account, or administration workflow; this route does not grant third-party API authority.",
+      "source": "crates/adapters/src/admin_catalog_http/mod.rs",
+      "surface": "first_party_browser"
+    },
+    {
+      "function": "router",
+      "handler": "list",
+      "method": "GET",
+      "path": "/api/admin/users",
+      "rationale": "First-party browser, account, or administration workflow; this route does not grant third-party API authority.",
+      "source": "crates/adapters/src/admin_directory_http.rs",
+      "surface": "first_party_browser"
+    },
+    {
+      "function": "router",
+      "handler": "detail",
+      "method": "GET",
+      "path": "/api/admin/users/{id}",
+      "rationale": "First-party browser, account, or administration workflow; this route does not grant third-party API authority.",
+      "source": "crates/adapters/src/admin_directory_http.rs",
+      "surface": "first_party_browser"
+    },
+    {
+      "function": "router",
+      "handler": "update",
+      "method": "POST",
+      "path": "/api/admin/users/{id}",
+      "rationale": "First-party browser, account, or administration workflow; this route does not grant third-party API authority.",
+      "source": "crates/adapters/src/admin_directory_http.rs",
+      "surface": "first_party_browser"
+    },
+    {
+      "function": "router",
+      "handler": "access",
+      "method": "GET",
+      "path": "/api/admin/users/{id}/access",
+      "rationale": "First-party browser, account, or administration workflow; this route does not grant third-party API authority.",
+      "source": "crates/adapters/src/admin_directory_http.rs",
+      "surface": "first_party_browser"
+    },
+    {
+      "function": "disabled_router",
+      "handler": "unavailable",
+      "method": "POST",
+      "path": "/api/auth/login",
+      "rationale": "First-party browser, account, or administration workflow; this route does not grant third-party API authority.",
+      "source": "crates/adapters/src/authentication_http.rs",
+      "surface": "first_party_browser"
+    },
+    {
+      "function": "disabled_router",
+      "handler": "unavailable",
+      "method": "POST",
+      "path": "/api/auth/logout",
+      "rationale": "First-party browser, account, or administration workflow; this route does not grant third-party API authority.",
+      "source": "crates/adapters/src/authentication_http.rs",
+      "surface": "first_party_browser"
+    },
+    {
+      "function": "disabled_router",
+      "handler": "unavailable",
+      "method": "GET",
+      "path": "/api/auth/session",
+      "rationale": "First-party browser, account, or administration workflow; this route does not grant third-party API authority.",
+      "source": "crates/adapters/src/authentication_http.rs",
+      "surface": "first_party_browser"
+    },
+    {
+      "function": "router",
+      "handler": "login",
+      "method": "POST",
+      "path": "/api/auth/login",
+      "rationale": "First-party browser, account, or administration workflow; this route does not grant third-party API authority.",
+      "source": "crates/adapters/src/authentication_http.rs",
+      "surface": "first_party_browser"
+    },
+    {
+      "function": "router",
+      "handler": "logout",
+      "method": "POST",
+      "path": "/api/auth/logout",
+      "rationale": "First-party browser, account, or administration workflow; this route does not grant third-party API authority.",
+      "source": "crates/adapters/src/authentication_http.rs",
+      "surface": "first_party_browser"
+    },
+    {
+      "function": "router",
+      "handler": "session",
+      "method": "GET",
+      "path": "/api/auth/session",
+      "rationale": "First-party browser, account, or administration workflow; this route does not grant third-party API authority.",
+      "source": "crates/adapters/src/authentication_http.rs",
+      "surface": "first_party_browser"
+    },
+    {
+      "function": "router",
+      "handler": "status",
+      "method": "GET",
+      "path": "/api/security/email",
+      "rationale": "First-party browser, account, or administration workflow; this route does not grant third-party API authority.",
+      "source": "crates/adapters/src/email_verification_http.rs",
+      "surface": "first_party_browser"
+    },
+    {
+      "function": "router",
+      "handler": "confirm",
+      "method": "POST",
+      "path": "/api/security/email/confirm",
+      "rationale": "First-party browser, account, or administration workflow; this route does not grant third-party API authority.",
+      "source": "crates/adapters/src/email_verification_http.rs",
+      "surface": "first_party_browser"
+    },
+    {
+      "function": "router",
+      "handler": "request",
+      "method": "POST",
+      "path": "/api/security/email/request",
+      "rationale": "First-party browser, account, or administration workflow; this route does not grant third-party API authority.",
+      "source": "crates/adapters/src/email_verification_http.rs",
+      "surface": "first_party_browser"
+    },
+    {
+      "function": "with_authentication",
+      "handler": "static-service",
+      "method": "SERVICE",
+      "path": "/",
+      "rationale": "Bundled frontend HTML or static asset, not an HTTP API operation.",
+      "source": "crates/adapters/src/http.rs",
+      "surface": "static_asset"
+    },
+    {
+      "function": "with_authentication",
+      "handler": "static-service",
+      "method": "SERVICE_PREFIX",
+      "path": "/_app",
+      "rationale": "Bundled frontend HTML or static asset, not an HTTP API operation.",
+      "source": "crates/adapters/src/http.rs",
+      "surface": "static_asset"
+    },
+    {
+      "function": "with_authentication",
+      "handler": "static-service",
+      "method": "SERVICE",
+      "path": "/account/profile",
+      "rationale": "Bundled frontend HTML or static asset, not an HTTP API operation.",
+      "source": "crates/adapters/src/http.rs",
+      "surface": "static_asset"
+    },
+    {
+      "function": "with_authentication",
+      "handler": "static-service",
+      "method": "SERVICE",
+      "path": "/authorization",
+      "rationale": "Bundled frontend HTML or static asset, not an HTTP API operation.",
+      "source": "crates/adapters/src/http.rs",
+      "surface": "static_asset"
+    },
+    {
+      "function": "with_authentication",
+      "handler": "static-service",
+      "method": "SERVICE",
+      "path": "/console/api-docs",
+      "rationale": "Bundled frontend HTML or static asset, not an HTTP API operation.",
+      "source": "crates/adapters/src/http.rs",
+      "surface": "static_asset"
+    },
+    {
+      "function": "with_authentication",
+      "handler": "static-service",
+      "method": "SERVICE",
+      "path": "/console/applications",
+      "rationale": "Bundled frontend HTML or static asset, not an HTTP API operation.",
+      "source": "crates/adapters/src/http.rs",
+      "surface": "static_asset"
+    },
+    {
+      "function": "with_authentication",
+      "handler": "static-service",
+      "method": "SERVICE",
+      "path": "/console/capabilities",
+      "rationale": "Bundled frontend HTML or static asset, not an HTTP API operation.",
+      "source": "crates/adapters/src/http.rs",
+      "surface": "static_asset"
+    },
+    {
+      "function": "with_authentication",
+      "handler": "static-service",
+      "method": "SERVICE",
+      "path": "/console/clients",
+      "rationale": "Bundled frontend HTML or static asset, not an HTTP API operation.",
+      "source": "crates/adapters/src/http.rs",
+      "surface": "static_asset"
+    },
+    {
+      "function": "with_authentication",
+      "handler": "static-service",
+      "method": "SERVICE",
+      "path": "/console/profile",
+      "rationale": "Bundled frontend HTML or static asset, not an HTTP API operation.",
+      "source": "crates/adapters/src/http.rs",
+      "surface": "static_asset"
+    },
+    {
+      "function": "with_authentication",
+      "handler": "static-service",
+      "method": "SERVICE",
+      "path": "/console/resources",
+      "rationale": "Bundled frontend HTML or static asset, not an HTTP API operation.",
+      "source": "crates/adapters/src/http.rs",
+      "surface": "static_asset"
+    },
+    {
+      "function": "with_authentication",
+      "handler": "static-service",
+      "method": "SERVICE",
+      "path": "/console/roles",
+      "rationale": "Bundled frontend HTML or static asset, not an HTTP API operation.",
+      "source": "crates/adapters/src/http.rs",
+      "surface": "static_asset"
+    },
+    {
+      "function": "with_authentication",
+      "handler": "static-service",
+      "method": "SERVICE",
+      "path": "/console/scopes",
+      "rationale": "Bundled frontend HTML or static asset, not an HTTP API operation.",
+      "source": "crates/adapters/src/http.rs",
+      "surface": "static_asset"
+    },
+    {
+      "function": "with_authentication",
+      "handler": "static-service",
+      "method": "SERVICE",
+      "path": "/console/settings",
+      "rationale": "Bundled frontend HTML or static asset, not an HTTP API operation.",
+      "source": "crates/adapters/src/http.rs",
+      "surface": "static_asset"
+    },
+    {
+      "function": "with_authentication",
+      "handler": "static-service",
+      "method": "SERVICE",
+      "path": "/console/users",
+      "rationale": "Bundled frontend HTML or static asset, not an HTTP API operation.",
+      "source": "crates/adapters/src/http.rs",
+      "surface": "static_asset"
+    },
+    {
+      "function": "with_authentication",
+      "handler": "liveness",
+      "method": "GET",
+      "path": "/health/live",
+      "rationale": "Infrastructure health probe only; this response is not evidence of identity or authorization.",
+      "source": "crates/adapters/src/http.rs",
+      "surface": "operational"
+    },
+    {
+      "function": "with_authentication",
+      "handler": "static-service",
+      "method": "SERVICE",
+      "path": "/invitation",
+      "rationale": "Bundled frontend HTML or static asset, not an HTTP API operation.",
+      "source": "crates/adapters/src/http.rs",
+      "surface": "static_asset"
+    },
+    {
+      "function": "with_authentication",
+      "handler": "static-service",
+      "method": "SERVICE",
+      "path": "/reference/openapi-v1.json",
+      "rationale": "Bundled frontend HTML or static asset, not an HTTP API operation.",
+      "source": "crates/adapters/src/http.rs",
+      "surface": "static_asset"
+    },
+    {
+      "function": "with_authentication",
+      "handler": "static-service",
+      "method": "SERVICE",
+      "path": "/reference/route-classification-v1.json",
+      "rationale": "Bundled frontend HTML or static asset, not an HTTP API operation.",
+      "source": "crates/adapters/src/http.rs",
+      "surface": "static_asset"
+    },
+    {
+      "function": "with_authentication",
+      "handler": "static-service",
+      "method": "SERVICE",
+      "path": "/security/email",
+      "rationale": "Bundled frontend HTML or static asset, not an HTTP API operation.",
+      "source": "crates/adapters/src/http.rs",
+      "surface": "static_asset"
+    },
+    {
+      "function": "with_authentication",
+      "handler": "static-service",
+      "method": "SERVICE",
+      "path": "/security/keys",
+      "rationale": "Bundled frontend HTML or static asset, not an HTTP API operation.",
+      "source": "crates/adapters/src/http.rs",
+      "surface": "static_asset"
+    },
+    {
+      "function": "with_authentication",
+      "handler": "static-service",
+      "method": "SERVICE",
+      "path": "/security/sessions",
+      "rationale": "Bundled frontend HTML or static asset, not an HTTP API operation.",
+      "source": "crates/adapters/src/http.rs",
+      "surface": "static_asset"
+    },
+    {
+      "function": "router",
+      "handler": "list",
+      "method": "GET",
+      "path": "/api/admin/invitations",
+      "rationale": "First-party browser, account, or administration workflow; this route does not grant third-party API authority.",
+      "source": "crates/adapters/src/invitations_http.rs",
+      "surface": "first_party_browser"
+    },
+    {
+      "function": "router",
+      "handler": "invite",
+      "method": "POST",
+      "path": "/api/admin/invitations",
+      "rationale": "First-party browser, account, or administration workflow; this route does not grant third-party API authority.",
+      "source": "crates/adapters/src/invitations_http.rs",
+      "surface": "first_party_browser"
+    },
+    {
+      "function": "router",
+      "handler": "revoke",
+      "method": "POST",
+      "path": "/api/admin/invitations/revoke",
+      "rationale": "First-party browser, account, or administration workflow; this route does not grant third-party API authority.",
+      "source": "crates/adapters/src/invitations_http.rs",
+      "surface": "first_party_browser"
+    },
+    {
+      "function": "router",
+      "handler": "accept",
+      "method": "POST",
+      "path": "/api/invitations/accept",
+      "rationale": "First-party browser, account, or administration workflow; this route does not grant third-party API authority.",
+      "source": "crates/adapters/src/invitations_http.rs",
+      "surface": "first_party_browser"
+    },
+    {
+      "function": "router",
+      "handler": "presentation",
+      "method": "GET",
+      "path": "/api/presentation",
+      "rationale": "Public deployment presentation data for the bundled browser portal, not a client integration contract.",
+      "source": "crates/adapters/src/localization_http.rs",
+      "surface": "public_presentation"
+    },
+    {
+      "function": "router",
+      "handler": "settings",
+      "method": "GET",
+      "path": "/api/admin/branding",
+      "rationale": "First-party browser, account, or administration workflow; this route does not grant third-party API authority.",
+      "source": "crates/adapters/src/media_http/mod.rs",
+      "surface": "first_party_browser"
+    },
+    {
+      "function": "router",
+      "handler": "remove_brand",
+      "method": "DELETE",
+      "path": "/api/admin/branding/{kind}",
+      "rationale": "First-party browser, account, or administration workflow; this route does not grant third-party API authority.",
+      "source": "crates/adapters/src/media_http/mod.rs",
+      "surface": "first_party_browser"
+    },
+    {
+      "function": "router",
+      "handler": "upload_brand",
+      "method": "POST",
+      "path": "/api/admin/branding/{kind}",
+      "rationale": "First-party browser, account, or administration workflow; this route does not grant third-party API authority.",
+      "source": "crates/adapters/src/media_http/mod.rs",
+      "surface": "first_party_browser"
+    },
+    {
+      "function": "router",
+      "handler": "public_settings",
+      "method": "GET",
+      "path": "/api/branding",
+      "rationale": "Public deployment presentation data for the bundled browser portal, not a client integration contract.",
+      "source": "crates/adapters/src/media_http/mod.rs",
+      "surface": "public_presentation"
+    },
+    {
+      "function": "router",
+      "handler": "brand",
+      "method": "GET",
+      "path": "/api/branding/{kind}",
+      "rationale": "Public deployment presentation data for the bundled browser portal, not a client integration contract.",
+      "source": "crates/adapters/src/media_http/mod.rs",
+      "surface": "public_presentation"
+    },
+    {
+      "function": "router",
+      "handler": "remove_portrait",
+      "method": "DELETE",
+      "path": "/api/profiles/{target}/picture",
+      "rationale": "First-party browser, account, or administration workflow; this route does not grant third-party API authority.",
+      "source": "crates/adapters/src/media_http/mod.rs",
+      "surface": "first_party_browser"
+    },
+    {
+      "function": "router",
+      "handler": "portrait",
+      "method": "GET",
+      "path": "/api/profiles/{target}/picture",
+      "rationale": "First-party browser, account, or administration workflow; this route does not grant third-party API authority.",
+      "source": "crates/adapters/src/media_http/mod.rs",
+      "surface": "first_party_browser"
+    },
+    {
+      "function": "router",
+      "handler": "upload_portrait",
+      "method": "POST",
+      "path": "/api/profiles/{target}/picture",
+      "rationale": "First-party browser, account, or administration workflow; this route does not grant third-party API authority.",
+      "source": "crates/adapters/src/media_http/mod.rs",
+      "surface": "first_party_browser"
+    },
+    {
+      "function": "router",
+      "handler": "list",
+      "method": "GET",
+      "path": "/api/security/keys",
+      "rationale": "First-party browser, account, or administration workflow; this route does not grant third-party API authority.",
+      "source": "crates/adapters/src/personal_keys_http/mod.rs",
+      "surface": "first_party_browser"
+    },
+    {
+      "function": "router",
+      "handler": "create",
+      "method": "POST",
+      "path": "/api/security/keys",
+      "rationale": "First-party browser, account, or administration workflow; this route does not grant third-party API authority.",
+      "source": "crates/adapters/src/personal_keys_http/mod.rs",
+      "surface": "first_party_browser"
+    },
+    {
+      "function": "router",
+      "handler": "options",
+      "method": "GET",
+      "path": "/api/security/keys/options",
+      "rationale": "First-party browser, account, or administration workflow; this route does not grant third-party API authority.",
+      "source": "crates/adapters/src/personal_keys_http/mod.rs",
+      "surface": "first_party_browser"
+    },
+    {
+      "function": "router",
+      "handler": "revoke",
+      "method": "POST",
+      "path": "/api/security/keys/revoke",
+      "rationale": "First-party browser, account, or administration workflow; this route does not grant third-party API authority.",
+      "source": "crates/adapters/src/personal_keys_http/mod.rs",
+      "surface": "first_party_browser"
+    },
+    {
+      "function": "router",
+      "handler": "update",
+      "method": "POST",
+      "path": "/api/profiles/me/language",
+      "rationale": "First-party browser, account, or administration workflow; this route does not grant third-party API authority.",
+      "source": "crates/adapters/src/profiles_http/mod.rs",
+      "surface": "first_party_browser"
+    },
+    {
+      "function": "router",
+      "handler": "options",
+      "method": "GET",
+      "path": "/api/profiles/options",
+      "rationale": "First-party browser, account, or administration workflow; this route does not grant third-party API authority.",
+      "source": "crates/adapters/src/profiles_http/mod.rs",
+      "surface": "first_party_browser"
+    },
+    {
+      "function": "router",
+      "handler": "read",
+      "method": "GET",
+      "path": "/api/profiles/{target}",
+      "rationale": "First-party browser, account, or administration workflow; this route does not grant third-party API authority.",
+      "source": "crates/adapters/src/profiles_http/mod.rs",
+      "surface": "first_party_browser"
+    },
+    {
+      "function": "router",
+      "handler": "update",
+      "method": "POST",
+      "path": "/api/profiles/{target}",
+      "rationale": "First-party browser, account, or administration workflow; this route does not grant third-party API authority.",
+      "source": "crates/adapters/src/profiles_http/mod.rs",
+      "surface": "first_party_browser"
+    },
+    {
+      "function": "router",
+      "handler": "inspect",
+      "method": "GET",
+      "path": "/api/authorization",
+      "rationale": "First-party browser, account, or administration workflow; this route does not grant third-party API authority.",
+      "source": "crates/adapters/src/provider_http/mod.rs",
+      "surface": "first_party_browser"
+    },
+    {
+      "function": "router",
+      "handler": "decide",
+      "method": "POST",
+      "path": "/api/authorization/decision",
+      "rationale": "First-party browser, account, or administration workflow; this route does not grant third-party API authority.",
+      "source": "crates/adapters/src/provider_http/mod.rs",
+      "surface": "first_party_browser"
+    },
+    {
+      "function": "router",
+      "handler": "begin",
+      "method": "GET",
+      "operation_id": "getAuthorization",
+      "path": "/authorize",
+      "rationale": "Supported third-party OIDC operation. Its contract is described in the OpenAPI reference.",
+      "source": "crates/adapters/src/provider_http/mod.rs",
+      "surface": "integration"
+    },
+    {
+      "function": "router",
+      "handler": "jwks",
+      "method": "GET",
+      "operation_id": "getJwks",
+      "path": "/jwks",
+      "rationale": "Supported third-party OIDC operation. Its contract is described in the OpenAPI reference.",
+      "source": "crates/adapters/src/provider_http/mod.rs",
+      "surface": "integration"
+    },
+    {
+      "function": "router",
+      "handler": "check",
+      "method": "GET",
+      "path": "/health/ready",
+      "rationale": "Infrastructure health probe only; this response is not evidence of identity or authorization.",
+      "source": "crates/adapters/src/readiness.rs",
+      "surface": "operational"
+    },
+    {
+      "function": "router",
+      "handler": "application",
+      "method": "GET",
+      "path": "/api/admin/applications/{application}",
+      "rationale": "First-party browser, account, or administration workflow; this route does not grant third-party API authority.",
+      "source": "crates/adapters/src/registration_http/mod.rs",
+      "surface": "first_party_browser"
+    },
+    {
+      "function": "router",
+      "handler": "client",
+      "method": "GET",
+      "path": "/api/admin/applications/{application}/clients/{client}",
+      "rationale": "First-party browser, account, or administration workflow; this route does not grant third-party API authority.",
+      "source": "crates/adapters/src/registration_http/mod.rs",
+      "surface": "first_party_browser"
+    },
+    {
+      "function": "router",
+      "handler": "write",
+      "method": "POST",
+      "path": "/api/admin/registration",
+      "rationale": "First-party browser, account, or administration workflow; this route does not grant third-party API authority.",
+      "source": "crates/adapters/src/registration_http/mod.rs",
+      "surface": "first_party_browser"
+    },
+    {
+      "function": "router",
+      "handler": "read",
+      "method": "GET",
+      "path": "/api/admin/applications/{application}/resources/{resource}/introspection",
+      "rationale": "First-party browser, account, or administration workflow; this route does not grant third-party API authority.",
+      "source": "crates/adapters/src/resource_servers_http/mod.rs",
+      "surface": "first_party_browser"
+    },
+    {
+      "function": "router",
+      "handler": "write",
+      "method": "POST",
+      "path": "/api/admin/resource-introspection",
+      "rationale": "First-party browser, account, or administration workflow; this route does not grant third-party API authority.",
+      "source": "crates/adapters/src/resource_servers_http/mod.rs",
+      "surface": "first_party_browser"
+    },
+    {
+      "function": "router",
+      "handler": "list",
+      "method": "GET",
+      "path": "/api/security/sessions",
+      "rationale": "First-party browser, account, or administration workflow; this route does not grant third-party API authority.",
+      "source": "crates/adapters/src/sessions_http.rs",
+      "surface": "first_party_browser"
+    },
+    {
+      "function": "router",
+      "handler": "end",
+      "method": "POST",
+      "path": "/api/security/sessions/end",
+      "rationale": "First-party browser, account, or administration workflow; this route does not grant third-party API authority.",
+      "source": "crates/adapters/src/sessions_http.rs",
+      "surface": "first_party_browser"
+    },
+    {
+      "function": "router",
+      "handler": "discovery",
+      "method": "GET",
+      "operation_id": "getDiscovery",
+      "path": "/.well-known/openid-configuration",
+      "rationale": "Supported third-party OIDC operation. Its contract is described in the OpenAPI reference.",
+      "source": "crates/adapters/src/token_http/mod.rs",
+      "surface": "integration"
+    },
+    {
+      "function": "router",
+      "handler": "introspect",
+      "method": "POST",
+      "operation_id": "postIntrospection",
+      "path": "/introspect",
+      "rationale": "Supported third-party OIDC operation. Its contract is described in the OpenAPI reference.",
+      "source": "crates/adapters/src/token_http/mod.rs",
+      "surface": "integration"
+    },
+    {
+      "function": "router",
+      "handler": "revoke",
+      "method": "POST",
+      "operation_id": "postRevocation",
+      "path": "/revoke",
+      "rationale": "Supported third-party OIDC operation. Its contract is described in the OpenAPI reference.",
+      "source": "crates/adapters/src/token_http/mod.rs",
+      "surface": "integration"
+    },
+    {
+      "function": "router",
+      "handler": "redeem",
+      "method": "POST",
+      "operation_id": "postToken",
+      "path": "/token",
+      "rationale": "Supported third-party OIDC operation. Its contract is described in the OpenAPI reference.",
+      "source": "crates/adapters/src/token_http/mod.rs",
+      "surface": "integration"
+    },
+    {
+      "function": "router",
+      "handler": "userinfo",
+      "method": "GET",
+      "operation_id": "getUserInfo",
+      "path": "/userinfo",
+      "rationale": "Supported third-party OIDC operation. Its contract is described in the OpenAPI reference.",
+      "source": "crates/adapters/src/token_http/mod.rs",
+      "surface": "integration"
+    }
+  ],
+  "schema": 1,
+  "scope": "Every source-inventoried HTTP registration has a reviewed caller surface. Only entries with an operationId are supported third-party OIDC contracts. Excluded routes remain subject to their runtime authorization boundaries.",
+  "version": "0.1.0"
+}

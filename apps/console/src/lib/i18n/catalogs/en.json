@@ -384,12 +384,96 @@
 	["console.roles", "Roles"],
 	["console.capabilities", "Capabilities"],
 	["console.settings", "System settings"],
+	["console.apiDocs", "API documentation"],
 	["console.security", "MY SECURITY"],
 	["console.securityNav", "Account security"],
 	["console.profile", "My profile"],
 	["console.keys", "Personal API keys"],
 	["console.sessions", "Sessions"],
 	["console.email", "Email verification"],
+	["apiDocs.title", "API documentation"],
+	[
+		"apiDocs.intro",
+		"Reference for the supported Darkhorse integration endpoints. Use the operation details for exact inputs, outputs and failure behavior. The reference is static: it never sends protocol requests or changes account state."
+	],
+	["apiDocs.release", "Application release {version}"],
+	["apiDocs.download", "Download OpenAPI specification"],
+	["apiDocs.downloadRoutes", "Download route boundary inventory"],
+	["apiDocs.search", "Search supported operations"],
+	[
+		"apiDocs.searchHelp",
+		"Search by method, path, operation name, purpose, security or protocol term. The search runs locally on this page."
+	],
+	["apiDocs.results", "{count, number} operations"],
+	["apiDocs.noResults", "No operations match this search."],
+	["apiDocs.loading", "Loading the bundled API reference…"],
+	[
+		"apiDocs.unavailable",
+		"The bundled reference could not be loaded or did not match its expected format. Reload the page or ask an administrator to rebuild the console assets."
+	],
+	["apiDocs.reload", "Reload reference"],
+	["apiDocs.securityTitle", "Choose the credential for the caller"],
+	[
+		"apiDocs.securityIntro",
+		"These credentials grant different authority and cannot be substituted for one another. Use verified HTTPS. Never place secrets or bearer tokens in URLs, browser storage, command arguments or logs."
+	],
+	["apiDocs.browserTitle", "Darkhorse browser session"],
+	[
+		"apiDocs.browserDescription",
+		"Darkhorse owns the browser session and its HTTP-only, same-site cookie. Browser mutations use same-origin CSRF protection. The cookie is for Darkhorse pages and must not be copied to an application backend."
+	],
+	["apiDocs.clientTitle", "Confidential OIDC client"],
+	[
+		"apiDocs.clientDescription",
+		"A registered server-side application client uses its client ID and client secret with client_secret_basic over verified HTTPS. Store the secret in the application backend's secret manager. The application ID is not the client ID."
+	],
+	["apiDocs.bearerTitle", "Opaque identity access token"],
+	[
+		"apiDocs.bearerDescription",
+		"A short-lived access token is an opaque bearer credential. Send it in the Authorization header for UserInfo. It is not the signed JWT ID token, refresh token or a resource-server credential."
+	],
+	["apiDocs.resourceTitle", "Resource-server introspection credential"],
+	[
+		"apiDocs.resourceDescription",
+		"A protected API authenticates to introspection using its resource-server ID and secret. Deny access when introspection is inactive, rate limited or unavailable. Never reuse an end-user access token as this caller credential."
+	],
+	["apiDocs.personalKeyTitle", "Personal API key"],
+	[
+		"apiDocs.personalKeyDescription",
+		"A user's personal API key is limited to explicitly selected capabilities and resources. It is distinct from an OIDC client secret and from a resource-server introspection secret."
+	],
+	["apiDocs.operationGroups", "Supported protocol operations"],
+	["apiDocs.authentication", "Authentication and security"],
+	["apiDocs.parameters", "Parameters"],
+	["apiDocs.request", "Request body and examples"],
+	["apiDocs.responses", "Responses and errors"],
+	["apiDocs.copyExample", "Copy example for {operation}"],
+	["apiDocs.copyLink", "Copy link to {operation}"],
+	["apiDocs.copied", "Example copied."],
+	["apiDocs.copyFailed", "Clipboard access is unavailable. Select and copy the example text."],
+	["apiDocs.boundaries", "Other registered route surfaces"],
+	[
+		"apiDocs.boundaryIntro",
+		"These paths are inventoried so contributors can review the HTTP boundary. Their appearance here does not make them supported third-party integration APIs."
+	],
+	["apiDocs.integrationSurface", "Supported integration API"],
+	["apiDocs.browserSurface", "First-party browser and management APIs"],
+	["apiDocs.presentationSurface", "Public sign-in presentation data"],
+	["apiDocs.operationalSurface", "Operational health checks"],
+	["apiDocs.staticSurface", "Static console assets"],
+	["apiDocs.boundaryCount", "{count, number} registered routes"],
+	[
+		"apiDocs.protocolOnly",
+		"Only routes in the supported operations section have a documented third-party integration contract. Private browser routes require their normal session and server-enforced authorization."
+	],
+	[
+		"apiDocs.noExecutor",
+		"This page is a reference only. It has no request executor and will not use your credentials or tokens to call a protocol endpoint. The console may check your current session to restore your saved language preference."
+	],
+	[
+		"apiDocs.notConfigured",
+		"A documented endpoint does not prove that your deployment has the required issuer, signing key, client registration or resource configuration enabled. Check discovery and your deployment configuration before integrating."
+	],
 	["console.signature", "ONE ORGANIZATION. ONE IDENTITY."],
 	["console.profileTitle", "User profile — Darkhorse"],
 	["branding.title", "Login branding — Darkhorse"],
