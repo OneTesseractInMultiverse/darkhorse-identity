@@ -1,7 +1,10 @@
+import { browserEvidence } from "./browser-evidence.mjs";
 export const ownerLabel = "org.darkhorse.boundary-run";
 export function boundarySuite(args) {
-  if (args.length !== 1 || !["postgres", "redis"].includes(args[0]))
-    throw new Error("Choose exactly one boundary suite: postgres or redis.");
+  if (args.length !== 1 || !["postgres", "redis", "browser"].includes(args[0]))
+    throw new Error(
+      "Choose exactly one boundary suite: postgres, redis or browser.",
+    );
   return args[0];
 }
 export function resourceLabels(owner) {
@@ -21,7 +24,7 @@ export function boundaryResult(suite, result) {
       /^test result: (ok|FAILED)\. (\d+) passed; (\d+) failed; (\d+) ignored; (\d+) measured; (\d+) filtered out; finished in [\d.]+s$/gm,
     ),
   ];
-  const suites = matches.slice(0, 3).map((m) => ({
+  const suites = matches.slice(0, 5).map((m) => ({
     passed: Number(m[2]),
     failed: Number(m[3]),
     ignored: Number(m[4]),
@@ -36,30 +39,34 @@ export function boundaryResult(suite, result) {
       result.stdout,
     );
   const counts =
-    suites.length === (suite === "postgres" ? 1 : 2) &&
+    matches.length === { postgres: 1, redis: 2, browser: 4 }[suite] &&
     suites.every(
       (s, i) =>
         s.passed > 0 &&
         s.failed === 0 &&
         s.measured === 0 &&
         s.filtered === 0 &&
-        s.ignored === (suite === "redis" && i === 1 ? 1 : 0),
+        s.ignored === (suite !== "postgres" && i === 1 ? 1 : 0),
     );
+  const browser =
+    suite === "browser" ? browserEvidence(result.stdout) : undefined;
   const passed =
     result.code === 0 &&
     !result.interrupted &&
     !result.overflow &&
     counts &&
     matches.every((m) => m[1] === "ok") &&
-    (suite === "postgres" || worker);
+    (suite === "postgres" || worker) &&
+    (!browser || browser.status === "completed");
   return {
     status: passed ? "passed" : "failed",
     exitCode: result.code,
     interrupted: result.interrupted,
     outputLimitExceeded: result.overflow,
     suites,
+    ...(browser ? { browser } : {}),
     worker:
-      suite === "redis" && worker
+      suite !== "postgres" && worker
         ? "executed by passing parent scenario"
         : "not applicable or not verified",
     failedTests: [

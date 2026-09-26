@@ -21,6 +21,7 @@ const result = (stdout, code = 0) => ({
 test("only explicit boundary suites and owned Docker identifiers are accepted", () => {
   assert.equal(boundarySuite(["postgres"]), "postgres");
   assert.equal(boundarySuite(["redis"]), "redis");
+  assert.equal(boundarySuite(["browser"]), "browser");
   for (const input of [[], ["all"], ["redis", "--skip"], [";echo token"]])
     assert.throws(() => boundarySuite(input));
   assert.deepEqual(resourceLabels(undefined), []);
@@ -110,4 +111,79 @@ test("metadata records bounded version identifiers, never arbitrary command outp
   assert.throws(() =>
     toolVersions({ rust: "secret", docker: "anything", openssl: "bad" }),
   );
+});
+
+const browserPhases = [
+  "setup",
+  "localization",
+  "language-preferences",
+  "sign-in",
+  "rotation",
+  "registration",
+  "provider",
+  "directory",
+  "catalog",
+  "personal-keys",
+  "profiles",
+  "console-language",
+  "email",
+  "invitations",
+  "sessions",
+  "logout-revocation",
+  "page-security",
+];
+const browserNative =
+  summary(5) + worker + parent + summary(39, 1) + summary(4) + summary(3);
+const browserMarkers = browserPhases
+  .map(
+    (phase) =>
+      `DARKHORSE_BROWSER:${phase}:started\nDARKHORSE_BROWSER:${phase}:passed\n`,
+  )
+  .join("");
+const browserComplete = "DARKHORSE_BROWSER_COMPLETED:1\n";
+test("browser qualification requires every native binary, ordered browser phases and completed teardown", () => {
+  const raw = browserNative + browserMarkers + browserComplete;
+  const report = boundaryResult("browser", result(raw));
+  assert.equal(report.status, "passed");
+  assert.equal(report.suites.length, 4);
+  assert.equal(report.browser.status, "completed");
+  assert.equal(report.worker, "executed by passing parent scenario");
+  for (const stdout of [
+    browserNative,
+    browserNative + browserMarkers,
+    browserMarkers + browserComplete,
+    raw + browserComplete,
+    raw + summary(1),
+    raw.replace("DARKHORSE_BROWSER:catalog:passed\n", ""),
+    raw.replace(
+      "DARKHORSE_BROWSER:catalog:started",
+      "DARKHORSE_BROWSER:secret:started",
+    ),
+    raw.replace(summary(4), summary(4, 0, 0, 1)),
+    raw.replace(summary(3), summary(0)),
+    raw.replace(worker, ""),
+    raw.replace(browserComplete, "DARKHORSE_BROWSER_COMPLETED:2\n"),
+    browserComplete + browserNative + browserMarkers,
+  ])
+    assert.equal(boundaryResult("browser", result(stdout)).status, "failed");
+  for (const extra of [
+    { code: 1 },
+    { code: null },
+    { interrupted: true },
+    { overflow: true },
+  ])
+    assert.equal(
+      boundaryResult("browser", { ...result(raw), ...extra }).status,
+      "failed",
+    );
+});
+test("browser failure evidence identifies the unfinished phase without payloads", () => {
+  const raw =
+    browserNative +
+    browserMarkers.split("DARKHORSE_BROWSER:catalog:passed")[0] +
+    "private-token\n";
+  const report = boundaryResult("browser", result(raw, 1));
+  assert.equal(report.browser.phase, "catalog");
+  assert.equal(report.browser.status, "incomplete");
+  assert.ok(!JSON.stringify(report).includes("private-token"));
 });

@@ -1,8 +1,8 @@
 import { provisionBucket } from "./objects-provision.mjs";
 import { randomBytes } from "node:crypto";
 import { setTimeout as delay } from "node:timers/promises";
-const image =
-  "rustfs/rustfs:1.0.0@sha256:8cc9801755448b71a786705ce76692c77e14936cccd87cf2fc31842e58f4d1ff";
+import { objectsImage } from "./boundary-images.mjs";
+import { resourceLabels } from "./boundary-ci.mjs";
 // Disposable loopback fixture. Production endpoints require TLS and scoped bucket credentials.
 export async function objectService(command, docker) {
   const name = `darkhorse-objects-test-${randomBytes(8).toString("hex")}`;
@@ -15,6 +15,7 @@ export async function objectService(command, docker) {
       [
         "run",
         "--detach",
+        ...resourceLabels(process.env.DARKHORSE_TEST_RUN_ID),
         "--name",
         name,
         "--publish",
@@ -29,7 +30,7 @@ export async function objectService(command, docker) {
         "768m",
         "--cpus",
         "2",
-        image,
+        objectsImage,
       ],
       {
         env: {

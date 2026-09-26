@@ -1,3 +1,8 @@
+import {
+  browserPhase,
+  browserMarker,
+  browserCompleted,
+} from "./lib/browser-evidence.mjs";
 import { verifyConsoleLanguages } from "./lib/console-localization-browser.mjs";
 import assert from "node:assert/strict";
 import { createHash, X509Certificate, randomBytes } from "node:crypto";
@@ -80,6 +85,8 @@ export async function verifyBrowser(
     signal,
   } = {},
 ) {
+  const fullBrowser = exercise === exerciseBrowser && !profiling;
+  if (fullBrowser) console.log(browserMarker("setup", "started"));
   const port = await freePort();
   const tls = await tlsProxy(port, directory, command);
   const origin = `https://localhost:${tls.port}`;
@@ -199,6 +206,7 @@ export async function verifyBrowser(
         "-c",
         statement,
       ]);
+    if (fullBrowser) console.log(browserMarker("setup", "passed"));
     await exercise({
       mailbox,
       browser,
@@ -229,6 +237,7 @@ export async function verifyBrowser(
     await objects?.close();
     await tls.close();
   }
+  if (fullBrowser) console.log(browserCompleted);
 }
 
 async function seedDatabase(db, invoke, docker) {
@@ -337,21 +346,44 @@ async function exerciseBrowser({
       window.securityViolations.push(e.violatedDirective),
     );
   });
-  await verifyLocalization(browser, origin);
-  await verifyLanguagePreferences(browser, origin, password, principal, runSql);
-  const initial = await verifySignIn(page, context, origin, password);
-  await verifyRotation(page, context, origin, ca, password, initial);
-  await verifyRegistration(page, principal);
-  await verifyProvider(page, context, origin, principal, ca, runSql);
-  await verifyDirectory(page, origin, principal, runSql);
-  await verifyCatalog(page, origin, ca);
-  await verifyPersonalKeys(page, origin, ca, principal, runSql);
-  await verifyProfiles(page, origin, principal, runSql);
-  await verifyConsoleLanguages(page, origin);
-  await verifyEmail(page, origin, mailbox);
-  await verifyInvitations(browser, page, origin, mailbox);
-  await verifySessionManagement(browser, page, origin, password, invoke, ca);
-  await verifyLogoutAndRevocation(page, context, password, principal, invoke);
+  await browserPhase("localization", () => verifyLocalization(browser, origin));
+  await browserPhase("language-preferences", () =>
+    verifyLanguagePreferences(browser, origin, password, principal, runSql),
+  );
+  const initial = await browserPhase("sign-in", () =>
+    verifySignIn(page, context, origin, password),
+  );
+  await browserPhase("rotation", () =>
+    verifyRotation(page, context, origin, ca, password, initial),
+  );
+  await browserPhase("registration", () => verifyRegistration(page, principal));
+  await browserPhase("provider", () =>
+    verifyProvider(page, context, origin, principal, ca, runSql),
+  );
+  await browserPhase("directory", () =>
+    verifyDirectory(page, origin, principal, runSql),
+  );
+  await browserPhase("catalog", () => verifyCatalog(page, origin, ca));
+  await browserPhase("personal-keys", () =>
+    verifyPersonalKeys(page, origin, ca, principal, runSql),
+  );
+  await browserPhase("profiles", () =>
+    verifyProfiles(page, origin, principal, runSql),
+  );
+  await browserPhase("console-language", () =>
+    verifyConsoleLanguages(page, origin),
+  );
+  await browserPhase("email", () => verifyEmail(page, origin, mailbox));
+  await browserPhase("invitations", () =>
+    verifyInvitations(browser, page, origin, mailbox),
+  );
+  await browserPhase("sessions", () =>
+    verifySessionManagement(browser, page, origin, password, invoke, ca),
+  );
+  await browserPhase("logout-revocation", () =>
+    verifyLogoutAndRevocation(page, context, password, principal, invoke),
+  );
+  console.log(browserMarker("page-security", "started"));
   assert.deepEqual(errors, []);
   assert.deepEqual(await page.evaluate(() => window.securityViolations), []);
   console.log(
@@ -368,6 +400,7 @@ async function exerciseBrowser({
       () => document.documentElement.scrollWidth <= window.innerWidth,
     ),
   );
+  console.log(browserMarker("page-security", "passed"));
 }
 
 async function verifySignIn(page, context, origin, password) {

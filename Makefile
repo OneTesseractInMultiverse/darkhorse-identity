@@ -126,7 +126,7 @@ test-tooling: ## Test: architecture and process-supervision contracts with fakes
 
 .PHONY: test-ci-boundary test-ci-boundary-tools cleanup-ci-boundary
 
-test-ci-boundary: ## CI: run a full boundary suite with bounded evidence (BOUNDARY_SUITE=postgres or redis)
+test-ci-boundary: ## CI: run a full boundary suite with bounded evidence (BOUNDARY_SUITE=postgres, redis or browser)
 	$(NODE) scripts/ci-boundary.mjs "$(BOUNDARY_SUITE)"
 
 cleanup-ci-boundary: ## CI: verify cleanup for the exact recorded boundary owner

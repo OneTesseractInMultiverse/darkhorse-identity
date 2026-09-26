@@ -75,15 +75,23 @@ jobs:
   boundaries:
     name: ${{ matrix.name }}
     runs-on: ubuntu-24.04
-    timeout-minutes: 40
+    timeout-minutes: ${{ matrix.job_minutes }}
     strategy:
       fail-fast: false
       matrix:
         include:
           - suite: postgres
             name: PostgreSQL boundary verification
+            job_minutes: 40
+            suite_minutes: 27
           - suite: redis
             name: Redis and native security verification
+            job_minutes: 40
+            suite_minutes: 27
+          - suite: browser
+            name: HTTPS browser and delivery verification
+            job_minutes: 60
+            suite_minutes: 37
     env:
       CARGO_INCREMENTAL: "0"
       CARGO_PROFILE_DEV_DEBUG: "0"
@@ -103,12 +111,19 @@ jobs:
         run: |
           rustup show active-toolchain
           cargo fetch --locked
+      - name: Prepare locked browser dependencies
+        if: ${{ matrix.suite == 'browser' }}
+        timeout-minutes: 12
+        run: |
+          npm install --global --ignore-scripts pnpm@11.19.0
+          pnpm install --frozen-lockfile
+          pnpm exec playwright install --with-deps chromium
       - name: Verify boundary supervision and cleanup
         timeout-minutes: 5
         run: make test-ci-boundary-tools
       - name: Run complete boundary suite
         id: boundary
-        timeout-minutes: 27
+        timeout-minutes: ${{ matrix.suite_minutes }}
         run: exec node scripts/ci-boundary.mjs "$BOUNDARY_SUITE"
       - name: Verify owned resource cleanup
         if: ${{ always() && steps.boundary.outcome != 'skipped' }}

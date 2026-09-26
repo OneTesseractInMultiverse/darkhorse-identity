@@ -9,7 +9,11 @@ import {
 } from "./lib/boundary-ci.mjs";
 import { boundaryProcess } from "./lib/boundary-process.mjs";
 import { cleanupBoundary } from "./lib/boundary-cleanup.mjs";
-import { postgresImage, redisImage } from "./lib/boundary-images.mjs";
+import {
+  postgresImage,
+  redisImage,
+  objectsImage,
+} from "./lib/boundary-images.mjs";
 import { successful } from "./lib/security-command.mjs";
 
 process.chdir(resolve(import.meta.dirname, ".."));
@@ -33,6 +37,11 @@ async function provenance() {
     ".github/workflows/ci.yaml",
     "scripts/postgres-test.mjs",
     "scripts/redis-test.mjs",
+    "scripts/browser-test.mjs",
+    "scripts/lib/browser-evidence.mjs",
+    "scripts/lib/objects-test-service.mjs",
+    "pnpm-lock.yaml",
+    "package.json",
   ])
     inputs[file] = createHash("sha256")
       .update(await readFile(file))
@@ -55,7 +64,9 @@ async function provenance() {
       memoryMiB: Math.floor(totalmem() / 1024 / 1024),
     },
     images:
-      suite === "postgres" ? [postgresImage] : [postgresImage, redisImage],
+      suite === "postgres"
+        ? [postgresImage]
+        : [postgresImage, redisImage, objectsImage],
     tools: {
       node: process.version,
       ...toolVersions({
@@ -123,10 +134,11 @@ async function run() {
       env: {
         ...process.env,
         DARKHORSE_TEST_RUN_ID: owner,
-        DARKHORSE_TEST_BROWSER: "false",
+        DARKHORSE_TEST_BROWSER: suite === "browser" ? "true" : "false",
         CARGO_TERM_COLOR: "never",
       },
       signal: abort.signal,
+      timeoutMs: (suite === "browser" ? 35 : 25) * 60_000,
     });
     report = {
       version: 1,
@@ -147,6 +159,7 @@ async function run() {
       status: report.status,
       suites: report.suites,
       worker: report.worker,
+      browser: report.browser,
       failedTests: report.failedTests,
     }),
   );

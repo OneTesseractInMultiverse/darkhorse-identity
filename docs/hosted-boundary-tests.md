@@ -1,14 +1,15 @@
-# Hosted database and native security tests
+# Hosted database, native security and browser tests
 
-The CI workflow runs the complete PostgreSQL and Redis/native suites in two
+The CI workflow runs the complete PostgreSQL, Redis/native and HTTPS browser suites in three
 independent jobs on `ubuntu-24.04`:
 
-| Check                                  | Underlying target    | Boundary                                                                                                                         |
-| -------------------------------------- | -------------------- | -------------------------------------------------------------------------------------------------------------------------------- |
-| PostgreSQL boundary verification       | `make test-postgres` | Migrations, transactions, races, authority, operator persistence and restricted database roles                                   |
-| Redis and native security verification | `make test-redis`    | Real Redis/TLS/failure behavior, shared attempt budgets, separate-process enforcement and authenticated native operator commands |
+| Check                                   | Underlying target    | Boundary                                                                                                                         |
+| --------------------------------------- | -------------------- | -------------------------------------------------------------------------------------------------------------------------------- |
+| PostgreSQL boundary verification        | `make test-postgres` | Migrations, transactions, races, authority, operator persistence and restricted database roles                                   |
+| Redis and native security verification  | `make test-redis`    | Real Redis/TLS/failure behavior, shared attempt budgets, separate-process enforcement and authenticated native operator commands |
+| HTTPS browser and delivery verification | `make test-browser`  | Redis/native checks plus the production static portal, Rust server, PostgreSQL, TLS Redis, TLS SMTP and S3-compatible storage    |
 
-Both run for pushes to `main`, pull requests targeting `main`, and manual dispatch.
+All run for pushes to `main`, pull requests targeting `main`, and manual dispatch.
 The matrix does not cancel one suite because the other fails. These jobs complement
 source verification and dependency qualification; they do not replace either.
 Isolated unit tests still need no services, runtime settings or external fixtures.
@@ -18,12 +19,14 @@ Isolated unit tests still need no services, runtime settings or external fixture
 Each job checks out source without persisting credentials, installs Node 24.19.0
 through the existing pinned action, and fetches locked Cargo dependencies with the
 repository's Rust toolchain. Test execution uses locked, offline Cargo commands.
-The job does not install frontend packages or start a browser. Docker and OpenSSL
+Only the browser job installs locked frontend packages and Chromium with its system
+dependencies, following the [Playwright CI guidance](https://playwright.dev/docs/ci#github-actions).
+It builds the production portal and invokes the same browser target used locally. Docker and OpenSSL
 come from the supported hosted runner. The evidence records their actual versions.
-Percona PostgreSQL and Redis images are pinned by digest in
+Percona PostgreSQL, Redis and RustFS images are pinned by digest in
 [`boundary-images.mjs`](../scripts/lib/boundary-images.mjs).
 
-A job has a 40-minute ceiling. Dependency preparation has 10 minutes, the process
+The database/native jobs have a 40-minute ceiling. Dependency preparation has 10 minutes, the process
 and cleanup fixture has five, the complete-suite step has 27, and fallback cleanup
 has two. The total job ceiling applies even if the individual maxima would sum to
 more. The suite supervisor itself interrupts work after 25 minutes, leaving time
@@ -31,12 +34,19 @@ for cleanup before the outer deadline. Rust compilation uses two jobs with debug
 information and incremental compilation disabled. These are CI resource bounds,
 not application latency or capacity targets.
 
+The browser job has a 60-minute ceiling, including up to 12 minutes for locked web
+dependencies and Chromium, a 37-minute suite step, and two minutes for fallback
+cleanup. Its internal supervisor interrupts after 35 minutes. Its single browser
+executes scenarios sequentially against disposable services; it preserves natural
+limiter expiry waits. There are no blanket TLS bypasses: an independent HTTPS probe
+validates the fixture CA and hostname before Chromium trusts the disposable leaf key.
+
 The wrapper invokes the ordinary Make target once. It does not filter tests,
 retry failures, enable a positive authorization cache or disable security checks.
 It bounds combined child stdout/stderr to 2 MiB in memory. Overflow, interruption,
 missing commands, nonzero exit or malformed/incomplete summaries fail the check.
 Raw output is not published by the wrapper. Reports include bounded failed test
-identifiers and counts; reproduce with the underlying target for detailed private
+identifiers, counts and fixed browser phase identifiers; reproduce with the underlying target for detailed private
 diagnostics. Preparation-step compiler/tool errors remain ordinary runner output.
 
 ## Evidence and intentional worker handling
@@ -59,9 +69,18 @@ the passing parent are present. No other skipped or filtered case qualifies.
 Adding another test binary or a legitimate worker requires reviewed parser tests
 and an updated contract, not a blanket ignored-test exemption.
 
+The browser target must report four nonempty native suites in order: Redis, limiter,
+objects and email. Only the limiter worker described above may be ignored. Every
+fixed browser phase must start and pass in order, followed by the completion marker
+after browser, server, SMTP, object-storage and TLS teardown. Missing, duplicate,
+unknown or out-of-order markers fail qualification even with a zero process exit.
+The report records only the last verified phase boundary, never a raw browser error,
+page content, screenshot or message. Browser launch/version is determined by the
+locked Playwright dependency; the report hashes that lockfile and the harness.
+
 A summary is usable only with the corresponding job's final outcome. A passed
 suite report from an otherwise failed or cancelled job does not make the job pass.
-Coverage, browser/Compose/Kubernetes qualification, independent security review,
+Coverage, Compose/Kubernetes qualification, independent security review,
 fork-policy qualification and production benchmarks remain separate evidence.
 The existing 100% authored-code coverage targets are unchanged.
 
@@ -92,18 +111,20 @@ After installing the documented dependencies and starting Docker:
 make test-ci-boundary-tools
 make test-ci-boundary BOUNDARY_SUITE=postgres
 make test-ci-boundary BOUNDARY_SUITE=redis
+make browser-install
+make test-ci-boundary BOUNDARY_SUITE=browser
 # If an interrupted run left owned resources:
 make cleanup-ci-boundary BOUNDARY_SUITE=redis
 ```
 
 Run at most one wrapper per suite in a checkout; each suite owns one receipt and
 report location. Different checkouts and matrix jobs remain independent. Use
-`make test-postgres` or `make test-redis` for unfiltered local diagnostics. Do not
+`make test-postgres`, `make test-redis` or `make test-browser` for unfiltered local diagnostics. Do not
 publish raw diagnostic output without reviewing it for fixture credentials.
 Never supply production database settings to disposable test workflows.
 
 When changing a harness, pinned image, toolchain or runner, repeat pure report and
-cleanup tests, real supervision tests and both affected boundary suites. Inspect
+cleanup tests, real supervision tests and the affected boundary suites. Inspect
 the exact-commit hosted summaries, counts, exit status and final job results.
 Keep failures visible; investigate rather than retrying until green. The parser
 accepts actual test counts, so ordinary added tests do not need hardcoded totals.
