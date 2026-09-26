@@ -23,6 +23,7 @@ import { objectService } from "./lib/objects-test-service.mjs";
 import { verifyProfiles } from "./lib/profiles-browser.mjs";
 import { verifyDirectory } from "./lib/admin-directory-browser.mjs";
 import { verifySessionManagement } from "./lib/sessions-browser.mjs";
+import { verifyLocalization } from "./lib/localization-browser.mjs";
 import { verifyAccountOverview } from "./lib/account-overview-browser.mjs";
 
 async function freePort() {
@@ -333,6 +334,7 @@ async function exerciseBrowser({
       window.securityViolations.push(e.violatedDirective),
     );
   });
+  await verifyLocalization(browser, origin);
   const initial = await verifySignIn(page, context, origin, password);
   await verifyRotation(page, context, origin, ca, password, initial);
   await verifyRegistration(page, principal);

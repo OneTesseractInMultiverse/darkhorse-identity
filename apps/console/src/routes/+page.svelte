@@ -1,4 +1,7 @@
 <script lang="ts">
+	import { useLocalization } from '$lib/i18n/context';
+	import LanguageSelector from '$lib/components/LanguageSelector.svelte';
+	const language = useLocalization();
 	import { resolve } from '$app/paths';
 	import LoginBrand from '$lib/components/LoginBrand.svelte';
 	import LoginPanel from '$lib/components/LoginPanel.svelte';
@@ -15,25 +18,38 @@
 </script>
 
 <svelte:head>
-	<title>Darkhorse — Sign in</title>
-	<meta name="description" content="Sign in to your organization’s Darkhorse workspace" />
+	<title>{$language.t('portal.title')}</title>
+	<meta name="description" content={$language.t('portal.description')} />
 </svelte:head>
-<div class="portal">
+<div class="portal" lang={$language.locale}>
 	<header class="topbar">
-		<a href={resolve('/')} class="wordmark" aria-label="Darkhorse home"
+		<a href={resolve('/')} class="wordmark" aria-label={$language.t('portal.home')}
 			><LoginBrand fetcher={(input, init) => fetch(input, init)} /></a
 		>
-		<span class="edition">IDENTITY CONSOLE <span class="version">/ 0.1</span></span>
+		<LanguageSelector />
+		<span class="edition">{$language.t('portal.edition')} <span class="version">/ 0.1</span></span>
 	</header>
 	<main id="main">
 		<LoginPanel {signIn} {checkSession} {signOut} showSecurityLink />
-		<p class="caption">A CLEAR VIEW. A CONTROLLED PATH.</p>
+		<p class="caption">{$language.t('portal.caption')}</p>
 	</main>
-	<footer><span>DARKHORSE / IDENTITY SYSTEMS</span><span>DEVELOPMENT PREVIEW</span></footer>
+	<footer>
+		<span>{$language.t('portal.footer')}</span><span>{$language.t('portal.preview')}</span>
+	</footer>
 </div>
 
 <style>
 	.portal {
 		isolation: isolate;
+	}
+	.topbar {
+		gap: 24px;
+	}
+	@media (max-width: 600px) {
+		.topbar {
+			flex-direction: column;
+			align-items: flex-start;
+			gap: 16px;
+		}
 	}
 </style>

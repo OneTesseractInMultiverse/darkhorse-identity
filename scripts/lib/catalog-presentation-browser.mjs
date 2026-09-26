@@ -1,4 +1,5 @@
 import assert from "node:assert/strict";
+import { expect } from "@playwright/test";
 import { resolve } from "node:path";
 
 async function fits(dialog) {
@@ -55,13 +56,10 @@ export async function verifyApplicationOverview(page, application) {
     path: resolve(".local/catalog-overview-mobile-options.png"),
   });
   await page.keyboard.press("Escape");
-  await dialog.waitFor({ state: "detached" });
-  assert.equal(
-    await page.evaluate(() =>
-      document.activeElement?.getAttribute("aria-label"),
-    ),
-    "View Console portal",
-  );
+  await page.locator("dialog").waitFor({ state: "detached" });
+  await expect(
+    page.getByRole("button", { name: "View Console portal", exact: true }),
+  ).toBeFocused();
   await page.setViewportSize({ width: 1280, height: 900 });
   await page
     .getByRole("button", { name: "View Console portal", exact: true })

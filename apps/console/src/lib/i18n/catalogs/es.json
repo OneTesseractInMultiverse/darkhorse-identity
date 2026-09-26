@@ -1,0 +1,61 @@
+[
+	["language.label", "Idioma"],
+	["language.help", "Se aplica al inicio de sesión y al resumen de tu cuenta en este navegador."],
+	["language.unsaved", "Se cambió el idioma en esta página. El navegador no pudo recordarlo."],
+	["login.secure", "ACCESO SEGURO"],
+	["login.identity", "IDENTIDAD / 01"],
+	["login.tagline", "TU ORGANIZACIÓN. UNA IDENTIDAD."],
+	["login.heading", "Te damos la bienvenida."],
+	["login.intro", "Inicia sesión en el espacio de trabajo de tu organización."],
+	["login.email", "Correo electrónico"],
+	["login.password", "Contraseña"],
+	["login.submit", "Iniciar sesión"],
+	["login.pending", "Conectando…"],
+	["login.welcome", "Te damos la bienvenida, {name}."],
+	["login.signedIn", "Has iniciado sesión en Darkhorse."],
+	["login.invalid", "No se pudo iniciar sesión con esas credenciales."],
+	["login.limited", "Demasiados intentos. Espera un momento antes de volver a intentarlo."],
+	[
+		"login.unavailable",
+		"El inicio de sesión no está disponible temporalmente. Vuelve a intentarlo."
+	],
+	["logout.submit", "Cerrar sesión"],
+	["logout.pending", "Cerrando sesión…"],
+	["logout.unconfirmed", "No se pudo confirmar el cierre de sesión. Vuelve a intentarlo."],
+	["portal.title", "Darkhorse — Iniciar sesión"],
+	["portal.description", "Inicia sesión en el espacio de trabajo de tu organización en Darkhorse"],
+	["portal.home", "Inicio de Darkhorse"],
+	["portal.edition", "CONSOLA DE IDENTIDAD"],
+	["portal.caption", "UNA VISIÓN CLARA. UN ACCESO CONTROLADO."],
+	["portal.footer", "DARKHORSE / SISTEMAS DE IDENTIDAD"],
+	["portal.preview", "VERSIÓN EN DESARROLLO"],
+	["account.title", "Tu cuenta — Darkhorse"],
+	["account.overview", "CUENTA / RESUMEN"],
+	["account.status", "Sesión iniciada"],
+	["account.intro", "Tu identidad, acceso y seguridad. Todo en un solo lugar."],
+	["account.organization", "ORGANIZACIÓN"],
+	["account.console", "Consola de administración"],
+	[
+		"account.consoleDescription",
+		"Administra las personas, las aplicaciones y el acceso de tu organización."
+	],
+	["account.requirement", "Para administradores de la plataforma"],
+	["account.openConsole", "Abrir consola"],
+	["account.heading", "Tu cuenta"],
+	["account.security", "PERFIL Y SEGURIDAD"],
+	["account.tools", "Herramientas de la cuenta"],
+	["account.profile", "Mi perfil"],
+	["account.profileDescription", "Tu nombre, información de contacto y foto de perfil."],
+	["account.sessions", "Administrar sesiones"],
+	[
+		"account.sessionsDescription",
+		"Revisa tus inicios de sesión y cierra las sesiones que ya no usas."
+	],
+	["account.keys", "Administrar claves de API"],
+	["account.keysDescription", "Concede a los scripts y servicios una parte limitada de tu acceso."],
+	["account.email", "Verificar correo electrónico"],
+	[
+		"account.emailDescription",
+		"Confirma tu correo electrónico y consulta su estado de verificación."
+	]
+]

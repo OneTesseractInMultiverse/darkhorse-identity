@@ -1,4 +1,5 @@
 import assert from "node:assert/strict";
+import { expect } from "@playwright/test";
 import { resolve } from "node:path";
 const target = "00000000-0000-0000-0000-000000000a01";
 const app = "00000000-0000-0000-0000-000000000a02";
@@ -67,11 +68,10 @@ export async function verifyDirectory(page, origin, principal, runSql) {
   await view.click();
   await page.getByRole("dialog").waitFor();
   await page.keyboard.press("Escape");
-  await page.getByRole("dialog").waitFor({ state: "detached" });
-  assert.equal(
-    await view.evaluate((node) => node === document.activeElement),
-    true,
-  );
+  // The native dialog leaves the accessibility tree before its queued close event.
+  // Wait for component removal and the promised focus restoration.
+  await page.locator("dialog").waitFor({ state: "detached" });
+  await expect(view).toBeFocused();
   await view.click();
   await page.getByRole("button", { name: "Edit name", exact: true }).click();
   await page.getByLabel("First name").fill("Directory updated");

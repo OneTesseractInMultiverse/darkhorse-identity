@@ -1,4 +1,6 @@
 <script lang="ts">
+	import { useLocalization } from '$lib/i18n/context';
+	const language = useLocalization();
 	import { resolve } from '$app/paths';
 	import { Button } from '$lib/components/ui/button';
 	let {
@@ -14,48 +16,53 @@
 	} = $props();
 	const actions = [
 		{
-			label: 'My profile',
-			description: 'Your name, contact details and profile picture.',
+			label: 'account.profile',
+			description: 'account.profileDescription',
 			href: resolve('/account/profile'),
 			icon: 'M20 21v-2a6 6 0 0 0-6-6h-4a6 6 0 0 0-6 6v2M16 6a4 4 0 1 1-8 0 4 4 0 0 1 8 0'
 		},
 		{
-			label: 'Manage sessions',
-			description: 'Review your sign-ins and end sessions you no longer use.',
+			label: 'account.sessions',
+			description: 'account.sessionsDescription',
 			href: resolve('/security/sessions'),
 			icon: 'M3 3h18v13H3zM8 21h8M12 16v5M7 7h10M7 11h6'
 		},
 		{
-			label: 'Manage API keys',
-			description: 'Give scripts and services a limited portion of your access.',
+			label: 'account.keys',
+			description: 'account.keysDescription',
 			href: resolve('/security/keys'),
 			icon: 'M15 3a6 6 0 0 0-5.5 8.4L3 18v3h4v-3h3v-3l2.6-2.5A6 6 0 1 0 15 3ZM16 7h.01'
 		},
 		{
-			label: 'Verify email',
-			description: 'Confirm your email address and check its verification status.',
+			label: 'account.email',
+			description: 'account.emailDescription',
 			href: resolve('/security/email'),
 			icon: 'M3 5h18v14H3zM3 5l9 7 9-7'
 		}
-	];
+	] as const;
 </script>
 
-<svelte:head><title>Your account — Darkhorse</title></svelte:head>
+<svelte:head><title>{$language.t('account.title')}</title></svelte:head>
 
-<section class="glass account-overview" aria-labelledby="account-title" aria-busy={pending}>
+<section
+	class="glass account-overview"
+	lang={$language.locale}
+	aria-labelledby="account-title"
+	aria-busy={pending}
+>
 	<div class="account-toolbar">
-		<p class="eyebrow">ACCOUNT / OVERVIEW</p>
+		<p class="eyebrow">{$language.t('account.overview')}</p>
 		<div class="account-controls">
-			<span class="session-status"><span class="dot"></span>Signed in</span>
+			<span class="session-status"><span class="dot"></span>{$language.t('account.status')}</span>
 			{#if signOut}<Button variant="outline" class="h-10 px-4" onclick={signOut} disabled={pending}
-					>{pending ? 'Signing out…' : 'Sign out'}</Button
+					>{$language.t(pending ? 'logout.pending' : 'logout.submit')}</Button
 				>{/if}
 		</div>
 	</div>
 	<div class="account-body">
 		<div class="account-greeting">
-			<h1 id="account-title">Welcome, {name}.</h1>
-			<p>Your identity, access and security. All in one place.</p>
+			<h1 id="account-title">{$language.t('login.welcome', { name })}</h1>
+			<p>{$language.t('account.intro')}</p>
 		</div>
 		{#if error}<p role="alert" class="account-error">{error}</p>{/if}
 		<section class="console-entry" aria-labelledby="console-entry-title">
@@ -65,22 +72,22 @@
 				>
 			</div>
 			<div class="console-copy">
-				<p class="eyebrow">ORGANIZATION</p>
-				<h2 id="console-entry-title">Management console</h2>
-				<p>Manage people, applications and access across your organization.</p>
-				<span class="console-requirement">For platform administrators</span>
+				<p class="eyebrow">{$language.t('account.organization')}</p>
+				<h2 id="console-entry-title">{$language.t('account.console')}</h2>
+				<p>{$language.t('account.consoleDescription')}</p>
+				<span class="console-requirement">{$language.t('account.requirement')}</span>
 			</div>
 			<Button href={resolve('/console/users')} class="h-12 gap-6 px-6"
-				>Open console <span aria-hidden="true">↗</span></Button
+				>{$language.t('account.openConsole')} <span aria-hidden="true">↗</span></Button
 			>
 		</section>
 		<div class="tools-heading">
-			<h2>Your account</h2>
-			<span class="eyebrow">PROFILE & SECURITY</span>
+			<h2>{$language.t('account.heading')}</h2>
+			<span class="eyebrow">{$language.t('account.security')}</span>
 		</div>
-		<nav class="account-tools" aria-label="Account tools">
+		<nav class="account-tools" aria-label={$language.t('account.tools')}>
 			{#each actions as action (action.href)}
-				<a class="account-action" href={action.href} aria-label={action.label}>
+				<a class="account-action" href={action.href} aria-label={$language.t(action.label)}>
 					<div class="action-top">
 						<svg
 							aria-hidden="true"
@@ -93,8 +100,8 @@
 						>
 						<span class="action-arrow" aria-hidden="true">↗</span>
 					</div>
-					<h3>{action.label}</h3>
-					<p>{action.description}</p>
+					<h3>{$language.t(action.label)}</h3>
+					<p>{$language.t(action.description)}</p>
 				</a>
 			{/each}
 		</nav>

@@ -88,7 +88,7 @@ typecheck: ## Check: strict TypeScript and Svelte diagnostics
 architecture-check: ## Check: inward crate dependencies and static frontend boundaries
 	$(NODE) scripts/architecture-check.mjs
 
-check: fmt-check lint typecheck architecture-check test-unit ## Check: complete fast verification; no services or certificate setup
+check: fmt-check lint typecheck architecture-check i18n-check test-unit ## Check: complete fast verification; no services or certificate setup
 
 ci: check build ## Check: fast verification plus release/static builds
 
@@ -187,7 +187,7 @@ build: build-api build-web ## Build: Rust release binary and static console
 build-api: ## Build: release Rust server (no network after dependency installation)
 	cargo build --release --locked --offline -p darkhorse-server
 
-build-web: ## Build: static SvelteKit console, with no runtime Node server
+build-web: i18n-check ## Build: static SvelteKit console, with no runtime Node server
 	$(WEB) build
 
 db-setup: ## Database: generate owner-only local credentials; preserve existing files
@@ -567,3 +567,16 @@ benchmark-operators-baseline: ## Performance: longer CLI interference comparison
 
 test-benchmark-tools: ## Test: bounded benchmark subprocess input, deadlines, interruption and output
 	$(NODE) scripts/benchmark-tools-test.mjs
+
+.PHONY: i18n-check test-i18n
+i18n-check: ## Localization: validate production catalog keys, ICU arguments, plurals and safe text
+	$(NODE) scripts/i18n-check.mjs
+
+test-i18n: ## Localization: isolated locale, formatter, storage and sign-in interactions
+	$(WEB) test:unit i18n LoginPanel
+
+.PHONY: benchmark-i18n
+override I18N_BASELINE := $(value I18N_BASELINE)
+export I18N_BASELINE
+benchmark-i18n: ## Performance: compare static UI bytes and Chromium cold/warm renders; requires I18N_BASELINE directory
+	$(NODE) scripts/i18n-measure.mjs

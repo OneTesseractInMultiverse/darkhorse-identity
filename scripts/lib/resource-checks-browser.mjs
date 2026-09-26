@@ -107,7 +107,7 @@ export async function verifyResourceChecks(options) {
   }
   timings.sort((a, b) => a - b);
   console.log(
-    `Resource introspection development sample: 10 sequential HTTPS/Basic/primary-state/policy checks, milliseconds p50=${timings[4].toFixed(2)}, p95=${timings[9].toFixed(2)}. Existing login limiter and token HTTP admission remain enabled; no positive cache or distributed introspection limiter. This is not a capacity benchmark.`,
+    `Resource introspection development sample: 10 sequential HTTPS/Basic/primary-state/policy checks, milliseconds p50=${timings[4].toFixed(2)}, p95=${timings[9].toFixed(2)}. Shared login/introspection limiters and token HTTP admission remain enabled; no positive authorization cache. This is not a capacity benchmark.`,
   );
   await runSql(
     `DELETE FROM role_capabilities WHERE role_id='${first.role}' AND capability_id='${first.write}'`,

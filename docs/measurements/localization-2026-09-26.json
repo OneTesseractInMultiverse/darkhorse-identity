@@ -1,0 +1,288 @@
+{
+  "schema": 1,
+  "date": "2026-09-26T12:55:30.086Z",
+  "scope": "Presentation only: loopback HTTP, gzip, static production builds, fake anonymous session/branding responses; no real authentication or server-latency claim.",
+  "node": "v24.19.0",
+  "browser": "153.0.8010.12",
+  "host": {
+    "platform": "darwin",
+    "arch": "arm64",
+    "cpu": "Apple M5"
+  },
+  "budgetAdditionalGzipBytes": 36864,
+  "assets": {
+    "baseline": {
+      "jsFiles": 38,
+      "bytes": 312495,
+      "gzip": 109153,
+      "sha256": "85d11f44638ebddb12f533b5927fc553e941da84180d42c3f51db546674a1c6a"
+    },
+    "localized": {
+      "jsFiles": 40,
+      "bytes": 358875,
+      "gzip": 123747,
+      "sha256": "0be0bd81dbd9833c220b3cdb622413fe0c94b46a3c107b12e06aeb0fc8820fb0"
+    }
+  },
+  "observations": [
+    {
+      "repeat": 0,
+      "variant": "baseline",
+      "locale": "en",
+      "cold": {
+        "readyMs": 76.80000007152557,
+        "transferBytes": 84588,
+        "requests": 18,
+        "language": "en"
+      },
+      "warm": {
+        "readyMs": 39.300000071525574,
+        "transferBytes": 333,
+        "requests": 18,
+        "language": "en"
+      }
+    },
+    {
+      "repeat": 0,
+      "variant": "localized",
+      "locale": "en",
+      "cold": {
+        "readyMs": 71.69999992847443,
+        "transferBytes": 89107,
+        "requests": 20,
+        "language": "en"
+      },
+      "warm": {
+        "readyMs": 54.700000047683716,
+        "transferBytes": 333,
+        "requests": 20,
+        "language": "en"
+      }
+    },
+    {
+      "repeat": 0,
+      "variant": "localized",
+      "locale": "es",
+      "cold": {
+        "readyMs": 71.60000002384186,
+        "transferBytes": 89107,
+        "requests": 20,
+        "language": "es"
+      },
+      "warm": {
+        "readyMs": 56.5,
+        "transferBytes": 333,
+        "requests": 20,
+        "language": "es"
+      }
+    },
+    {
+      "repeat": 1,
+      "variant": "localized",
+      "locale": "es",
+      "cold": {
+        "readyMs": 71.80000007152557,
+        "transferBytes": 89107,
+        "requests": 20,
+        "language": "es"
+      },
+      "warm": {
+        "readyMs": 56.5,
+        "transferBytes": 333,
+        "requests": 20,
+        "language": "es"
+      }
+    },
+    {
+      "repeat": 1,
+      "variant": "baseline",
+      "locale": "en",
+      "cold": {
+        "readyMs": 71.80000007152557,
+        "transferBytes": 84588,
+        "requests": 18,
+        "language": "en"
+      },
+      "warm": {
+        "readyMs": 56.699999928474426,
+        "transferBytes": 333,
+        "requests": 18,
+        "language": "en"
+      }
+    },
+    {
+      "repeat": 1,
+      "variant": "localized",
+      "locale": "en",
+      "cold": {
+        "readyMs": 71.60000002384186,
+        "transferBytes": 89107,
+        "requests": 20,
+        "language": "en"
+      },
+      "warm": {
+        "readyMs": 59.5,
+        "transferBytes": 333,
+        "requests": 20,
+        "language": "en"
+      }
+    },
+    {
+      "repeat": 2,
+      "variant": "baseline",
+      "locale": "en",
+      "cold": {
+        "readyMs": 72.5,
+        "transferBytes": 84588,
+        "requests": 18,
+        "language": "en"
+      },
+      "warm": {
+        "readyMs": 56.89999997615814,
+        "transferBytes": 333,
+        "requests": 18,
+        "language": "en"
+      }
+    },
+    {
+      "repeat": 2,
+      "variant": "localized",
+      "locale": "en",
+      "cold": {
+        "readyMs": 71.60000002384186,
+        "transferBytes": 89107,
+        "requests": 20,
+        "language": "en"
+      },
+      "warm": {
+        "readyMs": 56.700000047683716,
+        "transferBytes": 333,
+        "requests": 20,
+        "language": "en"
+      }
+    },
+    {
+      "repeat": 2,
+      "variant": "localized",
+      "locale": "es",
+      "cold": {
+        "readyMs": 72.59999990463257,
+        "transferBytes": 89107,
+        "requests": 20,
+        "language": "es"
+      },
+      "warm": {
+        "readyMs": 55.5,
+        "transferBytes": 333,
+        "requests": 20,
+        "language": "es"
+      }
+    },
+    {
+      "repeat": 3,
+      "variant": "localized",
+      "locale": "es",
+      "cold": {
+        "readyMs": 88.60000002384186,
+        "transferBytes": 89107,
+        "requests": 20,
+        "language": "es"
+      },
+      "warm": {
+        "readyMs": 56.300000071525574,
+        "transferBytes": 333,
+        "requests": 20,
+        "language": "es"
+      }
+    },
+    {
+      "repeat": 3,
+      "variant": "baseline",
+      "locale": "en",
+      "cold": {
+        "readyMs": 71.60000002384186,
+        "transferBytes": 84588,
+        "requests": 18,
+        "language": "en"
+      },
+      "warm": {
+        "readyMs": 38.89999997615814,
+        "transferBytes": 333,
+        "requests": 18,
+        "language": "en"
+      }
+    },
+    {
+      "repeat": 3,
+      "variant": "localized",
+      "locale": "en",
+      "cold": {
+        "readyMs": 71.29999995231628,
+        "transferBytes": 89107,
+        "requests": 20,
+        "language": "en"
+      },
+      "warm": {
+        "readyMs": 55,
+        "transferBytes": 333,
+        "requests": 20,
+        "language": "en"
+      }
+    },
+    {
+      "repeat": 4,
+      "variant": "baseline",
+      "locale": "en",
+      "cold": {
+        "readyMs": 71.79999995231628,
+        "transferBytes": 84588,
+        "requests": 18,
+        "language": "en"
+      },
+      "warm": {
+        "readyMs": 55,
+        "transferBytes": 333,
+        "requests": 18,
+        "language": "en"
+      }
+    },
+    {
+      "repeat": 4,
+      "variant": "localized",
+      "locale": "en",
+      "cold": {
+        "readyMs": 70.29999995231628,
+        "transferBytes": 89107,
+        "requests": 20,
+        "language": "en"
+      },
+      "warm": {
+        "readyMs": 54.39999997615814,
+        "transferBytes": 333,
+        "requests": 20,
+        "language": "en"
+      }
+    },
+    {
+      "repeat": 4,
+      "variant": "localized",
+      "locale": "es",
+      "cold": {
+        "readyMs": 71.70000004768372,
+        "transferBytes": 89107,
+        "requests": 20,
+        "language": "es"
+      },
+      "warm": {
+        "readyMs": 56.60000002384186,
+        "transferBytes": 333,
+        "requests": 20,
+        "language": "es"
+      }
+    }
+  ],
+  "sources": {
+    "baseline": "f14c77823001135862e1d85991a23d1f1a27ab9f",
+    "localized": "working tree based on f14c778; artifact hashes identify measured builds"
+  }
+}

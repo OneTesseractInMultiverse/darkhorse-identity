@@ -176,7 +176,7 @@ export async function verifyIdentityChecks({
   }
   timings.sort((a, b) => a - b);
   console.log(
-    `Introspection development sample: 10 sequential HTTPS/Basic/primary-state checks, milliseconds p50=${timings[4].toFixed(2)}, p95=${timings[9].toFixed(2)}; limiter-enabled login established the session. Token routes use HTTP admission bounds, with no distributed token-endpoint limiter. This is not a capacity benchmark.`,
+    `Introspection development sample: 10 sequential HTTPS/Basic/primary-state checks, milliseconds p50=${timings[4].toFixed(2)}, p95=${timings[9].toFixed(2)}; limiter-enabled login established the session. Introspection uses shared deployment/caller budgets and HTTP admission bounds. This is not a capacity benchmark.`,
   );
   for (let n = 0; n < 2; n++) {
     const revoked = await check(token.body.access_token, "revoke");
