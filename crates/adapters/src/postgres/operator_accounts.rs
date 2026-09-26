@@ -34,9 +34,14 @@ impl Store for PostgresStore {
     }
     async fn execute(&self, proof: Verified) -> Result<Outcome, Error> {
         let mut tx = self.pool.begin().await.map_err(storage)?;
-        // Operator reads also use the exclusive security fence so actor checks,
-        // target locks, mutation and audit form one ordered transaction.
-        sessions::lock(&mut tx, true).await.map_err(storage)?;
+        // Hold the fence through the final authority check, audit and commit.
+        // Read-only requests can overlap readers; mutations still exclude them.
+        sessions::lock(
+            &mut tx,
+            matches!(proof.request().operation(), Operation::Change { .. }),
+        )
+        .await
+        .map_err(storage)?;
         let result = match authority(&mut tx, &proof).await {
             Ok(()) => execute(&mut tx, &proof).await,
             Err(error) => Err(error),
@@ -134,7 +139,7 @@ async fn completion(
 async fn execute(tx: &mut Tx<'_>, proof: &Verified) -> Result<Outcome, Error> {
     match proof.request().operation() {
         Operation::Show(target) => Ok(Outcome {
-            account: directory::locked_account(tx, target)
+            account: directory::current_account(tx, target)
                 .await
                 .map_err(directory_error)?,
             changed: false,

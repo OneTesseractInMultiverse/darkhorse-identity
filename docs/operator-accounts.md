@@ -112,16 +112,18 @@ proof may authenticate. No membership assignment, impersonation or application
 resource access is granted. Committed demotion or credential changes invalidate
 older proofs. Supported concurrent security operations serialize at the shared
 fence. An operation that wins the fence may complete before a waiting revocation.
-Single-target operations take the exclusive fence; listing takes its shared mode
-and checks proof freshness again after the query and audit. Single-target operations
-check again after target waits and before and after audit, accepting only the exact
+Account listing and detail reads take the shared fence; mutations take the exclusive
+fence. Detail reads load the account in a separate statement after fence acquisition,
+without an additional target update lock. The fence remains held through all authority
+checks, the audit and commit. Mutations check again after target waits and before and
+after audit, accepting only the exact
 requested self-transition. The [authority matrix](authenticated-operator-authority.md) defines
 state-dependent errors, self-changes and rollback behavior. Both preserve actor/audit ordering. Keep this
 low-volume administrative path out of high-frequency authorization checks.
 
 ```mermaid
 sequenceDiagram
-    participant O as Account command
+    participant O as Account mutation command
     participant L as Shared login admission
     participant P as PostgreSQL primary
     O->>L: Charge the same HTTP login budgets
@@ -138,6 +140,8 @@ sequenceDiagram
 
 The proof is private to one invocation. Reads require an audit commit too.
 A failed output or commit acknowledgement does not prove rollback.
+The [administrative read measurements](performance-admin-reads.md) describe the
+shared-read comparison and its remaining qualification limits.
 
 ## Audit and uncertain outcomes
 

@@ -1,7 +1,7 @@
 // Disposable performance fixture only; all timed commands use normal authentication.
 import assert from "node:assert/strict";
 import { randomUUID } from "node:crypto";
-import { operatorResult } from "./benchmark-operator-model.mjs";
+import { operatorResult, operatorRead } from "./benchmark-operator-model.mjs";
 
 async function scalar({ docker, db }, sql) {
   return (
@@ -56,25 +56,49 @@ async function invoke(options, actor, args, reason) {
 }
 async function verifyReads(options, actors, commands) {
   for (const row of commands) {
-    const table =
-      row.operation === "account.list"
-        ? "operator_directory_audit"
-        : "operator_catalog_audit";
+    const { table } = operatorRead(row.operation, {});
+    const populated = row.operation.endsWith(".list")
+      ? " AND returned_count>0"
+      : "";
     assert.equal(
       await scalar(
         options,
-        `SELECT count(*) FROM ${table} WHERE operation_id='${row.operationId}' AND actor_id='${actors[row.worker].principal}' AND command='${row.operation}' AND result='read' AND returned_count>0`,
+        `SELECT count(*) FROM ${table} WHERE operation_id='${row.operationId}' AND actor_id='${actors[row.worker].principal}' AND command='${row.operation}' AND result='read' AND database_role='${options.databaseRole}'${populated}`,
       ),
       "1",
       "Missing successful operator read audit.",
     );
   }
 }
-export async function operatorFixture(options) {
+async function population(options, ids, details) {
+  if (!details) return { additionalPrincipals: 0, additionalBoundRoles: 0 };
+  await options.runSql(`BEGIN;
+INSERT INTO principals(id,email,first_name,last_name)
+SELECT gen_random_uuid(),'population-'||n||'@example.com','Population','Fixture' FROM generate_series(1,1000) n;
+WITH added AS (INSERT INTO roles(id,name) SELECT gen_random_uuid(),'Population role '||n FROM generate_series(1,64) n RETURNING id)
+INSERT INTO role_applications SELECT '${ids.application}',id FROM added;
+INSERT INTO role_capabilities SELECT ra.role_id,c.capability_id FROM role_applications ra CROSS JOIN capability_applications c JOIN roles r ON r.id=ra.role_id
+WHERE ra.application_id='${ids.application}' AND c.application_id='${ids.application}' AND r.name LIKE 'Population role %';
+COMMIT;`);
+  return { additionalPrincipals: 1000, additionalBoundRoles: 64 };
+}
+export async function operatorFixture(options, app, details = false) {
   assert.match(
     options.principal,
     /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/,
   );
+  assert.ok(["postgres", "darkhorse_runtime"].includes(options.databaseRole));
+  const ids = {
+    principal: options.principal,
+    application: app.identity.application_id,
+    client: app.client,
+  };
+  for (const id of Object.values(ids))
+    assert.match(
+      id,
+      /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/,
+    );
+  const populationSize = await population(options, ids, details);
   const actors = [await actor(options), await actor(options)];
   const revision = await scalar(
     options,
@@ -83,12 +107,9 @@ export async function operatorFixture(options) {
   assert.match(revision, /^(0|[1-9][0-9]{0,18})$/);
   let revocation;
   return {
+    population: populationSize,
     read: (worker, operation) =>
-      invoke(options, actors[worker], [
-        ...operation.split("."),
-        "--limit",
-        "25",
-      ]),
+      invoke(options, actors[worker], operatorRead(operation, ids).args),
     revoke: async () => {
       revocation = await invoke(
         options,
@@ -102,7 +123,7 @@ export async function operatorFixture(options) {
       assert.equal(
         await scalar(
           options,
-          `SELECT count(*) FROM operator_account_audit WHERE operation_id='${revocation.operationId}' AND actor_id='${options.principal}' AND target_id='${options.principal}' AND command='account.revoke_all' AND expected_revision=${revision} AND result='changed'`,
+          `SELECT count(*) FROM operator_account_audit WHERE operation_id='${revocation.operationId}' AND actor_id='${options.principal}' AND target_id='${options.principal}' AND command='account.revoke_all' AND expected_revision=${revision} AND result='changed' AND database_role='${options.databaseRole}'`,
         ),
         "1",
         "Missing committed operator revocation audit.",

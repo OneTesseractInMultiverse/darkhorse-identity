@@ -10,6 +10,7 @@ import { tlsProxy } from "./lib/redis-test-proxy.mjs";
 import { runtimeEnvironment } from "./lib/redis-settings.mjs";
 import { profileChannel } from "./lib/benchmark-profile-channel.mjs";
 import { runBenchmarkCommand } from "./lib/benchmark-command.mjs";
+import { restrictBenchmarkDatabase } from "./lib/benchmark-database.mjs";
 import { startProcess } from "./lib/process.mjs";
 import { seedSigning, verifyProvider } from "./lib/provider-browser.mjs";
 import { verifyRegistration } from "./lib/registration-browser.mjs";
@@ -71,6 +72,7 @@ export async function verifyBrowser(
     profile = "debug",
     exercise = exerciseBrowser,
     profiling = false,
+    restrictedDatabase = false,
     poolSize = 5,
     signal,
   } = {},
@@ -162,6 +164,12 @@ export async function verifyBrowser(
     }
     const { password, principal } = await seedDatabase(db, invoke, docker);
     await seedSigning(invoke, docker, db);
+    if (restrictedDatabase)
+      runtime.DARKHORSE_DATABASE_URL = await restrictBenchmarkDatabase(
+        docker,
+        db,
+        runtime.DARKHORSE_DATABASE_URL,
+      );
     const channel = profiling ? profileChannel() : undefined;
     server = startProcess({
       command: executable,
@@ -208,6 +216,7 @@ export async function verifyBrowser(
       env,
       executable,
       poolSize,
+      databaseRole: restrictedDatabase ? "darkhorse_runtime" : "postgres",
     });
   } finally {
     await browser?.close();

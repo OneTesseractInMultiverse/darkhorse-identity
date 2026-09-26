@@ -71,6 +71,20 @@ pub(super) async fn prepare_change(
     plan_change(snapshot, action).map_err(DirectoryFailure::Policy)
 }
 
+/// The caller holds the security fence; this statement starts after acquisition.
+pub(super) async fn current_account(
+    tx: &mut Transaction<'_, Postgres>,
+    id: PrincipalId,
+) -> Result<AccountRecord, DirectoryFailure> {
+    let row = sqlx::query(ACCOUNT)
+        .bind(Uuid::from_u128(id.as_u128()))
+        .fetch_optional(&mut **tx)
+        .await
+        .map_err(unavailable)?
+        .ok_or(DirectoryFailure::NotFound)?;
+    map_account(id, &row)
+}
+
 pub(super) async fn locked_account(
     tx: &mut Transaction<'_, Postgres>,
     id: PrincipalId,

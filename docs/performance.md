@@ -162,6 +162,15 @@ reproduced with the public target above.
 
 ## Workloads and interpretation
 
+The newer [administrative detail comparison](performance-admin-reads.md) adds
+`make benchmark-operator-details` and `make benchmark-operator-details-baseline`.
+These profiles run account/application/client details with the published runtime
+database grants, 1,000 additional principals and 64 unassigned bound roles. The
+original listing profiles above remain unchanged in workload and database role.
+Reports now include per-operation and scheduled CLI latency, plus the database
+role used by the server and CLI. Shared-read measurements and their limitations
+are recorded separately from the historical owner-role listing results.
+
 Every fixture has its own application, confidential OAuth client, resource, introspection credential, `operate` scope and role with read/write capabilities. They share one signed-in principal and SSO session. This small policy graph is a reproducible initial fixture, not a realistic large-organization population.
 
 | Phase                            | Purpose                                                                                                                                                            |

@@ -319,6 +319,7 @@ async function pacedPhase(state, name, select, agent, rate, change, operator) {
         clock: () => performance.now() - state.started,
         sleep: delay,
         invoke: operator.invoke,
+        details: state.profile.details,
       })
     : await load();
   if (operator?.mutation)
@@ -369,7 +370,12 @@ async function arrivalWorkloads(state, agent) {
 }
 async function operatorWorkloads(state, agent) {
   const { options, fixtures, profile } = state;
-  const fixture = await operatorFixture(options);
+  const fixture = await operatorFixture(
+    options,
+    fixtures[0].app,
+    profile.details,
+  );
+  state.report.operatorPopulation = fixture.population;
   const choose = (index) => selection(options, fixtures, index);
   await phase(state, "warmup", 64, 8, choose, agent);
   const rate = profile.arrivals.rate;
@@ -467,7 +473,10 @@ export async function benchmarkBrowser(options, profile) {
     state.fixtures = provisioned.fixtures;
     report.sso = provisioned.sso;
     if (profile.operators)
-      report.operatorLimits = operatorLimits(options.poolSize);
+      report.operatorLimits = operatorLimits(
+        options.poolSize,
+        profile.restrictedDatabase,
+      );
     report.before = await snapshot(options);
     if (profile.profiling) {
       state.observer = await profiler(options);

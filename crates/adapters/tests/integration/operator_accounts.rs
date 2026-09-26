@@ -7,6 +7,7 @@ use darkhorse_domain::{
     identity::OperationId,
     operator_accounts::{Error, Operation, Request},
 };
+mod reads;
 struct Allow;
 impl LoginAdmission for Allow {
     async fn admit(&self, _: &str) -> Result<(), AuthError> {

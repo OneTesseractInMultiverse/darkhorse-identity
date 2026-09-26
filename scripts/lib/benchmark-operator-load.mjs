@@ -1,11 +1,19 @@
-import { operatorSummary } from "./benchmark-operator-model.mjs";
+import {
+  operatorSummary,
+  operatorOperations,
+} from "./benchmark-operator-model.mjs";
 
-async function lane(worker, { durationMs, clock, sleep, invoke }, start) {
+async function lane(
+  worker,
+  { durationMs, clock, sleep, invoke, details },
+  start,
+) {
   const commands = [];
+  const operations = operatorOperations(details);
   for (let index = 0; index < 4; index++) {
     const scheduledMs = start + (index * durationMs) / 4;
     while (clock() < scheduledMs) await sleep(scheduledMs - clock());
-    const operation = index % 2 === 0 ? "account.list" : "application.list";
+    const operation = operations[index];
     const startMs = clock();
     const result = await invoke(worker, operation);
     commands.push({

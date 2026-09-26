@@ -5,8 +5,56 @@ import {
   operatorSummary,
   operatorLimits,
   operatorResult,
+  operatorOperations,
+  operatorRead,
 } from "../../lib/benchmark-operator-model.mjs";
 import { measureOperatorPhase } from "../../lib/benchmark-operator-load.mjs";
+
+test("detail profiles keep bounded authenticated work under runtime database grants", () => {
+  for (const suffix of ["smoke", "baseline"]) {
+    const detail = benchmarkProfile(`operator-detail-${suffix}`);
+    const list = benchmarkProfile(`operator-${suffix}`);
+    assert.equal(detail.operators, true);
+    assert.equal(detail.details, true);
+    assert.equal(detail.restrictedDatabase, true);
+    assert.deepEqual(detail.arrivals, list.arrivals);
+    assert.equal(detail.clients, list.clients);
+  }
+  assert.deepEqual(operatorOperations(true), [
+    "account.show",
+    "application.show",
+    "account.show",
+    "client.show",
+  ]);
+  assert.deepEqual(operatorOperations(false), [
+    "account.list",
+    "application.list",
+    "account.list",
+    "application.list",
+  ]);
+  const ids = {
+    principal: "principal",
+    application: "application",
+    client: "client",
+  };
+  assert.deepEqual(operatorRead("account.show", ids), {
+    args: ["account", "show", "principal"],
+    table: "operator_account_audit",
+    result: "read",
+  });
+  assert.deepEqual(operatorRead("application.show", ids), {
+    args: ["application", "show", "application"],
+    table: "operator_catalog_detail_audit",
+    result: "read",
+  });
+  assert.deepEqual(operatorRead("client.show", ids), {
+    args: ["client", "show", "application", "client"],
+    table: "operator_catalog_detail_audit",
+    result: "read",
+  });
+  assert.throws(() => operatorRead("unknown", ids));
+  assert.equal(operatorLimits(5, true).databaseRole, "darkhorse_runtime");
+});
 
 test("operator profiles bound independent processes and preserve comparable offered load", () => {
   for (const [suffix, durationMs] of [
@@ -50,6 +98,42 @@ test("operator summaries count dispatched requests once across overlapping proce
   assert.deepEqual(summary.commandLatencyMs, { p50: 10, p95: 10, p99: 10 });
   assert.equal(operatorSummary([], rows).commandLatencyMs, null);
 });
+
+test("overlap latency keeps failed responses visible without counting them as useful authorization", () => {
+  const commands = [
+    { operation: "account.show", scheduledMs: 0, startMs: 0, endMs: 10 },
+  ];
+  const rows = [
+    { startMs: 1, elapsedMs: 3, scheduledLatencyMs: 4, outcome: "authorized" },
+    {
+      startMs: 2,
+      elapsedMs: 100,
+      scheduledLatencyMs: 101,
+      outcome: "unavailable",
+    },
+    { startMs: 3, elapsedMs: 200, scheduledLatencyMs: 201, outcome: "denied" },
+    {
+      startMs: null,
+      elapsedMs: 0,
+      scheduledLatencyMs: 0,
+      outcome: "generator_drop",
+    },
+  ];
+  const summary = operatorSummary(commands, rows);
+  assert.equal(summary.requestsDuringCommands, 3);
+  assert.equal(summary.commands[0].requestsDuring, 3);
+  assert.equal(summary.allLatencyDuringCommandsMs.p95, 200);
+  assert.deepEqual(summary.authorizedScheduledLatencyDuringCommandsMs, {
+    p50: 4,
+    p95: 4,
+    p99: 4,
+  });
+  assert.equal(
+    operatorSummary(commands, rows.slice(1))
+      .authorizedScheduledLatencyDuringCommandsMs,
+    null,
+  );
+});
 test("bounded CLI envelopes project only successful audit identifiers", () => {
   const operation_id = "00000000-0000-4000-8000-000000000001";
   assert.deepEqual(
@@ -68,6 +152,8 @@ test("bounded CLI envelopes project only successful audit identifiers", () => {
     "{}",
     JSON.stringify({ ok: false, schema_version: 1, data: { operation_id } }),
     JSON.stringify({ ok: true, schema_version: 2, data: { operation_id } }),
+    JSON.stringify({ ok: true, schema_version: 1, data: null }),
+    JSON.stringify({ ok: true, schema_version: 1, data: {} }),
     JSON.stringify({
       ok: true,
       schema_version: 1,
@@ -165,6 +251,36 @@ test("configured CLI pool envelopes account for the smaller deployment pool", ()
   assert.equal(operatorLimits(1).configuredReadPhaseDatabaseEnvelope, 3);
   assert.equal(operatorLimits(5).configuredReadPhaseDatabaseEnvelope, 9);
   assert.equal(operatorLimits(32).databaseConnectionsPerCli, 2);
+});
+
+test("detail lanes report each operation and preserve scheduled queue delay", async () => {
+  let now = 0;
+  const seen = [[], []];
+  const result = await measureOperatorPhase({
+    details: true,
+    durationMs: 40,
+    clock: () => now,
+    sleep: async (ms) => {
+      now += ms;
+    },
+    load: async () => ({ rows: [], summary: {} }),
+    invoke: async (worker, operation) => {
+      seen[worker].push(operation);
+      now += 20;
+      return { operationId: "fixture" };
+    },
+  });
+  for (const operations of seen)
+    assert.deepEqual(operations, operatorOperations(true));
+  assert.equal(
+    result.summary.operators.byOperation["account.show"].commands,
+    4,
+  );
+  assert.equal(result.summary.operators.byOperation["client.show"].commands, 2);
+  assert.ok(
+    result.summary.operators.commandScheduledLatencyMs.p95 >
+      result.summary.operators.commandLatencyMs.p95,
+  );
 });
 
 // Source-defined virtual clock; no real timers or process settings.

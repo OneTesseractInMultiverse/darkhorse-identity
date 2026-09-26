@@ -17,6 +17,7 @@ export async function metadata({
   executable,
   profileSnapshot,
   poolSize,
+  databaseRole,
 }) {
   const capture = async (program, args) =>
     (await command(program, args, { capture: true })).stdout.trim();
@@ -111,6 +112,7 @@ export async function metadata({
       databasePoolConnections: poolSize,
       positiveDecisionCache: false,
       computationCache: false,
+      databaseRole,
     },
     unmeasured: [
       "database-cold state",
