@@ -139,7 +139,7 @@
                   "summary": "Refresh request for a client that opted in",
                   "value": {
                     "grant_type": "refresh_token",
-                    "refresh_token": "<opaque refresh credential>",
+                    "refresh_token": "dr_0000000000000000000000000000000000000000000000000000000000000000",
                     "scope": "openid orders.read",
                     "resource": "urn:darkhorse:resource:<registered-resource-uuid>"
                   }

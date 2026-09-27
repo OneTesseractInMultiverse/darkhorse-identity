@@ -1,7 +1,7 @@
 use super::*;
 use axum::{
     body::{Body, to_bytes},
-    http::{Request, StatusCode},
+    http::{HeaderValue, Request, StatusCode},
 };
 use tower::ServiceExt;
 
@@ -86,4 +86,24 @@ async fn liveness_rejects_writes() {
         .await
         .unwrap();
     assert_eq!(response.status(), StatusCode::METHOD_NOT_ALLOWED);
+}
+
+#[test]
+fn immutable_asset_cache_is_limited_to_hashed_asset_routes_and_successes() {
+    assert_eq!(
+        cache_control_for_response("/_app/immutable/nodes/5.abc123.js", StatusCode::OK),
+        HeaderValue::from_static("public, max-age=31536000, immutable")
+    );
+    assert_eq!(
+        cache_control_for_response("/_app/immutable/nodes/missing.js", StatusCode::NOT_FOUND),
+        HeaderValue::from_static("no-store")
+    );
+    assert_eq!(
+        cache_control_for_response("/console/api-docs", StatusCode::OK),
+        HeaderValue::from_static("no-store")
+    );
+    assert_eq!(
+        cache_control_for_response("/reference/openapi-v1.json", StatusCode::OK),
+        HeaderValue::from_static("no-store")
+    );
 }

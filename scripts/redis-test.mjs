@@ -167,7 +167,10 @@ async function hostChecks(env, db, directory, benchmark) {
     `${benchmark ? "release" : "debug"}/darkhorse-server`,
   );
   env = { ...env, DARKHORSE_TEST_SERVER_PATH: executable };
-  if (!benchmark) {
+  if (
+    !benchmark &&
+    process.env.DARKHORSE_TEST_SKIP_REDIS_INTEGRATION !== "true"
+  ) {
     await command(
       "cargo",
       [

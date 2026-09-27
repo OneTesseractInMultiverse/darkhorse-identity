@@ -1,5 +1,46 @@
+import { isDeepStrictEqual } from "node:util";
+
 export const MAX_API_SPEC_BYTES = 2 * 1024 * 1024;
 const METHODS = new Set(["get", "post", "put", "patch", "delete"]);
+const JSON_SCHEMA_TYPES = new Set([
+  "array",
+  "boolean",
+  "integer",
+  "null",
+  "number",
+  "object",
+  "string",
+]);
+const SCHEMA_ASSERTIONS = new Set([
+  "$ref",
+  "additionalProperties",
+  "allOf",
+  "anyOf",
+  "const",
+  "enum",
+  "format",
+  "items",
+  "maximum",
+  "maxLength",
+  "minimum",
+  "minLength",
+  "not",
+  "oneOf",
+  "pattern",
+  "properties",
+  "required",
+  "type",
+]);
+const SCHEMA_ANNOTATIONS = new Set([
+  "$comment",
+  "default",
+  "deprecated",
+  "description",
+  "examples",
+  "readOnly",
+  "title",
+  "writeOnly",
+]);
 
 /** Validate a reviewed OIDC specification against the source-derived route boundary. */
 export function validateApiReference({
@@ -87,10 +128,324 @@ export function validateApiReference({
 
   const refError = checkReferences(specification);
   if (refError) return fail(refError);
+  const schemaError = checkSchemasAndExamples(specification);
+  if (schemaError) return fail(schemaError);
   const parameterError = checkOAuthFormParameterPolicy(specification);
   return parameterError
     ? fail(parameterError)
     : { ok: true, operationCount: documented.size };
+}
+
+function checkSchemasAndExamples(specification) {
+  const schemaRoots = [
+    ...Object.values(specification.components?.schemas ?? {}),
+  ];
+  const exampleChecks = [];
+  let malformedExample = false;
+  const walk = (value, key = "") => {
+    if (
+      key === "schemas" ||
+      key === "schema" ||
+      key === "example" ||
+      key === "examples"
+    )
+      return;
+    if (Array.isArray(value)) {
+      for (const item of value) walk(item);
+      return;
+    }
+    if (!isRecord(value)) return;
+    if (Object.hasOwn(value, "schema")) {
+      schemaRoots.push(value.schema);
+      if (Object.hasOwn(value, "example"))
+        exampleChecks.push([value.schema, value.example]);
+      if (isRecord(value.examples)) {
+        for (const example of Object.values(value.examples)) {
+          const resolved = resolveExample(example, specification);
+          if (!resolved.ok) {
+            malformedExample = true;
+            return;
+          }
+          if (resolved.hasValue)
+            exampleChecks.push([value.schema, resolved.value]);
+        }
+      }
+    }
+    for (const [childKey, child] of Object.entries(value))
+      walk(child, childKey);
+  };
+  walk(specification);
+  if (malformedExample)
+    return "OpenAPI example reference is malformed or external.";
+
+  for (const schema of schemaRoots) {
+    const error = checkSchemaShape(schema);
+    if (error) return error;
+  }
+  if (
+    exampleChecks.some(
+      ([schema, value]) => !matchesSchema(value, schema, specification),
+    )
+  )
+    return "OpenAPI example does not satisfy its schema.";
+  return null;
+}
+
+function resolveExample(example, specification, depth = 0) {
+  if (depth > 32) return { ok: false };
+  if (!isRecord(example)) return { ok: false };
+  if (Object.hasOwn(example, "$ref")) {
+    if (typeof example.$ref !== "string" || !example.$ref.startsWith("#/"))
+      return { ok: false };
+    return resolveExample(
+      resolvePointer(specification, example.$ref),
+      specification,
+      depth + 1,
+    );
+  }
+  if (Object.hasOwn(example, "externalValue")) return { ok: false };
+  return {
+    ok: true,
+    hasValue: Object.hasOwn(example, "value"),
+    value: example.value,
+  };
+}
+
+function checkSchemaShape(schema, depth = 0) {
+  if (typeof schema === "boolean") return null;
+  if (!isRecord(schema) || depth > 64)
+    return "OpenAPI schema is malformed or too deeply nested.";
+  for (const keyword of Object.keys(schema)) {
+    if (
+      !SCHEMA_ASSERTIONS.has(keyword) &&
+      !SCHEMA_ANNOTATIONS.has(keyword) &&
+      !keyword.startsWith("x-")
+    )
+      return "OpenAPI contains an unsupported JSON Schema keyword.";
+  }
+  if (Object.hasOwn(schema, "type") && !validSchemaTypes(schema.type))
+    return "OpenAPI schema type is malformed.";
+  if (
+    Object.hasOwn(schema, "required") &&
+    (!Array.isArray(schema.required) ||
+      schema.required.some((value) => typeof value !== "string"))
+  )
+    return "OpenAPI schema required list is malformed.";
+  if (Object.hasOwn(schema, "properties") && !isRecord(schema.properties))
+    return "OpenAPI schema properties are malformed.";
+  if (
+    Object.hasOwn(schema, "enum") &&
+    (!Array.isArray(schema.enum) || schema.enum.length === 0)
+  )
+    return "OpenAPI schema enum is malformed.";
+  if (
+    Object.hasOwn(schema, "pattern") &&
+    (typeof schema.pattern !== "string" || schema.pattern.length > 256)
+  )
+    return "OpenAPI schema pattern is malformed.";
+  for (const keyword of ["minimum", "maximum", "minLength", "maxLength"]) {
+    if (
+      Object.hasOwn(schema, keyword) &&
+      (typeof schema[keyword] !== "number" ||
+        !Number.isFinite(schema[keyword]) ||
+        (keyword.endsWith("Length") &&
+          (!Number.isInteger(schema[keyword]) || schema[keyword] < 0)))
+    )
+      return "OpenAPI schema bound is malformed.";
+  }
+  if (Object.hasOwn(schema, "format") && typeof schema.format !== "string")
+    return "OpenAPI schema format is malformed.";
+  for (const keyword of ["allOf", "anyOf", "oneOf"]) {
+    if (
+      Object.hasOwn(schema, keyword) &&
+      (!Array.isArray(schema[keyword]) ||
+        schema[keyword].length === 0 ||
+        schema[keyword].some((part) => checkSchemaShape(part, depth + 1)))
+    )
+      return "OpenAPI schema composition is malformed.";
+  }
+  if (Object.hasOwn(schema, "not")) {
+    const error = checkSchemaShape(schema.not, depth + 1);
+    if (error) return error;
+  }
+  if (Object.hasOwn(schema, "items")) {
+    const error = checkSchemaShape(schema.items, depth + 1);
+    if (error) return error;
+  }
+  if (
+    Object.hasOwn(schema, "additionalProperties") &&
+    typeof schema.additionalProperties !== "boolean"
+  ) {
+    const error = checkSchemaShape(schema.additionalProperties, depth + 1);
+    if (error) return error;
+  }
+  for (const child of Object.values(schema.properties ?? {})) {
+    const error = checkSchemaShape(child, depth + 1);
+    if (error) return error;
+  }
+  return null;
+}
+
+function matchesSchema(value, schema, root, depth = 0) {
+  if (depth > 128) return false;
+  if (typeof schema === "boolean") return schema;
+  if (!isRecord(schema)) return false;
+  if (Object.hasOwn(schema, "$ref")) {
+    const target = resolvePointer(root, schema.$ref);
+    if (target === undefined || !matchesSchema(value, target, root, depth + 1))
+      return false;
+  }
+  if (Object.hasOwn(schema, "type") && !valueMatchesType(value, schema.type))
+    return false;
+  if (Object.hasOwn(schema, "const") && !isDeepStrictEqual(value, schema.const))
+    return false;
+  if (
+    Array.isArray(schema.enum) &&
+    !schema.enum.some((candidate) => isDeepStrictEqual(value, candidate))
+  )
+    return false;
+  if (
+    Array.isArray(schema.required) &&
+    (!isRecord(value) ||
+      schema.required.some((key) => !Object.hasOwn(value, key)))
+  )
+    return false;
+  if (isRecord(schema.properties)) {
+    if (!isRecord(value)) return false;
+    for (const [key, childSchema] of Object.entries(schema.properties)) {
+      if (
+        Object.hasOwn(value, key) &&
+        !matchesSchema(value[key], childSchema, root, depth + 1)
+      )
+        return false;
+    }
+  }
+  if (isRecord(value) && Object.hasOwn(schema, "additionalProperties")) {
+    const known = isRecord(schema.properties) ? schema.properties : {};
+    const unknown = Object.keys(value).filter(
+      (key) => !Object.hasOwn(known, key),
+    );
+    if (schema.additionalProperties === false && unknown.length > 0)
+      return false;
+    if (
+      isRecord(schema.additionalProperties) ||
+      typeof schema.additionalProperties === "boolean"
+    ) {
+      if (
+        unknown.some(
+          (key) =>
+            !matchesSchema(
+              value[key],
+              schema.additionalProperties,
+              root,
+              depth + 1,
+            ),
+        )
+      )
+        return false;
+    }
+  }
+  if (Array.isArray(value) && Object.hasOwn(schema, "items")) {
+    if (
+      value.some((item) => !matchesSchema(item, schema.items, root, depth + 1))
+    )
+      return false;
+  }
+  if (typeof value === "string") {
+    if (
+      (Number.isInteger(schema.minLength) &&
+        [...value].length < schema.minLength) ||
+      (Number.isInteger(schema.maxLength) &&
+        [...value].length > schema.maxLength)
+    )
+      return false;
+    if (typeof schema.pattern === "string") {
+      try {
+        if (!new RegExp(schema.pattern).test(value)) return false;
+      } catch {
+        return false;
+      }
+    }
+    if (!matchesFormat(value, schema.format)) return false;
+  }
+  if (
+    typeof value === "number" &&
+    ((Number.isFinite(schema.minimum) && value < schema.minimum) ||
+      (Number.isFinite(schema.maximum) && value > schema.maximum))
+  )
+    return false;
+  if (
+    Array.isArray(schema.anyOf) &&
+    !schema.anyOf.some((part) => matchesSchema(value, part, root, depth + 1))
+  )
+    return false;
+  if (
+    Array.isArray(schema.oneOf) &&
+    schema.oneOf.filter((part) => matchesSchema(value, part, root, depth + 1))
+      .length !== 1
+  )
+    return false;
+  if (
+    Array.isArray(schema.allOf) &&
+    schema.allOf.some((part) => !matchesSchema(value, part, root, depth + 1))
+  )
+    return false;
+  if (
+    Object.hasOwn(schema, "not") &&
+    matchesSchema(value, schema.not, root, depth + 1)
+  )
+    return false;
+  return true;
+}
+
+function validSchemaTypes(type) {
+  return Array.isArray(type)
+    ? type.length > 0 && type.every((entry) => JSON_SCHEMA_TYPES.has(entry))
+    : JSON_SCHEMA_TYPES.has(type);
+}
+
+function valueMatchesType(value, type) {
+  const types = Array.isArray(type) ? type : [type];
+  return types.some((entry) => {
+    switch (entry) {
+      case "array":
+        return Array.isArray(value);
+      case "boolean":
+        return typeof value === "boolean";
+      case "integer":
+        return Number.isInteger(value);
+      case "null":
+        return value === null;
+      case "number":
+        return typeof value === "number" && Number.isFinite(value);
+      case "object":
+        return isRecord(value);
+      case "string":
+        return typeof value === "string";
+      default:
+        return false;
+    }
+  });
+}
+
+function matchesFormat(value, format) {
+  if (typeof format !== "string") return true;
+  switch (format) {
+    case "email":
+      return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(value);
+    case "uri":
+      try {
+        return new URL(value).protocol.length > 0;
+      } catch {
+        return false;
+      }
+    case "uuid":
+      return /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(
+        value,
+      );
+    default:
+      return true;
+  }
 }
 
 function checkOAuthFormParameterPolicy(specification) {

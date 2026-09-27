@@ -1,0 +1,58 @@
+{
+  "schema": 1,
+  "date": "2026-09-26",
+  "issue": 43,
+  "scope": "Production API-reference route bundle budget and local HTTPS browser-load observations. Single-run development measurements; not service-capacity or production-SLO evidence.",
+  "environment": {
+    "host": "macOS on Apple Silicon",
+    "browser": "Chromium via Playwright",
+    "application": "Rust debug server behind the local HTTPS test proxy; SvelteKit production build",
+    "database": "Disposable Percona Distribution for PostgreSQL container",
+    "viewport": "1280x900",
+    "cacheSequence": "One fresh browser context for the cold navigation, followed by a reload in the same context for the warm navigation. No page request interception was enabled during the measurement because Playwright routing disables the browser HTTP cache."
+  },
+  "routeBundle": {
+    "entryAndEagerDependencies": 11,
+    "rawBytes": 219341,
+    "gzipBytes": 74041,
+    "gzipBudgetBytes": 81920,
+    "includes": "The API-reference route entry, its eagerly imported JavaScript dependencies and route CSS, counted once from the SvelteKit build manifest.",
+    "excludes": "Shared application chunks, separately fetched OpenAPI JSON, and content already held in the browser cache."
+  },
+  "browserLoads": {
+    "cold": {
+      "apiReferenceReadyMs": 49,
+      "domContentLoadedMs": 19,
+      "loadEventMs": 19,
+      "sameOriginTransferBytes": 351619,
+      "resourceCount": 21,
+      "openApiBytes": 38938
+    },
+    "warm": {
+      "apiReferenceReadyMs": 23,
+      "domContentLoadedMs": 6,
+      "loadEventMs": 6,
+      "sameOriginTransferBytes": 68533,
+      "resourceCount": 21,
+      "openApiBytes": 38938
+    },
+    "transferBytesReductionPercent": 80.5
+  },
+  "cachePolicy": {
+    "successfulHashedApplicationAssets": "public, max-age=31536000, immutable",
+    "htmlOpenApiAndOtherResponses": "no-store",
+    "failedHashedAssetLookups": "no-store"
+  },
+  "verification": {
+    "assetBudget": "make build-web passed; the deterministic build-manifest check enforces the 80 KiB gzip ceiling.",
+    "browserSuite": "make test-browser-focused passed, including cold/warm transfer comparison, response cache headers, no reference assets on the ordinary login page, API-reference navigation, accessibility names and landmarks, documented interactions, signed-out behavior, Spanish presentation, cookie omission, and mobile/zoom bounds.",
+    "schemaExamples": "make api-spec-check passed with source-defined schema validation and bundled-copy parity checks.",
+    "unitChecks": "make check passed, including the schema validator and asset-budget unit tests."
+  },
+  "limitations": [
+    "Cold and warm figures are single-run observations on one local development host. They are not stable timing benchmarks or capacity promises.",
+    "The route budget is a reproducible artifact-size gate; browser timings may vary with hardware, browser version, load, and TLS state.",
+    "The contract checker validates the schema assertion vocabulary currently used by this API contract; it is not a complete OpenAPI or JSON Schema implementation, and it does not prove exact parity with every Rust handler.",
+    "Manual screen-reader review and full mechanical Rust-handler/schema parity remain open work for issue #43."
+  ]
+}

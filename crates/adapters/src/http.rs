@@ -1,6 +1,9 @@
 use axum::{
     Json, Router,
+    extract::Request,
     http::{HeaderValue, StatusCode, header},
+    middleware::{self, Next},
+    response::Response,
     routing::get,
 };
 use serde::Serialize;
@@ -121,14 +124,27 @@ pub fn with_authentication(static_dir: PathBuf, authentication: Router) -> Route
             header::X_CONTENT_TYPE_OPTIONS,
             HeaderValue::from_static("nosniff"),
         ))
-        .layer(SetResponseHeaderLayer::overriding(
-            header::CACHE_CONTROL,
-            HeaderValue::from_static("no-store"),
-        ))
+        .layer(middleware::from_fn(cache_static_response))
         .layer(SetResponseHeaderLayer::overriding(
             header::REFERRER_POLICY,
             HeaderValue::from_static("no-referrer"),
         ))
+}
+
+async fn cache_static_response(request: Request, next: Next) -> Response {
+    let path = request.uri().path().to_owned();
+    let mut response = next.run(request).await;
+    let value = cache_control_for_response(&path, response.status());
+    response.headers_mut().insert(header::CACHE_CONTROL, value);
+    response
+}
+
+fn cache_control_for_response(path: &str, status: StatusCode) -> HeaderValue {
+    if path.starts_with("/_app/immutable/") && status.is_success() {
+        HeaderValue::from_static("public, max-age=31536000, immutable")
+    } else {
+        HeaderValue::from_static("no-store")
+    }
 }
 
 async fn liveness() -> Json<Liveness> {

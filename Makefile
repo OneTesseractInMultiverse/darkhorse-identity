@@ -19,9 +19,9 @@ WEB := $(PNPM) --filter @darkhorse/console
 .PHONY: redis-setup redis-up redis-down redis-status test-redis docker-redis-smoke
 .PHONY: redis-acl-update limiter-fence limiter-activate limiter-status
 .PHONY: test-limiting test-mutation-limiting test-mutation-recovery coverage-core coverage-integration
-.PHONY: login-setup dev-login browser-install test-browser
+.PHONY: login-setup dev-login browser-install test-browser test-browser-focused
 .PHONY: test-registration test-refresh test-sessions test-catalog test-personal-keys
-.PHONY: api-inventory-generate api-inventory-check api-classification-generate api-classification-check api-spec-check api-reference-bundle
+.PHONY: api-inventory-generate api-inventory-check api-classification-generate api-classification-check api-spec-check api-reference-bundle api-docs-budget-check
 
 test-personal-keys: ## Test: isolated personal-key policy, transport, and console behavior
 	cargo test --workspace --lib --locked --offline personal_keys
@@ -47,6 +47,9 @@ browser-install: ## Test: install the pinned Chromium browser for integration te
 
 test-browser: build-web ## Test: disposable PostgreSQL/Redis and verified HTTPS login, SSO and token checks
 	DARKHORSE_TEST_BROWSER=true $(NODE) scripts/redis-test.mjs
+
+test-browser-focused: build-web ## Test: browser flows only; skip separate Redis integration suites
+	DARKHORSE_TEST_BROWSER=true DARKHORSE_TEST_SKIP_REDIS_INTEGRATION=true $(NODE) scripts/redis-test.mjs
 
 help: ## Help: list implemented targets; no setup required
 	@awk 'BEGIN { FS = ":.*## " } /^[a-zA-Z_-]+:.*## / { printf "  %-23s %s\n", $$1, $$2 }' $(MAKEFILE_LIST)
@@ -146,6 +149,9 @@ api-spec-check: ## API reference: validate version, route parity, and local Open
 	$(NODE) scripts/api-spec-check.mjs
 	$(NODE) scripts/api-reference-bundle.mjs check
 
+api-docs-budget-check: ## Performance: enforce the built API documentation route asset budget
+	$(NODE) scripts/api-docs-budget-check.mjs
+
 api-reference-bundle: ## API reference: validate and bundle public specifications with the static console
 	$(NODE) scripts/api-reference-bundle.mjs generate
 
@@ -214,6 +220,7 @@ build-api: ## Build: release Rust server (no network after dependency installati
 
 build-web: i18n-check api-reference-bundle ## Build: static SvelteKit console, with no runtime Node server
 	$(WEB) build
+	$(NODE) scripts/api-docs-budget-check.mjs
 
 db-setup: ## Database: generate owner-only local credentials; preserve existing files
 	$(NODE) scripts/database.mjs setup

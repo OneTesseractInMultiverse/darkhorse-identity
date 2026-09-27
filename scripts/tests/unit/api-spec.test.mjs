@@ -139,6 +139,134 @@ test("requires OAuth form schemas to allow extensions and reject body client cre
   assert.equal(validateApiReference(valid).ok, true);
 });
 
+test("validates source-defined request examples against their local schema", () => {
+  const input = fixture();
+  input.specification.paths["/authorize"].get.requestBody = {
+    content: {
+      "application/json": {
+        schema: {
+          type: "object",
+          required: ["name"],
+          additionalProperties: false,
+          properties: {
+            name: { type: "string", minLength: 2 },
+            schema: { type: "string" },
+          },
+        },
+        examples: {
+          valid: { value: { name: "Ada", schema: "sample payload field" } },
+        },
+      },
+    },
+  };
+  assert.equal(validateApiReference(input).ok, true);
+
+  input.specification.paths["/authorize"].get.requestBody.content[
+    "application/json"
+  ].examples.valid.value.name = "A";
+  assert.equal(
+    validateApiReference(input).error,
+    "OpenAPI example does not satisfy its schema.",
+  );
+});
+
+test("rejects an example that places Basic credentials in an OAuth request body", () => {
+  const input = fixture();
+  input.specification.paths["/authorize"].get.requestBody = {
+    content: {
+      "application/x-www-form-urlencoded": {
+        schema: { $ref: "#/components/schemas/AuthorizationCodeGrant" },
+        examples: {
+          code: {
+            value: {
+              grant_type: "authorization_code",
+              code: "synthetic-code",
+            },
+          },
+        },
+      },
+    },
+  };
+  assert.equal(validateApiReference(input).ok, true);
+  input.specification.paths["/authorize"].get.requestBody.content[
+    "application/x-www-form-urlencoded"
+  ].examples.code.value.client_secret = "synthetic-secret";
+  assert.equal(
+    validateApiReference(input).error,
+    "OpenAPI example does not satisfy its schema.",
+  );
+});
+
+test("checks schema references, oneOf, rejected fields and singular parameter examples", () => {
+  const input = fixture();
+  input.specification.components.schemas.Name = {
+    type: "string",
+    pattern: "^[A-Z][a-z]+$",
+  };
+  input.specification.paths["/authorize"].get.parameters = [
+    {
+      name: "name",
+      in: "query",
+      schema: { $ref: "#/components/schemas/Name" },
+      example: "Ada",
+    },
+  ];
+  assert.equal(validateApiReference(input).ok, true);
+
+  input.specification.paths["/authorize"].get.parameters[0].example = "ada";
+  assert.equal(
+    validateApiReference(input).error,
+    "OpenAPI example does not satisfy its schema.",
+  );
+
+  const grant = fixture();
+  grant.specification.components.schemas.AuthorizationCodeGrant.properties = {
+    grant_type: { const: "authorization_code", type: "string" },
+    code: { type: "string" },
+  };
+  grant.specification.components.schemas.RefreshTokenGrant.properties = {
+    grant_type: { const: "refresh_token", type: "string" },
+  };
+  grant.specification.paths["/authorize"].get.requestBody = {
+    content: {
+      "application/x-www-form-urlencoded": {
+        schema: {
+          oneOf: [
+            { $ref: "#/components/schemas/AuthorizationCodeGrant" },
+            { $ref: "#/components/schemas/RefreshTokenGrant" },
+          ],
+        },
+        examples: {
+          authorizationCode: {
+            value: {
+              grant_type: "authorization_code",
+              code: "one-use-code",
+            },
+          },
+        },
+      },
+    },
+  };
+  assert.equal(validateApiReference(grant).ok, true);
+  grant.specification.paths["/authorize"].get.requestBody.content[
+    "application/x-www-form-urlencoded"
+  ].examples.authorizationCode.value.refresh_token = "wrong-grant-field";
+  assert.equal(
+    validateApiReference(grant).error,
+    "OpenAPI example does not satisfy its schema.",
+  );
+
+  const invalidSchema = fixture();
+  invalidSchema.specification.components.schemas.Unsupported = {
+    type: "object",
+    unevaluatedProperties: false,
+  };
+  assert.match(
+    validateApiReference(invalidSchema).error,
+    /unsupported.*schema/i,
+  );
+});
+
 test("bounded API inputs reject symlinks, oversized sources, invalid UTF-8 and oversized reads", async () => {
   const read = (metadata, bytes) =>
     readBoundedApiInput("fixture", {

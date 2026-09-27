@@ -164,17 +164,32 @@ make build-web
 `api-reference-bundle` copies the reviewed specification and classification
 source byte-for-byte into the static frontend. `api-spec-check` rejects release
 version drift, missing/extra/renamed integration operations, duplicate operation
-IDs, unresolved or remote `$ref` values, invalid inputs, and stale static copies.
+IDs, unresolved or remote `$ref` values, malformed or unsupported schema
+assertions, examples that violate their associated schema, invalid inputs, and
+stale static copies. The source-defined checker covers the JSON Schema assertion
+vocabulary currently used by this contract, including types, required fields,
+properties, bounds, patterns, references and schema composition. It fails when a
+new unsupported assertion is introduced instead of silently skipping it. This
+is a bounded project contract check, not a complete OpenAPI/JSON Schema validator
+or proof that every Rust handler accepts precisely that complete value set.
 The checks use only checked-in files and local tools; they do not start a service
 or fetch schemas. The specification format follows the
 [OpenAPI 3.2.1 specification](https://spec.openapis.org/oas/v3.2.1.html).
 
 `make check` includes the deterministic route and contract drift checks. The
 API reference page is a route-specific lazy-loaded frontend feature; unrelated
-console pages do not fetch its JSON documents. The disposable HTTPS browser suite
-checks the documented flow, search, direct links and reloads, keyboard
-disclosure, clipboard and download actions, safe text rendering, Spanish
-presentation, signed-out behavior, cookie omission on static-reference fetches,
-and mobile/zoom-sized viewports. Manual screen-reader review, repeatable
-bundle/load performance budgets, and mechanical runtime-schema parity remain
-tracked work for issue #43.
+pages do not fetch its JSON documents or route module. `make build-web` measures
+the production route module, its eager JavaScript imports and CSS, and fails
+above an 80 KiB aggregate gzip budget. Successful content-hashed assets under
+`/_app/immutable/` receive a one-year public immutable cache policy. HTML,
+contract JSON and all other responses remain `no-store`; failed asset lookups
+are never cached. The disposable HTTPS browser suite measures cold and warm
+API-docs visits, requires lower repeat-visit transfer, checks the cache headers,
+accessible landmarks and names of interactive controls, and exercises the
+documented flow, search, direct links and reloads, keyboard disclosure, clipboard
+and download actions, safe text rendering, Spanish presentation, signed-out
+behavior, cookie omission on static-reference fetches, and mobile/zoom-sized
+viewports. Browser timings are environment-specific samples, while the
+deterministic asset budget and repeat-visit cache check are the performance
+gates. Manual screen-reader review and mechanical Rust-handler/schema parity
+remain tracked work for issue #43.
