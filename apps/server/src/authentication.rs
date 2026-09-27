@@ -79,7 +79,7 @@ pub async fn runtime(
         passwords: passwords.clone(),
         entropy: OsSessionEntropy,
     };
-    let maintenance = provider.as_ref().map(|_| store.clone());
+    let maintenance = Some(store.clone());
     let provider = if let Some(wrap) = provider {
         store
             .bind_provider(

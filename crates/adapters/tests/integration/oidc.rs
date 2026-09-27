@@ -2,6 +2,7 @@ use super::*;
 use darkhorse_application::{
     authentication::AuthenticationStore,
     oidc::{AuthorizationStore, Decision, Outcome},
+    oidc_maintenance::AuthorizationMaintenance,
 };
 use darkhorse_domain::{
     identity::ClientId,
@@ -34,6 +35,212 @@ async fn transaction_row_size(db: &Database, handle: [u8; 32]) -> i32 {
     .fetch_one(&db.pool)
     .await
     .unwrap()
+}
+
+#[tokio::test]
+async fn expired_authorization_request_cleanup_is_bounded_and_preserves_live_rows() {
+    let db = fixture().await;
+    db.store.begin(request(), [127; 32], None).await.unwrap();
+    sqlx::query(
+        "INSERT INTO authorization_requests(digest,client_id,client_revision,application_revision,redirect_uri,challenge,scopes,prompt,created_ms,expires_ms) SELECT decode(lpad(to_hex(n),64,'0'),'hex'),$1,0,0,$2,$3,ARRAY['openid'],'default',0,300000 FROM generate_series(1,105) n",
+    )
+    .bind(Uuid::from_u128(32))
+    .bind("https://client.example/callback?fixed=1")
+    .bind([7u8; 32].as_slice())
+    .execute(&db.pool)
+    .await
+    .unwrap();
+    sqlx::query(
+        "WITH boundary AS (SELECT floor(extract(epoch FROM clock_timestamp())*1000)::bigint AS ms) INSERT INTO authorization_requests(digest,client_id,client_revision,application_revision,redirect_uri,challenge,scopes,prompt,created_ms,expires_ms) SELECT decode(lpad(to_hex(200),64,'0'),'hex'),$1,0,0,$2,$3,ARRAY['openid'],'default',ms-300000,ms FROM boundary",
+    )
+    .bind(Uuid::from_u128(32))
+    .bind("https://client.example/callback?fixed=1")
+    .bind([7u8; 32].as_slice())
+    .execute(&db.pool)
+    .await
+    .unwrap();
+    sqlx::query(
+        "INSERT INTO protected_resources(id,application_id,name,audience) VALUES($1,$2,'Resource',$3)",
+    )
+    .bind(Uuid::from_u128(48))
+    .bind(Uuid::from_u128(16))
+    .bind("urn:darkhorse:resource:00000000-0000-0000-0000-000000000030")
+    .execute(&db.pool)
+    .await
+    .unwrap();
+    sqlx::query(
+        "INSERT INTO authorization_resource_grants(request_digest,resource_id,principal_epoch,capability_ceiling) VALUES(decode(lpad(to_hex(1),64,'0'),'hex'),$1,0,ARRAY['00000000-0000-0000-0000-000000000001'::uuid])",
+    )
+    .bind(Uuid::from_u128(48))
+    .execute(&db.pool)
+    .await
+    .unwrap();
+
+    assert_eq!(
+        db.store
+            .prune_expired_authorization_requests()
+            .await
+            .unwrap(),
+        100
+    );
+    assert_eq!(
+        sqlx::query_scalar::<_, i64>(
+            "SELECT count(*) FROM authorization_requests WHERE expires_ms<=floor(extract(epoch FROM clock_timestamp())*1000)::bigint",
+        )
+        .fetch_one(&db.pool)
+        .await
+        .unwrap(),
+        6
+    );
+    assert_eq!(
+        db.store
+            .prune_expired_authorization_requests()
+            .await
+            .unwrap(),
+        6
+    );
+    assert_eq!(
+        db.store
+            .prune_expired_authorization_requests()
+            .await
+            .unwrap(),
+        0
+    );
+    assert_eq!(
+        sqlx::query_scalar::<_, i64>("SELECT count(*) FROM authorization_resource_grants")
+            .fetch_one(&db.pool)
+            .await
+            .unwrap(),
+        0
+    );
+    assert_eq!(
+        sqlx::query_scalar::<_, i64>(
+            "SELECT count(*) FROM authorization_requests WHERE digest=$1",
+        )
+        .bind([127u8; 32].as_slice())
+        .fetch_one(&db.pool)
+        .await
+        .unwrap(),
+        1
+    );
+    db.store.close().await;
+}
+
+#[tokio::test]
+async fn expired_authorization_request_cleanup_skips_locked_rows() {
+    let db = fixture().await;
+    sqlx::query(
+        "INSERT INTO authorization_requests(digest,client_id,client_revision,application_revision,redirect_uri,challenge,scopes,prompt,created_ms,expires_ms) SELECT decode(lpad(to_hex(n),64,'0'),'hex'),$1,0,0,$2,$3,ARRAY['openid'],'default',0,300000 FROM generate_series(1,2) n",
+    )
+    .bind(Uuid::from_u128(32))
+    .bind("https://client.example/callback?fixed=1")
+    .bind([7u8; 32].as_slice())
+    .execute(&db.pool)
+    .await
+    .unwrap();
+    let mut held = db.pool.begin().await.unwrap();
+    sqlx::query("SELECT digest FROM authorization_requests ORDER BY digest LIMIT 1 FOR UPDATE")
+        .fetch_one(&mut *held)
+        .await
+        .unwrap();
+
+    assert_eq!(
+        db.store
+            .prune_expired_authorization_requests()
+            .await
+            .unwrap(),
+        1
+    );
+    assert_eq!(
+        sqlx::query_scalar::<_, i64>("SELECT count(*) FROM authorization_requests")
+            .fetch_one(&db.pool)
+            .await
+            .unwrap(),
+        1
+    );
+    held.rollback().await.unwrap();
+    assert_eq!(
+        db.store
+            .prune_expired_authorization_requests()
+            .await
+            .unwrap(),
+        1
+    );
+    db.store.close().await;
+}
+
+#[tokio::test]
+async fn concurrent_authorization_request_sweepers_claim_disjoint_batches() {
+    let db = fixture().await;
+    sqlx::query(
+        "INSERT INTO authorization_requests(digest,client_id,client_revision,application_revision,redirect_uri,challenge,scopes,prompt,created_ms,expires_ms) SELECT decode(lpad(to_hex(n),64,'0'),'hex'),$1,0,0,$2,$3,ARRAY['openid'],'default',0,300000 FROM generate_series(300,499) n",
+    )
+    .bind(Uuid::from_u128(32))
+    .bind("https://client.example/callback?fixed=1")
+    .bind([7u8; 32].as_slice())
+    .execute(&db.pool)
+    .await
+    .unwrap();
+
+    let (left, right) = tokio::join!(
+        db.store.prune_expired_authorization_requests(),
+        db.store.prune_expired_authorization_requests(),
+    );
+    assert_eq!(left.unwrap() + right.unwrap(), 200);
+    assert_eq!(
+        sqlx::query_scalar::<_, i64>("SELECT count(*) FROM authorization_requests")
+            .fetch_one(&db.pool)
+            .await
+            .unwrap(),
+        0
+    );
+    db.store.close().await;
+}
+
+#[tokio::test]
+async fn expired_authorization_request_cleanup_has_a_lock_deadline_and_rolls_back_failures() {
+    let db = fixture().await;
+    let mut writer = db.pool.begin().await.unwrap();
+    sqlx::query("SELECT singleton FROM security_state WHERE singleton FOR UPDATE")
+        .fetch_one(&mut *writer)
+        .await
+        .unwrap();
+    assert!(
+        tokio::time::timeout(
+            std::time::Duration::from_secs(2),
+            db.store.prune_expired_authorization_requests(),
+        )
+        .await
+        .unwrap()
+        .is_err()
+    );
+    writer.rollback().await.unwrap();
+
+    sqlx::query(
+        "INSERT INTO authorization_requests(digest,client_id,client_revision,application_revision,redirect_uri,challenge,scopes,prompt,created_ms,expires_ms) VALUES(decode(lpad(to_hex(1),64,'0'),'hex'),$1,0,0,$2,$3,ARRAY['openid'],'default',0,300000)",
+    )
+    .bind(Uuid::from_u128(32))
+    .bind("https://client.example/callback?fixed=1")
+    .bind([7u8; 32].as_slice())
+    .execute(&db.pool)
+    .await
+    .unwrap();
+    sqlx::raw_sql("CREATE FUNCTION reject_expired_request_delete() RETURNS trigger LANGUAGE plpgsql AS $$ BEGIN RAISE EXCEPTION 'injected cleanup failure'; END; $$; CREATE TRIGGER reject_expired_request_delete BEFORE DELETE ON authorization_requests FOR EACH ROW EXECUTE FUNCTION reject_expired_request_delete();")
+        .execute(&db.pool)
+        .await
+        .unwrap();
+    assert_eq!(
+        db.store.prune_expired_authorization_requests().await,
+        Err(Error::Unavailable)
+    );
+    assert_eq!(
+        sqlx::query_scalar::<_, i64>("SELECT count(*) FROM authorization_requests")
+            .fetch_one(&db.pool)
+            .await
+            .unwrap(),
+        1
+    );
+    db.store.close().await;
 }
 pub(super) fn request() -> Request {
     Request {

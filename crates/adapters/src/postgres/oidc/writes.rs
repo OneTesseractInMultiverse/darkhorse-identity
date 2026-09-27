@@ -5,7 +5,12 @@ pub(super) async fn capacity(tx: &mut Tx<'_>, client: ClientId) -> Result<(), Er
         .await
         .map_err(storage)?;
     let now = authority::now(tx).await?;
-    sqlx::query("DELETE FROM authorization_requests WHERE digest IN (SELECT digest FROM authorization_requests WHERE expires_ms<=$1 ORDER BY expires_ms LIMIT 100)").bind(integer(now)?).execute(&mut **tx).await.map_err(storage)?;
+    sqlx::query("WITH expired AS (SELECT digest FROM authorization_requests WHERE expires_ms<=$1 ORDER BY expires_ms,digest LIMIT $2 FOR UPDATE SKIP LOCKED) DELETE FROM authorization_requests r USING expired e WHERE r.digest=e.digest")
+        .bind(integer(now)?)
+        .bind(i64::from(darkhorse_application::oidc_maintenance::AUTHORIZATION_REQUEST_CLEANUP_BATCH))
+        .execute(&mut **tx)
+        .await
+        .map_err(storage)?;
     let counts: (i64, i64) = sqlx::query_as(
         "SELECT count(*),count(*) FILTER(WHERE client_id=$1) FROM authorization_requests",
     )

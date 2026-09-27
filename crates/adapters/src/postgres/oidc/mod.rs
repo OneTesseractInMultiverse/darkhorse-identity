@@ -7,6 +7,7 @@ use darkhorse_domain::{
 use sqlx::{Postgres, Row, Transaction, postgres::PgRow};
 use uuid::Uuid;
 pub(super) mod authority;
+mod maintenance;
 pub(super) mod records;
 mod writes;
 type Tx<'a> = Transaction<'a, Postgres>;

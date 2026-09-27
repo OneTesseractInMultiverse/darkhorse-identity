@@ -1,5 +1,5 @@
 use darkhorse_adapters::postgres::PostgresStore;
-use darkhorse_application::refresh;
+use darkhorse_application::{oidc_maintenance, refresh};
 use std::time::Duration;
 
 /// One bounded sweep per minute. Dropping this future cancels pending work;
@@ -15,6 +15,12 @@ pub async fn run(store: Option<PostgresStore>) {
         interval.tick().await;
         if refresh::sweep(&store).await.is_err() {
             eprintln!("Refresh credential cleanup unavailable; retrying next interval.");
+        }
+        if oidc_maintenance::sweep_expired_authorization_requests(&store)
+            .await
+            .is_err()
+        {
+            eprintln!("Authorization request cleanup unavailable; retrying next interval.");
         }
     }
 }
