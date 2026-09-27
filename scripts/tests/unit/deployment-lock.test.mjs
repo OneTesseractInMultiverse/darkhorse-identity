@@ -126,7 +126,10 @@ test("Compose operation locks serialize managed writers and fail closed after in
       })}\n`,
       { mode: 0o600 },
     );
-    await assert.rejects(replaced.release(), /lock (?:ownership )?changed while held/);
+    await assert.rejects(
+      replaced.release(),
+      /lock (?:ownership )?changed while held/,
+    );
     assert.equal((await inspectStackOperation("trial")).operation, "down");
     await unlink(lockPath);
 
