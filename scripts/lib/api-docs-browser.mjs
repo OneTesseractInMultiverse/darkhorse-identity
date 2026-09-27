@@ -283,6 +283,9 @@ export async function verifyApiDocumentation(browser, origin, ca) {
     await expect(page.locator(".api-operation-row")).toHaveCount(7);
     await expect(page.getByRole("main")).toHaveCount(1);
     await expect(page.locator("h1")).toHaveCount(1);
+    const resultStatus = page.locator(".api-result-count");
+    assert.equal(await resultStatus.getAttribute("role"), "status");
+    assert.equal(await resultStatus.getAttribute("aria-live"), "polite");
     const unnamedControls = await page
       .locator("a[href], button, input")
       .evaluateAll((elements) =>
@@ -357,6 +360,13 @@ export async function verifyApiDocumentation(browser, origin, ca) {
     await expect(page.locator(".api-operation-row")).toContainText(
       "/introspect",
     );
+    await expect(resultStatus).toContainText("1");
+    await search.fill("route-does-not-exist");
+    await expect(page.locator(".api-operation-row")).toHaveCount(0);
+    await expect(resultStatus).toContainText("0");
+    await expect(
+      page.getByText("Ninguna operación coincide con esta búsqueda."),
+    ).toHaveAttribute("role", "status");
     await search.fill("");
 
     const disclosure = page.locator(".api-operation summary").first();

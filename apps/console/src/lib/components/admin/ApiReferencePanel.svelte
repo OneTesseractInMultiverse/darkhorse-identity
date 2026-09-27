@@ -257,7 +257,9 @@
 					<h2 id="api-operations-title">{$language.t('apiDocs.operationGroups')}</h2>
 					<p>{$language.t('apiDocs.protocolOnly')}</p>
 				</div>
-				<p class="api-result-count">{$language.t('apiDocs.results', { count: visible.length })}</p>
+				<p class="api-result-count" role="status" aria-live="polite">
+					{$language.t('apiDocs.results', { count: visible.length })}
+				</p>
 			</div>
 			<label class="api-search">
 				<span>{$language.t('apiDocs.search')}</span>

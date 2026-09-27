@@ -95,6 +95,10 @@ describe('API documentation page', () => {
 			redirect: 'error'
 		});
 		expect(fetcher).toHaveBeenCalledTimes(2);
+		const results = screen.getByRole('status');
+		expect(results).toHaveClass('api-result-count');
+		expect(results).toHaveAttribute('aria-live', 'polite');
+		expect(results).toHaveTextContent('2 operations');
 		expect(screen.getByRole('link', { name: 'Download OpenAPI specification' })).toHaveAttribute(
 			'href',
 			'/reference/openapi-v1.json'
@@ -111,6 +115,15 @@ describe('API documentation page', () => {
 		});
 		expect(screen.getByText('/introspect')).toBeInTheDocument();
 		expect(screen.queryByText('/userinfo')).not.toBeInTheDocument();
+		expect(results).toHaveTextContent('1 operations');
+		await fireEvent.input(screen.getByRole('searchbox', { name: /Search supported operations/ }), {
+			target: { value: 'not-a-route' }
+		});
+		expect(results).toHaveTextContent('0 operations');
+		expect(screen.getByText('No operations match this search.')).toHaveAttribute('role', 'status');
+		await fireEvent.input(screen.getByRole('searchbox', { name: /Search supported operations/ }), {
+			target: { value: 'introspect' }
+		});
 		await fireEvent.click(screen.getByText('/introspect'));
 		await fireEvent.click(
 			screen.getByRole('button', { name: 'Copy opaqueAccess example for postIntrospection' })
@@ -123,7 +136,7 @@ describe('API documentation page', () => {
 				JSON.stringify({ token: 'da_<64 lowercase hexadecimal characters>' }, null, 2)
 			)
 		);
-		expect(await screen.findByRole('status')).toHaveTextContent('Example copied.');
+		expect(await screen.findByText('Example copied.')).toHaveAttribute('role', 'status');
 	});
 
 	it('supports stable deep links and reports a safe failure with a retry', async () => {
