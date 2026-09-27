@@ -104,7 +104,7 @@
 	["profile.saveLanguage", "Save language"],
 	[
 		"profile.languageHelp",
-		"Save a language for this account across browsers. Automatic uses your browser preferences and the deployment default. An explicit choice in the sign-in page takes precedence for that visit. Some management pages still use English."
+		"Save a language for this account across browsers. Automatic follows this browser's saved choice, then its preferred languages and the deployment default. A sign-in choice takes precedence during that visit."
 	],
 	["profile.error.signed-out", "Sign in to view this profile."],
 	["profile.error.denied", "You do not have access to this profile."],

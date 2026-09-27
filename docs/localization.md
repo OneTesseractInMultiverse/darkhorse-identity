@@ -127,9 +127,10 @@ budget; a wide set of individually small alternatives cannot bypass it. Trusted
 source text also rejects Arabic and left/right directional marks as well as bidi
 embeddings, overrides and isolates. Interpolation remains literal text.
 Messages are bounded to 2,048 characters, each catalog group to 512 messages and
-each source file to 256 KiB. The shared group contains 365 messages per language;
-the administration group contains 203. Both retain the same validation limits. Interpolated strings are bounded to 4,096 characters; numbers must be
-finite and within the safe numeric range.
+each source file to 256 KiB. The shared group contains 433 messages per language;
+the administration group contains 298. Both retain the same validation limits.
+Interpolated strings are bounded to 4,096 characters; numbers must be finite and
+within the safe numeric range.
 
 Messages render as ordinary Svelte text/attributes, never `{@html}`. HTML, functions,
 translator-provided links and executable templates are prohibited. Links and any
@@ -424,10 +425,10 @@ records 137,964 summed gzip JavaScript bytes, 28,811 above the English-only base
 within the unchanged 36 KiB budget. The same five cold/warm pairs use the local
 anonymous HTTP fixture; these observations do not measure real authorization or
 production capacity. Production-build Spanish desktop/mobile presentation, draft
-cancellation and focus were checked separately. The actual HTTPS directory suite
-now exercises mutations, stale revisions, credential-epoch behavior and read
-denials in Spanish; its local rerun remains pending Docker recovery. Presentation
-fixtures do not substitute for that primary-state integration check.
+cancellation and focus were checked separately. The complete `make test-browser`
+suite passed on 2026-09-27, including HTTPS directory mutations, stale revisions,
+credential-epoch behavior and read denials in Spanish. Presentation fixtures do not
+substitute for that primary-state integration check.
 
 ### Application-administration observations — 2026-09-26
 
@@ -476,11 +477,12 @@ Source-defined component tests cover exact callback/allowance values through pen
 writes, uncertain outcomes, a secret reveal across language changes, and a binding
 confirmation with the fresh policy revision. Production-build fixtures checked both
 languages, Unicode drafts, literal identifiers, UTC dates, keyboard focus and narrow
-screens without issuing mutations. The complete HTTPS catalog suite now performs
-registration, graph changes, secret rotation/retirement, lost-response reconciliation,
-stale-policy rejection and read denial in Spanish. Its local rerun remains pending
-Docker recovery; presentation fixtures do not replace it. Fluent translation review,
-accessibility review and the complete release qualification remain open.
+screens without issuing mutations. The complete `make test-browser` suite passed on
+2026-09-27 and includes HTTPS registration, graph changes, secret rotation/retirement,
+lost-response reconciliation, stale-policy rejection and read denial in Spanish.
+Presentation fixtures do not replace this primary-state integration check. Fluent
+translation review, accessibility review and the complete release qualification
+remain open.
 
 ### Catalog validation follow-up — 2026-09-26
 

@@ -65,6 +65,14 @@ export async function verifyConsoleLanguages(page, origin) {
       path: resolve(".local/settings-es-mobile.png"),
       fullPage: true,
     });
+    // A 640 CSS-pixel viewport approximates 200% zoom on a 1280px display.
+    await page.setViewportSize({ width: 640, height: 900 });
+    assert.ok(
+      await page.evaluate(
+        () => document.documentElement.scrollWidth <= innerWidth,
+      ),
+      "Spanish console settings must fit at a 200% zoom-equivalent viewport",
+    );
     await page.getByRole("link", { name: "Aplicaciones", exact: true }).click();
     await expect(page.locator(".console-sidebar")).toHaveAttribute(
       "lang",

@@ -85,6 +85,14 @@ export async function verifySessionManagement(
       path: resolve(".local/sessions-mobile.png"),
       fullPage: true,
     });
+    // A 640 CSS-pixel viewport approximates 200% zoom on a 1280px display.
+    await page.setViewportSize({ width: 640, height: 900 });
+    assert.ok(
+      await page.evaluate(
+        () => document.documentElement.scrollWidth <= window.innerWidth,
+      ),
+      "Spanish sessions must fit at a 200% zoom-equivalent viewport",
+    );
     await page.setViewportSize({ width: 1280, height: 900 });
     await page
       .getByRole("button", { name: "End session", exact: true })

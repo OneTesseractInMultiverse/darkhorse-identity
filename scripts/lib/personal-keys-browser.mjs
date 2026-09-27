@@ -124,6 +124,14 @@ export async function verifyPersonalKeys(page, origin, ca, principal, runSql) {
     path: resolve(".local/personal-keys-mobile.png"),
     fullPage: true,
   });
+  // A 640 CSS-pixel viewport approximates 200% zoom on a 1280px display.
+  await page.setViewportSize({ width: 640, height: 900 });
+  assert.ok(
+    await page.evaluate(
+      () => document.documentElement.scrollWidth <= innerWidth,
+    ),
+    "Spanish personal keys must fit at a 200% zoom-equivalent viewport",
+  );
   await page.setViewportSize({ width: 1280, height: 900 });
   assert.equal(
     await page.evaluate(

@@ -116,7 +116,7 @@
 	["profile.saveLanguage", "Guardar idioma"],
 	[
 		"profile.languageHelp",
-		"Guarda un idioma para esta cuenta en todos los navegadores. Automático usa las preferencias del navegador y el idioma predeterminado de la instalación. Una selección explícita al iniciar sesión tiene prioridad durante esa visita. Algunas páginas de administración aún están en inglés."
+		"Guarda un idioma para esta cuenta en todos los navegadores. Automático sigue la selección guardada en este navegador, después sus idiomas preferidos y el idioma predeterminado de la instalación. La selección de inicio de sesión tiene prioridad durante esa visita."
 	],
 	["profile.error.signed-out", "Inicia sesión para ver este perfil."],
 	["profile.error.denied", "No tienes acceso a este perfil."],

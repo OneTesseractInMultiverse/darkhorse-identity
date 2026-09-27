@@ -72,6 +72,19 @@ export async function verifyDirectoryPresentation(page, origin) {
         return box.left >= 0 && box.right <= innerWidth;
       }),
     );
+    // A 640 CSS-pixel viewport approximates 200% zoom on a 1280px display.
+    await page.setViewportSize({ width: 640, height: 900 });
+    assert.ok(
+      await page.evaluate(() => {
+        const box = document.querySelector("dialog").getBoundingClientRect();
+        return (
+          document.documentElement.scrollWidth <= innerWidth &&
+          box.left >= 0 &&
+          box.right <= innerWidth
+        );
+      }),
+      "Spanish access dialog must fit at a 200% zoom-equivalent viewport",
+    );
     await page.keyboard.press("Escape");
     await expect(page.locator("dialog")).toHaveCount(0);
     assert.deepEqual(

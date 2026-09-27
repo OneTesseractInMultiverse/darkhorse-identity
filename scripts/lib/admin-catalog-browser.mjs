@@ -255,6 +255,14 @@ async function verifyPolicyMap(page, origin, application) {
     path: resolve(".local/policy-map-mobile.png"),
     fullPage: true,
   });
+  // A 640 CSS-pixel viewport approximates 200% zoom on a 1280px display.
+  await page.setViewportSize({ width: 640, height: 900 });
+  assert.ok(
+    await page.evaluate(
+      () => document.documentElement.scrollWidth <= innerWidth,
+    ),
+    "Spanish policy map must fit at a 200% zoom-equivalent viewport",
+  );
 
   const representative = policyFixture(read.body.application, {
     roles: 127,
@@ -571,6 +579,14 @@ export async function verifyCatalog(page, origin, ca) {
     path: resolve(".local/catalog-mobile.png"),
     fullPage: true,
   });
+  // A 640 CSS-pixel viewport approximates 200% zoom on a 1280px display.
+  await page.setViewportSize({ width: 640, height: 900 });
+  assert.ok(
+    await page.evaluate(
+      () => document.documentElement.scrollWidth <= innerWidth,
+    ),
+    "Spanish catalog must fit at a 200% zoom-equivalent viewport",
+  );
   await page.setViewportSize({ width: 1280, height: 900 });
   const route = (kind) => `${origin}/console/${kind}?application_id=${app.id}`;
   await page

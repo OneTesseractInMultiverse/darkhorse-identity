@@ -72,6 +72,15 @@ export async function verifyLocalization(browser, origin) {
       path: resolve(".local/login-es-mobile.png"),
       fullPage: true,
     });
+    // A 640 CSS-pixel viewport approximates 200% zoom on a 1280px display.
+    await page.setViewportSize({ width: 640, height: 900 });
+    assert.equal(
+      await page.evaluate(
+        () => document.documentElement.scrollWidth > innerWidth,
+      ),
+      false,
+      "Spanish sign-in must fit at a 200% zoom-equivalent viewport",
+    );
     await page.setViewportSize({ width: 1280, height: 900 });
     await page.screenshot({
       path: resolve(".local/login-es-desktop.png"),
