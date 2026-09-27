@@ -1,0 +1,3797 @@
+{
+  "environment": {
+    "database": "postgres (PostgreSQL) 18.6 - Percona Server for PostgreSQL 18.6.1",
+    "docker": {
+      "arch": "aarch64",
+      "cpus": 10,
+      "memoryBytes": 8321515520,
+      "version": "29.6.2"
+    },
+    "host": {
+      "arch": "arm64",
+      "cpu": "Apple M5",
+      "logicalCpus": 10,
+      "platform": "darwin"
+    },
+    "images": {
+      "cache": "redis:8.10.1@sha256:298e5b3bc566bade82f46ad5511777a4a07a294097ce16ada2f6a42be5239df5",
+      "database": "percona/percona-distribution-postgresql:18.6@sha256:dae47360e8137cafc1e8d66f9a1be348f1405e3cf51daa383b94e6c277e6b256",
+      "limiter": "redis:8.10.1@sha256:298e5b3bc566bade82f46ad5511777a4a07a294097ce16ada2f6a42be5239df5"
+    },
+    "measuredAt": ["2026-09-27T19:15:03.717Z", "2026-09-27T19:16:47.747Z"],
+    "node": "v24.19.0",
+    "rust": "rustc 1.97.1 (8bab26f4f 2026-07-14)",
+    "topology": "One host release Rust process, Node TLS proxy and load generator; Docker Percona primary plus separate Redis cache/limiter containers on loopback. Chromium provisions real login/SSO credentials."
+  },
+  "limitations": [
+    "database-cold state",
+    "multi-host latency",
+    "large policy populations",
+    "SQL round trips and plans",
+    "limiter incremental overhead",
+    "multi-hour endurance and production arrival distributions",
+    "sustained CPU/RSS peaks"
+  ],
+  "protection": {
+    "computationCache": false,
+    "databasePoolConnections": 5,
+    "databaseRole": "darkhorse_runtime",
+    "introspectionBudgets": {
+      "caller": 6000,
+      "global": 60000,
+      "globalQueueCapacity": 16,
+      "globalUpdateConcurrency": 2,
+      "queueIncludedInDeadlineMs": 1000,
+      "separateLocalPool": true,
+      "windowMs": 60000
+    },
+    "positiveDecisionCache": false
+  },
+  "purpose": "Repeated bounded introspection admission measurements using the published restricted runtime database grants. This records local development evidence, not production capacity qualification.",
+  "runs": [
+    {
+      "phases": [
+        {
+          "allLatencyMs": {
+            "p50": 19.055084000001443,
+            "p95": 41.115750000000844,
+            "p99": 47.378333000000566
+          },
+          "allScheduledLatencyMs": null,
+          "attempts": 64,
+          "authorizedLatencyMs": {
+            "p50": 20.73854200000096,
+            "p95": 42.62750000000051,
+            "p99": 47.378333000000566
+          },
+          "authorizedPerSecond": 287.6539268033102,
+          "authorizedScheduledLatencyMs": null,
+          "dispatchDelayMs": null,
+          "generatorDrops": null,
+          "maxInFlight": null,
+          "mode": "closed-loop",
+          "name": "warmup",
+          "offeredRate": null,
+          "outcomes": {
+            "authorized": 44,
+            "denied": 0,
+            "error": 0,
+            "healthy": 0,
+            "transport_error": 0,
+            "unavailable": 20,
+            "violation": 0
+          },
+          "peakInFlight": null,
+          "profiling": {
+            "postgresStatements": [
+              {
+                "calls": 44,
+                "category": "policy_projection",
+                "execution_ms": 1.8200429999999999,
+                "rows": 44,
+                "shared_dirtied": 0,
+                "shared_hits": 1241,
+                "shared_reads": 0,
+                "shared_written": 0,
+                "wal_bytes": "0"
+              },
+              {
+                "calls": 204,
+                "category": "other",
+                "execution_ms": 1.4368379999999987,
+                "rows": 204,
+                "shared_dirtied": 0,
+                "shared_hits": 408,
+                "shared_reads": 0,
+                "shared_written": 0,
+                "wal_bytes": "0"
+              },
+              {
+                "calls": 132,
+                "category": "identity_read",
+                "execution_ms": 1.3747490000000002,
+                "rows": 132,
+                "shared_dirtied": 0,
+                "shared_hits": 924,
+                "shared_reads": 0,
+                "shared_written": 0,
+                "wal_bytes": "12744"
+              },
+              {
+                "calls": 102,
+                "category": "security_fence",
+                "execution_ms": 1.2323299999999997,
+                "rows": 102,
+                "shared_dirtied": 0,
+                "shared_hits": 306,
+                "shared_reads": 0,
+                "shared_written": 0,
+                "wal_bytes": "11280"
+              },
+              {
+                "calls": 132,
+                "category": "token_read",
+                "execution_ms": 1.0439159999999998,
+                "rows": 132,
+                "shared_dirtied": 0,
+                "shared_hits": 440,
+                "shared_reads": 0,
+                "shared_written": 0,
+                "wal_bytes": "4752"
+              },
+              {
+                "calls": 102,
+                "category": "resource_authentication",
+                "execution_ms": 0.79454,
+                "rows": 102,
+                "shared_dirtied": 0,
+                "shared_hits": 612,
+                "shared_reads": 0,
+                "shared_written": 0,
+                "wal_bytes": "0"
+              },
+              {
+                "calls": 234,
+                "category": "clock",
+                "execution_ms": 0.4480779999999992,
+                "rows": 234,
+                "shared_dirtied": 0,
+                "shared_hits": 0,
+                "shared_reads": 0,
+                "shared_written": 0,
+                "wal_bytes": "0"
+              },
+              {
+                "calls": 102,
+                "category": "commit",
+                "execution_ms": 0.05116700000000002,
+                "rows": 0,
+                "shared_dirtied": 0,
+                "shared_hits": 0,
+                "shared_reads": 0,
+                "shared_written": 0,
+                "wal_bytes": "0"
+              },
+              {
+                "calls": 102,
+                "category": "begin",
+                "execution_ms": 0.04665900000000002,
+                "rows": 0,
+                "shared_dirtied": 0,
+                "shared_hits": 0,
+                "shared_reads": 0,
+                "shared_written": 0,
+                "wal_bytes": "0"
+              }
+            ],
+            "rustStages": {
+              "poolAcquire": {
+                "cancelled": 0,
+                "count": 44,
+                "error": 0,
+                "max_us": 3010,
+                "mean_us": 1155.0681818181818,
+                "percentile_upper_us": {
+                  "p50": 1000,
+                  "p95": 2500,
+                  "p99": 5000
+                }
+              },
+              "total": {
+                "cancelled": 0,
+                "count": 44,
+                "error": 0,
+                "max_us": 13663,
+                "mean_us": 7211.181818181818,
+                "percentile_upper_us": {
+                  "p50": 10000,
+                  "p95": 25000,
+                  "p99": 25000
+                }
+              }
+            }
+          },
+          "scheduled": null,
+          "scheduledFailureRate": null
+        },
+        {
+          "allLatencyMs": {
+            "p50": 7.770792000001165,
+            "p95": 14.952334000001429,
+            "p99": 23.436041999997542
+          },
+          "allScheduledLatencyMs": {
+            "p50": 8.414165999998659,
+            "p95": 15.455165999999736,
+            "p99": 24.332707999998092
+          },
+          "attempts": 2000,
+          "authorizedLatencyMs": {
+            "p50": 7.770042000000103,
+            "p95": 14.952334000001429,
+            "p99": 23.596208999999362
+          },
+          "authorizedPerSecond": 199.70183989562,
+          "authorizedScheduledLatencyMs": {
+            "p50": 8.41399999999885,
+            "p95": 15.455165999999736,
+            "p99": 24.694250000000466
+          },
+          "dispatchDelayMs": {
+            "p50": 0.5752909999991971,
+            "p95": 1.1084999999984575,
+            "p99": 1.4701659999991534
+          },
+          "generatorDrops": {
+            "fraction": 0,
+            "full": 0,
+            "late": 0
+          },
+          "maxInFlight": 128,
+          "mode": "fixed-arrival",
+          "name": "arrival-diverse-r200",
+          "offeredRate": 200,
+          "outcomes": {
+            "authorized": 1998,
+            "denied": 0,
+            "error": 0,
+            "healthy": 0,
+            "transport_error": 0,
+            "unavailable": 2,
+            "violation": 0
+          },
+          "peakInFlight": 8,
+          "profiling": {
+            "postgresStatements": [
+              {
+                "calls": 1998,
+                "category": "policy_projection",
+                "execution_ms": 95.1778210000001,
+                "rows": 1998,
+                "shared_dirtied": 0,
+                "shared_hits": 55944,
+                "shared_reads": 0,
+                "shared_written": 0,
+                "wal_bytes": "0"
+              },
+              {
+                "calls": 5994,
+                "category": "identity_read",
+                "execution_ms": 61.451857,
+                "rows": 5994,
+                "shared_dirtied": 0,
+                "shared_hits": 41958,
+                "shared_reads": 0,
+                "shared_written": 0,
+                "wal_bytes": "540062"
+              },
+              {
+                "calls": 7996,
+                "category": "other",
+                "execution_ms": 44.18872899999983,
+                "rows": 7996,
+                "shared_dirtied": 0,
+                "shared_hits": 15992,
+                "shared_reads": 0,
+                "shared_written": 0,
+                "wal_bytes": "0"
+              },
+              {
+                "calls": 5994,
+                "category": "token_read",
+                "execution_ms": 41.856918000000064,
+                "rows": 5994,
+                "shared_dirtied": 0,
+                "shared_hits": 19980,
+                "shared_reads": 0,
+                "shared_written": 0,
+                "wal_bytes": "215784"
+              },
+              {
+                "calls": 3998,
+                "category": "security_fence",
+                "execution_ms": 34.34612500000008,
+                "rows": 3998,
+                "shared_dirtied": 0,
+                "shared_hits": 11994,
+                "shared_reads": 0,
+                "shared_written": 0,
+                "wal_bytes": "313614"
+              },
+              {
+                "calls": 3998,
+                "category": "resource_authentication",
+                "execution_ms": 29.704110000000096,
+                "rows": 3998,
+                "shared_dirtied": 0,
+                "shared_hits": 23988,
+                "shared_reads": 0,
+                "shared_written": 0,
+                "wal_bytes": "0"
+              },
+              {
+                "calls": 9992,
+                "category": "clock",
+                "execution_ms": 16.191576000000133,
+                "rows": 9992,
+                "shared_dirtied": 0,
+                "shared_hits": 0,
+                "shared_reads": 0,
+                "shared_written": 0,
+                "wal_bytes": "0"
+              },
+              {
+                "calls": 3998,
+                "category": "begin",
+                "execution_ms": 1.4472739999999862,
+                "rows": 0,
+                "shared_dirtied": 0,
+                "shared_hits": 0,
+                "shared_reads": 0,
+                "shared_written": 0,
+                "wal_bytes": "0"
+              },
+              {
+                "calls": 3998,
+                "category": "commit",
+                "execution_ms": 1.2808149999999818,
+                "rows": 0,
+                "shared_dirtied": 0,
+                "shared_hits": 0,
+                "shared_reads": 0,
+                "shared_written": 0,
+                "wal_bytes": "0"
+              }
+            ],
+            "rustStages": {
+              "poolAcquire": {
+                "cancelled": 0,
+                "count": 1998,
+                "error": 0,
+                "max_us": 2978,
+                "mean_us": 239.60060060060061,
+                "percentile_upper_us": {
+                  "p50": 250,
+                  "p95": 500,
+                  "p99": 1000
+                }
+              },
+              "total": {
+                "cancelled": 0,
+                "count": 1998,
+                "error": 0,
+                "max_us": 23466,
+                "mean_us": 4042.688188188188,
+                "percentile_upper_us": {
+                  "p50": 5000,
+                  "p95": 10000,
+                  "p99": 10000
+                }
+              }
+            }
+          },
+          "scheduled": 2000,
+          "scheduledFailureRate": 0.001
+        },
+        {
+          "allLatencyMs": {
+            "p50": 23.856082999998762,
+            "p95": 46.842291999993904,
+            "p99": 54.82087500000125
+          },
+          "allScheduledLatencyMs": {
+            "p50": 24.5224589999998,
+            "p95": 47.405125000001135,
+            "p99": 55.55662500000108
+          },
+          "attempts": 8000,
+          "authorizedLatencyMs": {
+            "p50": 38.28404099999898,
+            "p95": 51.295124999996915,
+            "p99": 61.64624999999796
+          },
+          "authorizedPerSecond": 311.30955003014907,
+          "authorizedScheduledLatencyMs": {
+            "p50": 39.00279199999932,
+            "p95": 51.845916999998735,
+            "p99": 62.21274999999878
+          },
+          "dispatchDelayMs": {
+            "p50": 0.5944999999992433,
+            "p95": 1.263875000004191,
+            "p99": 1.5733749999999418
+          },
+          "generatorDrops": {
+            "fraction": 0,
+            "full": 0,
+            "late": 0
+          },
+          "maxInFlight": 128,
+          "mode": "fixed-arrival",
+          "name": "arrival-diverse-r800",
+          "offeredRate": 800,
+          "outcomes": {
+            "authorized": 3121,
+            "denied": 0,
+            "error": 0,
+            "healthy": 0,
+            "transport_error": 0,
+            "unavailable": 4879,
+            "violation": 0
+          },
+          "peakInFlight": 20,
+          "profiling": {
+            "postgresStatements": [
+              {
+                "calls": 3121,
+                "category": "policy_projection",
+                "execution_ms": 205.40737700000014,
+                "rows": 3121,
+                "shared_dirtied": 0,
+                "shared_hits": 87388,
+                "shared_reads": 0,
+                "shared_written": 0,
+                "wal_bytes": "0"
+              },
+              {
+                "calls": 9363,
+                "category": "identity_read",
+                "execution_ms": 156.36024100000003,
+                "rows": 9363,
+                "shared_dirtied": 0,
+                "shared_hits": 65541,
+                "shared_reads": 0,
+                "shared_written": 0,
+                "wal_bytes": "888944"
+              },
+              {
+                "calls": 14850,
+                "category": "other",
+                "execution_ms": 119.96697099999867,
+                "rows": 14850,
+                "shared_dirtied": 0,
+                "shared_hits": 29700,
+                "shared_reads": 0,
+                "shared_written": 0,
+                "wal_bytes": "0"
+              },
+              {
+                "calls": 9363,
+                "category": "token_read",
+                "execution_ms": 106.53072799999975,
+                "rows": 9363,
+                "shared_dirtied": 0,
+                "shared_hits": 31210,
+                "shared_reads": 0,
+                "shared_written": 0,
+                "wal_bytes": "337284"
+              },
+              {
+                "calls": 7425,
+                "category": "security_fence",
+                "execution_ms": 105.71760499999974,
+                "rows": 7425,
+                "shared_dirtied": 0,
+                "shared_hits": 22275,
+                "shared_reads": 0,
+                "shared_written": 0,
+                "wal_bytes": "833752"
+              },
+              {
+                "calls": 7425,
+                "category": "resource_authentication",
+                "execution_ms": 85.75878000000006,
+                "rows": 7425,
+                "shared_dirtied": 0,
+                "shared_hits": 44550,
+                "shared_reads": 0,
+                "shared_written": 0,
+                "wal_bytes": "0"
+              },
+              {
+                "calls": 16788,
+                "category": "clock",
+                "execution_ms": 45.658967999997806,
+                "rows": 16788,
+                "shared_dirtied": 0,
+                "shared_hits": 0,
+                "shared_reads": 0,
+                "shared_written": 0,
+                "wal_bytes": "0"
+              },
+              {
+                "calls": 7425,
+                "category": "commit",
+                "execution_ms": 4.675829999999969,
+                "rows": 0,
+                "shared_dirtied": 0,
+                "shared_hits": 0,
+                "shared_reads": 0,
+                "shared_written": 0,
+                "wal_bytes": "0"
+              },
+              {
+                "calls": 7425,
+                "category": "begin",
+                "execution_ms": 4.344429999999981,
+                "rows": 0,
+                "shared_dirtied": 0,
+                "shared_hits": 0,
+                "shared_reads": 0,
+                "shared_written": 0,
+                "wal_bytes": "0"
+              }
+            ],
+            "rustStages": {
+              "poolAcquire": {
+                "cancelled": 0,
+                "count": 3121,
+                "error": 0,
+                "max_us": 30884,
+                "mean_us": 1278.8820890740146,
+                "percentile_upper_us": {
+                  "p50": 2500,
+                  "p95": 2500,
+                  "p99": 5000
+                }
+              },
+              "total": {
+                "cancelled": 0,
+                "count": 3121,
+                "error": 0,
+                "max_us": 39603,
+                "mean_us": 7411.735341236783,
+                "percentile_upper_us": {
+                  "p50": 10000,
+                  "p95": 10000,
+                  "p99": 25000
+                }
+              }
+            }
+          },
+          "scheduled": 8000,
+          "scheduledFailureRate": 0.609875
+        },
+        {
+          "allLatencyMs": {
+            "p50": 0.362249999998312,
+            "p95": 44.39291599999706,
+            "p99": 66.81850000000122
+          },
+          "allScheduledLatencyMs": {
+            "p50": 1.1721249999973224,
+            "p95": 45.1807919999992,
+            "p99": 68.18241699999635
+          },
+          "attempts": 15992,
+          "authorizedLatencyMs": {
+            "p50": 38.897415999999794,
+            "p95": 56.470916999998735,
+            "p99": 78.11991700000362
+          },
+          "authorizedPerSecond": 306.3176889002996,
+          "authorizedScheduledLatencyMs": {
+            "p50": 39.627042000000074,
+            "p95": 57.12333299999591,
+            "p99": 79.33625000000029
+          },
+          "dispatchDelayMs": {
+            "p50": 0.6388329999972484,
+            "p95": 1.388082999998005,
+            "p99": 1.7913750000006985
+          },
+          "generatorDrops": {
+            "fraction": 0.0005,
+            "full": 0,
+            "late": 8
+          },
+          "maxInFlight": 128,
+          "mode": "fixed-arrival",
+          "name": "arrival-diverse-r1600",
+          "offeredRate": 1600,
+          "outcomes": {
+            "authorized": 3072,
+            "denied": 0,
+            "error": 0,
+            "healthy": 0,
+            "transport_error": 0,
+            "unavailable": 12920,
+            "violation": 0
+          },
+          "peakInFlight": 123,
+          "profiling": {
+            "postgresStatements": [
+              {
+                "calls": 3072,
+                "category": "policy_projection",
+                "execution_ms": 198.00300300000004,
+                "rows": 3072,
+                "shared_dirtied": 0,
+                "shared_hits": 86016,
+                "shared_reads": 0,
+                "shared_written": 0,
+                "wal_bytes": "0"
+              },
+              {
+                "calls": 9216,
+                "category": "identity_read",
+                "execution_ms": 147.69416199999992,
+                "rows": 9216,
+                "shared_dirtied": 0,
+                "shared_hits": 64512,
+                "shared_reads": 0,
+                "shared_written": 0,
+                "wal_bytes": "871344"
+              },
+              {
+                "calls": 14640,
+                "category": "other",
+                "execution_ms": 113.85596499999895,
+                "rows": 14640,
+                "shared_dirtied": 0,
+                "shared_hits": 29280,
+                "shared_reads": 0,
+                "shared_written": 0,
+                "wal_bytes": "0"
+              },
+              {
+                "calls": 9216,
+                "category": "token_read",
+                "execution_ms": 100.1050399999997,
+                "rows": 9216,
+                "shared_dirtied": 0,
+                "shared_hits": 30720,
+                "shared_reads": 0,
+                "shared_written": 0,
+                "wal_bytes": "335428"
+              },
+              {
+                "calls": 7320,
+                "category": "security_fence",
+                "execution_ms": 94.85036100000022,
+                "rows": 7320,
+                "shared_dirtied": 0,
+                "shared_hits": 21960,
+                "shared_reads": 0,
+                "shared_written": 0,
+                "wal_bytes": "821900"
+              },
+              {
+                "calls": 7320,
+                "category": "resource_authentication",
+                "execution_ms": 82.260642,
+                "rows": 7320,
+                "shared_dirtied": 0,
+                "shared_hits": 43920,
+                "shared_reads": 0,
+                "shared_written": 0,
+                "wal_bytes": "0"
+              },
+              {
+                "calls": 16536,
+                "category": "clock",
+                "execution_ms": 44.05751899999964,
+                "rows": 16536,
+                "shared_dirtied": 0,
+                "shared_hits": 0,
+                "shared_reads": 0,
+                "shared_written": 0,
+                "wal_bytes": "0"
+              },
+              {
+                "calls": 7320,
+                "category": "commit",
+                "execution_ms": 4.499431999999972,
+                "rows": 0,
+                "shared_dirtied": 0,
+                "shared_hits": 0,
+                "shared_reads": 0,
+                "shared_written": 0,
+                "wal_bytes": "0"
+              },
+              {
+                "calls": 7320,
+                "category": "begin",
+                "execution_ms": 3.802739999999946,
+                "rows": 0,
+                "shared_dirtied": 0,
+                "shared_hits": 0,
+                "shared_reads": 0,
+                "shared_written": 0,
+                "wal_bytes": "0"
+              }
+            ],
+            "rustStages": {
+              "poolAcquire": {
+                "cancelled": 0,
+                "count": 3072,
+                "error": 0,
+                "max_us": 15689,
+                "mean_us": 1307.0830078125,
+                "percentile_upper_us": {
+                  "p50": 2500,
+                  "p95": 2500,
+                  "p99": 5000
+                }
+              },
+              "total": {
+                "cancelled": 0,
+                "count": 3072,
+                "error": 0,
+                "max_us": 26622,
+                "mean_us": 7511.7890625,
+                "percentile_upper_us": {
+                  "p50": 10000,
+                  "p95": 25000,
+                  "p99": 25000
+                }
+              }
+            }
+          },
+          "scheduled": 16000,
+          "scheduledFailureRate": 0.808
+        },
+        {
+          "allLatencyMs": {
+            "p50": 14.425917000000481,
+            "p95": 24.264875000000757,
+            "p99": 30.374958000000333
+          },
+          "allScheduledLatencyMs": {
+            "p50": 14.975708000005397,
+            "p95": 24.918666333331203,
+            "p99": 31.21983266666939
+          },
+          "attempts": 12000,
+          "authorizedLatencyMs": {
+            "p50": 23.47383300000365,
+            "p95": 32.6550419999985,
+            "p99": 38.42833300000348
+          },
+          "authorizedPerSecond": 133.85723317548207,
+          "authorizedScheduledLatencyMs": {
+            "p50": 24.16929133333906,
+            "p95": 33.11120800000208,
+            "p99": 38.95449933334021
+          },
+          "dispatchDelayMs": {
+            "p50": 0.5599166666652309,
+            "p95": 1.3109163333283504,
+            "p99": 1.6914576666677021
+          },
+          "generatorDrops": {
+            "fraction": 0,
+            "full": 0,
+            "late": 0
+          },
+          "maxInFlight": 128,
+          "mode": "fixed-arrival",
+          "name": "arrival-noisy-invalid-client",
+          "offeredRate": 1200,
+          "outcomes": {
+            "authorized": 1341,
+            "denied": 7612,
+            "error": 0,
+            "healthy": 1500,
+            "transport_error": 0,
+            "unavailable": 1547,
+            "violation": 0
+          },
+          "peakInFlight": 19,
+          "profiling": {
+            "postgresStatements": [
+              {
+                "calls": 20588,
+                "category": "other",
+                "execution_ms": 122.46977499999724,
+                "rows": 20588,
+                "shared_dirtied": 0,
+                "shared_hits": 41176,
+                "shared_reads": 0,
+                "shared_written": 0,
+                "wal_bytes": "0"
+              },
+              {
+                "calls": 10294,
+                "category": "security_fence",
+                "execution_ms": 88.50588699999939,
+                "rows": 10294,
+                "shared_dirtied": 0,
+                "shared_hits": 30882,
+                "shared_reads": 0,
+                "shared_written": 0,
+                "wal_bytes": "928054"
+              },
+              {
+                "calls": 1341,
+                "category": "policy_projection",
+                "execution_ms": 79.90882000000029,
+                "rows": 1341,
+                "shared_dirtied": 0,
+                "shared_hits": 37548,
+                "shared_reads": 0,
+                "shared_written": 0,
+                "wal_bytes": "0"
+              },
+              {
+                "calls": 10294,
+                "category": "resource_authentication",
+                "execution_ms": 79.20204299999912,
+                "rows": 2682,
+                "shared_dirtied": 0,
+                "shared_hits": 54152,
+                "shared_reads": 0,
+                "shared_written": 0,
+                "wal_bytes": "0"
+              },
+              {
+                "calls": 4023,
+                "category": "identity_read",
+                "execution_ms": 54.59948500000006,
+                "rows": 4023,
+                "shared_dirtied": 0,
+                "shared_hits": 28161,
+                "shared_reads": 0,
+                "shared_written": 0,
+                "wal_bytes": "362070"
+              },
+              {
+                "calls": 4023,
+                "category": "token_read",
+                "execution_ms": 35.85321500000006,
+                "rows": 4023,
+                "shared_dirtied": 0,
+                "shared_hits": 13410,
+                "shared_reads": 0,
+                "shared_written": 0,
+                "wal_bytes": "144882"
+              },
+              {
+                "calls": 6705,
+                "category": "clock",
+                "execution_ms": 15.901604000000178,
+                "rows": 6705,
+                "shared_dirtied": 0,
+                "shared_hits": 0,
+                "shared_reads": 0,
+                "shared_written": 0,
+                "wal_bytes": "0"
+              },
+              {
+                "calls": 10294,
+                "category": "begin",
+                "execution_ms": 3.8878700000000914,
+                "rows": 0,
+                "shared_dirtied": 0,
+                "shared_hits": 0,
+                "shared_reads": 0,
+                "shared_written": 0,
+                "wal_bytes": "0"
+              },
+              {
+                "calls": 7612,
+                "category": "rollback",
+                "execution_ms": 2.873512000000056,
+                "rows": 0,
+                "shared_dirtied": 0,
+                "shared_hits": 0,
+                "shared_reads": 0,
+                "shared_written": 0,
+                "wal_bytes": "0"
+              },
+              {
+                "calls": 2682,
+                "category": "commit",
+                "execution_ms": 1.2567519999999976,
+                "rows": 0,
+                "shared_dirtied": 0,
+                "shared_hits": 0,
+                "shared_reads": 0,
+                "shared_written": 0,
+                "wal_bytes": "0"
+              }
+            ],
+            "rustStages": {
+              "poolAcquire": {
+                "cancelled": 0,
+                "count": 1341,
+                "error": 0,
+                "max_us": 2942,
+                "mean_us": 398.2595078299776,
+                "percentile_upper_us": {
+                  "p50": 500,
+                  "p95": 1000,
+                  "p99": 2500
+                }
+              },
+              "total": {
+                "cancelled": 0,
+                "count": 1341,
+                "error": 0,
+                "max_us": 25398,
+                "mean_us": 5711.30648769575,
+                "percentile_upper_us": {
+                  "p50": 10000,
+                  "p95": 10000,
+                  "p99": 10000
+                }
+              }
+            }
+          },
+          "scheduled": 12000,
+          "scheduledFailureRate": 0.12891666666666668
+        },
+        {
+          "allLatencyMs": {
+            "p50": 8.186832999999751,
+            "p95": 15.799917000003916,
+            "p99": 20.307749999999942
+          },
+          "allScheduledLatencyMs": {
+            "p50": 8.80079200000182,
+            "p95": 16.21875,
+            "p99": 21.03162500000326
+          },
+          "attempts": 2000,
+          "authorizedLatencyMs": {
+            "p50": 8.186832999999751,
+            "p95": 15.799917000003916,
+            "p99": 20.307749999999942
+          },
+          "authorizedPerSecond": 199.85543790657601,
+          "authorizedScheduledLatencyMs": {
+            "p50": 8.80079200000182,
+            "p95": 16.21875,
+            "p99": 21.03162500000326
+          },
+          "dispatchDelayMs": {
+            "p50": 0.5800420000014128,
+            "p95": 1.116667000002053,
+            "p99": 1.3223330000037095
+          },
+          "generatorDrops": {
+            "fraction": 0,
+            "full": 0,
+            "late": 0
+          },
+          "maxInFlight": 128,
+          "mode": "fixed-arrival",
+          "name": "arrival-permission-reduction-concurrent",
+          "offeredRate": 200,
+          "outcomes": {
+            "authorized": 2000,
+            "denied": 0,
+            "error": 0,
+            "healthy": 0,
+            "transport_error": 0,
+            "unavailable": 0,
+            "violation": 0
+          },
+          "peakInFlight": 6,
+          "profiling": {
+            "postgresStatements": [
+              {
+                "calls": 2000,
+                "category": "policy_projection",
+                "execution_ms": 98.69194300000005,
+                "rows": 2000,
+                "shared_dirtied": 0,
+                "shared_hits": 56000,
+                "shared_reads": 0,
+                "shared_written": 0,
+                "wal_bytes": "0"
+              },
+              {
+                "calls": 6000,
+                "category": "identity_read",
+                "execution_ms": 64.97566800000004,
+                "rows": 6000,
+                "shared_dirtied": 0,
+                "shared_hits": 42000,
+                "shared_reads": 0,
+                "shared_written": 0,
+                "wal_bytes": "540054"
+              },
+              {
+                "calls": 8000,
+                "category": "other",
+                "execution_ms": 47.55001299999965,
+                "rows": 8000,
+                "shared_dirtied": 0,
+                "shared_hits": 16000,
+                "shared_reads": 0,
+                "shared_written": 0,
+                "wal_bytes": "0"
+              },
+              {
+                "calls": 6000,
+                "category": "token_read",
+                "execution_ms": 44.74354900000013,
+                "rows": 6000,
+                "shared_dirtied": 0,
+                "shared_hits": 20000,
+                "shared_reads": 0,
+                "shared_written": 0,
+                "wal_bytes": "217508"
+              },
+              {
+                "calls": 4002,
+                "category": "security_fence",
+                "execution_ms": 37.58667599999997,
+                "rows": 4002,
+                "shared_dirtied": 0,
+                "shared_hits": 12017,
+                "shared_reads": 0,
+                "shared_written": 0,
+                "wal_bytes": "321356"
+              },
+              {
+                "calls": 4000,
+                "category": "resource_authentication",
+                "execution_ms": 31.47835499999994,
+                "rows": 4000,
+                "shared_dirtied": 0,
+                "shared_hits": 24000,
+                "shared_reads": 0,
+                "shared_written": 0,
+                "wal_bytes": "0"
+              },
+              {
+                "calls": 10000,
+                "category": "clock",
+                "execution_ms": 17.418923000000152,
+                "rows": 10000,
+                "shared_dirtied": 0,
+                "shared_hits": 0,
+                "shared_reads": 0,
+                "shared_written": 0,
+                "wal_bytes": "0"
+              },
+              {
+                "calls": 4000,
+                "category": "begin",
+                "execution_ms": 1.5925489999999918,
+                "rows": 0,
+                "shared_dirtied": 0,
+                "shared_hits": 0,
+                "shared_reads": 0,
+                "shared_written": 0,
+                "wal_bytes": "0"
+              },
+              {
+                "calls": 4000,
+                "category": "commit",
+                "execution_ms": 1.5544239999999965,
+                "rows": 0,
+                "shared_dirtied": 0,
+                "shared_hits": 0,
+                "shared_reads": 0,
+                "shared_written": 0,
+                "wal_bytes": "0"
+              },
+              {
+                "calls": 1,
+                "category": "mutation",
+                "execution_ms": 1.512292,
+                "rows": 1,
+                "shared_dirtied": 0,
+                "shared_hits": 306,
+                "shared_reads": 0,
+                "shared_written": 0,
+                "wal_bytes": "476"
+              }
+            ],
+            "rustStages": {
+              "poolAcquire": {
+                "cancelled": 0,
+                "count": 2000,
+                "error": 0,
+                "max_us": 1516,
+                "mean_us": 249.662,
+                "percentile_upper_us": {
+                  "p50": 250,
+                  "p95": 500,
+                  "p99": 1000
+                }
+              },
+              "total": {
+                "cancelled": 0,
+                "count": 2000,
+                "error": 0,
+                "max_us": 13062,
+                "mean_us": 4222.189,
+                "percentile_upper_us": {
+                  "p50": 5000,
+                  "p95": 10000,
+                  "p99": 10000
+                }
+              }
+            }
+          },
+          "scheduled": 2000,
+          "scheduledFailureRate": 0
+        },
+        {
+          "allLatencyMs": {
+            "p50": 22.09387499999866,
+            "p95": 29.175624999996217,
+            "p99": 31.38691700000345
+          },
+          "allScheduledLatencyMs": null,
+          "attempts": 64,
+          "authorizedLatencyMs": {
+            "p50": 24.257332999994105,
+            "p95": 30.216874999998254,
+            "p99": 31.38691700000345
+          },
+          "authorizedPerSecond": 273.98452700923974,
+          "authorizedScheduledLatencyMs": null,
+          "dispatchDelayMs": null,
+          "generatorDrops": null,
+          "maxInFlight": null,
+          "mode": "closed-loop",
+          "name": "permission-reduction-after-commit",
+          "offeredRate": null,
+          "outcomes": {
+            "authorized": 48,
+            "denied": 0,
+            "error": 0,
+            "healthy": 0,
+            "transport_error": 0,
+            "unavailable": 16,
+            "violation": 0
+          },
+          "peakInFlight": null,
+          "profiling": {
+            "postgresStatements": [
+              {
+                "calls": 48,
+                "category": "policy_projection",
+                "execution_ms": 3.7771650000000005,
+                "rows": 48,
+                "shared_dirtied": 0,
+                "shared_hits": 1344,
+                "shared_reads": 0,
+                "shared_written": 0,
+                "wal_bytes": "0"
+              },
+              {
+                "calls": 144,
+                "category": "identity_read",
+                "execution_ms": 2.71937,
+                "rows": 144,
+                "shared_dirtied": 0,
+                "shared_hits": 1008,
+                "shared_reads": 0,
+                "shared_written": 0,
+                "wal_bytes": "13014"
+              },
+              {
+                "calls": 224,
+                "category": "other",
+                "execution_ms": 2.4468870000000007,
+                "rows": 224,
+                "shared_dirtied": 0,
+                "shared_hits": 448,
+                "shared_reads": 0,
+                "shared_written": 0,
+                "wal_bytes": "0"
+              },
+              {
+                "calls": 144,
+                "category": "token_read",
+                "execution_ms": 2.077869,
+                "rows": 144,
+                "shared_dirtied": 0,
+                "shared_hits": 480,
+                "shared_reads": 0,
+                "shared_written": 0,
+                "wal_bytes": "6372"
+              },
+              {
+                "calls": 112,
+                "category": "security_fence",
+                "execution_ms": 1.705796,
+                "rows": 112,
+                "shared_dirtied": 0,
+                "shared_hits": 336,
+                "shared_reads": 0,
+                "shared_written": 0,
+                "wal_bytes": "12400"
+              },
+              {
+                "calls": 112,
+                "category": "resource_authentication",
+                "execution_ms": 1.4179470000000007,
+                "rows": 112,
+                "shared_dirtied": 0,
+                "shared_hits": 672,
+                "shared_reads": 0,
+                "shared_written": 0,
+                "wal_bytes": "0"
+              },
+              {
+                "calls": 256,
+                "category": "clock",
+                "execution_ms": 0.8529599999999995,
+                "rows": 256,
+                "shared_dirtied": 0,
+                "shared_hits": 0,
+                "shared_reads": 0,
+                "shared_written": 0,
+                "wal_bytes": "0"
+              },
+              {
+                "calls": 112,
+                "category": "begin",
+                "execution_ms": 0.07704300000000004,
+                "rows": 0,
+                "shared_dirtied": 0,
+                "shared_hits": 0,
+                "shared_reads": 0,
+                "shared_written": 0,
+                "wal_bytes": "0"
+              },
+              {
+                "calls": 112,
+                "category": "commit",
+                "execution_ms": 0.07412900000000004,
+                "rows": 0,
+                "shared_dirtied": 0,
+                "shared_hits": 0,
+                "shared_reads": 0,
+                "shared_written": 0,
+                "wal_bytes": "0"
+              }
+            ],
+            "rustStages": {
+              "poolAcquire": {
+                "cancelled": 0,
+                "count": 48,
+                "error": 0,
+                "max_us": 3018,
+                "mean_us": 1365.3958333333333,
+                "percentile_upper_us": {
+                  "p50": 2500,
+                  "p95": 2500,
+                  "p99": 5000
+                }
+              },
+              "total": {
+                "cancelled": 0,
+                "count": 48,
+                "error": 0,
+                "max_us": 10828,
+                "mean_us": 8017.75,
+                "percentile_upper_us": {
+                  "p50": 10000,
+                  "p95": 25000,
+                  "p99": 25000
+                }
+              }
+            }
+          },
+          "scheduled": null,
+          "scheduledFailureRate": null
+        },
+        {
+          "allLatencyMs": {
+            "p50": 7.453165999999328,
+            "p95": 32.52562500000204,
+            "p99": 96.84204199999658
+          },
+          "allScheduledLatencyMs": {
+            "p50": 7.997499999997672,
+            "p95": 32.94525000000431,
+            "p99": 98.14529200000106
+          },
+          "attempts": 2000,
+          "authorizedLatencyMs": {
+            "p50": 9.11145899999974,
+            "p95": 52.809875000006286,
+            "p99": 149.4406669999953
+          },
+          "authorizedPerSecond": 95.38996338283965,
+          "authorizedScheduledLatencyMs": {
+            "p50": 9.682917000005546,
+            "p95": 53.528417000001355,
+            "p99": 150.5770840000041
+          },
+          "dispatchDelayMs": {
+            "p50": 0.5521250000019791,
+            "p95": 1.1340000000054715,
+            "p99": 1.6569589999999152
+          },
+          "generatorDrops": {
+            "fraction": 0,
+            "full": 0,
+            "late": 0
+          },
+          "maxInFlight": 128,
+          "mode": "fixed-arrival",
+          "name": "arrival-revocation-concurrent",
+          "offeredRate": 200,
+          "outcomes": {
+            "authorized": 954,
+            "denied": 1000,
+            "error": 0,
+            "healthy": 0,
+            "transport_error": 0,
+            "unavailable": 46,
+            "violation": 0
+          },
+          "peakInFlight": 17,
+          "profiling": {
+            "postgresStatements": [
+              {
+                "calls": 954,
+                "category": "policy_projection",
+                "execution_ms": 56.397760000000055,
+                "rows": 954,
+                "shared_dirtied": 0,
+                "shared_hits": 26712,
+                "shared_reads": 0,
+                "shared_written": 0,
+                "wal_bytes": "0"
+              },
+              {
+                "calls": 7875,
+                "category": "other",
+                "execution_ms": 46.96375799999923,
+                "rows": 7872,
+                "shared_dirtied": 0,
+                "shared_hits": 15749,
+                "shared_reads": 0,
+                "shared_written": 0,
+                "wal_bytes": "72"
+              },
+              {
+                "calls": 5864,
+                "category": "token_read",
+                "execution_ms": 42.99684300000019,
+                "rows": 4864,
+                "shared_dirtied": 0,
+                "shared_hits": 18549,
+                "shared_reads": 0,
+                "shared_written": 0,
+                "wal_bytes": "160690"
+              },
+              {
+                "calls": 2862,
+                "category": "identity_read",
+                "execution_ms": 37.341335000000015,
+                "rows": 2862,
+                "shared_dirtied": 0,
+                "shared_hits": 20034,
+                "shared_reads": 0,
+                "shared_written": 0,
+                "wal_bytes": "257688"
+              },
+              {
+                "calls": 3938,
+                "category": "security_fence",
+                "execution_ms": 32.95496599999974,
+                "rows": 3938,
+                "shared_dirtied": 0,
+                "shared_hits": 11814,
+                "shared_reads": 0,
+                "shared_written": 0,
+                "wal_bytes": "284968"
+              },
+              {
+                "calls": 3935,
+                "category": "resource_authentication",
+                "execution_ms": 31.36294899999977,
+                "rows": 3935,
+                "shared_dirtied": 0,
+                "shared_hits": 23610,
+                "shared_reads": 0,
+                "shared_written": 0,
+                "wal_bytes": "0"
+              },
+              {
+                "calls": 7800,
+                "category": "clock",
+                "execution_ms": 15.285269000000236,
+                "rows": 7800,
+                "shared_dirtied": 0,
+                "shared_hits": 0,
+                "shared_reads": 0,
+                "shared_written": 0,
+                "wal_bytes": "0"
+              },
+              {
+                "calls": 3938,
+                "category": "begin",
+                "execution_ms": 1.6117980000000036,
+                "rows": 0,
+                "shared_dirtied": 0,
+                "shared_hits": 0,
+                "shared_reads": 0,
+                "shared_written": 0,
+                "wal_bytes": "0"
+              },
+              {
+                "calls": 3938,
+                "category": "commit",
+                "execution_ms": 1.4181980000000105,
+                "rows": 0,
+                "shared_dirtied": 0,
+                "shared_hits": 0,
+                "shared_reads": 0,
+                "shared_written": 0,
+                "wal_bytes": "0"
+              },
+              {
+                "calls": 2,
+                "category": "mutation",
+                "execution_ms": 1.0095839999999998,
+                "rows": 2,
+                "shared_dirtied": 0,
+                "shared_hits": 50,
+                "shared_reads": 0,
+                "shared_written": 0,
+                "wal_bytes": "424"
+              }
+            ],
+            "rustStages": {
+              "poolAcquire": {
+                "cancelled": 0,
+                "count": 1954,
+                "error": 0,
+                "max_us": 18773,
+                "mean_us": 372.971340839304,
+                "percentile_upper_us": {
+                  "p50": 250,
+                  "p95": 1000,
+                  "p99": 5000
+                }
+              },
+              "total": {
+                "cancelled": 0,
+                "count": 1954,
+                "error": 0,
+                "max_us": 73739,
+                "mean_us": 3979.4094165813717,
+                "percentile_upper_us": {
+                  "p50": 5000,
+                  "p95": 10000,
+                  "p99": 25000
+                }
+              }
+            }
+          },
+          "scheduled": 2000,
+          "scheduledFailureRate": 0.023
+        },
+        {
+          "allLatencyMs": {
+            "p50": 14.848582999999053,
+            "p95": 16.80116599999019,
+            "p99": 20.70220800000243
+          },
+          "allScheduledLatencyMs": null,
+          "attempts": 64,
+          "authorizedLatencyMs": null,
+          "authorizedPerSecond": 0,
+          "authorizedScheduledLatencyMs": null,
+          "dispatchDelayMs": null,
+          "generatorDrops": null,
+          "maxInFlight": null,
+          "mode": "closed-loop",
+          "name": "revocation-after-commit",
+          "offeredRate": null,
+          "outcomes": {
+            "authorized": 0,
+            "denied": 49,
+            "error": 0,
+            "healthy": 0,
+            "transport_error": 0,
+            "unavailable": 15,
+            "violation": 0
+          },
+          "peakInFlight": null,
+          "profiling": {
+            "postgresStatements": [
+              {
+                "calls": 226,
+                "category": "other",
+                "execution_ms": 1.0927469999999988,
+                "rows": 226,
+                "shared_dirtied": 0,
+                "shared_hits": 452,
+                "shared_reads": 0,
+                "shared_written": 0,
+                "wal_bytes": "0"
+              },
+              {
+                "calls": 147,
+                "category": "token_read",
+                "execution_ms": 0.972838,
+                "rows": 98,
+                "shared_dirtied": 0,
+                "shared_hits": 441,
+                "shared_reads": 0,
+                "shared_written": 0,
+                "wal_bytes": "2808"
+              },
+              {
+                "calls": 113,
+                "category": "resource_authentication",
+                "execution_ms": 0.8798809999999999,
+                "rows": 113,
+                "shared_dirtied": 0,
+                "shared_hits": 678,
+                "shared_reads": 0,
+                "shared_written": 0,
+                "wal_bytes": "0"
+              },
+              {
+                "calls": 113,
+                "category": "security_fence",
+                "execution_ms": 0.8480029999999998,
+                "rows": 113,
+                "shared_dirtied": 0,
+                "shared_hits": 339,
+                "shared_reads": 0,
+                "shared_written": 0,
+                "wal_bytes": "11594"
+              },
+              {
+                "calls": 162,
+                "category": "clock",
+                "execution_ms": 0.3427019999999995,
+                "rows": 162,
+                "shared_dirtied": 0,
+                "shared_hits": 0,
+                "shared_reads": 0,
+                "shared_written": 0,
+                "wal_bytes": "0"
+              },
+              {
+                "calls": 113,
+                "category": "commit",
+                "execution_ms": 0.03520400000000001,
+                "rows": 0,
+                "shared_dirtied": 0,
+                "shared_hits": 0,
+                "shared_reads": 0,
+                "shared_written": 0,
+                "wal_bytes": "0"
+              },
+              {
+                "calls": 113,
+                "category": "begin",
+                "execution_ms": 0.027959000000000015,
+                "rows": 0,
+                "shared_dirtied": 0,
+                "shared_hits": 0,
+                "shared_reads": 0,
+                "shared_written": 0,
+                "wal_bytes": "0"
+              }
+            ],
+            "rustStages": {
+              "poolAcquire": {
+                "cancelled": 0,
+                "count": 49,
+                "error": 0,
+                "max_us": 1679,
+                "mean_us": 836,
+                "percentile_upper_us": {
+                  "p50": 1000,
+                  "p95": 2500,
+                  "p99": 2500
+                }
+              },
+              "total": {
+                "cancelled": 0,
+                "count": 49,
+                "error": 0,
+                "max_us": 4793,
+                "mean_us": 3860.061224489796,
+                "percentile_upper_us": {
+                  "p50": 5000,
+                  "p95": 5000,
+                  "p99": 5000
+                }
+              }
+            }
+          },
+          "scheduled": null,
+          "scheduledFailureRate": null
+        },
+        {
+          "allLatencyMs": {
+            "p50": 9.21708299999591,
+            "p95": 11.003290999986348,
+            "p99": 11.591665999992983
+          },
+          "allScheduledLatencyMs": null,
+          "attempts": 32,
+          "authorizedLatencyMs": {
+            "p50": 9.21708299999591,
+            "p95": 11.003290999986348,
+            "p99": 11.591665999992983
+          },
+          "authorizedPerSecond": 106.80437025326505,
+          "authorizedScheduledLatencyMs": null,
+          "dispatchDelayMs": null,
+          "generatorDrops": null,
+          "maxInFlight": null,
+          "mode": "closed-loop",
+          "name": "unaffected-resource",
+          "offeredRate": null,
+          "outcomes": {
+            "authorized": 32,
+            "denied": 0,
+            "error": 0,
+            "healthy": 0,
+            "transport_error": 0,
+            "unavailable": 0,
+            "violation": 0
+          },
+          "peakInFlight": null,
+          "profiling": {
+            "postgresStatements": [
+              {
+                "calls": 32,
+                "category": "policy_projection",
+                "execution_ms": 1.7955420000000002,
+                "rows": 32,
+                "shared_dirtied": 0,
+                "shared_hits": 896,
+                "shared_reads": 0,
+                "shared_written": 0,
+                "wal_bytes": "0"
+              },
+              {
+                "calls": 96,
+                "category": "identity_read",
+                "execution_ms": 1.1599490000000001,
+                "rows": 96,
+                "shared_dirtied": 0,
+                "shared_hits": 672,
+                "shared_reads": 0,
+                "shared_written": 0,
+                "wal_bytes": "8640"
+              },
+              {
+                "calls": 128,
+                "category": "other",
+                "execution_ms": 1.0596610000000002,
+                "rows": 128,
+                "shared_dirtied": 0,
+                "shared_hits": 256,
+                "shared_reads": 0,
+                "shared_written": 0,
+                "wal_bytes": "0"
+              },
+              {
+                "calls": 96,
+                "category": "token_read",
+                "execution_ms": 0.7877080000000001,
+                "rows": 96,
+                "shared_dirtied": 0,
+                "shared_hits": 320,
+                "shared_reads": 0,
+                "shared_written": 0,
+                "wal_bytes": "3456"
+              },
+              {
+                "calls": 64,
+                "category": "resource_authentication",
+                "execution_ms": 0.669299,
+                "rows": 64,
+                "shared_dirtied": 0,
+                "shared_hits": 384,
+                "shared_reads": 0,
+                "shared_written": 0,
+                "wal_bytes": "0"
+              },
+              {
+                "calls": 64,
+                "category": "security_fence",
+                "execution_ms": 0.6486230000000001,
+                "rows": 64,
+                "shared_dirtied": 0,
+                "shared_hits": 192,
+                "shared_reads": 0,
+                "shared_written": 0,
+                "wal_bytes": "3456"
+              },
+              {
+                "calls": 160,
+                "category": "clock",
+                "execution_ms": 0.3146359999999996,
+                "rows": 160,
+                "shared_dirtied": 0,
+                "shared_hits": 0,
+                "shared_reads": 0,
+                "shared_written": 0,
+                "wal_bytes": "0"
+              },
+              {
+                "calls": 64,
+                "category": "begin",
+                "execution_ms": 0.039793000000000016,
+                "rows": 0,
+                "shared_dirtied": 0,
+                "shared_hits": 0,
+                "shared_reads": 0,
+                "shared_written": 0,
+                "wal_bytes": "0"
+              },
+              {
+                "calls": 64,
+                "category": "commit",
+                "execution_ms": 0.03420400000000002,
+                "rows": 0,
+                "shared_dirtied": 0,
+                "shared_hits": 0,
+                "shared_reads": 0,
+                "shared_written": 0,
+                "wal_bytes": "0"
+              }
+            ],
+            "rustStages": {
+              "poolAcquire": {
+                "cancelled": 0,
+                "count": 32,
+                "error": 0,
+                "max_us": 359,
+                "mean_us": 233.03125,
+                "percentile_upper_us": {
+                  "p50": 250,
+                  "p95": 500,
+                  "p99": 500
+                }
+              },
+              "total": {
+                "cancelled": 0,
+                "count": 32,
+                "error": 0,
+                "max_us": 5248,
+                "mean_us": 4035.59375,
+                "percentile_upper_us": {
+                  "p50": 5000,
+                  "p95": 10000,
+                  "p99": 10000
+                }
+              }
+            }
+          },
+          "scheduled": null,
+          "scheduledFailureRate": null
+        }
+      ],
+      "snapshots": {
+        "after": {
+          "activity": [
+            {
+              "count": 5,
+              "state": "idle",
+              "wait_event_type": "Client"
+            }
+          ],
+          "database": {
+            "blks_hit": 1443677,
+            "blks_read": 122,
+            "deadlocks": 0,
+            "temp_bytes": 0,
+            "tup_deleted": 410,
+            "tup_fetched": 723293,
+            "tup_inserted": 9659,
+            "tup_returned": 734940,
+            "tup_updated": 1016,
+            "xact_commit": 104579,
+            "xact_rollback": 7661
+          },
+          "databaseContainer": {
+            "blockIO": "0B / 340MB",
+            "cpu": "0.07%",
+            "memory": "88.58MiB / 7.75GiB"
+          },
+          "redis": {
+            "cache": {
+              "commands": 11,
+              "peakUsedBytes": 1289888,
+              "systemCpuSeconds": 0.055692,
+              "usedBytes": 1289568,
+              "userCpuSeconds": 0.083642
+            },
+            "limiter": {
+              "commands": 636858,
+              "peakUsedBytes": 1658352,
+              "systemCpuSeconds": 1.933184,
+              "usedBytes": 1576536,
+              "userCpuSeconds": 5.227729
+            }
+          },
+          "server": {
+            "cpuTimeAndRssKiB": "0:18.18  18592"
+          },
+          "waitingLocks": 0
+        },
+        "before": {
+          "activity": [
+            {
+              "count": 2,
+              "state": "idle",
+              "wait_event_type": "Client"
+            }
+          ],
+          "database": {
+            "blks_hit": 171085,
+            "blks_read": 122,
+            "deadlocks": 0,
+            "temp_bytes": 0,
+            "tup_deleted": 135,
+            "tup_fetched": 101464,
+            "tup_inserted": 9163,
+            "tup_returned": 112335,
+            "tup_updated": 895,
+            "xact_commit": 159,
+            "xact_rollback": 19
+          },
+          "databaseContainer": {
+            "blockIO": "0B / 72.7MB",
+            "cpu": "0.09%",
+            "memory": "74.01MiB / 7.75GiB"
+          },
+          "redis": {
+            "cache": {
+              "commands": 9,
+              "peakUsedBytes": 1289888,
+              "systemCpuSeconds": 0.036599,
+              "usedBytes": 1289568,
+              "userCpuSeconds": 0.033145
+            },
+            "limiter": {
+              "commands": 73,
+              "peakUsedBytes": 1578464,
+              "systemCpuSeconds": 0.022589,
+              "usedBytes": 1569040,
+              "userCpuSeconds": 0.020535
+            }
+          },
+          "server": {
+            "cpuTimeAndRssKiB": "0:00.18  15552"
+          },
+          "waitingLocks": 0
+        },
+        "delta": {
+          "postgres": {
+            "blocksHit": 1272592,
+            "blocksRead": 0,
+            "commits": 104420,
+            "deadlocks": 0,
+            "rollbacks": 7642,
+            "tempBytes": 0
+          },
+          "redis": {
+            "cache": {
+              "commands": 2,
+              "peakUsedBytes": 1289888,
+              "systemCpuSeconds": 0.019093,
+              "usedBytes": 0,
+              "userCpuSeconds": 0.05049699999999999
+            },
+            "limiter": {
+              "commands": 636785,
+              "peakUsedBytes": 1658352,
+              "systemCpuSeconds": 1.910595,
+              "usedBytes": 7496,
+              "userCpuSeconds": 5.207194
+            }
+          }
+        }
+      },
+      "status": "passed",
+      "timestamp": "2026-09-27T19:15:03.717Z"
+    },
+    {
+      "phases": [
+        {
+          "allLatencyMs": {
+            "p50": 18.809457999999722,
+            "p95": 28.72820800000045,
+            "p99": 39.045625000000655
+          },
+          "allScheduledLatencyMs": null,
+          "attempts": 64,
+          "authorizedLatencyMs": {
+            "p50": 19.68120799999997,
+            "p95": 33.42125000000124,
+            "p99": 39.045625000000655
+          },
+          "authorizedPerSecond": 290.25733126525233,
+          "authorizedScheduledLatencyMs": null,
+          "dispatchDelayMs": null,
+          "generatorDrops": null,
+          "maxInFlight": null,
+          "mode": "closed-loop",
+          "name": "warmup",
+          "offeredRate": null,
+          "outcomes": {
+            "authorized": 44,
+            "denied": 0,
+            "error": 0,
+            "healthy": 0,
+            "transport_error": 0,
+            "unavailable": 20,
+            "violation": 0
+          },
+          "peakInFlight": null,
+          "profiling": {
+            "postgresStatements": [
+              {
+                "calls": 44,
+                "category": "policy_projection",
+                "execution_ms": 1.999122,
+                "rows": 44,
+                "shared_dirtied": 0,
+                "shared_hits": 1241,
+                "shared_reads": 0,
+                "shared_written": 0,
+                "wal_bytes": "0"
+              },
+              {
+                "calls": 132,
+                "category": "identity_read",
+                "execution_ms": 1.287916,
+                "rows": 132,
+                "shared_dirtied": 0,
+                "shared_hits": 924,
+                "shared_reads": 0,
+                "shared_written": 0,
+                "wal_bytes": "12528"
+              },
+              {
+                "calls": 216,
+                "category": "other",
+                "execution_ms": 1.208627999999998,
+                "rows": 216,
+                "shared_dirtied": 0,
+                "shared_hits": 432,
+                "shared_reads": 0,
+                "shared_written": 0,
+                "wal_bytes": "0"
+              },
+              {
+                "calls": 108,
+                "category": "security_fence",
+                "execution_ms": 0.9647490000000004,
+                "rows": 108,
+                "shared_dirtied": 0,
+                "shared_hits": 324,
+                "shared_reads": 0,
+                "shared_written": 0,
+                "wal_bytes": "12200"
+              },
+              {
+                "calls": 132,
+                "category": "token_read",
+                "execution_ms": 0.946085,
+                "rows": 132,
+                "shared_dirtied": 0,
+                "shared_hits": 440,
+                "shared_reads": 0,
+                "shared_written": 0,
+                "wal_bytes": "4752"
+              },
+              {
+                "calls": 108,
+                "category": "resource_authentication",
+                "execution_ms": 0.6685409999999998,
+                "rows": 108,
+                "shared_dirtied": 0,
+                "shared_hits": 648,
+                "shared_reads": 0,
+                "shared_written": 0,
+                "wal_bytes": "0"
+              },
+              {
+                "calls": 240,
+                "category": "clock",
+                "execution_ms": 0.43145499999999914,
+                "rows": 240,
+                "shared_dirtied": 0,
+                "shared_hits": 0,
+                "shared_reads": 0,
+                "shared_written": 0,
+                "wal_bytes": "0"
+              },
+              {
+                "calls": 108,
+                "category": "begin",
+                "execution_ms": 0.045538000000000016,
+                "rows": 0,
+                "shared_dirtied": 0,
+                "shared_hits": 0,
+                "shared_reads": 0,
+                "shared_written": 0,
+                "wal_bytes": "0"
+              },
+              {
+                "calls": 108,
+                "category": "commit",
+                "execution_ms": 0.036789000000000016,
+                "rows": 0,
+                "shared_dirtied": 0,
+                "shared_hits": 0,
+                "shared_reads": 0,
+                "shared_written": 0,
+                "wal_bytes": "0"
+              }
+            ],
+            "rustStages": {
+              "poolAcquire": {
+                "cancelled": 0,
+                "count": 44,
+                "error": 0,
+                "max_us": 2179,
+                "mean_us": 1110.9545454545455,
+                "percentile_upper_us": {
+                  "p50": 2500,
+                  "p95": 2500,
+                  "p99": 2500
+                }
+              },
+              "total": {
+                "cancelled": 0,
+                "count": 44,
+                "error": 0,
+                "max_us": 14320,
+                "mean_us": 6998.25,
+                "percentile_upper_us": {
+                  "p50": 10000,
+                  "p95": 25000,
+                  "p99": 25000
+                }
+              }
+            }
+          },
+          "scheduled": null,
+          "scheduledFailureRate": null
+        },
+        {
+          "allLatencyMs": {
+            "p50": 7.289832999998907,
+            "p95": 8.660625000000437,
+            "p99": 27.315833000000566
+          },
+          "allScheduledLatencyMs": {
+            "p50": 7.9095410000009,
+            "p95": 9.277875000001586,
+            "p99": 27.993541000001642
+          },
+          "attempts": 1998,
+          "authorizedLatencyMs": {
+            "p50": 7.289500000000771,
+            "p95": 8.610333000000537,
+            "p99": 20.05199999999968
+          },
+          "authorizedPerSecond": 199.33973130669312,
+          "authorizedScheduledLatencyMs": {
+            "p50": 7.90704100000039,
+            "p95": 9.242083000001003,
+            "p99": 20.824208
+          },
+          "dispatchDelayMs": {
+            "p50": 0.5704580000001442,
+            "p95": 1.0606250000000728,
+            "p99": 1.1384580000012647
+          },
+          "generatorDrops": {
+            "fraction": 0.001,
+            "full": 0,
+            "late": 2
+          },
+          "maxInFlight": 128,
+          "mode": "fixed-arrival",
+          "name": "arrival-diverse-r200",
+          "offeredRate": 200,
+          "outcomes": {
+            "authorized": 1994,
+            "denied": 0,
+            "error": 0,
+            "healthy": 0,
+            "transport_error": 0,
+            "unavailable": 4,
+            "violation": 0
+          },
+          "peakInFlight": 11,
+          "profiling": {
+            "postgresStatements": [
+              {
+                "calls": 1994,
+                "category": "policy_projection",
+                "execution_ms": 71.24503300000006,
+                "rows": 1994,
+                "shared_dirtied": 0,
+                "shared_hits": 55832,
+                "shared_reads": 0,
+                "shared_written": 0,
+                "wal_bytes": "0"
+              },
+              {
+                "calls": 5982,
+                "category": "identity_read",
+                "execution_ms": 46.31013700000014,
+                "rows": 5982,
+                "shared_dirtied": 0,
+                "shared_hits": 41874,
+                "shared_reads": 0,
+                "shared_written": 0,
+                "wal_bytes": "538704"
+              },
+              {
+                "calls": 5982,
+                "category": "token_read",
+                "execution_ms": 30.738215000000118,
+                "rows": 5982,
+                "shared_dirtied": 0,
+                "shared_hits": 19940,
+                "shared_reads": 0,
+                "shared_written": 0,
+                "wal_bytes": "215352"
+              },
+              {
+                "calls": 7984,
+                "category": "other",
+                "execution_ms": 29.405655999999798,
+                "rows": 7984,
+                "shared_dirtied": 0,
+                "shared_hits": 15968,
+                "shared_reads": 0,
+                "shared_written": 0,
+                "wal_bytes": "0"
+              },
+              {
+                "calls": 3992,
+                "category": "security_fence",
+                "execution_ms": 22.661183000000047,
+                "rows": 3992,
+                "shared_dirtied": 0,
+                "shared_hits": 11976,
+                "shared_reads": 0,
+                "shared_written": 0,
+                "wal_bytes": "286128"
+              },
+              {
+                "calls": 3992,
+                "category": "resource_authentication",
+                "execution_ms": 22.22902100000008,
+                "rows": 3992,
+                "shared_dirtied": 0,
+                "shared_hits": 23952,
+                "shared_reads": 0,
+                "shared_written": 0,
+                "wal_bytes": "0"
+              },
+              {
+                "calls": 9974,
+                "category": "clock",
+                "execution_ms": 11.619917000000077,
+                "rows": 9974,
+                "shared_dirtied": 0,
+                "shared_hits": 0,
+                "shared_reads": 0,
+                "shared_written": 0,
+                "wal_bytes": "0"
+              },
+              {
+                "calls": 3992,
+                "category": "begin",
+                "execution_ms": 0.9664419999999984,
+                "rows": 0,
+                "shared_dirtied": 0,
+                "shared_hits": 0,
+                "shared_reads": 0,
+                "shared_written": 0,
+                "wal_bytes": "0"
+              },
+              {
+                "calls": 3992,
+                "category": "commit",
+                "execution_ms": 0.8437209999999956,
+                "rows": 0,
+                "shared_dirtied": 0,
+                "shared_hits": 0,
+                "shared_reads": 0,
+                "shared_written": 0,
+                "wal_bytes": "0"
+              }
+            ],
+            "rustStages": {
+              "poolAcquire": {
+                "cancelled": 0,
+                "count": 1994,
+                "error": 0,
+                "max_us": 4789,
+                "mean_us": 207.57121364092276,
+                "percentile_upper_us": {
+                  "p50": 250,
+                  "p95": 500,
+                  "p99": 1000
+                }
+              },
+              "total": {
+                "cancelled": 0,
+                "count": 1994,
+                "error": 0,
+                "max_us": 24351,
+                "mean_us": 3487.612337011033,
+                "percentile_upper_us": {
+                  "p50": 5000,
+                  "p95": 5000,
+                  "p99": 10000
+                }
+              }
+            }
+          },
+          "scheduled": 2000,
+          "scheduledFailureRate": 0.003
+        },
+        {
+          "allLatencyMs": {
+            "p50": 23.603000000002794,
+            "p95": 37.03450000000157,
+            "p99": 56.37212499999805
+          },
+          "allScheduledLatencyMs": {
+            "p50": 24.20850000000064,
+            "p95": 37.65937500000291,
+            "p99": 57.21004199999879
+          },
+          "attempts": 8000,
+          "authorizedLatencyMs": {
+            "p50": 33.176542000001064,
+            "p95": 45.0044999999991,
+            "p99": 68.24487500000032
+          },
+          "authorizedPerSecond": 356.68490301546234,
+          "authorizedScheduledLatencyMs": {
+            "p50": 33.8136250000025,
+            "p95": 45.6370829999978,
+            "p99": 69.52566699999807
+          },
+          "dispatchDelayMs": {
+            "p50": 0.5712500000008731,
+            "p95": 1.2284579999977723,
+            "p99": 1.589957999996841
+          },
+          "generatorDrops": {
+            "fraction": 0,
+            "full": 0,
+            "late": 0
+          },
+          "maxInFlight": 128,
+          "mode": "fixed-arrival",
+          "name": "arrival-diverse-r800",
+          "offeredRate": 800,
+          "outcomes": {
+            "authorized": 3577,
+            "denied": 0,
+            "error": 0,
+            "healthy": 0,
+            "transport_error": 0,
+            "unavailable": 4423,
+            "violation": 0
+          },
+          "peakInFlight": 18,
+          "profiling": {
+            "postgresStatements": [
+              {
+                "calls": 3577,
+                "category": "policy_projection",
+                "execution_ms": 154.42437599999988,
+                "rows": 3577,
+                "shared_dirtied": 0,
+                "shared_hits": 100156,
+                "shared_reads": 0,
+                "shared_written": 0,
+                "wal_bytes": "0"
+              },
+              {
+                "calls": 10731,
+                "category": "identity_read",
+                "execution_ms": 119.93028199999989,
+                "rows": 10731,
+                "shared_dirtied": 0,
+                "shared_hits": 75117,
+                "shared_reads": 0,
+                "shared_written": 0,
+                "wal_bytes": "1014668"
+              },
+              {
+                "calls": 16992,
+                "category": "other",
+                "execution_ms": 91.70396599999751,
+                "rows": 16992,
+                "shared_dirtied": 0,
+                "shared_hits": 33984,
+                "shared_reads": 0,
+                "shared_written": 0,
+                "wal_bytes": "0"
+              },
+              {
+                "calls": 10731,
+                "category": "token_read",
+                "execution_ms": 84.98084299999987,
+                "rows": 10731,
+                "shared_dirtied": 0,
+                "shared_hits": 35770,
+                "shared_reads": 0,
+                "shared_written": 0,
+                "wal_bytes": "386424"
+              },
+              {
+                "calls": 8496,
+                "category": "security_fence",
+                "execution_ms": 77.59990799999966,
+                "rows": 8496,
+                "shared_dirtied": 0,
+                "shared_hits": 25488,
+                "shared_reads": 0,
+                "shared_written": 0,
+                "wal_bytes": "954100"
+              },
+              {
+                "calls": 8496,
+                "category": "resource_authentication",
+                "execution_ms": 66.54483799999922,
+                "rows": 8496,
+                "shared_dirtied": 0,
+                "shared_hits": 50976,
+                "shared_reads": 0,
+                "shared_written": 0,
+                "wal_bytes": "0"
+              },
+              {
+                "calls": 19227,
+                "category": "clock",
+                "execution_ms": 37.284837000002064,
+                "rows": 19227,
+                "shared_dirtied": 0,
+                "shared_hits": 0,
+                "shared_reads": 0,
+                "shared_written": 0,
+                "wal_bytes": "0"
+              },
+              {
+                "calls": 8496,
+                "category": "commit",
+                "execution_ms": 3.601721000000007,
+                "rows": 0,
+                "shared_dirtied": 0,
+                "shared_hits": 0,
+                "shared_reads": 0,
+                "shared_written": 0,
+                "wal_bytes": "0"
+              },
+              {
+                "calls": 8496,
+                "category": "begin",
+                "execution_ms": 2.967056000000085,
+                "rows": 0,
+                "shared_dirtied": 0,
+                "shared_hits": 0,
+                "shared_reads": 0,
+                "shared_written": 0,
+                "wal_bytes": "0"
+              }
+            ],
+            "rustStages": {
+              "poolAcquire": {
+                "cancelled": 0,
+                "count": 3577,
+                "error": 0,
+                "max_us": 18549,
+                "mean_us": 1149.2848755940734,
+                "percentile_upper_us": {
+                  "p50": 2500,
+                  "p95": 2500,
+                  "p99": 5000
+                }
+              },
+              "total": {
+                "cancelled": 0,
+                "count": 3577,
+                "error": 0,
+                "max_us": 41483,
+                "mean_us": 6460.844562482527,
+                "percentile_upper_us": {
+                  "p50": 10000,
+                  "p95": 10000,
+                  "p99": 25000
+                }
+              }
+            }
+          },
+          "scheduled": 8000,
+          "scheduledFailureRate": 0.552875
+        },
+        {
+          "allLatencyMs": {
+            "p50": 0.24916600000142353,
+            "p95": 36.09729199999856,
+            "p99": 42.916292000001704
+          },
+          "allScheduledLatencyMs": {
+            "p50": 1.0940409999966505,
+            "p95": 36.821540999997524,
+            "p99": 43.457290999998804
+          },
+          "attempts": 15996,
+          "authorizedLatencyMs": {
+            "p50": 34.11170899999706,
+            "p95": 39.140041999999085,
+            "p99": 62.94887500000186
+          },
+          "authorizedPerSecond": 359.33792286827446,
+          "authorizedScheduledLatencyMs": {
+            "p50": 34.838041000002704,
+            "p95": 39.99308300000121,
+            "p99": 64.12979099999939
+          },
+          "dispatchDelayMs": {
+            "p50": 0.6098750000019209,
+            "p95": 1.3175409999967087,
+            "p99": 1.7125830000004498
+          },
+          "generatorDrops": {
+            "fraction": 0.00025,
+            "full": 0,
+            "late": 4
+          },
+          "maxInFlight": 128,
+          "mode": "fixed-arrival",
+          "name": "arrival-diverse-r1600",
+          "offeredRate": 1600,
+          "outcomes": {
+            "authorized": 3604,
+            "denied": 0,
+            "error": 0,
+            "healthy": 0,
+            "transport_error": 0,
+            "unavailable": 12392,
+            "violation": 0
+          },
+          "peakInFlight": 90,
+          "profiling": {
+            "postgresStatements": [
+              {
+                "calls": 3604,
+                "category": "policy_projection",
+                "execution_ms": 155.84422000000035,
+                "rows": 3604,
+                "shared_dirtied": 0,
+                "shared_hits": 100912,
+                "shared_reads": 0,
+                "shared_written": 0,
+                "wal_bytes": "0"
+              },
+              {
+                "calls": 10812,
+                "category": "identity_read",
+                "execution_ms": 119.66866600000006,
+                "rows": 10812,
+                "shared_dirtied": 0,
+                "shared_hits": 75684,
+                "shared_reads": 0,
+                "shared_written": 0,
+                "wal_bytes": "1020060"
+              },
+              {
+                "calls": 17136,
+                "category": "other",
+                "execution_ms": 92.45170699999814,
+                "rows": 17136,
+                "shared_dirtied": 0,
+                "shared_hits": 34272,
+                "shared_reads": 0,
+                "shared_written": 0,
+                "wal_bytes": "0"
+              },
+              {
+                "calls": 10812,
+                "category": "token_read",
+                "execution_ms": 86.01541899999997,
+                "rows": 10812,
+                "shared_dirtied": 0,
+                "shared_hits": 36040,
+                "shared_reads": 0,
+                "shared_written": 0,
+                "wal_bytes": "392256"
+              },
+              {
+                "calls": 8568,
+                "category": "security_fence",
+                "execution_ms": 73.18333299999951,
+                "rows": 8568,
+                "shared_dirtied": 0,
+                "shared_hits": 25704,
+                "shared_reads": 0,
+                "shared_written": 0,
+                "wal_bytes": "962414"
+              },
+              {
+                "calls": 8568,
+                "category": "resource_authentication",
+                "execution_ms": 67.19504999999921,
+                "rows": 8568,
+                "shared_dirtied": 0,
+                "shared_hits": 51408,
+                "shared_reads": 0,
+                "shared_written": 0,
+                "wal_bytes": "0"
+              },
+              {
+                "calls": 19380,
+                "category": "clock",
+                "execution_ms": 37.63046200000165,
+                "rows": 19380,
+                "shared_dirtied": 0,
+                "shared_hits": 0,
+                "shared_reads": 0,
+                "shared_written": 0,
+                "wal_bytes": "0"
+              },
+              {
+                "calls": 8568,
+                "category": "commit",
+                "execution_ms": 3.3344399999999967,
+                "rows": 0,
+                "shared_dirtied": 0,
+                "shared_hits": 0,
+                "shared_reads": 0,
+                "shared_written": 0,
+                "wal_bytes": "0"
+              },
+              {
+                "calls": 8568,
+                "category": "begin",
+                "execution_ms": 3.0371120000000817,
+                "rows": 0,
+                "shared_dirtied": 0,
+                "shared_hits": 0,
+                "shared_reads": 0,
+                "shared_written": 0,
+                "wal_bytes": "0"
+              }
+            ],
+            "rustStages": {
+              "poolAcquire": {
+                "cancelled": 0,
+                "count": 3604,
+                "error": 0,
+                "max_us": 8007,
+                "mean_us": 1163.843229744728,
+                "percentile_upper_us": {
+                  "p50": 2500,
+                  "p95": 2500,
+                  "p99": 5000
+                }
+              },
+              "total": {
+                "cancelled": 0,
+                "count": 3604,
+                "error": 0,
+                "max_us": 28748,
+                "mean_us": 6418.792452830188,
+                "percentile_upper_us": {
+                  "p50": 10000,
+                  "p95": 10000,
+                  "p99": 10000
+                }
+              }
+            }
+          },
+          "scheduled": 16000,
+          "scheduledFailureRate": 0.77475
+        },
+        {
+          "allLatencyMs": {
+            "p50": 13.74162499999511,
+            "p95": 22.273417000003974,
+            "p99": 24.38575000000128
+          },
+          "allScheduledLatencyMs": {
+            "p50": 14.331874333329324,
+            "p95": 22.840749666662305,
+            "p99": 25.134624999998778
+          },
+          "attempts": 11999,
+          "authorizedLatencyMs": {
+            "p50": 22.057709000000614,
+            "p95": 25.047124999997322,
+            "p99": 27.468041000000085
+          },
+          "authorizedPerSecond": 144.16047376882122,
+          "authorizedScheduledLatencyMs": {
+            "p50": 22.587375000002794,
+            "p95": 25.655665999998746,
+            "p99": 27.713874333327112
+          },
+          "dispatchDelayMs": {
+            "p50": 0.5558333333392511,
+            "p95": 1.3368743333339808,
+            "p99": 1.722249999998894
+          },
+          "generatorDrops": {
+            "fraction": 0.00008333333333333333,
+            "full": 0,
+            "late": 1
+          },
+          "maxInFlight": 128,
+          "mode": "fixed-arrival",
+          "name": "arrival-noisy-invalid-client",
+          "offeredRate": 1200,
+          "outcomes": {
+            "authorized": 1444,
+            "denied": 8349,
+            "error": 0,
+            "healthy": 1500,
+            "transport_error": 0,
+            "unavailable": 706,
+            "violation": 0
+          },
+          "peakInFlight": 19,
+          "profiling": {
+            "postgresStatements": [
+              {
+                "calls": 22474,
+                "category": "other",
+                "execution_ms": 103.16151799999709,
+                "rows": 22474,
+                "shared_dirtied": 0,
+                "shared_hits": 44948,
+                "shared_reads": 0,
+                "shared_written": 0,
+                "wal_bytes": "0"
+              },
+              {
+                "calls": 11237,
+                "category": "security_fence",
+                "execution_ms": 72.07501599999931,
+                "rows": 11237,
+                "shared_dirtied": 0,
+                "shared_hits": 33711,
+                "shared_reads": 0,
+                "shared_written": 0,
+                "wal_bytes": "1011932"
+              },
+              {
+                "calls": 1444,
+                "category": "policy_projection",
+                "execution_ms": 68.77752300000002,
+                "rows": 1444,
+                "shared_dirtied": 0,
+                "shared_hits": 40432,
+                "shared_reads": 0,
+                "shared_written": 0,
+                "wal_bytes": "0"
+              },
+              {
+                "calls": 11237,
+                "category": "resource_authentication",
+                "execution_ms": 67.92342499999913,
+                "rows": 2888,
+                "shared_dirtied": 0,
+                "shared_hits": 59073,
+                "shared_reads": 0,
+                "shared_written": 0,
+                "wal_bytes": "0"
+              },
+              {
+                "calls": 4332,
+                "category": "identity_read",
+                "execution_ms": 47.816126999999966,
+                "rows": 4332,
+                "shared_dirtied": 0,
+                "shared_hits": 30324,
+                "shared_reads": 0,
+                "shared_written": 0,
+                "wal_bytes": "389880"
+              },
+              {
+                "calls": 4332,
+                "category": "token_read",
+                "execution_ms": 33.401016000000034,
+                "rows": 4332,
+                "shared_dirtied": 0,
+                "shared_hits": 14440,
+                "shared_reads": 0,
+                "shared_written": 0,
+                "wal_bytes": "156060"
+              },
+              {
+                "calls": 7220,
+                "category": "clock",
+                "execution_ms": 14.46756100000007,
+                "rows": 7220,
+                "shared_dirtied": 0,
+                "shared_hits": 0,
+                "shared_reads": 0,
+                "shared_written": 0,
+                "wal_bytes": "0"
+              },
+              {
+                "calls": 11237,
+                "category": "begin",
+                "execution_ms": 3.0740530000001582,
+                "rows": 0,
+                "shared_dirtied": 0,
+                "shared_hits": 0,
+                "shared_reads": 0,
+                "shared_written": 0,
+                "wal_bytes": "0"
+              },
+              {
+                "calls": 8349,
+                "category": "rollback",
+                "execution_ms": 2.6781140000000905,
+                "rows": 0,
+                "shared_dirtied": 0,
+                "shared_hits": 0,
+                "shared_reads": 0,
+                "shared_written": 0,
+                "wal_bytes": "0"
+              },
+              {
+                "calls": 2888,
+                "category": "commit",
+                "execution_ms": 1.1325369999999948,
+                "rows": 0,
+                "shared_dirtied": 0,
+                "shared_hits": 0,
+                "shared_reads": 0,
+                "shared_written": 0,
+                "wal_bytes": "0"
+              }
+            ],
+            "rustStages": {
+              "poolAcquire": {
+                "cancelled": 0,
+                "count": 1444,
+                "error": 0,
+                "max_us": 1246,
+                "mean_us": 351.37742382271466,
+                "percentile_upper_us": {
+                  "p50": 500,
+                  "p95": 1000,
+                  "p99": 1000
+                }
+              },
+              "total": {
+                "cancelled": 0,
+                "count": 1444,
+                "error": 0,
+                "max_us": 10469,
+                "mean_us": 5245.502770083102,
+                "percentile_upper_us": {
+                  "p50": 10000,
+                  "p95": 10000,
+                  "p99": 10000
+                }
+              }
+            }
+          },
+          "scheduled": 12000,
+          "scheduledFailureRate": 0.058916666666666666
+        },
+        {
+          "allLatencyMs": {
+            "p50": 7.28808299999946,
+            "p95": 8.992959000002884,
+            "p99": 12.139583000003768
+          },
+          "allScheduledLatencyMs": {
+            "p50": 7.89679199999955,
+            "p95": 9.704166999996232,
+            "p99": 12.443707999998878
+          },
+          "attempts": 2000,
+          "authorizedLatencyMs": {
+            "p50": 7.28808299999946,
+            "p95": 8.992959000002884,
+            "p99": 12.139583000003768
+          },
+          "authorizedPerSecond": 199.93471297893495,
+          "authorizedScheduledLatencyMs": {
+            "p50": 7.89679199999955,
+            "p95": 9.704166999996232,
+            "p99": 12.443707999998878
+          },
+          "dispatchDelayMs": {
+            "p50": 0.532666999999492,
+            "p95": 1.0573329999970156,
+            "p99": 1.135083000001032
+          },
+          "generatorDrops": {
+            "fraction": 0,
+            "full": 0,
+            "late": 0
+          },
+          "maxInFlight": 128,
+          "mode": "fixed-arrival",
+          "name": "arrival-permission-reduction-concurrent",
+          "offeredRate": 200,
+          "outcomes": {
+            "authorized": 2000,
+            "denied": 0,
+            "error": 0,
+            "healthy": 0,
+            "transport_error": 0,
+            "unavailable": 0,
+            "violation": 0
+          },
+          "peakInFlight": 6,
+          "profiling": {
+            "postgresStatements": [
+              {
+                "calls": 2000,
+                "category": "policy_projection",
+                "execution_ms": 70.49213999999986,
+                "rows": 2000,
+                "shared_dirtied": 0,
+                "shared_hits": 56000,
+                "shared_reads": 0,
+                "shared_written": 0,
+                "wal_bytes": "0"
+              },
+              {
+                "calls": 6000,
+                "category": "identity_read",
+                "execution_ms": 44.13597500000001,
+                "rows": 6000,
+                "shared_dirtied": 0,
+                "shared_hits": 42000,
+                "shared_reads": 0,
+                "shared_written": 0,
+                "wal_bytes": "540054"
+              },
+              {
+                "calls": 6000,
+                "category": "token_read",
+                "execution_ms": 30.444146000000117,
+                "rows": 6000,
+                "shared_dirtied": 0,
+                "shared_hits": 20000,
+                "shared_reads": 0,
+                "shared_written": 0,
+                "wal_bytes": "216170"
+              },
+              {
+                "calls": 8000,
+                "category": "other",
+                "execution_ms": 29.34582899999973,
+                "rows": 8000,
+                "shared_dirtied": 0,
+                "shared_hits": 16000,
+                "shared_reads": 0,
+                "shared_written": 0,
+                "wal_bytes": "0"
+              },
+              {
+                "calls": 4000,
+                "category": "resource_authentication",
+                "execution_ms": 22.161605999999995,
+                "rows": 4000,
+                "shared_dirtied": 0,
+                "shared_hits": 24000,
+                "shared_reads": 0,
+                "shared_written": 0,
+                "wal_bytes": "0"
+              },
+              {
+                "calls": 4002,
+                "category": "security_fence",
+                "execution_ms": 21.63091599999993,
+                "rows": 4002,
+                "shared_dirtied": 0,
+                "shared_hits": 12018,
+                "shared_reads": 0,
+                "shared_written": 0,
+                "wal_bytes": "290022"
+              },
+              {
+                "calls": 10000,
+                "category": "clock",
+                "execution_ms": 11.49143100000011,
+                "rows": 10000,
+                "shared_dirtied": 0,
+                "shared_hits": 0,
+                "shared_reads": 0,
+                "shared_written": 0,
+                "wal_bytes": "0"
+              },
+              {
+                "calls": 1,
+                "category": "mutation",
+                "execution_ms": 6.324251,
+                "rows": 1,
+                "shared_dirtied": 0,
+                "shared_hits": 306,
+                "shared_reads": 0,
+                "shared_written": 0,
+                "wal_bytes": "476"
+              },
+              {
+                "calls": 4000,
+                "category": "begin",
+                "execution_ms": 0.8697330000000011,
+                "rows": 0,
+                "shared_dirtied": 0,
+                "shared_hits": 0,
+                "shared_reads": 0,
+                "shared_written": 0,
+                "wal_bytes": "0"
+              },
+              {
+                "calls": 4000,
+                "category": "commit",
+                "execution_ms": 0.8632960000000007,
+                "rows": 0,
+                "shared_dirtied": 0,
+                "shared_hits": 0,
+                "shared_reads": 0,
+                "shared_written": 0,
+                "wal_bytes": "0"
+              }
+            ],
+            "rustStages": {
+              "poolAcquire": {
+                "cancelled": 0,
+                "count": 2000,
+                "error": 0,
+                "max_us": 1953,
+                "mean_us": 196.0795,
+                "percentile_upper_us": {
+                  "p50": 250,
+                  "p95": 500,
+                  "p99": 500
+                }
+              },
+              "total": {
+                "cancelled": 0,
+                "count": 2000,
+                "error": 0,
+                "max_us": 19967,
+                "mean_us": 3435.78,
+                "percentile_upper_us": {
+                  "p50": 5000,
+                  "p95": 5000,
+                  "p99": 10000
+                }
+              }
+            }
+          },
+          "scheduled": 2000,
+          "scheduledFailureRate": 0
+        },
+        {
+          "allLatencyMs": {
+            "p50": 16.988499999999476,
+            "p95": 22.055707999999868,
+            "p99": 24.40758300000016
+          },
+          "allScheduledLatencyMs": null,
+          "attempts": 64,
+          "authorizedLatencyMs": {
+            "p50": 17.98908300000039,
+            "p95": 22.06620799999655,
+            "p99": 24.40758300000016
+          },
+          "authorizedPerSecond": 378.3735371988432,
+          "authorizedScheduledLatencyMs": null,
+          "dispatchDelayMs": null,
+          "generatorDrops": null,
+          "maxInFlight": null,
+          "mode": "closed-loop",
+          "name": "permission-reduction-after-commit",
+          "offeredRate": null,
+          "outcomes": {
+            "authorized": 47,
+            "denied": 0,
+            "error": 0,
+            "healthy": 0,
+            "transport_error": 0,
+            "unavailable": 17,
+            "violation": 0
+          },
+          "peakInFlight": null,
+          "profiling": {
+            "postgresStatements": [
+              {
+                "calls": 47,
+                "category": "policy_projection",
+                "execution_ms": 1.7361289999999998,
+                "rows": 47,
+                "shared_dirtied": 0,
+                "shared_hits": 1316,
+                "shared_reads": 0,
+                "shared_written": 0,
+                "wal_bytes": "0"
+              },
+              {
+                "calls": 141,
+                "category": "identity_read",
+                "execution_ms": 1.2360859999999998,
+                "rows": 141,
+                "shared_dirtied": 0,
+                "shared_hits": 987,
+                "shared_reads": 0,
+                "shared_written": 0,
+                "wal_bytes": "12690"
+              },
+              {
+                "calls": 214,
+                "category": "other",
+                "execution_ms": 0.8962469999999997,
+                "rows": 214,
+                "shared_dirtied": 0,
+                "shared_hits": 428,
+                "shared_reads": 0,
+                "shared_written": 0,
+                "wal_bytes": "0"
+              },
+              {
+                "calls": 141,
+                "category": "token_read",
+                "execution_ms": 0.8880419999999998,
+                "rows": 141,
+                "shared_dirtied": 0,
+                "shared_hits": 470,
+                "shared_reads": 0,
+                "shared_written": 0,
+                "wal_bytes": "6434"
+              },
+              {
+                "calls": 107,
+                "category": "security_fence",
+                "execution_ms": 0.7244200000000001,
+                "rows": 107,
+                "shared_dirtied": 0,
+                "shared_hits": 321,
+                "shared_reads": 0,
+                "shared_written": 0,
+                "wal_bytes": "11950"
+              },
+              {
+                "calls": 107,
+                "category": "resource_authentication",
+                "execution_ms": 0.6461720000000002,
+                "rows": 107,
+                "shared_dirtied": 0,
+                "shared_hits": 642,
+                "shared_reads": 0,
+                "shared_written": 0,
+                "wal_bytes": "0"
+              },
+              {
+                "calls": 248,
+                "category": "clock",
+                "execution_ms": 0.4665959999999995,
+                "rows": 248,
+                "shared_dirtied": 0,
+                "shared_hits": 0,
+                "shared_reads": 0,
+                "shared_written": 0,
+                "wal_bytes": "0"
+              },
+              {
+                "calls": 107,
+                "category": "begin",
+                "execution_ms": 0.038294000000000016,
+                "rows": 0,
+                "shared_dirtied": 0,
+                "shared_hits": 0,
+                "shared_reads": 0,
+                "shared_written": 0,
+                "wal_bytes": "0"
+              },
+              {
+                "calls": 107,
+                "category": "commit",
+                "execution_ms": 0.030506000000000016,
+                "rows": 0,
+                "shared_dirtied": 0,
+                "shared_hits": 0,
+                "shared_reads": 0,
+                "shared_written": 0,
+                "wal_bytes": "0"
+              }
+            ],
+            "rustStages": {
+              "poolAcquire": {
+                "cancelled": 0,
+                "count": 47,
+                "error": 0,
+                "max_us": 2733,
+                "mean_us": 1161.212765957447,
+                "percentile_upper_us": {
+                  "p50": 2500,
+                  "p95": 2500,
+                  "p99": 5000
+                }
+              },
+              "total": {
+                "cancelled": 0,
+                "count": 47,
+                "error": 0,
+                "max_us": 8455,
+                "mean_us": 6057.085106382979,
+                "percentile_upper_us": {
+                  "p50": 10000,
+                  "p95": 10000,
+                  "p99": 10000
+                }
+              }
+            }
+          },
+          "scheduled": null,
+          "scheduledFailureRate": null
+        },
+        {
+          "allLatencyMs": {
+            "p50": 6.8431669999990845,
+            "p95": 8.432166999999026,
+            "p99": 14.98241599999892
+          },
+          "allScheduledLatencyMs": {
+            "p50": 7.195416000002297,
+            "p95": 9.181875000002037,
+            "p99": 15.46666600000026
+          },
+          "attempts": 2000,
+          "authorizedLatencyMs": {
+            "p50": 7.288999999997031,
+            "p95": 10.34375,
+            "p99": 17.06529099999898
+          },
+          "authorizedPerSecond": 99.8826424842834,
+          "authorizedScheduledLatencyMs": {
+            "p50": 7.892707999999402,
+            "p95": 10.79462500000227,
+            "p99": 18.329708000004757
+          },
+          "dispatchDelayMs": {
+            "p50": 0.5087910000002012,
+            "p95": 1.0667910000047414,
+            "p99": 1.1460409999999683
+          },
+          "generatorDrops": {
+            "fraction": 0,
+            "full": 0,
+            "late": 0
+          },
+          "maxInFlight": 128,
+          "mode": "fixed-arrival",
+          "name": "arrival-revocation-concurrent",
+          "offeredRate": 200,
+          "outcomes": {
+            "authorized": 999,
+            "denied": 1000,
+            "error": 0,
+            "healthy": 0,
+            "transport_error": 0,
+            "unavailable": 1,
+            "violation": 0
+          },
+          "peakInFlight": 6,
+          "profiling": {
+            "postgresStatements": [
+              {
+                "calls": 999,
+                "category": "policy_projection",
+                "execution_ms": 35.37068,
+                "rows": 999,
+                "shared_dirtied": 0,
+                "shared_hits": 27972,
+                "shared_reads": 0,
+                "shared_written": 0,
+                "wal_bytes": "0"
+              },
+              {
+                "calls": 8003,
+                "category": "other",
+                "execution_ms": 30.06533699999964,
+                "rows": 8000,
+                "shared_dirtied": 0,
+                "shared_hits": 16011,
+                "shared_reads": 0,
+                "shared_written": 0,
+                "wal_bytes": "72"
+              },
+              {
+                "calls": 5999,
+                "category": "token_read",
+                "execution_ms": 30.030918000000135,
+                "rows": 4999,
+                "shared_dirtied": 0,
+                "shared_hits": 18999,
+                "shared_reads": 0,
+                "shared_written": 0,
+                "wal_bytes": "162162"
+              },
+              {
+                "calls": 2997,
+                "category": "identity_read",
+                "execution_ms": 22.98955499999996,
+                "rows": 2997,
+                "shared_dirtied": 0,
+                "shared_hits": 20979,
+                "shared_reads": 0,
+                "shared_written": 0,
+                "wal_bytes": "269730"
+              },
+              {
+                "calls": 3999,
+                "category": "resource_authentication",
+                "execution_ms": 21.890294000000043,
+                "rows": 3999,
+                "shared_dirtied": 0,
+                "shared_hits": 23994,
+                "shared_reads": 0,
+                "shared_written": 0,
+                "wal_bytes": "0"
+              },
+              {
+                "calls": 4002,
+                "category": "security_fence",
+                "execution_ms": 19.806547000000087,
+                "rows": 4002,
+                "shared_dirtied": 0,
+                "shared_hits": 12006,
+                "shared_reads": 0,
+                "shared_written": 0,
+                "wal_bytes": "255396"
+              },
+              {
+                "calls": 7999,
+                "category": "clock",
+                "execution_ms": 9.760395000000024,
+                "rows": 7999,
+                "shared_dirtied": 0,
+                "shared_hits": 0,
+                "shared_reads": 0,
+                "shared_written": 0,
+                "wal_bytes": "0"
+              },
+              {
+                "calls": 4002,
+                "category": "begin",
+                "execution_ms": 0.8875740000000024,
+                "rows": 0,
+                "shared_dirtied": 0,
+                "shared_hits": 0,
+                "shared_reads": 0,
+                "shared_written": 0,
+                "wal_bytes": "0"
+              },
+              {
+                "calls": 4002,
+                "category": "commit",
+                "execution_ms": 0.852552000000002,
+                "rows": 0,
+                "shared_dirtied": 0,
+                "shared_hits": 0,
+                "shared_reads": 0,
+                "shared_written": 0,
+                "wal_bytes": "0"
+              },
+              {
+                "calls": 2,
+                "category": "mutation",
+                "execution_ms": 0.537875,
+                "rows": 2,
+                "shared_dirtied": 0,
+                "shared_hits": 50,
+                "shared_reads": 0,
+                "shared_written": 0,
+                "wal_bytes": "424"
+              }
+            ],
+            "rustStages": {
+              "poolAcquire": {
+                "cancelled": 0,
+                "count": 1999,
+                "error": 0,
+                "max_us": 2256,
+                "mean_us": 197.67133566783392,
+                "percentile_upper_us": {
+                  "p50": 250,
+                  "p95": 500,
+                  "p99": 500
+                }
+              },
+              "total": {
+                "cancelled": 0,
+                "count": 1999,
+                "error": 0,
+                "max_us": 17569,
+                "mean_us": 2775.063531765883,
+                "percentile_upper_us": {
+                  "p50": 5000,
+                  "p95": 5000,
+                  "p99": 10000
+                }
+              }
+            }
+          },
+          "scheduled": 2000,
+          "scheduledFailureRate": 0.0005
+        },
+        {
+          "allLatencyMs": {
+            "p50": 13.935041999997338,
+            "p95": 17.620667000010144,
+            "p99": 20.660834000009345
+          },
+          "allScheduledLatencyMs": null,
+          "attempts": 64,
+          "authorizedLatencyMs": null,
+          "authorizedPerSecond": 0,
+          "authorizedScheduledLatencyMs": null,
+          "dispatchDelayMs": null,
+          "generatorDrops": null,
+          "maxInFlight": null,
+          "mode": "closed-loop",
+          "name": "revocation-after-commit",
+          "offeredRate": null,
+          "outcomes": {
+            "authorized": 0,
+            "denied": 47,
+            "error": 0,
+            "healthy": 0,
+            "transport_error": 0,
+            "unavailable": 17,
+            "violation": 0
+          },
+          "peakInFlight": null,
+          "profiling": {
+            "postgresStatements": [
+              {
+                "calls": 222,
+                "category": "other",
+                "execution_ms": 1.3272459999999993,
+                "rows": 222,
+                "shared_dirtied": 0,
+                "shared_hits": 444,
+                "shared_reads": 0,
+                "shared_written": 0,
+                "wal_bytes": "0"
+              },
+              {
+                "calls": 141,
+                "category": "token_read",
+                "execution_ms": 0.8641329999999998,
+                "rows": 94,
+                "shared_dirtied": 0,
+                "shared_hits": 423,
+                "shared_reads": 0,
+                "shared_written": 0,
+                "wal_bytes": "3024"
+              },
+              {
+                "calls": 111,
+                "category": "resource_authentication",
+                "execution_ms": 0.85637,
+                "rows": 111,
+                "shared_dirtied": 0,
+                "shared_hits": 666,
+                "shared_reads": 0,
+                "shared_written": 0,
+                "wal_bytes": "0"
+              },
+              {
+                "calls": 111,
+                "category": "security_fence",
+                "execution_ms": 0.8186659999999994,
+                "rows": 111,
+                "shared_dirtied": 0,
+                "shared_hits": 333,
+                "shared_reads": 0,
+                "shared_written": 0,
+                "wal_bytes": "11252"
+              },
+              {
+                "calls": 158,
+                "category": "clock",
+                "execution_ms": 0.3182009999999997,
+                "rows": 158,
+                "shared_dirtied": 0,
+                "shared_hits": 0,
+                "shared_reads": 0,
+                "shared_written": 0,
+                "wal_bytes": "0"
+              },
+              {
+                "calls": 111,
+                "category": "commit",
+                "execution_ms": 0.02871100000000002,
+                "rows": 0,
+                "shared_dirtied": 0,
+                "shared_hits": 0,
+                "shared_reads": 0,
+                "shared_written": 0,
+                "wal_bytes": "0"
+              },
+              {
+                "calls": 111,
+                "category": "begin",
+                "execution_ms": 0.02582800000000001,
+                "rows": 0,
+                "shared_dirtied": 0,
+                "shared_hits": 0,
+                "shared_reads": 0,
+                "shared_written": 0,
+                "wal_bytes": "0"
+              }
+            ],
+            "rustStages": {
+              "poolAcquire": {
+                "cancelled": 0,
+                "count": 47,
+                "error": 0,
+                "max_us": 1353,
+                "mean_us": 676.3191489361702,
+                "percentile_upper_us": {
+                  "p50": 1000,
+                  "p95": 2500,
+                  "p99": 2500
+                }
+              },
+              "total": {
+                "cancelled": 0,
+                "count": 47,
+                "error": 0,
+                "max_us": 4396,
+                "mean_us": 3642.2340425531916,
+                "percentile_upper_us": {
+                  "p50": 5000,
+                  "p95": 5000,
+                  "p99": 5000
+                }
+              }
+            }
+          },
+          "scheduled": null,
+          "scheduledFailureRate": null
+        },
+        {
+          "allLatencyMs": {
+            "p50": 7.483624999993481,
+            "p95": 9.047291999988374,
+            "p99": 10.158416000005673
+          },
+          "allScheduledLatencyMs": null,
+          "attempts": 32,
+          "authorizedLatencyMs": {
+            "p50": 7.483624999993481,
+            "p95": 9.047291999988374,
+            "p99": 10.158416000005673
+          },
+          "authorizedPerSecond": 130.37048268212982,
+          "authorizedScheduledLatencyMs": null,
+          "dispatchDelayMs": null,
+          "generatorDrops": null,
+          "maxInFlight": null,
+          "mode": "closed-loop",
+          "name": "unaffected-resource",
+          "offeredRate": null,
+          "outcomes": {
+            "authorized": 32,
+            "denied": 0,
+            "error": 0,
+            "healthy": 0,
+            "transport_error": 0,
+            "unavailable": 0,
+            "violation": 0
+          },
+          "peakInFlight": null,
+          "profiling": {
+            "postgresStatements": [
+              {
+                "calls": 32,
+                "category": "policy_projection",
+                "execution_ms": 1.267291,
+                "rows": 32,
+                "shared_dirtied": 0,
+                "shared_hits": 896,
+                "shared_reads": 0,
+                "shared_written": 0,
+                "wal_bytes": "0"
+              },
+              {
+                "calls": 96,
+                "category": "identity_read",
+                "execution_ms": 0.7829989999999999,
+                "rows": 96,
+                "shared_dirtied": 0,
+                "shared_hits": 672,
+                "shared_reads": 0,
+                "shared_written": 0,
+                "wal_bytes": "8640"
+              },
+              {
+                "calls": 128,
+                "category": "other",
+                "execution_ms": 0.5572639999999998,
+                "rows": 128,
+                "shared_dirtied": 0,
+                "shared_hits": 256,
+                "shared_reads": 0,
+                "shared_written": 0,
+                "wal_bytes": "0"
+              },
+              {
+                "calls": 96,
+                "category": "token_read",
+                "execution_ms": 0.5479630000000002,
+                "rows": 96,
+                "shared_dirtied": 0,
+                "shared_hits": 320,
+                "shared_reads": 0,
+                "shared_written": 0,
+                "wal_bytes": "3456"
+              },
+              {
+                "calls": 64,
+                "category": "resource_authentication",
+                "execution_ms": 0.375049,
+                "rows": 64,
+                "shared_dirtied": 0,
+                "shared_hits": 384,
+                "shared_reads": 0,
+                "shared_written": 0,
+                "wal_bytes": "0"
+              },
+              {
+                "calls": 64,
+                "category": "security_fence",
+                "execution_ms": 0.327836,
+                "rows": 64,
+                "shared_dirtied": 0,
+                "shared_hits": 192,
+                "shared_reads": 0,
+                "shared_written": 0,
+                "wal_bytes": "3456"
+              },
+              {
+                "calls": 160,
+                "category": "clock",
+                "execution_ms": 0.22801699999999975,
+                "rows": 160,
+                "shared_dirtied": 0,
+                "shared_hits": 0,
+                "shared_reads": 0,
+                "shared_written": 0,
+                "wal_bytes": "0"
+              },
+              {
+                "calls": 64,
+                "category": "begin",
+                "execution_ms": 0.01687700000000001,
+                "rows": 0,
+                "shared_dirtied": 0,
+                "shared_hits": 0,
+                "shared_reads": 0,
+                "shared_written": 0,
+                "wal_bytes": "0"
+              },
+              {
+                "calls": 64,
+                "category": "commit",
+                "execution_ms": 0.014789000000000005,
+                "rows": 0,
+                "shared_dirtied": 0,
+                "shared_hits": 0,
+                "shared_reads": 0,
+                "shared_written": 0,
+                "wal_bytes": "0"
+              }
+            ],
+            "rustStages": {
+              "poolAcquire": {
+                "cancelled": 0,
+                "count": 32,
+                "error": 0,
+                "max_us": 275,
+                "mean_us": 203.5,
+                "percentile_upper_us": {
+                  "p50": 250,
+                  "p95": 500,
+                  "p99": 500
+                }
+              },
+              "total": {
+                "cancelled": 0,
+                "count": 32,
+                "error": 0,
+                "max_us": 3896,
+                "mean_us": 3445.625,
+                "percentile_upper_us": {
+                  "p50": 5000,
+                  "p95": 5000,
+                  "p99": 5000
+                }
+              }
+            }
+          },
+          "scheduled": null,
+          "scheduledFailureRate": null
+        }
+      ],
+      "snapshots": {
+        "after": {
+          "activity": [
+            {
+              "count": 5,
+              "state": "idle",
+              "wait_event_type": "Client"
+            }
+          ],
+          "database": {
+            "blks_hit": 1553374,
+            "blks_read": 122,
+            "deadlocks": 0,
+            "temp_bytes": 0,
+            "tup_deleted": 410,
+            "tup_fetched": 776673,
+            "tup_inserted": 9659,
+            "tup_returned": 788322,
+            "tup_updated": 1016,
+            "xact_commit": 113866,
+            "xact_rollback": 8398
+          },
+          "databaseContainer": {
+            "blockIO": "0B / 362MB",
+            "cpu": "0.03%",
+            "memory": "88.96MiB / 7.75GiB"
+          },
+          "redis": {
+            "cache": {
+              "commands": 11,
+              "peakUsedBytes": 1289888,
+              "systemCpuSeconds": 0.046282,
+              "usedBytes": 1289568,
+              "userCpuSeconds": 0.057853
+            },
+            "limiter": {
+              "commands": 693393,
+              "peakUsedBytes": 1643184,
+              "systemCpuSeconds": 1.639581,
+              "usedBytes": 1586128,
+              "userCpuSeconds": 4.294709
+            }
+          },
+          "server": {
+            "cpuTimeAndRssKiB": "0:17.15  23440"
+          },
+          "waitingLocks": 0
+        },
+        "before": {
+          "activity": [
+            {
+              "count": 2,
+              "state": "idle",
+              "wait_event_type": "Client"
+            }
+          ],
+          "database": {
+            "blks_hit": 171085,
+            "blks_read": 122,
+            "deadlocks": 0,
+            "temp_bytes": 0,
+            "tup_deleted": 135,
+            "tup_fetched": 101464,
+            "tup_inserted": 9163,
+            "tup_returned": 112335,
+            "tup_updated": 895,
+            "xact_commit": 159,
+            "xact_rollback": 19
+          },
+          "databaseContainer": {
+            "blockIO": "0B / 72.7MB",
+            "cpu": "0.09%",
+            "memory": "74.07MiB / 7.75GiB"
+          },
+          "redis": {
+            "cache": {
+              "commands": 9,
+              "peakUsedBytes": 1289888,
+              "systemCpuSeconds": 0.026398,
+              "usedBytes": 1289568,
+              "userCpuSeconds": 0.0228
+            },
+            "limiter": {
+              "commands": 73,
+              "peakUsedBytes": 1578464,
+              "systemCpuSeconds": 0.024743,
+              "usedBytes": 1569056,
+              "userCpuSeconds": 0.015099
+            }
+          },
+          "server": {
+            "cpuTimeAndRssKiB": "0:00.18  15280"
+          },
+          "waitingLocks": 0
+        },
+        "delta": {
+          "postgres": {
+            "blocksHit": 1382289,
+            "blocksRead": 0,
+            "commits": 113707,
+            "deadlocks": 0,
+            "rollbacks": 8379,
+            "tempBytes": 0
+          },
+          "redis": {
+            "cache": {
+              "commands": 2,
+              "peakUsedBytes": 1289888,
+              "systemCpuSeconds": 0.019883999999999995,
+              "usedBytes": 0,
+              "userCpuSeconds": 0.035053
+            },
+            "limiter": {
+              "commands": 693320,
+              "peakUsedBytes": 1643184,
+              "systemCpuSeconds": 1.614838,
+              "usedBytes": 17072,
+              "userCpuSeconds": 4.27961
+            }
+          }
+        }
+      },
+      "status": "passed",
+      "timestamp": "2026-09-27T19:16:47.747Z"
+    }
+  ],
+  "schema": 1,
+  "source": {
+    "binarySha256": "9a78257ac6f4d263cfe9821b19eecd60916898866eb0b621ab6bc92ad1844c1e",
+    "clean": true,
+    "commit": "9369f54a2376ef8c740fad34259a7949240c201e",
+    "sourceSha256": "41433c3345bec107b3a585a8ad44bb7320e06b50767566ccc717c2b92c449419"
+  },
+  "workload": {
+    "arrivals": {
+      "changeRate": 200,
+      "durationMs": 10000,
+      "maxInFlight": 128,
+      "maxLatenessMs": 5,
+      "noiseRate": 1200,
+      "rates": [200, 800, 1600]
+    },
+    "clients": 8,
+    "name": "profile-baseline",
+    "profiling": true,
+    "requests": 128,
+    "restrictedDatabase": true
+  }
+}

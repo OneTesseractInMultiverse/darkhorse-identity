@@ -154,8 +154,9 @@ two-lane measurements; older variants are explicitly identified in the artifact.
 These short owner-role, single-host observations justify a bounded development
 scheduling choice, not production throughput, stable percentiles, multi-host
 fairness or a general Redis speedup. Cross-variant before/after measurements
-with complete Redis observations, runtime-role deployments and production budgets
-remain open.
+with complete Redis observations and production budgets remain open. A separate
+single-host restricted-runtime profile is recorded below; it is not a matched
+before/after comparison.
 
 ## Repeated paced baseline — 2026-09-27
 
@@ -201,8 +202,8 @@ they are not isolated per-request costs.
 This repeat narrows variability evidence but does not set a production SLO. The
 rejections above 200/s require a workload target and restricted-runtime, multi-host,
 larger-population and longer endurance measurements before any capacity claim or
-queue/default change. The current baseline still uses a database owner and a
-single-host process; those gaps remain open under this issue.
+queue/default change. This owner-role baseline remains single-host; the separate
+restricted-runtime profile below does not qualify replicas or production SLOs.
 
 `make ci` exercises isolated policy, configuration, wire-format, queue, HTTP and
 reporting cases. `make test-postgres` verifies primary caller authentication and
@@ -212,3 +213,51 @@ and login budget separation, policy mismatch, fencing, deadline cancellation and
 revocation between preflight and final inspection. The common limiter's real
 lost-reply, restart, recovery, atomicity and capacity scenarios remain active.
 Whole-project coverage and release qualification remain separate open gates.
+
+## Repeated restricted-runtime profile — 2026-09-27
+
+Two more `make benchmark-profile-baseline` runs used the same clean release
+binary and source revision (`9369f54`), this time running the measured HTTPS
+server with the published `darkhorse_runtime` grants. Schema setup, fixture
+seeding and PostgreSQL observations retained separate owner access. Each run
+used eight resource clients, a five-connection pool, the existing shared
+60,000/6,000 per-minute admission limits, verified HTTPS, one local server
+process, Percona PostgreSQL 18.6 and separate Redis cache/limiter services. No
+positive authorization or computation cache was enabled. The machine-readable
+phase, PostgreSQL, Redis and host observations are in
+[`introspection-admission-runtime-profile-baseline-2026-09-27.json`](measurements/introspection-admission-runtime-profile-baseline-2026-09-27.json).
+
+|  Offered workload | Run 1 authorized / scheduled | Run 2 authorized / scheduled | Run 1 authorized scheduled p95 | Run 2 authorized scheduled p95 |
+| ----------------: | ---------------------------: | ---------------------------: | -----------------------------: | -----------------------------: |
+|             200/s |                1,998 / 2,000 |                1,994 / 2,000 |                       15.46 ms |                        9.24 ms |
+|             800/s |                3,121 / 8,000 |                3,577 / 8,000 |                       51.85 ms |                       45.64 ms |
+|           1,600/s |               3,072 / 16,000 |               3,604 / 16,000 |                       57.12 ms |                       39.99 ms |
+| 1,200/s noisy mix |               1,341 / 12,000 |               1,444 / 12,000 |                       33.11 ms |                       25.66 ms |
+
+Unavailable responses are retained: at 800/s and 1,600/s the bounded path
+rejected a large share rather than granting unaccounted work. The second 1,600/s
+run had four late scheduled arrivals; the first had eight. In the noisy mixture,
+each run also retained 1,500 healthy probes and the expected invalid-credential
+denials; the second noisy run had one late scheduled arrival. The repeated 200/s
+phases had two and four unavailable responses.
+Every measured phase had zero authority violations, transport errors or
+unexpected HTTP errors. During acknowledged permission reduction, all 2,000
+checks in each run completed without an unavailable response. After revocation
+acknowledgement, both runs had zero active credentials: the remaining probes
+were denied or explicitly unavailable. This confirms strict denial under the
+restricted database role; it does not qualify an availability target.
+
+Whole-run limiter observations were 636,785 and 693,320 commands, 1.58 MiB and
+1.57 MiB peak memory, and 5.21/4.28 seconds user plus 1.91/1.61 seconds system
+CPU. Current limiter memory grew 7.3 KiB and 16.7 KiB. PostgreSQL had no measured
+physical block reads, deadlocks or temporary bytes and recorded about 104k/114k
+commits and 7.6k/8.4k rollbacks. These totals include probes and benchmark
+orchestration; they are not per-request costs. Run-to-run p95 variation at 200/s
+also cautions against treating these short local samples as stable latency
+budgets.
+
+This closes the local restricted-role check, but leaves multi-process/host
+fairness, longer endurance, deployment-specific database and Redis limits, and
+production arrival/SLO qualification open. The tested machine used one server
+process and one host; nothing here claims replicated deployment behavior or a
+production capacity target.
