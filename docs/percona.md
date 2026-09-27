@@ -21,6 +21,15 @@ parameters. Encryption needs an external key-management and recovery design.
 - Compose stores the cluster at `/data/db` in the workspace's `percona-data` volume.
   The former upstream image used `/var/lib/postgresql/18/docker` inside
   `database-data`. These directories are not interchangeable container mounts.
+- The pinned Percona image also declares `/backrestrepo`, `/pgconf`, `/pgdata`,
+  `/pgwal` and `/sshd` as image volumes. Darkhorse does not configure the
+  optional backup repository, mounted configuration overrides, alternate data
+  or WAL directories, or SSH service. Both Compose profiles mount these paths as
+  bounded 16 MiB `tmpfs` filesystems, so container recreation does not leave
+  anonymous Docker volumes behind. These paths are ephemeral by design. Before
+  enabling any of those Percona features, replace its `tmpfs` mount with storage
+  that matches the feature's persistence and recovery requirements. Keep the
+  named `/data/db` volume for PostgreSQL data.
 - The owner-only `.local/database-password` remains a read-only Compose secret.
   Credentials and the loopback endpoint remain unchanged.
 - Compose starts the vendor entrypoint as root to read that protected secret and

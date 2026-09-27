@@ -163,6 +163,37 @@ async function prepare() {
     ],
     captured,
   );
+  const postgresId = (
+    await compose(stack, ["ps", "-q", "postgres"], captured)
+  ).stdout.trim();
+  assert.match(postgresId, /^[a-f0-9]{64}$/);
+  const [postgresContainer] = JSON.parse(
+    (
+      await command("docker", ["inspect", postgresId], {
+        ...captured,
+        signal: abort.signal,
+      })
+    ).stdout,
+  );
+  assert.deepEqual(
+    postgresContainer.Mounts.filter((mount) => mount.Type === "volume").map(
+      (mount) => mount.Destination,
+    ),
+    ["/data/db"],
+    "PostgreSQL should retain only its explicitly named data volume",
+  );
+  assert.deepEqual(
+    Object.keys(postgresContainer.HostConfig.Tmpfs).sort(),
+    [
+      "/backrestrepo",
+      "/pgconf",
+      "/pgdata",
+      "/pgwal",
+      "/run/darkhorse",
+      "/sshd",
+    ].sort(),
+    "unused Percona volume paths should use tmpfs mounts",
+  );
   console.log("Compose fixture: private dependencies started.");
   await migrate(stack);
   console.log("Compose fixture: schema and runtime grants ready.");

@@ -109,7 +109,16 @@ services:
       - ./postgres-entrypoint.sh:/opt/darkhorse/postgres-entrypoint.sh:ro
       - ./pg_hba.conf:/etc/darkhorse/pg_hba.conf:ro
       - ./initialize.sql:/docker-entrypoint-initdb.d/01-darkhorse.sql:ro
-    tmpfs: [/run/darkhorse]
+    # Keep Percona's unused optional VOLUME targets ephemeral. If backup,
+    # alternate WAL/data, config overrides or SSH are enabled, give them
+    # explicit persistent storage before changing this contract.
+    tmpfs:
+      - /run/darkhorse
+      - /backrestrepo:size=16m,mode=0755
+      - /pgconf:size=16m,mode=0755
+      - /pgdata:size=16m,mode=0755
+      - /pgwal:size=16m,mode=0755
+      - /sshd:size=16m,mode=0755
     networks: [database]
     healthcheck:
       test:
