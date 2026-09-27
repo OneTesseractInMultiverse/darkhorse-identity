@@ -4,7 +4,7 @@ Application lockfiles are committed. Update dependencies in a reviewed change, r
 
 - **Axum 0.8.9**, Serde, Tokio, and Tower are confined to HTTP/runtime adapters and composition. Transport rejections redact malformed request contents. Request body limits remain explicit at consuming routes.
 - **envbind 0.1.0** is pinned at the configuration adapter. Tests use `MapEnvironment`. Complete settings, including library defaults, are validated before listener binding. Process environment access is restricted to the server/operator boundary. Core logic receives explicit inputs. [API documentation](https://docs.rs/envbind/0.1.0/envbind/)
-- **restqs 0.1.1** stays in the query adapter, pinned with default features disabled. Administrative directory and catalog routes reuse its allowlisted status and limit parsing. The adapter handles literal search and keyset cursors separately. Query criteria never establish caller authority. Mandatory owner and administrator predicates come from authenticated use cases. The source-defined `DirectoryCriteria` example remains isolated from HTTP publication. See the [compatibility review](#query-parser-update) and [API documentation](https://docs.rs/restqs/0.1.1/restqs/).
+- **restqs 0.2.0** stays in the query adapter, pinned with default features disabled. Administrative directory and catalog routes reuse its allowlisted status and limit parsing. The adapter handles literal search and keyset cursors separately. Query criteria never establish caller authority. Mandatory owner and administrator predicates come from authenticated use cases. The source-defined `DirectoryCriteria` example remains isolated from HTTP publication. See the [compatibility review](#query-parser-update) and [API documentation](https://docs.rs/restqs/0.2.0/restqs/).
 - **SQLx 0.9.0** is confined to the PostgreSQL adapter (MIT/Apache-2.0). Selected functionality is PostgreSQL, Tokio, rustls with ring, migrations/macros and UUIDs. Runtime parameterized queries avoid a compile-time database requirement. Only embedded migration macros are used. No query schema is fetched during unit compilation. SQL/client errors map to project-owned redacted failures. [SQLx documentation](https://docs.rs/sqlx/0.9.0/sqlx/)
 - **RustCrypto argon2 0.6.0** (MIT/Apache-2.0), **getrandom 0.4**, **zeroize 1**, and **uuid 1.26.1** implement the password/entropy boundary. Argon2 uses allocation, PHC formatting and zeroization features. Hashing parameters and bounded worker admission are explicit. No custom cryptographic primitive is implemented. Exact transitive versions are locked. The selected memory/work profile exceeds the OWASP minimum but still needs workload-specific measurement for future login capacity. [Argon2 API](https://docs.rs/argon2/0.6.0/argon2/), [password storage guidance](https://cheatsheetseries.owasp.org/cheatsheets/Password_Storage_Cheat_Sheet.html)
 - **Percona Distribution for PostgreSQL**, using Percona Server **18.6.1** based on PostgreSQL **18.6**, supplies the local Compose and integration database image, pinned by multi-platform digest. It uses the PostgreSQL License plus the licenses of bundled components. Preserve their notices. The container includes more than the database server. Rust, Node and Debian image stages are pinned. Image updates require a reviewed digest change and compatibility/smoke checks. See the [container and migration contract](percona.md), [release notes](https://docs.percona.com/postgresql/18/release-notes/release-notes-v18.6.1.html), and [licensing information](https://docs.percona.com/postgresql/18/licensing.html).
@@ -13,18 +13,51 @@ Application lockfiles are committed. Update dependencies in a reviewed change, r
 
 ## Query parser update
 
-Reviewed on **2026-09-24 UTC**: the published **restqs 0.1.1** archive matches
-the registry checksum, and its Rust sources and original manifest match the
-upstream release commit
-[`973f216`](https://github.com/OneTesseractInMultiverse/restqs/tree/973f2167facc75727e67a19f25bcc819511798d7).
-The crate is MIT-licensed, declares Rust 1.85, and has no package dependencies or
-build script. The selected release needs no adapter API migration. Its optional
-SQLx feature remains disabled; Darkhorse owns its parameterized SQL and authority
-predicates. The lockfile changes only this package's version and checksum.
-[Release notes](https://github.com/OneTesseractInMultiverse/restqs/releases/tag/v0.1.1).
+Reviewed on **2026-09-26 UTC**: Darkhorse upgrades to published **restqs 0.2.0**,
+using the upstream release tag [`v0.2.0`](https://github.com/OneTesseractInMultiverse/restqs/tree/e1f3cbdd5e7c722c5eb623a4faaba6a16703fbdc).
+The tag resolves to commit `e1f3cbdd5e7c722c5eb623a4faaba6a16703fbdc`, which
+GitHub marks as signature-verified. Cargo verifies the downloaded crate archive
+against the registry checksum recorded in `Cargo.lock`. The crate remains MIT-licensed,
+declares Rust 1.85, has no package
+dependencies or build script, and retains empty default features. Darkhorse's
+workspace toolchain is newer. [Release notes](https://github.com/OneTesseractInMultiverse/restqs/releases/tag/v0.2.0)
+and the [migration guide](https://github.com/OneTesseractInMultiverse/restqs/blob/v0.2.0/docs/migration-0.2.md)
+document this breaking release.
 
-The parser now enforces `max_value_bytes` for pagination values after percent
-decoding. Darkhorse already configured a 32-byte limit, but 0.1.0 accepted longer
+The query catalog now contains logical public fields only; physical column
+identifiers no longer belong in the parser configuration. Darkhorse makes that
+change for its sole `status` filter. The optional SQLx generation feature remains
+disabled. Darkhorse continues to own parameterized SQL, literal search, keyset
+cursors, authorization predicates and fixed HTTP failures. Client input cannot
+choose a storage column or establish authority. The catalog still admits only
+`status`; the adapter rejects all other public filter/control names and duplicate
+decoded keys before parser execution, with raw query and decoded value limits.
+
+The 0.2 release also rejects duplicate query controls, non-finite float values,
+ordered list comparisons, duplicate catalog fields and invalid regex flags. The
+administrative adapter does not expose float fields, regex, arbitrary sort or
+projection controls, so those parser capabilities remain unavailable. Duplicate
+controls remain rejected at Darkhorse's own boundary, preserving its fixed error
+mapping independently of upstream error details. Existing directory/catalog
+tests cover accepted status and pagination values, literal search/cursor handling,
+duplicate and unknown parameters, size limits, and fixed failures. No authorization
+or SQL policy moved into the library.
+
+This is a compatibility/security maintenance update, not a performance feature.
+The parser remains on the management request path and retains identical query
+budgets. A local release-mode comparison that constructed the same catalog and
+parser per request measured medians of 358.7 ns/op for 0.1.1 versus 351.2 ns/op
+for 0.2.0 on an accepted status/limit/skip query, and 322.5 versus 298.1 ns/op
+on a rejected status query. Each result is the median of seven 500,000-request
+rounds after warmup, with execution order alternated. Issue #45 records the Rust
+version and full limitations: this narrow parser-only measurement excludes HTTP,
+database work, contention and production traffic, and does not establish an
+application throughput improvement.
+
+### Historical 0.1.1 compatibility notes
+
+The 0.1.1 parser added enforcement of `max_value_bytes` for pagination values
+after percent decoding. Darkhorse already configured a 32-byte limit, but 0.1.0 accepted longer
 zero-padded values when their numeric result remained in range. Source-defined
 regressions demonstrate that 32-byte values remain valid and 33-byte values fail,
 both literally and percent-encoded. Administrative directory and catalog routes
@@ -33,7 +66,7 @@ return their fixed HTTP 400 errors without calling application services. The
 canonical nonzero cursors, and separate 100-character literal search limit remain.
 Search text containing operator characters is still literal text.
 
-The release also changes operator recognition, date validation, regex restrictions
+The 0.1.1 release also changed operator recognition, date validation, regex restrictions
 and null SQL translation. Darkhorse exposes no date, regex, sort, projection or
 arbitrary-field query interface, and consumes no generated SQL. Tests preserve
 those rejections and accepted status/search/cursor behavior. Although upstream

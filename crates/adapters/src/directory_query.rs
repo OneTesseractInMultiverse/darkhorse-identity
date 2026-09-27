@@ -51,7 +51,7 @@ pub(crate) fn principal(
 pub fn parse(raw: &str) -> Result<DirectoryCriteria, InvalidQuery> {
     validate_parameters(raw)?;
     let catalog = FieldCatalog::new()
-        .allow_text("status", "users.status")
+        .allow_text("status")
         .map_err(|_| InvalidQuery)?;
     let config = ParserConfig::with_limits(ParserLimits {
         max_query_bytes: 2048,
