@@ -7,6 +7,7 @@ import {
   operatorResult,
   operatorOperations,
   operatorRead,
+  postCommitRevocationAccepted,
 } from "../../lib/benchmark-operator-model.mjs";
 import { measureOperatorPhase } from "../../lib/benchmark-operator-load.mjs";
 
@@ -20,11 +21,17 @@ test("detail profiles keep bounded authenticated work under runtime database gra
     assert.deepEqual(detail.arrivals, list.arrivals);
     assert.equal(detail.clients, list.clients);
   }
-  assert.deepEqual(operatorOperations(true), [
+  assert.deepEqual(operatorOperations(true, 0), [
     "account.show",
     "application.show",
-    "account.show",
+    "account.show.missing",
     "client.show",
+  ]);
+  assert.deepEqual(operatorOperations(true, 1), [
+    "account.show.denied",
+    "application.show.denied",
+    "account.show.denied",
+    "client.show.denied",
   ]);
   assert.deepEqual(operatorOperations(false), [
     "account.list",
@@ -34,23 +41,51 @@ test("detail profiles keep bounded authenticated work under runtime database gra
   ]);
   const ids = {
     principal: "principal",
+    missingPrincipal: "missing-principal",
     application: "application",
     client: "client",
   };
   assert.deepEqual(operatorRead("account.show", ids), {
     args: ["account", "show", "principal"],
     table: "operator_account_audit",
+    command: "account.show",
     result: "read",
+  });
+  assert.deepEqual(operatorRead("account.show.missing", ids), {
+    args: ["account", "show", "missing-principal"],
+    table: "operator_account_audit",
+    command: "account.show",
+    result: "not_found",
+  });
+  assert.deepEqual(operatorRead("account.show.denied", ids), {
+    args: ["account", "show", "principal"],
+    table: "operator_account_audit",
+    command: "account.show",
+    result: "denied",
   });
   assert.deepEqual(operatorRead("application.show", ids), {
     args: ["application", "show", "application"],
     table: "operator_catalog_detail_audit",
+    command: "application.show",
     result: "read",
   });
   assert.deepEqual(operatorRead("client.show", ids), {
     args: ["client", "show", "application", "client"],
     table: "operator_catalog_detail_audit",
+    command: "client.show",
     result: "read",
+  });
+  assert.deepEqual(operatorRead("client.show.denied", ids), {
+    args: ["client", "show", "application", "client"],
+    table: "operator_catalog_detail_audit",
+    command: "client.show",
+    result: "denied",
+  });
+  assert.deepEqual(operatorRead("application.show.denied", ids), {
+    args: ["application", "show", "application"],
+    table: "operator_catalog_detail_audit",
+    command: "application.show",
+    result: "denied",
   });
   assert.throws(() => operatorRead("unknown", ids));
   assert.equal(operatorLimits(5, true).databaseRole, "darkhorse_runtime");
@@ -134,6 +169,50 @@ test("overlap latency keeps failed responses visible without counting them as us
     null,
   );
 });
+test("post-commit revocation accepts only complete fail-closed probe outcomes", () => {
+  const phase = {
+    attempts: 64,
+    outcomes: {
+      authorized: 0,
+      healthy: 0,
+      denied: 44,
+      unavailable: 20,
+      error: 0,
+      transport_error: 0,
+      violation: 0,
+    },
+  };
+  assert.equal(postCommitRevocationAccepted(phase), true);
+  assert.equal(
+    postCommitRevocationAccepted({
+      ...phase,
+      outcomes: { ...phase.outcomes, authorized: 1, denied: 43 },
+    }),
+    false,
+  );
+  assert.equal(
+    postCommitRevocationAccepted({
+      ...phase,
+      outcomes: { ...phase.outcomes, violation: 1, denied: 43 },
+    }),
+    false,
+  );
+  assert.equal(
+    postCommitRevocationAccepted({
+      ...phase,
+      scheduled: undefined,
+      attempts: 63,
+    }),
+    false,
+  );
+  assert.equal(
+    postCommitRevocationAccepted({
+      ...phase,
+      generatorDrops: { late: 1, full: 0 },
+    }),
+    false,
+  );
+});
 test("bounded CLI envelopes project only successful audit identifiers", () => {
   const operation_id = "00000000-0000-4000-8000-000000000001";
   assert.deepEqual(
@@ -144,7 +223,7 @@ test("bounded CLI envelopes project only successful audit identifiers", () => {
         data: { operation_id, secret: "private" },
       }),
     ),
-    { operationId: operation_id },
+    { operationId: operation_id, result: "read" },
   );
   for (const value of [
     "secret",
@@ -163,6 +242,37 @@ test("bounded CLI envelopes project only successful audit identifiers", () => {
     assert.throws(() => operatorResult(value), {
       message: "Invalid benchmark operator response.",
     });
+});
+test("expected denied and missing CLI envelopes require their operation receipt", () => {
+  const operation_id = "00000000-0000-4000-8000-000000000001";
+  for (const expected of ["denied", "not_found"]) {
+    const response = JSON.stringify({
+      ok: false,
+      schema_version: 1,
+      error: { code: "operation_failed", message: "fixed failure" },
+      data: { operation_id },
+    });
+    assert.deepEqual(operatorResult(response, expected), {
+      operationId: operation_id,
+      result: expected,
+    });
+    assert.throws(() => operatorResult(response, "read"), {
+      message: "Invalid benchmark operator response.",
+    });
+  }
+  assert.throws(
+    () =>
+      operatorResult(
+        JSON.stringify({
+          ok: false,
+          schema_version: 1,
+          error: { code: "operation_failed" },
+          data: {},
+        }),
+        "denied",
+      ),
+    { message: "Invalid benchmark operator response." },
+  );
 });
 test("operator lanes never overlap their own commands and drain before returning", async () => {
   const counts = [0, 0],
@@ -183,7 +293,7 @@ test("operator lanes never overlap their own commands and drain before returning
       active[worker] = true;
       assert.equal(
         operation,
-        counts[worker] % 2 === 0 ? "account.list" : "application.list",
+        operatorOperations(false, worker)[counts[worker]],
       );
       counts[worker]++;
       await Promise.resolve();
@@ -270,13 +380,25 @@ test("detail lanes report each operation and preserve scheduled queue delay", as
       return { operationId: "fixture" };
     },
   });
-  for (const operations of seen)
-    assert.deepEqual(operations, operatorOperations(true));
+  for (const [worker, operations] of seen.entries())
+    assert.deepEqual(operations, operatorOperations(true, worker));
   assert.equal(
     result.summary.operators.byOperation["account.show"].commands,
-    4,
+    1,
   );
-  assert.equal(result.summary.operators.byOperation["client.show"].commands, 2);
+  assert.equal(
+    result.summary.operators.byOperation["account.show.denied"].commands,
+    2,
+  );
+  assert.equal(
+    result.summary.operators.byOperation["account.show.missing"].commands,
+    1,
+  );
+  assert.equal(result.summary.operators.byOperation["client.show"].commands, 1);
+  assert.equal(
+    result.summary.operators.byOperation["client.show.denied"].commands,
+    1,
+  );
   assert.ok(
     result.summary.operators.commandScheduledLatencyMs.p95 >
       result.summary.operators.commandLatencyMs.p95,

@@ -20,15 +20,18 @@ async function scalar({ docker, db }, sql) {
     ])
   ).stdout.trim();
 }
-async function actor(options) {
+async function actor(options, administrator = true) {
   const principal = randomUUID(),
     credential = randomUUID(),
-    email = `${principal}@example.com`;
+    email = `${principal}@example.com`,
+    admin = administrator
+      ? `INSERT INTO platform_administrators(principal_id) VALUES('${principal}');`
+      : "";
   await options.runSql(`BEGIN;
 INSERT INTO principals(id,email,first_name,last_name) VALUES('${principal}','${email}','Benchmark','Operator');
 INSERT INTO credentials(id,principal_id,kind) VALUES('${credential}','${principal}','password');
 INSERT INTO password_credentials(credential_id,verifier) SELECT '${credential}',pc.verifier FROM password_credentials pc JOIN credentials c ON c.id=pc.credential_id WHERE c.principal_id='${options.principal}' AND NOT c.revoked;
-INSERT INTO platform_administrators(principal_id) VALUES('${principal}'); COMMIT;`);
+${admin} COMMIT;`);
   return { principal, email };
 }
 async function invoke(options, actor, args, reason) {
@@ -54,16 +57,32 @@ async function invoke(options, actor, args, reason) {
   );
   return operatorResult(stdout);
 }
-async function verifyReads(options, actors, commands) {
+async function read(options, actor, definition) {
+  const input = JSON.stringify({
+    email: actor.email,
+    password: options.password,
+  });
+  const output = await options.benchmarkInvoke(
+    ["--auth-stdin", "--output", "json", "operator", ...definition.args],
+    input,
+    definition.result === "read" ? 0 : 1,
+  );
+  assert.ok(
+    !output.includes(options.password),
+    "Benchmark operator exposed protected input.",
+  );
+  return operatorResult(output, definition.result);
+}
+async function verifyReads(options, actors, ids, commands) {
   for (const row of commands) {
-    const { table } = operatorRead(row.operation, {});
+    const read = operatorRead(row.operation, ids);
     const populated = row.operation.endsWith(".list")
       ? " AND returned_count>0"
       : "";
     assert.equal(
       await scalar(
         options,
-        `SELECT count(*) FROM ${table} WHERE operation_id='${row.operationId}' AND actor_id='${actors[row.worker].principal}' AND command='${row.operation}' AND result='read' AND database_role='${options.databaseRole}'${populated}`,
+        `SELECT count(*) FROM ${read.table} WHERE operation_id='${row.operationId}' AND actor_id='${actors[row.worker].principal}' AND command='${read.command}' AND result='${read.result}' AND database_role='${options.databaseRole}'${populated}`,
       ),
       "1",
       "Missing successful operator read audit.",
@@ -92,14 +111,23 @@ export async function operatorFixture(options, app, details = false) {
     principal: options.principal,
     application: app.identity.application_id,
     client: app.client,
+    missingPrincipal: randomUUID(),
   };
   for (const id of Object.values(ids))
     assert.match(
       id,
       /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/,
     );
+  assert.equal(
+    await scalar(
+      options,
+      `SELECT count(*) FROM principals WHERE id='${ids.missingPrincipal}'`,
+    ),
+    "0",
+    "Missing-target fixture unexpectedly exists.",
+  );
   const populationSize = await population(options, ids, details);
-  const actors = [await actor(options), await actor(options)];
+  const actors = [await actor(options), await actor(options, !details)];
   const revision = await scalar(
     options,
     `SELECT revision FROM principals WHERE id='${options.principal}'`,
@@ -109,7 +137,7 @@ export async function operatorFixture(options, app, details = false) {
   return {
     population: populationSize,
     read: (worker, operation) =>
-      invoke(options, actors[worker], operatorRead(operation, ids).args),
+      read(options, actors[worker], operatorRead(operation, ids)),
     revoke: async () => {
       revocation = await invoke(
         options,
@@ -119,7 +147,7 @@ export async function operatorFixture(options, app, details = false) {
       );
     },
     verify: async (commands) => {
-      await verifyReads(options, actors, commands);
+      await verifyReads(options, actors, ids, commands);
       assert.equal(
         await scalar(
           options,
@@ -128,7 +156,14 @@ export async function operatorFixture(options, app, details = false) {
         "1",
         "Missing committed operator revocation audit.",
       );
-      return { readCommands: commands.length, revocationCommands: 1 };
+      return {
+        readCommands: commands.filter((row) => row.result === "read").length,
+        notFoundCommands: commands.filter((row) => row.result === "not_found")
+          .length,
+        deniedCommands: commands.filter((row) => row.result === "denied")
+          .length,
+        revocationCommands: 1,
+      };
     },
   };
 }

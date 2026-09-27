@@ -45,14 +45,18 @@ measured native command then use `darkhorse_runtime`. Successful CLI audits must
 record that role; a role mismatch fails the run. No production URL or settings
 file is accepted by this workload.
 
-Two independent administrators each make four freshly authenticated commands:
-`account show`, `application show`, `account show`, and `client show`. They inspect
-the same fixture principal/application/client, exercising concurrent account reads.
-Four attempts per actor fit the unchanged shared login budget. The commands use
-Argon2id with 65,536 KiB, three iterations and one lane; the fixture copies the
-normally generated verifier without changing its parameters. Every command retains
-its normal authority checks and audit. Credentials travel through protected stdin
-and are excluded from reports.
+The detail profile uses two separate authenticated processes and four commands
+per actor, preserving the shared login budget. One current administrator performs
+`account show`, `application show`, `account show` for a generated missing ID, and
+`client show`. The second actor is an active, password-authenticated non-admin and
+receives expected denials for account/application/client detail reads. The fixture
+verifies every operation ID against its exact committed audit result (`read`,
+`not_found`, or `denied`) and reports only aggregate outcome counts. The missing
+identifier is generated and checked absent in the disposable primary before the
+measurement. Password hashing remains Argon2id with 65,536 KiB, three iterations
+and one lane; fixture credentials copy the normally generated verifier without
+changing its parameters. Credentials travel through protected stdin and are
+excluded from reports.
 
 The detail fixture adds 1,000 principals without credentials or assignments, and
 64 unassigned roles bound to the first application, each granting its two existing
@@ -62,12 +66,19 @@ principal's grants. It does not represent a large effective permission set.
 HTTP introspection is scheduled at 200 arrivals/second, with control phases before
 and after the CLI burst. The final paced phase performs authenticated revoke-all
 halfway through and rejects any active response for a check dispatched after its
-acknowledgement. Another 64 explicit checks must all deny access. The runner verifies
-eight read audits and one committed revocation audit. Existing concurrency, lateness,
-process deadline, output, connection and cleanup limits remain in force; see
+acknowledgement. Another 64 explicit probes must fail closed: no authorized or
+stale result, no generator drops, and each response must be either `denied` or
+`unavailable`. Unavailable responses stay visible and are not counted as successful
+denials. The runner verifies three successful reads, one `not_found`, four denied
+reads and one committed revocation audit. Existing concurrency, lateness, process
+deadline, output, connection and cleanup limits remain in force; see
 [the full benchmark contract](performance.md#native-cli-interference).
 
 ## September 26, 2026 comparison
+
+These historical runs used the earlier all-administrator, successful-detail
+command mix. Keep them as evidence for the shared-fence change; they are not a
+matched before/after comparison against the newer missing/denied workload below.
 
 The hypothesis was that exclusive account reads cause avoidable short stalls for
 other readers. The acceptance condition was repeatable improvement in the overlap
@@ -134,7 +145,7 @@ the published runtime grants and shared login admission.
 The fixture's process/container snapshots are coarse. They include setup and
 observer work and do not measure peak hashing memory, continuous CPU, exact WAL,
 pool/fence/target wait or hold times, audit cost, SQL wire round trips or query plans.
-Sustained administration, missing/denied CLI timing mixtures, cold storage, varied
-effective policy sizes, cache alternatives and Compose/Kubernetes replica scheduling
-still need measurement. No connection limit, rate limit or security control was
-relaxed to obtain these results.
+Sustained administration, cold storage, varied effective policy sizes, cache
+alternatives and Compose/Kubernetes replica scheduling still need measurement.
+No connection limit, rate limit or security control was relaxed to obtain these
+results.

@@ -228,8 +228,13 @@ export async function verifyBrowser(
       password,
       principal,
       invoke,
-      benchmarkInvoke: (args, input) =>
-        runBenchmarkCommand(executable, args, { env: runtime, input, signal }),
+      benchmarkInvoke: (args, input, expectedExitCode = 0) =>
+        runBenchmarkCommand(executable, args, {
+          env: runtime,
+          input,
+          signal,
+          expectedExitCodes: [...new Set([0, expectedExitCode])],
+        }),
       runSql,
       serverPid: server.pid,
       profileSnapshot: channel

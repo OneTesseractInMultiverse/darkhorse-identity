@@ -6,6 +6,7 @@ import { measureOperatorPhase } from "./benchmark-operator-load.mjs";
 import {
   operatorSummary,
   operatorLimits,
+  postCommitRevocationAccepted,
 } from "./benchmark-operator-model.mjs";
 import { measureArrivals } from "./benchmark-arrival-phase.mjs";
 import { mkdir, mkdtemp, writeFile, appendFile } from "node:fs/promises";
@@ -555,10 +556,9 @@ async function operatorRevocation(state, agent, fixture, choose) {
     revoked,
     agent,
   );
-  assert.equal(
-    after.outcomes.denied,
-    64,
-    "All explicit post-commit checks must deny revoked access.",
+  assert.ok(
+    postCommitRevocationAccepted(after),
+    "Post-commit probes must all fail closed without drops or stale access.",
   );
 }
 async function save(state) {

@@ -28,6 +28,23 @@ await assert.rejects(
       "Benchmark operator failed; inspect protected audit evidence before retrying.",
   },
 );
+assert.equal(
+  await run("process.stderr.write('{\\\"ok\\\":false}');process.exitCode=1;", {
+    expectedExitCodes: [0, 1],
+  }),
+  '{"ok":false}',
+);
+await assert.rejects(
+  run(
+    "process.stdout.write('unexpected');process.stderr.write('{\\\"ok\\\":false}');process.exitCode=1;",
+    { expectedExitCodes: [0, 1] },
+  ),
+  { message: "Benchmark operator wrote to an unexpected output stream." },
+);
+await assert.rejects(
+  run("process.stderr.write('unexpected failure');process.exitCode=1;"),
+  /Benchmark operator failed/,
+);
 for (const stream of ["stdout", "stderr"])
   await assert.rejects(
     run(`process.${stream}.write('x'.repeat(65537));setInterval(()=>{},100);`),

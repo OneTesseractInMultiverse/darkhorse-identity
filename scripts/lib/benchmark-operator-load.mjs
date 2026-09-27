@@ -9,7 +9,7 @@ async function lane(
   start,
 ) {
   const commands = [];
-  const operations = operatorOperations(details);
+  const operations = operatorOperations(details, worker);
   for (let index = 0; index < 4; index++) {
     const scheduledMs = start + (index * durationMs) / 4;
     while (clock() < scheduledMs) await sleep(scheduledMs - clock());
