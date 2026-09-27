@@ -1,0 +1,2836 @@
+{
+  "schema": 1,
+  "purpose": "Two clean-source, same-binary fixed-arrival P01 baseline runs. Descriptive single-host evidence only; unavailable outcomes remain in the totals and this does not establish an SLO or production capacity.",
+  "source": {
+    "commit": "1ab3a707ee4b07013660e9fbdcc492ef4dfa33ec",
+    "sourceSha256": "02ffd026da0ad29aac8cdf5dd38c2b2511801c74113c12f6915c43a90ad1c515",
+    "binarySha256": "7a6d80ef68b578382719aa0cf016f84b43eafbcf28aa685278704cb151563fe1",
+    "sourceDirty": false
+  },
+  "environment": {
+    "rust": "rustc 1.97.1 (8bab26f4f 2026-07-14)",
+    "node": "v24.19.0",
+    "database": "postgres (PostgreSQL) 18.6 - Percona Server for PostgreSQL 18.6.1",
+    "images": {
+      "database": "percona/percona-distribution-postgresql:18.6@sha256:dae47360e8137cafc1e8d66f9a1be348f1405e3cf51daa383b94e6c277e6b256",
+      "cache": "redis:8.10.1@sha256:298e5b3bc566bade82f46ad5511777a4a07a294097ce16ada2f6a42be5239df5",
+      "limiter": "redis:8.10.1@sha256:298e5b3bc566bade82f46ad5511777a4a07a294097ce16ada2f6a42be5239df5"
+    },
+    "host": {
+      "platform": "darwin",
+      "arch": "arm64",
+      "cpu": "Apple M5",
+      "logicalCpus": 10,
+      "memoryBytes": 25769803776
+    },
+    "docker": {
+      "version": "29.6.2",
+      "arch": "aarch64",
+      "cpus": 10,
+      "memoryBytes": 8321515520
+    },
+    "topology": "One host release Rust process, Node TLS proxy and load generator; Docker Percona primary plus separate Redis cache/limiter containers on loopback. Chromium provisions real login/SSO credentials.",
+    "protections": {
+      "httpsVerification": true,
+      "clientAuthentication": "client_secret_basic",
+      "loginSharedRedisLimiter": true,
+      "introspectionSharedRedisLimiter": true,
+      "introspectionBudgets": {
+        "windowMs": 60000,
+        "global": 60000,
+        "caller": 6000,
+        "separateLocalPool": true,
+        "globalQueueCapacity": 16,
+        "globalUpdateConcurrency": 2,
+        "queueIncludedInDeadlineMs": 1000
+      },
+      "tokenRouteConcurrency": 16,
+      "databasePoolConnections": 5,
+      "positiveDecisionCache": false,
+      "computationCache": false,
+      "databaseRole": "postgres"
+    }
+  },
+  "profile": {
+    "name": "arrival-baseline",
+    "requests": 128,
+    "clients": 8,
+    "arrivals": {
+      "durationMs": 10000,
+      "rates": [200, 800, 1600],
+      "noiseRate": 1200,
+      "changeRate": 200,
+      "maxInFlight": 128,
+      "maxLatenessMs": 5
+    }
+  },
+  "budgets": {
+    "latency": null,
+    "capacity": null,
+    "errorRate": null,
+    "freshness": "No stale grants for checks dispatched after committed reduction/revocation acknowledgement."
+  },
+  "runs": [
+    {
+      "sample": 1,
+      "timestamp": "2026-09-27T22:50:28.987Z",
+      "status": "passed",
+      "rawReportSha256": "e55178ec3c8a07820568193ec1d7a6a1ab00d5c1b363122ecc0c40921b54f751",
+      "rawRequestTraceSha256": "d5c522cf75606d0e5d35d9024aaa651699a43378ce3e4d178964c5a498b71144",
+      "sso": {
+        "loginMs": 215.566,
+        "authorizationCodeFlowsMs": [
+          131.914, 101.53, 94.78, 95.21, 93.181, 94.888, 94.857, 92.343
+        ]
+      },
+      "phases": [
+        {
+          "name": "warmup",
+          "mode": "closed-loop",
+          "scheduled": null,
+          "attempts": 64,
+          "wallMs": 161.369,
+          "offeredRate": null,
+          "outcomes": {
+            "authorized": 53,
+            "healthy": 0,
+            "denied": 0,
+            "unavailable": 11,
+            "error": 0,
+            "transport_error": 0,
+            "violation": 0
+          },
+          "credentialDenials": 0,
+          "attemptsPerSecond": 396.606,
+          "authorizedPerSecond": 328.439,
+          "allLatencyMs": {
+            "p50": 17.695,
+            "p95": 42.078,
+            "p99": 48.629
+          },
+          "authorizedLatencyMs": {
+            "p50": 18.272,
+            "p95": 42.3,
+            "p99": 48.629
+          },
+          "allScheduledLatencyMs": null,
+          "authorizedScheduledLatencyMs": null,
+          "generatorDrops": null,
+          "change": null,
+          "byClient": [
+            {
+              "index": 0,
+              "attempts": 8,
+              "outcomes": {
+                "authorized": 8,
+                "healthy": 0,
+                "denied": 0,
+                "unavailable": 0,
+                "error": 0,
+                "transport_error": 0,
+                "violation": 0
+              },
+              "authorizedLatencyMs": {
+                "p50": 18.272,
+                "p95": 30.02,
+                "p99": 30.02
+              },
+              "authorizedScheduledLatencyMs": null
+            },
+            {
+              "index": 1,
+              "attempts": 8,
+              "outcomes": {
+                "authorized": 4,
+                "healthy": 0,
+                "denied": 0,
+                "unavailable": 4,
+                "error": 0,
+                "transport_error": 0,
+                "violation": 0
+              },
+              "authorizedLatencyMs": {
+                "p50": 18.986,
+                "p95": 35.775,
+                "p99": 35.775
+              },
+              "authorizedScheduledLatencyMs": null
+            },
+            {
+              "index": 2,
+              "attempts": 8,
+              "outcomes": {
+                "authorized": 7,
+                "healthy": 0,
+                "denied": 0,
+                "unavailable": 1,
+                "error": 0,
+                "transport_error": 0,
+                "violation": 0
+              },
+              "authorizedLatencyMs": {
+                "p50": 17.085,
+                "p95": 42.078,
+                "p99": 42.078
+              },
+              "authorizedScheduledLatencyMs": null
+            },
+            {
+              "index": 3,
+              "attempts": 8,
+              "outcomes": {
+                "authorized": 8,
+                "healthy": 0,
+                "denied": 0,
+                "unavailable": 0,
+                "error": 0,
+                "transport_error": 0,
+                "violation": 0
+              },
+              "authorizedLatencyMs": {
+                "p50": 17.18,
+                "p95": 43.265,
+                "p99": 43.265
+              },
+              "authorizedScheduledLatencyMs": null
+            },
+            {
+              "index": 4,
+              "attempts": 8,
+              "outcomes": {
+                "authorized": 8,
+                "healthy": 0,
+                "denied": 0,
+                "unavailable": 0,
+                "error": 0,
+                "transport_error": 0,
+                "violation": 0
+              },
+              "authorizedLatencyMs": {
+                "p50": 17.68,
+                "p95": 42.3,
+                "p99": 42.3
+              },
+              "authorizedScheduledLatencyMs": null
+            },
+            {
+              "index": 5,
+              "attempts": 8,
+              "outcomes": {
+                "authorized": 5,
+                "healthy": 0,
+                "denied": 0,
+                "unavailable": 3,
+                "error": 0,
+                "transport_error": 0,
+                "violation": 0
+              },
+              "authorizedLatencyMs": {
+                "p50": 18.288,
+                "p95": 41.576,
+                "p99": 41.576
+              },
+              "authorizedScheduledLatencyMs": null
+            },
+            {
+              "index": 6,
+              "attempts": 8,
+              "outcomes": {
+                "authorized": 6,
+                "healthy": 0,
+                "denied": 0,
+                "unavailable": 2,
+                "error": 0,
+                "transport_error": 0,
+                "violation": 0
+              },
+              "authorizedLatencyMs": {
+                "p50": 18.334,
+                "p95": 21.903,
+                "p99": 21.903
+              },
+              "authorizedScheduledLatencyMs": null
+            },
+            {
+              "index": 7,
+              "attempts": 8,
+              "outcomes": {
+                "authorized": 7,
+                "healthy": 0,
+                "denied": 0,
+                "unavailable": 1,
+                "error": 0,
+                "transport_error": 0,
+                "violation": 0
+              },
+              "authorizedLatencyMs": {
+                "p50": 17.81,
+                "p95": 48.629,
+                "p99": 48.629
+              },
+              "authorizedScheduledLatencyMs": null
+            }
+          ]
+        },
+        {
+          "name": "arrival-diverse-r200",
+          "mode": "fixed-arrival",
+          "scheduled": 2000,
+          "attempts": 2000,
+          "wallMs": 10002.85,
+          "offeredRate": 200,
+          "outcomes": {
+            "authorized": 1968,
+            "healthy": 0,
+            "denied": 0,
+            "unavailable": 32,
+            "error": 0,
+            "transport_error": 0,
+            "violation": 0
+          },
+          "credentialDenials": 0,
+          "attemptsPerSecond": 199.943,
+          "authorizedPerSecond": 196.744,
+          "allLatencyMs": {
+            "p50": 7.373,
+            "p95": 16.377,
+            "p99": 104.465
+          },
+          "authorizedLatencyMs": {
+            "p50": 7.372,
+            "p95": 13.771,
+            "p99": 104.476
+          },
+          "allScheduledLatencyMs": {
+            "p50": 8.025,
+            "p95": 16.862,
+            "p99": 104.97
+          },
+          "authorizedScheduledLatencyMs": {
+            "p50": 8.022,
+            "p95": 14.642,
+            "p99": 105.18
+          },
+          "generatorDrops": {
+            "late": 0,
+            "full": 0
+          },
+          "change": null,
+          "byClient": [
+            {
+              "index": 0,
+              "attempts": 250,
+              "outcomes": {
+                "authorized": 246,
+                "healthy": 0,
+                "denied": 0,
+                "unavailable": 4,
+                "error": 0,
+                "transport_error": 0,
+                "violation": 0
+              },
+              "authorizedLatencyMs": {
+                "p50": 7.32,
+                "p95": 12.322,
+                "p99": 104.476
+              },
+              "authorizedScheduledLatencyMs": {
+                "p50": 7.975,
+                "p95": 13.582,
+                "p99": 105.18
+              }
+            },
+            {
+              "index": 1,
+              "attempts": 250,
+              "outcomes": {
+                "authorized": 246,
+                "healthy": 0,
+                "denied": 0,
+                "unavailable": 4,
+                "error": 0,
+                "transport_error": 0,
+                "violation": 0
+              },
+              "authorizedLatencyMs": {
+                "p50": 7.357,
+                "p95": 15.6,
+                "p99": 106.901
+              },
+              "authorizedScheduledLatencyMs": {
+                "p50": 8.008,
+                "p95": 16.467,
+                "p99": 107.836
+              }
+            },
+            {
+              "index": 2,
+              "attempts": 250,
+              "outcomes": {
+                "authorized": 246,
+                "healthy": 0,
+                "denied": 0,
+                "unavailable": 4,
+                "error": 0,
+                "transport_error": 0,
+                "violation": 0
+              },
+              "authorizedLatencyMs": {
+                "p50": 7.39,
+                "p95": 13.771,
+                "p99": 108.91
+              },
+              "authorizedScheduledLatencyMs": {
+                "p50": 8.025,
+                "p95": 14.817,
+                "p99": 110.117
+              }
+            },
+            {
+              "index": 3,
+              "attempts": 250,
+              "outcomes": {
+                "authorized": 248,
+                "healthy": 0,
+                "denied": 0,
+                "unavailable": 2,
+                "error": 0,
+                "transport_error": 0,
+                "violation": 0
+              },
+              "authorizedLatencyMs": {
+                "p50": 7.415,
+                "p95": 16.008,
+                "p99": 105.588
+              },
+              "authorizedScheduledLatencyMs": {
+                "p50": 8.12,
+                "p95": 16.56,
+                "p99": 106.648
+              }
+            },
+            {
+              "index": 4,
+              "attempts": 250,
+              "outcomes": {
+                "authorized": 247,
+                "healthy": 0,
+                "denied": 0,
+                "unavailable": 3,
+                "error": 0,
+                "transport_error": 0,
+                "violation": 0
+              },
+              "authorizedLatencyMs": {
+                "p50": 7.42,
+                "p95": 12.544,
+                "p99": 104.905
+              },
+              "authorizedScheduledLatencyMs": {
+                "p50": 8.015,
+                "p95": 13.176,
+                "p99": 105.611
+              }
+            },
+            {
+              "index": 5,
+              "attempts": 250,
+              "outcomes": {
+                "authorized": 243,
+                "healthy": 0,
+                "denied": 0,
+                "unavailable": 7,
+                "error": 0,
+                "transport_error": 0,
+                "violation": 0
+              },
+              "authorizedLatencyMs": {
+                "p50": 7.336,
+                "p95": 11.73,
+                "p99": 36.394
+              },
+              "authorizedScheduledLatencyMs": {
+                "p50": 7.991,
+                "p95": 12.725,
+                "p99": 37.144
+              }
+            },
+            {
+              "index": 6,
+              "attempts": 250,
+              "outcomes": {
+                "authorized": 247,
+                "healthy": 0,
+                "denied": 0,
+                "unavailable": 3,
+                "error": 0,
+                "transport_error": 0,
+                "violation": 0
+              },
+              "authorizedLatencyMs": {
+                "p50": 7.365,
+                "p95": 14.834,
+                "p99": 100.631
+              },
+              "authorizedScheduledLatencyMs": {
+                "p50": 8.073,
+                "p95": 15.511,
+                "p99": 101.346
+              }
+            },
+            {
+              "index": 7,
+              "attempts": 250,
+              "outcomes": {
+                "authorized": 245,
+                "healthy": 0,
+                "denied": 0,
+                "unavailable": 5,
+                "error": 0,
+                "transport_error": 0,
+                "violation": 0
+              },
+              "authorizedLatencyMs": {
+                "p50": 7.349,
+                "p95": 12.887,
+                "p99": 101.881
+              },
+              "authorizedScheduledLatencyMs": {
+                "p50": 7.97,
+                "p95": 13.823,
+                "p99": 102.03
+              }
+            }
+          ]
+        },
+        {
+          "name": "arrival-diverse-r800",
+          "mode": "fixed-arrival",
+          "scheduled": 8000,
+          "attempts": 7998,
+          "wallMs": 10025.365,
+          "offeredRate": 800,
+          "outcomes": {
+            "authorized": 3693,
+            "healthy": 0,
+            "denied": 0,
+            "unavailable": 4305,
+            "error": 0,
+            "transport_error": 0,
+            "violation": 0
+          },
+          "credentialDenials": 0,
+          "attemptsPerSecond": 797.776,
+          "authorizedPerSecond": 368.366,
+          "allLatencyMs": {
+            "p50": 23.494,
+            "p95": 35.639,
+            "p99": 51.213
+          },
+          "authorizedLatencyMs": {
+            "p50": 32.37,
+            "p95": 41.14,
+            "p99": 59.047
+          },
+          "allScheduledLatencyMs": {
+            "p50": 24.163,
+            "p95": 36.34,
+            "p99": 51.826
+          },
+          "authorizedScheduledLatencyMs": {
+            "p50": 33.014,
+            "p95": 41.849,
+            "p99": 59.776
+          },
+          "generatorDrops": {
+            "late": 2,
+            "full": 0
+          },
+          "change": null,
+          "byClient": [
+            {
+              "index": 0,
+              "attempts": 1000,
+              "outcomes": {
+                "authorized": 470,
+                "healthy": 0,
+                "denied": 0,
+                "unavailable": 530,
+                "error": 0,
+                "transport_error": 0,
+                "violation": 0
+              },
+              "authorizedLatencyMs": {
+                "p50": 32.27,
+                "p95": 45.565,
+                "p99": 66.915
+              },
+              "authorizedScheduledLatencyMs": {
+                "p50": 32.906,
+                "p95": 45.799,
+                "p99": 67.649
+              }
+            },
+            {
+              "index": 1,
+              "attempts": 1000,
+              "outcomes": {
+                "authorized": 465,
+                "healthy": 0,
+                "denied": 0,
+                "unavailable": 535,
+                "error": 0,
+                "transport_error": 0,
+                "violation": 0
+              },
+              "authorizedLatencyMs": {
+                "p50": 32.491,
+                "p95": 40.017,
+                "p99": 51.764
+              },
+              "authorizedScheduledLatencyMs": {
+                "p50": 32.995,
+                "p95": 40.923,
+                "p99": 51.831
+              }
+            },
+            {
+              "index": 2,
+              "attempts": 1000,
+              "outcomes": {
+                "authorized": 456,
+                "healthy": 0,
+                "denied": 0,
+                "unavailable": 544,
+                "error": 0,
+                "transport_error": 0,
+                "violation": 0
+              },
+              "authorizedLatencyMs": {
+                "p50": 32.318,
+                "p95": 40.677,
+                "p99": 50.3
+              },
+              "authorizedScheduledLatencyMs": {
+                "p50": 33.083,
+                "p95": 41.637,
+                "p99": 50.934
+              }
+            },
+            {
+              "index": 3,
+              "attempts": 999,
+              "outcomes": {
+                "authorized": 488,
+                "healthy": 0,
+                "denied": 0,
+                "unavailable": 511,
+                "error": 0,
+                "transport_error": 0,
+                "violation": 0
+              },
+              "authorizedLatencyMs": {
+                "p50": 32.411,
+                "p95": 41.107,
+                "p99": 57.269
+              },
+              "authorizedScheduledLatencyMs": {
+                "p50": 33.105,
+                "p95": 41.689,
+                "p99": 57.917
+              }
+            },
+            {
+              "index": 4,
+              "attempts": 1000,
+              "outcomes": {
+                "authorized": 481,
+                "healthy": 0,
+                "denied": 0,
+                "unavailable": 519,
+                "error": 0,
+                "transport_error": 0,
+                "violation": 0
+              },
+              "authorizedLatencyMs": {
+                "p50": 32.339,
+                "p95": 38.912,
+                "p99": 62.545
+              },
+              "authorizedScheduledLatencyMs": {
+                "p50": 32.999,
+                "p95": 39.264,
+                "p99": 62.618
+              }
+            },
+            {
+              "index": 5,
+              "attempts": 1000,
+              "outcomes": {
+                "authorized": 441,
+                "healthy": 0,
+                "denied": 0,
+                "unavailable": 559,
+                "error": 0,
+                "transport_error": 0,
+                "violation": 0
+              },
+              "authorizedLatencyMs": {
+                "p50": 32.541,
+                "p95": 39.915,
+                "p99": 59.047
+              },
+              "authorizedScheduledLatencyMs": {
+                "p50": 33.018,
+                "p95": 40.119,
+                "p99": 59.404
+              }
+            },
+            {
+              "index": 6,
+              "attempts": 1000,
+              "outcomes": {
+                "authorized": 444,
+                "healthy": 0,
+                "denied": 0,
+                "unavailable": 556,
+                "error": 0,
+                "transport_error": 0,
+                "violation": 0
+              },
+              "authorizedLatencyMs": {
+                "p50": 32.19,
+                "p95": 42.142,
+                "p99": 72.019
+              },
+              "authorizedScheduledLatencyMs": {
+                "p50": 33,
+                "p95": 42.976,
+                "p99": 72.426
+              }
+            },
+            {
+              "index": 7,
+              "attempts": 999,
+              "outcomes": {
+                "authorized": 448,
+                "healthy": 0,
+                "denied": 0,
+                "unavailable": 551,
+                "error": 0,
+                "transport_error": 0,
+                "violation": 0
+              },
+              "authorizedLatencyMs": {
+                "p50": 32.276,
+                "p95": 38.85,
+                "p99": 68.16
+              },
+              "authorizedScheduledLatencyMs": {
+                "p50": 33.018,
+                "p95": 39.604,
+                "p99": 68.501
+              }
+            }
+          ]
+        },
+        {
+          "name": "arrival-diverse-r1600",
+          "mode": "fixed-arrival",
+          "scheduled": 16000,
+          "attempts": 15999,
+          "wallMs": 10106.185,
+          "offeredRate": 1600,
+          "outcomes": {
+            "authorized": 3642,
+            "healthy": 0,
+            "denied": 0,
+            "unavailable": 12357,
+            "error": 0,
+            "transport_error": 0,
+            "violation": 0
+          },
+          "credentialDenials": 0,
+          "attemptsPerSecond": 1583.09,
+          "authorizedPerSecond": 360.373,
+          "allLatencyMs": {
+            "p50": 0.244,
+            "p95": 35.444,
+            "p99": 42.743
+          },
+          "authorizedLatencyMs": {
+            "p50": 33.194,
+            "p95": 41.984,
+            "p99": 48.698
+          },
+          "allScheduledLatencyMs": {
+            "p50": 1.096,
+            "p95": 36.202,
+            "p99": 43.671
+          },
+          "authorizedScheduledLatencyMs": {
+            "p50": 33.942,
+            "p95": 42.82,
+            "p99": 49.618
+          },
+          "generatorDrops": {
+            "late": 1,
+            "full": 0
+          },
+          "change": null,
+          "byClient": [
+            {
+              "index": 0,
+              "attempts": 2000,
+              "outcomes": {
+                "authorized": 443,
+                "healthy": 0,
+                "denied": 0,
+                "unavailable": 1557,
+                "error": 0,
+                "transport_error": 0,
+                "violation": 0
+              },
+              "authorizedLatencyMs": {
+                "p50": 33.105,
+                "p95": 41.345,
+                "p99": 50.802
+              },
+              "authorizedScheduledLatencyMs": {
+                "p50": 34.012,
+                "p95": 42.029,
+                "p99": 51.712
+              }
+            },
+            {
+              "index": 1,
+              "attempts": 2000,
+              "outcomes": {
+                "authorized": 470,
+                "healthy": 0,
+                "denied": 0,
+                "unavailable": 1530,
+                "error": 0,
+                "transport_error": 0,
+                "violation": 0
+              },
+              "authorizedLatencyMs": {
+                "p50": 33.297,
+                "p95": 41.525,
+                "p99": 45.758
+              },
+              "authorizedScheduledLatencyMs": {
+                "p50": 33.789,
+                "p95": 42.325,
+                "p99": 46.312
+              }
+            },
+            {
+              "index": 2,
+              "attempts": 2000,
+              "outcomes": {
+                "authorized": 462,
+                "healthy": 0,
+                "denied": 0,
+                "unavailable": 1538,
+                "error": 0,
+                "transport_error": 0,
+                "violation": 0
+              },
+              "authorizedLatencyMs": {
+                "p50": 33.199,
+                "p95": 42.802,
+                "p99": 49.484
+              },
+              "authorizedScheduledLatencyMs": {
+                "p50": 34.032,
+                "p95": 43.565,
+                "p99": 49.618
+              }
+            },
+            {
+              "index": 3,
+              "attempts": 2000,
+              "outcomes": {
+                "authorized": 414,
+                "healthy": 0,
+                "denied": 0,
+                "unavailable": 1586,
+                "error": 0,
+                "transport_error": 0,
+                "violation": 0
+              },
+              "authorizedLatencyMs": {
+                "p50": 33.001,
+                "p95": 42.683,
+                "p99": 48.038
+              },
+              "authorizedScheduledLatencyMs": {
+                "p50": 33.731,
+                "p95": 43.827,
+                "p99": 49.401
+              }
+            },
+            {
+              "index": 4,
+              "attempts": 2000,
+              "outcomes": {
+                "authorized": 471,
+                "healthy": 0,
+                "denied": 0,
+                "unavailable": 1529,
+                "error": 0,
+                "transport_error": 0,
+                "violation": 0
+              },
+              "authorizedLatencyMs": {
+                "p50": 33.359,
+                "p95": 42.383,
+                "p99": 49.72
+              },
+              "authorizedScheduledLatencyMs": {
+                "p50": 33.935,
+                "p95": 43.01,
+                "p99": 49.871
+              }
+            },
+            {
+              "index": 5,
+              "attempts": 2000,
+              "outcomes": {
+                "authorized": 476,
+                "healthy": 0,
+                "denied": 0,
+                "unavailable": 1524,
+                "error": 0,
+                "transport_error": 0,
+                "violation": 0
+              },
+              "authorizedLatencyMs": {
+                "p50": 33.183,
+                "p95": 43.208,
+                "p99": 49.928
+              },
+              "authorizedScheduledLatencyMs": {
+                "p50": 34.122,
+                "p95": 44.363,
+                "p99": 51.07
+              }
+            },
+            {
+              "index": 6,
+              "attempts": 2000,
+              "outcomes": {
+                "authorized": 418,
+                "healthy": 0,
+                "denied": 0,
+                "unavailable": 1582,
+                "error": 0,
+                "transport_error": 0,
+                "violation": 0
+              },
+              "authorizedLatencyMs": {
+                "p50": 33.255,
+                "p95": 40.358,
+                "p99": 48.187
+              },
+              "authorizedScheduledLatencyMs": {
+                "p50": 33.771,
+                "p95": 41.007,
+                "p99": 48.592
+              }
+            },
+            {
+              "index": 7,
+              "attempts": 1999,
+              "outcomes": {
+                "authorized": 488,
+                "healthy": 0,
+                "denied": 0,
+                "unavailable": 1511,
+                "error": 0,
+                "transport_error": 0,
+                "violation": 0
+              },
+              "authorizedLatencyMs": {
+                "p50": 33.101,
+                "p95": 42.083,
+                "p99": 49.178
+              },
+              "authorizedScheduledLatencyMs": {
+                "p50": 33.833,
+                "p95": 42.706,
+                "p99": 50.227
+              }
+            }
+          ]
+        },
+        {
+          "name": "arrival-noisy-invalid-client",
+          "mode": "fixed-arrival",
+          "scheduled": 12000,
+          "attempts": 12000,
+          "wallMs": 10015.316,
+          "offeredRate": 1200,
+          "outcomes": {
+            "authorized": 1364,
+            "healthy": 1500,
+            "denied": 7938,
+            "unavailable": 1198,
+            "error": 0,
+            "transport_error": 0,
+            "violation": 0
+          },
+          "credentialDenials": 7938,
+          "attemptsPerSecond": 1198.165,
+          "authorizedPerSecond": 136.191,
+          "allLatencyMs": {
+            "p50": 13.572,
+            "p95": 23.796,
+            "p99": 29.632
+          },
+          "authorizedLatencyMs": {
+            "p50": 21.855,
+            "p95": 29.744,
+            "p99": 37.812
+          },
+          "allScheduledLatencyMs": {
+            "p50": 14.107,
+            "p95": 24.552,
+            "p99": 30.026
+          },
+          "authorizedScheduledLatencyMs": {
+            "p50": 22.501,
+            "p95": 30.237,
+            "p99": 38.497
+          },
+          "generatorDrops": {
+            "late": 0,
+            "full": 0
+          },
+          "change": null,
+          "byClient": [
+            {
+              "index": 0,
+              "attempts": 1500,
+              "outcomes": {
+                "authorized": 0,
+                "healthy": 0,
+                "denied": 1384,
+                "unavailable": 116,
+                "error": 0,
+                "transport_error": 0,
+                "violation": 0
+              },
+              "authorizedLatencyMs": null,
+              "authorizedScheduledLatencyMs": null
+            },
+            {
+              "index": 1,
+              "attempts": 1500,
+              "outcomes": {
+                "authorized": 0,
+                "healthy": 0,
+                "denied": 1368,
+                "unavailable": 132,
+                "error": 0,
+                "transport_error": 0,
+                "violation": 0
+              },
+              "authorizedLatencyMs": null,
+              "authorizedScheduledLatencyMs": null
+            },
+            {
+              "index": 2,
+              "attempts": 1500,
+              "outcomes": {
+                "authorized": 0,
+                "healthy": 0,
+                "denied": 1343,
+                "unavailable": 157,
+                "error": 0,
+                "transport_error": 0,
+                "violation": 0
+              },
+              "authorizedLatencyMs": null,
+              "authorizedScheduledLatencyMs": null
+            },
+            {
+              "index": 3,
+              "attempts": 1500,
+              "outcomes": {
+                "authorized": 1364,
+                "healthy": 0,
+                "denied": 0,
+                "unavailable": 136,
+                "error": 0,
+                "transport_error": 0,
+                "violation": 0
+              },
+              "authorizedLatencyMs": {
+                "p50": 21.855,
+                "p95": 29.744,
+                "p99": 37.812
+              },
+              "authorizedScheduledLatencyMs": {
+                "p50": 22.501,
+                "p95": 30.237,
+                "p99": 38.497
+              }
+            },
+            {
+              "index": 4,
+              "attempts": 1500,
+              "outcomes": {
+                "authorized": 0,
+                "healthy": 0,
+                "denied": 1277,
+                "unavailable": 223,
+                "error": 0,
+                "transport_error": 0,
+                "violation": 0
+              },
+              "authorizedLatencyMs": null,
+              "authorizedScheduledLatencyMs": null
+            },
+            {
+              "index": 5,
+              "attempts": 1500,
+              "outcomes": {
+                "authorized": 0,
+                "healthy": 0,
+                "denied": 1310,
+                "unavailable": 190,
+                "error": 0,
+                "transport_error": 0,
+                "violation": 0
+              },
+              "authorizedLatencyMs": null,
+              "authorizedScheduledLatencyMs": null
+            },
+            {
+              "index": 6,
+              "attempts": 1500,
+              "outcomes": {
+                "authorized": 0,
+                "healthy": 0,
+                "denied": 1256,
+                "unavailable": 244,
+                "error": 0,
+                "transport_error": 0,
+                "violation": 0
+              },
+              "authorizedLatencyMs": null,
+              "authorizedScheduledLatencyMs": null
+            },
+            {
+              "index": 7,
+              "attempts": 1500,
+              "outcomes": {
+                "authorized": 0,
+                "healthy": 1500,
+                "denied": 0,
+                "unavailable": 0,
+                "error": 0,
+                "transport_error": 0,
+                "violation": 0
+              },
+              "authorizedLatencyMs": null,
+              "authorizedScheduledLatencyMs": null
+            }
+          ]
+        },
+        {
+          "name": "arrival-permission-reduction-concurrent",
+          "mode": "fixed-arrival",
+          "scheduled": 2000,
+          "attempts": 2000,
+          "wallMs": 10002.852,
+          "offeredRate": 200,
+          "outcomes": {
+            "authorized": 2000,
+            "healthy": 0,
+            "denied": 0,
+            "unavailable": 0,
+            "error": 0,
+            "transport_error": 0,
+            "violation": 0
+          },
+          "credentialDenials": 0,
+          "attemptsPerSecond": 199.943,
+          "authorizedPerSecond": 199.943,
+          "allLatencyMs": {
+            "p50": 7.131,
+            "p95": 9.649,
+            "p99": 12.094
+          },
+          "authorizedLatencyMs": {
+            "p50": 7.131,
+            "p95": 9.649,
+            "p99": 12.094
+          },
+          "allScheduledLatencyMs": {
+            "p50": 7.791,
+            "p95": 10.221,
+            "p99": 12.617
+          },
+          "authorizedScheduledLatencyMs": {
+            "p50": 7.791,
+            "p95": 10.221,
+            "p99": 12.617
+          },
+          "generatorDrops": {
+            "late": 0,
+            "full": 0
+          },
+          "change": {
+            "elapsedToAcknowledgementMs": 72.78
+          },
+          "byClient": [
+            {
+              "index": 0,
+              "attempts": 2000,
+              "outcomes": {
+                "authorized": 2000,
+                "healthy": 0,
+                "denied": 0,
+                "unavailable": 0,
+                "error": 0,
+                "transport_error": 0,
+                "violation": 0
+              },
+              "authorizedLatencyMs": {
+                "p50": 7.131,
+                "p95": 9.649,
+                "p99": 12.094
+              },
+              "authorizedScheduledLatencyMs": {
+                "p50": 7.791,
+                "p95": 10.221,
+                "p99": 12.617
+              }
+            }
+          ]
+        },
+        {
+          "name": "permission-reduction-after-commit",
+          "mode": "closed-loop",
+          "scheduled": null,
+          "attempts": 64,
+          "wallMs": 110.069,
+          "offeredRate": null,
+          "outcomes": {
+            "authorized": 41,
+            "healthy": 0,
+            "denied": 0,
+            "unavailable": 23,
+            "error": 0,
+            "transport_error": 0,
+            "violation": 0
+          },
+          "credentialDenials": 0,
+          "attemptsPerSecond": 581.451,
+          "authorizedPerSecond": 372.492,
+          "allLatencyMs": {
+            "p50": 17.069,
+            "p95": 23.284,
+            "p99": 27.885
+          },
+          "authorizedLatencyMs": {
+            "p50": 18.226,
+            "p95": 23.808,
+            "p99": 27.885
+          },
+          "allScheduledLatencyMs": null,
+          "authorizedScheduledLatencyMs": null,
+          "generatorDrops": null,
+          "change": null,
+          "byClient": [
+            {
+              "index": 0,
+              "attempts": 64,
+              "outcomes": {
+                "authorized": 41,
+                "healthy": 0,
+                "denied": 0,
+                "unavailable": 23,
+                "error": 0,
+                "transport_error": 0,
+                "violation": 0
+              },
+              "authorizedLatencyMs": {
+                "p50": 18.226,
+                "p95": 23.808,
+                "p99": 27.885
+              },
+              "authorizedScheduledLatencyMs": null
+            }
+          ]
+        },
+        {
+          "name": "arrival-revocation-concurrent",
+          "mode": "fixed-arrival",
+          "scheduled": 2000,
+          "attempts": 2000,
+          "wallMs": 10000.54,
+          "offeredRate": 200,
+          "outcomes": {
+            "authorized": 1000,
+            "healthy": 0,
+            "denied": 1000,
+            "unavailable": 0,
+            "error": 0,
+            "transport_error": 0,
+            "violation": 0
+          },
+          "credentialDenials": 0,
+          "attemptsPerSecond": 199.989,
+          "authorizedPerSecond": 99.995,
+          "allLatencyMs": {
+            "p50": 6.761,
+            "p95": 7.789,
+            "p99": 10.266
+          },
+          "authorizedLatencyMs": {
+            "p50": 7.113,
+            "p95": 8.09,
+            "p99": 10.397
+          },
+          "allScheduledLatencyMs": {
+            "p50": 7.1,
+            "p95": 8.516,
+            "p99": 10.73
+          },
+          "authorizedScheduledLatencyMs": {
+            "p50": 7.705,
+            "p95": 8.746,
+            "p99": 10.996
+          },
+          "generatorDrops": {
+            "late": 0,
+            "full": 0
+          },
+          "change": {
+            "elapsedToAcknowledgementMs": 6.437
+          },
+          "byClient": [
+            {
+              "index": 0,
+              "attempts": 2000,
+              "outcomes": {
+                "authorized": 1000,
+                "healthy": 0,
+                "denied": 1000,
+                "unavailable": 0,
+                "error": 0,
+                "transport_error": 0,
+                "violation": 0
+              },
+              "authorizedLatencyMs": {
+                "p50": 7.113,
+                "p95": 8.09,
+                "p99": 10.397
+              },
+              "authorizedScheduledLatencyMs": {
+                "p50": 7.705,
+                "p95": 8.746,
+                "p99": 10.996
+              }
+            }
+          ]
+        },
+        {
+          "name": "revocation-after-commit",
+          "mode": "closed-loop",
+          "scheduled": null,
+          "attempts": 64,
+          "wallMs": 113.094,
+          "offeredRate": null,
+          "outcomes": {
+            "authorized": 0,
+            "healthy": 0,
+            "denied": 52,
+            "unavailable": 12,
+            "error": 0,
+            "transport_error": 0,
+            "violation": 0
+          },
+          "credentialDenials": 0,
+          "attemptsPerSecond": 565.901,
+          "authorizedPerSecond": 0,
+          "allLatencyMs": {
+            "p50": 14.464,
+            "p95": 16.912,
+            "p99": 21.644
+          },
+          "authorizedLatencyMs": null,
+          "allScheduledLatencyMs": null,
+          "authorizedScheduledLatencyMs": null,
+          "generatorDrops": null,
+          "change": null,
+          "byClient": [
+            {
+              "index": 0,
+              "attempts": 64,
+              "outcomes": {
+                "authorized": 0,
+                "healthy": 0,
+                "denied": 52,
+                "unavailable": 12,
+                "error": 0,
+                "transport_error": 0,
+                "violation": 0
+              },
+              "authorizedLatencyMs": null,
+              "authorizedScheduledLatencyMs": null
+            }
+          ]
+        },
+        {
+          "name": "unaffected-resource",
+          "mode": "closed-loop",
+          "scheduled": null,
+          "attempts": 32,
+          "wallMs": 215.09,
+          "offeredRate": null,
+          "outcomes": {
+            "authorized": 32,
+            "healthy": 0,
+            "denied": 0,
+            "unavailable": 0,
+            "error": 0,
+            "transport_error": 0,
+            "violation": 0
+          },
+          "credentialDenials": 0,
+          "attemptsPerSecond": 148.775,
+          "authorizedPerSecond": 148.775,
+          "allLatencyMs": {
+            "p50": 6.674,
+            "p95": 6.976,
+            "p99": 8.203
+          },
+          "authorizedLatencyMs": {
+            "p50": 6.674,
+            "p95": 6.976,
+            "p99": 8.203
+          },
+          "allScheduledLatencyMs": null,
+          "authorizedScheduledLatencyMs": null,
+          "generatorDrops": null,
+          "change": null,
+          "byClient": [
+            {
+              "index": 0,
+              "attempts": 32,
+              "outcomes": {
+                "authorized": 32,
+                "healthy": 0,
+                "denied": 0,
+                "unavailable": 0,
+                "error": 0,
+                "transport_error": 0,
+                "violation": 0
+              },
+              "authorizedLatencyMs": {
+                "p50": 6.674,
+                "p95": 6.976,
+                "p99": 8.203
+              },
+              "authorizedScheduledLatencyMs": null
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "sample": 2,
+      "timestamp": "2026-09-27T22:54:22.934Z",
+      "status": "passed",
+      "rawReportSha256": "8263da4497b21845c9ee9f633f328d7d73cf89a7eee62399083358eec99a25be",
+      "rawRequestTraceSha256": "809e2be5005d295cf668063c5bd400b617b5c7799877e7152ca0a193cc29c07f",
+      "sso": {
+        "loginMs": 218.766,
+        "authorizationCodeFlowsMs": [
+          135.593, 101.04, 95.293, 111.513, 96.51, 95.944, 94.158, 93.007
+        ]
+      },
+      "phases": [
+        {
+          "name": "warmup",
+          "mode": "closed-loop",
+          "scheduled": null,
+          "attempts": 64,
+          "wallMs": 154.155,
+          "offeredRate": null,
+          "outcomes": {
+            "authorized": 46,
+            "healthy": 0,
+            "denied": 0,
+            "unavailable": 18,
+            "error": 0,
+            "transport_error": 0,
+            "violation": 0
+          },
+          "credentialDenials": 0,
+          "attemptsPerSecond": 415.166,
+          "authorizedPerSecond": 298.4,
+          "allLatencyMs": {
+            "p50": 17.746,
+            "p95": 43.555,
+            "p99": 52.023
+          },
+          "authorizedLatencyMs": {
+            "p50": 18.208,
+            "p95": 49.566,
+            "p99": 52.023
+          },
+          "allScheduledLatencyMs": null,
+          "authorizedScheduledLatencyMs": null,
+          "generatorDrops": null,
+          "change": null,
+          "byClient": [
+            {
+              "index": 0,
+              "attempts": 8,
+              "outcomes": {
+                "authorized": 7,
+                "healthy": 0,
+                "denied": 0,
+                "unavailable": 1,
+                "error": 0,
+                "transport_error": 0,
+                "violation": 0
+              },
+              "authorizedLatencyMs": {
+                "p50": 18.263,
+                "p95": 30.423,
+                "p99": 30.423
+              },
+              "authorizedScheduledLatencyMs": null
+            },
+            {
+              "index": 1,
+              "attempts": 8,
+              "outcomes": {
+                "authorized": 7,
+                "healthy": 0,
+                "denied": 0,
+                "unavailable": 1,
+                "error": 0,
+                "transport_error": 0,
+                "violation": 0
+              },
+              "authorizedLatencyMs": {
+                "p50": 17.933,
+                "p95": 36.355,
+                "p99": 36.355
+              },
+              "authorizedScheduledLatencyMs": null
+            },
+            {
+              "index": 2,
+              "attempts": 8,
+              "outcomes": {
+                "authorized": 4,
+                "healthy": 0,
+                "denied": 0,
+                "unavailable": 4,
+                "error": 0,
+                "transport_error": 0,
+                "violation": 0
+              },
+              "authorizedLatencyMs": {
+                "p50": 18.594,
+                "p95": 38.253,
+                "p99": 38.253
+              },
+              "authorizedScheduledLatencyMs": null
+            },
+            {
+              "index": 3,
+              "attempts": 8,
+              "outcomes": {
+                "authorized": 7,
+                "healthy": 0,
+                "denied": 0,
+                "unavailable": 1,
+                "error": 0,
+                "transport_error": 0,
+                "violation": 0
+              },
+              "authorizedLatencyMs": {
+                "p50": 21.251,
+                "p95": 50.666,
+                "p99": 50.666
+              },
+              "authorizedScheduledLatencyMs": null
+            },
+            {
+              "index": 4,
+              "attempts": 8,
+              "outcomes": {
+                "authorized": 6,
+                "healthy": 0,
+                "denied": 0,
+                "unavailable": 2,
+                "error": 0,
+                "transport_error": 0,
+                "violation": 0
+              },
+              "authorizedLatencyMs": {
+                "p50": 16.887,
+                "p95": 49.566,
+                "p99": 49.566
+              },
+              "authorizedScheduledLatencyMs": null
+            },
+            {
+              "index": 5,
+              "attempts": 8,
+              "outcomes": {
+                "authorized": 4,
+                "healthy": 0,
+                "denied": 0,
+                "unavailable": 4,
+                "error": 0,
+                "transport_error": 0,
+                "violation": 0
+              },
+              "authorizedLatencyMs": {
+                "p50": 17.891,
+                "p95": 43.555,
+                "p99": 43.555
+              },
+              "authorizedScheduledLatencyMs": null
+            },
+            {
+              "index": 6,
+              "attempts": 8,
+              "outcomes": {
+                "authorized": 6,
+                "healthy": 0,
+                "denied": 0,
+                "unavailable": 2,
+                "error": 0,
+                "transport_error": 0,
+                "violation": 0
+              },
+              "authorizedLatencyMs": {
+                "p50": 17.746,
+                "p95": 52.023,
+                "p99": 52.023
+              },
+              "authorizedScheduledLatencyMs": null
+            },
+            {
+              "index": 7,
+              "attempts": 8,
+              "outcomes": {
+                "authorized": 5,
+                "healthy": 0,
+                "denied": 0,
+                "unavailable": 3,
+                "error": 0,
+                "transport_error": 0,
+                "violation": 0
+              },
+              "authorizedLatencyMs": {
+                "p50": 17.982,
+                "p95": 20.773,
+                "p99": 20.773
+              },
+              "authorizedScheduledLatencyMs": null
+            }
+          ]
+        },
+        {
+          "name": "arrival-diverse-r200",
+          "mode": "fixed-arrival",
+          "scheduled": 2000,
+          "attempts": 2000,
+          "wallMs": 10002.839,
+          "offeredRate": 200,
+          "outcomes": {
+            "authorized": 2000,
+            "healthy": 0,
+            "denied": 0,
+            "unavailable": 0,
+            "error": 0,
+            "transport_error": 0,
+            "violation": 0
+          },
+          "credentialDenials": 0,
+          "attemptsPerSecond": 199.943,
+          "authorizedPerSecond": 199.943,
+          "allLatencyMs": {
+            "p50": 7.354,
+            "p95": 10.395,
+            "p99": 16.339
+          },
+          "authorizedLatencyMs": {
+            "p50": 7.354,
+            "p95": 10.395,
+            "p99": 16.339
+          },
+          "allScheduledLatencyMs": {
+            "p50": 8.045,
+            "p95": 10.967,
+            "p99": 16.996
+          },
+          "authorizedScheduledLatencyMs": {
+            "p50": 8.045,
+            "p95": 10.967,
+            "p99": 16.996
+          },
+          "generatorDrops": {
+            "late": 0,
+            "full": 0
+          },
+          "change": null,
+          "byClient": [
+            {
+              "index": 0,
+              "attempts": 250,
+              "outcomes": {
+                "authorized": 250,
+                "healthy": 0,
+                "denied": 0,
+                "unavailable": 0,
+                "error": 0,
+                "transport_error": 0,
+                "violation": 0
+              },
+              "authorizedLatencyMs": {
+                "p50": 7.368,
+                "p95": 10.295,
+                "p99": 16.919
+              },
+              "authorizedScheduledLatencyMs": {
+                "p50": 8.058,
+                "p95": 10.881,
+                "p99": 18.225
+              }
+            },
+            {
+              "index": 1,
+              "attempts": 250,
+              "outcomes": {
+                "authorized": 250,
+                "healthy": 0,
+                "denied": 0,
+                "unavailable": 0,
+                "error": 0,
+                "transport_error": 0,
+                "violation": 0
+              },
+              "authorizedLatencyMs": {
+                "p50": 7.368,
+                "p95": 10.254,
+                "p99": 17.528
+              },
+              "authorizedScheduledLatencyMs": {
+                "p50": 8.069,
+                "p95": 10.783,
+                "p99": 18.442
+              }
+            },
+            {
+              "index": 2,
+              "attempts": 250,
+              "outcomes": {
+                "authorized": 250,
+                "healthy": 0,
+                "denied": 0,
+                "unavailable": 0,
+                "error": 0,
+                "transport_error": 0,
+                "violation": 0
+              },
+              "authorizedLatencyMs": {
+                "p50": 7.301,
+                "p95": 10.999,
+                "p99": 16.124
+              },
+              "authorizedScheduledLatencyMs": {
+                "p50": 7.999,
+                "p95": 11.853,
+                "p99": 16.505
+              }
+            },
+            {
+              "index": 3,
+              "attempts": 250,
+              "outcomes": {
+                "authorized": 250,
+                "healthy": 0,
+                "denied": 0,
+                "unavailable": 0,
+                "error": 0,
+                "transport_error": 0,
+                "violation": 0
+              },
+              "authorizedLatencyMs": {
+                "p50": 7.362,
+                "p95": 10.664,
+                "p99": 15.487
+              },
+              "authorizedScheduledLatencyMs": {
+                "p50": 8.089,
+                "p95": 11.153,
+                "p99": 16.137
+              }
+            },
+            {
+              "index": 4,
+              "attempts": 250,
+              "outcomes": {
+                "authorized": 250,
+                "healthy": 0,
+                "denied": 0,
+                "unavailable": 0,
+                "error": 0,
+                "transport_error": 0,
+                "violation": 0
+              },
+              "authorizedLatencyMs": {
+                "p50": 7.351,
+                "p95": 10.585,
+                "p99": 14.992
+              },
+              "authorizedScheduledLatencyMs": {
+                "p50": 8.014,
+                "p95": 11.625,
+                "p99": 16.243
+              }
+            },
+            {
+              "index": 5,
+              "attempts": 250,
+              "outcomes": {
+                "authorized": 250,
+                "healthy": 0,
+                "denied": 0,
+                "unavailable": 0,
+                "error": 0,
+                "transport_error": 0,
+                "violation": 0
+              },
+              "authorizedLatencyMs": {
+                "p50": 7.35,
+                "p95": 10.477,
+                "p99": 14.94
+              },
+              "authorizedScheduledLatencyMs": {
+                "p50": 8.004,
+                "p95": 11.283,
+                "p99": 15.67
+              }
+            },
+            {
+              "index": 6,
+              "attempts": 250,
+              "outcomes": {
+                "authorized": 250,
+                "healthy": 0,
+                "denied": 0,
+                "unavailable": 0,
+                "error": 0,
+                "transport_error": 0,
+                "violation": 0
+              },
+              "authorizedLatencyMs": {
+                "p50": 7.347,
+                "p95": 9.857,
+                "p99": 16.673
+              },
+              "authorizedScheduledLatencyMs": {
+                "p50": 8.065,
+                "p95": 10.213,
+                "p99": 17.347
+              }
+            },
+            {
+              "index": 7,
+              "attempts": 250,
+              "outcomes": {
+                "authorized": 250,
+                "healthy": 0,
+                "denied": 0,
+                "unavailable": 0,
+                "error": 0,
+                "transport_error": 0,
+                "violation": 0
+              },
+              "authorizedLatencyMs": {
+                "p50": 7.354,
+                "p95": 10.16,
+                "p99": 19.452
+              },
+              "authorizedScheduledLatencyMs": {
+                "p50": 8.059,
+                "p95": 10.885,
+                "p99": 20.165
+              }
+            }
+          ]
+        },
+        {
+          "name": "arrival-diverse-r800",
+          "mode": "fixed-arrival",
+          "scheduled": 8000,
+          "attempts": 8000,
+          "wallMs": 10025.719,
+          "offeredRate": 800,
+          "outcomes": {
+            "authorized": 3766,
+            "healthy": 0,
+            "denied": 0,
+            "unavailable": 4234,
+            "error": 0,
+            "transport_error": 0,
+            "violation": 0
+          },
+          "credentialDenials": 0,
+          "attemptsPerSecond": 797.948,
+          "authorizedPerSecond": 375.634,
+          "allLatencyMs": {
+            "p50": 24,
+            "p95": 35.313,
+            "p99": 42.112
+          },
+          "authorizedLatencyMs": {
+            "p50": 32.055,
+            "p95": 37.731,
+            "p99": 46.714
+          },
+          "allScheduledLatencyMs": {
+            "p50": 24.639,
+            "p95": 35.992,
+            "p99": 42.909
+          },
+          "authorizedScheduledLatencyMs": {
+            "p50": 32.756,
+            "p95": 38.583,
+            "p99": 47.642
+          },
+          "generatorDrops": {
+            "late": 0,
+            "full": 0
+          },
+          "change": null,
+          "byClient": [
+            {
+              "index": 0,
+              "attempts": 1000,
+              "outcomes": {
+                "authorized": 464,
+                "healthy": 0,
+                "denied": 0,
+                "unavailable": 536,
+                "error": 0,
+                "transport_error": 0,
+                "violation": 0
+              },
+              "authorizedLatencyMs": {
+                "p50": 31.852,
+                "p95": 37.234,
+                "p99": 44.828
+              },
+              "authorizedScheduledLatencyMs": {
+                "p50": 32.559,
+                "p95": 37.702,
+                "p99": 45.397
+              }
+            },
+            {
+              "index": 1,
+              "attempts": 1000,
+              "outcomes": {
+                "authorized": 459,
+                "healthy": 0,
+                "denied": 0,
+                "unavailable": 541,
+                "error": 0,
+                "transport_error": 0,
+                "violation": 0
+              },
+              "authorizedLatencyMs": {
+                "p50": 32.351,
+                "p95": 38.632,
+                "p99": 52.103
+              },
+              "authorizedScheduledLatencyMs": {
+                "p50": 32.992,
+                "p95": 39.667,
+                "p99": 52.345
+              }
+            },
+            {
+              "index": 2,
+              "attempts": 1000,
+              "outcomes": {
+                "authorized": 479,
+                "healthy": 0,
+                "denied": 0,
+                "unavailable": 521,
+                "error": 0,
+                "transport_error": 0,
+                "violation": 0
+              },
+              "authorizedLatencyMs": {
+                "p50": 32,
+                "p95": 38.977,
+                "p99": 46.35
+              },
+              "authorizedScheduledLatencyMs": {
+                "p50": 32.707,
+                "p95": 39.703,
+                "p99": 47.642
+              }
+            },
+            {
+              "index": 3,
+              "attempts": 1000,
+              "outcomes": {
+                "authorized": 470,
+                "healthy": 0,
+                "denied": 0,
+                "unavailable": 530,
+                "error": 0,
+                "transport_error": 0,
+                "violation": 0
+              },
+              "authorizedLatencyMs": {
+                "p50": 32.08,
+                "p95": 37.59,
+                "p99": 51.149
+              },
+              "authorizedScheduledLatencyMs": {
+                "p50": 32.88,
+                "p95": 38.55,
+                "p99": 52.612
+              }
+            },
+            {
+              "index": 4,
+              "attempts": 1000,
+              "outcomes": {
+                "authorized": 460,
+                "healthy": 0,
+                "denied": 0,
+                "unavailable": 540,
+                "error": 0,
+                "transport_error": 0,
+                "violation": 0
+              },
+              "authorizedLatencyMs": {
+                "p50": 31.791,
+                "p95": 37.565,
+                "p99": 47.86
+              },
+              "authorizedScheduledLatencyMs": {
+                "p50": 32.514,
+                "p95": 38.311,
+                "p99": 48.202
+              }
+            },
+            {
+              "index": 5,
+              "attempts": 1000,
+              "outcomes": {
+                "authorized": 499,
+                "healthy": 0,
+                "denied": 0,
+                "unavailable": 501,
+                "error": 0,
+                "transport_error": 0,
+                "violation": 0
+              },
+              "authorizedLatencyMs": {
+                "p50": 32.075,
+                "p95": 36.927,
+                "p99": 42.49
+              },
+              "authorizedScheduledLatencyMs": {
+                "p50": 32.668,
+                "p95": 37.709,
+                "p99": 43.605
+              }
+            },
+            {
+              "index": 6,
+              "attempts": 1000,
+              "outcomes": {
+                "authorized": 455,
+                "healthy": 0,
+                "denied": 0,
+                "unavailable": 545,
+                "error": 0,
+                "transport_error": 0,
+                "violation": 0
+              },
+              "authorizedLatencyMs": {
+                "p50": 32.477,
+                "p95": 39.626,
+                "p99": 45.308
+              },
+              "authorizedScheduledLatencyMs": {
+                "p50": 33.129,
+                "p95": 39.821,
+                "p99": 46.007
+              }
+            },
+            {
+              "index": 7,
+              "attempts": 1000,
+              "outcomes": {
+                "authorized": 480,
+                "healthy": 0,
+                "denied": 0,
+                "unavailable": 520,
+                "error": 0,
+                "transport_error": 0,
+                "violation": 0
+              },
+              "authorizedLatencyMs": {
+                "p50": 31.914,
+                "p95": 36.922,
+                "p99": 45.935
+              },
+              "authorizedScheduledLatencyMs": {
+                "p50": 32.664,
+                "p95": 37.251,
+                "p99": 46.732
+              }
+            }
+          ]
+        },
+        {
+          "name": "arrival-diverse-r1600",
+          "mode": "fixed-arrival",
+          "scheduled": 16000,
+          "attempts": 15999,
+          "wallMs": 10025.218,
+          "offeredRate": 1600,
+          "outcomes": {
+            "authorized": 3662,
+            "healthy": 0,
+            "denied": 0,
+            "unavailable": 12337,
+            "error": 0,
+            "transport_error": 0,
+            "violation": 0
+          },
+          "credentialDenials": 0,
+          "attemptsPerSecond": 1595.876,
+          "authorizedPerSecond": 365.279,
+          "allLatencyMs": {
+            "p50": 0.242,
+            "p95": 35.563,
+            "p99": 41.03
+          },
+          "authorizedLatencyMs": {
+            "p50": 33.403,
+            "p95": 39.852,
+            "p99": 49.241
+          },
+          "allScheduledLatencyMs": {
+            "p50": 1.113,
+            "p95": 36.337,
+            "p99": 42.015
+          },
+          "authorizedScheduledLatencyMs": {
+            "p50": 34.162,
+            "p95": 40.598,
+            "p99": 50.137
+          },
+          "generatorDrops": {
+            "late": 1,
+            "full": 0
+          },
+          "change": null,
+          "byClient": [
+            {
+              "index": 0,
+              "attempts": 2000,
+              "outcomes": {
+                "authorized": 401,
+                "healthy": 0,
+                "denied": 0,
+                "unavailable": 1599,
+                "error": 0,
+                "transport_error": 0,
+                "violation": 0
+              },
+              "authorizedLatencyMs": {
+                "p50": 33.586,
+                "p95": 40.259,
+                "p99": 50.789
+              },
+              "authorizedScheduledLatencyMs": {
+                "p50": 34.112,
+                "p95": 40.931,
+                "p99": 50.924
+              }
+            },
+            {
+              "index": 1,
+              "attempts": 2000,
+              "outcomes": {
+                "authorized": 477,
+                "healthy": 0,
+                "denied": 0,
+                "unavailable": 1523,
+                "error": 0,
+                "transport_error": 0,
+                "violation": 0
+              },
+              "authorizedLatencyMs": {
+                "p50": 33.39,
+                "p95": 41.283,
+                "p99": 50.458
+              },
+              "authorizedScheduledLatencyMs": {
+                "p50": 34.199,
+                "p95": 41.757,
+                "p99": 51.696
+              }
+            },
+            {
+              "index": 2,
+              "attempts": 2000,
+              "outcomes": {
+                "authorized": 456,
+                "healthy": 0,
+                "denied": 0,
+                "unavailable": 1544,
+                "error": 0,
+                "transport_error": 0,
+                "violation": 0
+              },
+              "authorizedLatencyMs": {
+                "p50": 33.188,
+                "p95": 38.823,
+                "p99": 48.819
+              },
+              "authorizedScheduledLatencyMs": {
+                "p50": 34.095,
+                "p95": 39.842,
+                "p99": 50.067
+              }
+            },
+            {
+              "index": 3,
+              "attempts": 2000,
+              "outcomes": {
+                "authorized": 482,
+                "healthy": 0,
+                "denied": 0,
+                "unavailable": 1518,
+                "error": 0,
+                "transport_error": 0,
+                "violation": 0
+              },
+              "authorizedLatencyMs": {
+                "p50": 33.523,
+                "p95": 41.007,
+                "p99": 52.741
+              },
+              "authorizedScheduledLatencyMs": {
+                "p50": 34.219,
+                "p95": 42.207,
+                "p99": 53.032
+              }
+            },
+            {
+              "index": 4,
+              "attempts": 2000,
+              "outcomes": {
+                "authorized": 467,
+                "healthy": 0,
+                "denied": 0,
+                "unavailable": 1533,
+                "error": 0,
+                "transport_error": 0,
+                "violation": 0
+              },
+              "authorizedLatencyMs": {
+                "p50": 33.401,
+                "p95": 39.381,
+                "p99": 48.159
+              },
+              "authorizedScheduledLatencyMs": {
+                "p50": 34.278,
+                "p95": 40.36,
+                "p99": 48.278
+              }
+            },
+            {
+              "index": 5,
+              "attempts": 2000,
+              "outcomes": {
+                "authorized": 447,
+                "healthy": 0,
+                "denied": 0,
+                "unavailable": 1553,
+                "error": 0,
+                "transport_error": 0,
+                "violation": 0
+              },
+              "authorizedLatencyMs": {
+                "p50": 33.545,
+                "p95": 39.161,
+                "p99": 47.961
+              },
+              "authorizedScheduledLatencyMs": {
+                "p50": 34.145,
+                "p95": 39.691,
+                "p99": 48.274
+              }
+            },
+            {
+              "index": 6,
+              "attempts": 2000,
+              "outcomes": {
+                "authorized": 476,
+                "healthy": 0,
+                "denied": 0,
+                "unavailable": 1524,
+                "error": 0,
+                "transport_error": 0,
+                "violation": 0
+              },
+              "authorizedLatencyMs": {
+                "p50": 33.534,
+                "p95": 39.306,
+                "p99": 48.469
+              },
+              "authorizedScheduledLatencyMs": {
+                "p50": 34.287,
+                "p95": 40.089,
+                "p99": 49.933
+              }
+            },
+            {
+              "index": 7,
+              "attempts": 1999,
+              "outcomes": {
+                "authorized": 456,
+                "healthy": 0,
+                "denied": 0,
+                "unavailable": 1543,
+                "error": 0,
+                "transport_error": 0,
+                "violation": 0
+              },
+              "authorizedLatencyMs": {
+                "p50": 33.171,
+                "p95": 39.962,
+                "p99": 51.454
+              },
+              "authorizedScheduledLatencyMs": {
+                "p50": 33.974,
+                "p95": 41.146,
+                "p99": 52.397
+              }
+            }
+          ]
+        },
+        {
+          "name": "arrival-noisy-invalid-client",
+          "mode": "fixed-arrival",
+          "scheduled": 12000,
+          "attempts": 12000,
+          "wallMs": 10025.125,
+          "offeredRate": 1200,
+          "outcomes": {
+            "authorized": 1458,
+            "healthy": 1500,
+            "denied": 8631,
+            "unavailable": 411,
+            "error": 0,
+            "transport_error": 0,
+            "violation": 0
+          },
+          "credentialDenials": 8631,
+          "attemptsPerSecond": 1196.993,
+          "authorizedPerSecond": 145.435,
+          "allLatencyMs": {
+            "p50": 13.168,
+            "p95": 21.31,
+            "p99": 23.619
+          },
+          "authorizedLatencyMs": {
+            "p50": 21.064,
+            "p95": 24.324,
+            "p99": 27.186
+          },
+          "allScheduledLatencyMs": {
+            "p50": 13.754,
+            "p95": 21.882,
+            "p99": 24.194
+          },
+          "authorizedScheduledLatencyMs": {
+            "p50": 21.648,
+            "p95": 25.051,
+            "p99": 28.036
+          },
+          "generatorDrops": {
+            "late": 0,
+            "full": 0
+          },
+          "change": null,
+          "byClient": [
+            {
+              "index": 0,
+              "attempts": 1500,
+              "outcomes": {
+                "authorized": 0,
+                "healthy": 0,
+                "denied": 1494,
+                "unavailable": 6,
+                "error": 0,
+                "transport_error": 0,
+                "violation": 0
+              },
+              "authorizedLatencyMs": null,
+              "authorizedScheduledLatencyMs": null
+            },
+            {
+              "index": 1,
+              "attempts": 1500,
+              "outcomes": {
+                "authorized": 0,
+                "healthy": 0,
+                "denied": 1479,
+                "unavailable": 21,
+                "error": 0,
+                "transport_error": 0,
+                "violation": 0
+              },
+              "authorizedLatencyMs": null,
+              "authorizedScheduledLatencyMs": null
+            },
+            {
+              "index": 2,
+              "attempts": 1500,
+              "outcomes": {
+                "authorized": 0,
+                "healthy": 0,
+                "denied": 1478,
+                "unavailable": 22,
+                "error": 0,
+                "transport_error": 0,
+                "violation": 0
+              },
+              "authorizedLatencyMs": null,
+              "authorizedScheduledLatencyMs": null
+            },
+            {
+              "index": 3,
+              "attempts": 1500,
+              "outcomes": {
+                "authorized": 1458,
+                "healthy": 0,
+                "denied": 0,
+                "unavailable": 42,
+                "error": 0,
+                "transport_error": 0,
+                "violation": 0
+              },
+              "authorizedLatencyMs": {
+                "p50": 21.064,
+                "p95": 24.324,
+                "p99": 27.186
+              },
+              "authorizedScheduledLatencyMs": {
+                "p50": 21.648,
+                "p95": 25.051,
+                "p99": 28.036
+              }
+            },
+            {
+              "index": 4,
+              "attempts": 1500,
+              "outcomes": {
+                "authorized": 0,
+                "healthy": 0,
+                "denied": 1337,
+                "unavailable": 163,
+                "error": 0,
+                "transport_error": 0,
+                "violation": 0
+              },
+              "authorizedLatencyMs": null,
+              "authorizedScheduledLatencyMs": null
+            },
+            {
+              "index": 5,
+              "attempts": 1500,
+              "outcomes": {
+                "authorized": 0,
+                "healthy": 0,
+                "denied": 1405,
+                "unavailable": 95,
+                "error": 0,
+                "transport_error": 0,
+                "violation": 0
+              },
+              "authorizedLatencyMs": null,
+              "authorizedScheduledLatencyMs": null
+            },
+            {
+              "index": 6,
+              "attempts": 1500,
+              "outcomes": {
+                "authorized": 0,
+                "healthy": 0,
+                "denied": 1438,
+                "unavailable": 62,
+                "error": 0,
+                "transport_error": 0,
+                "violation": 0
+              },
+              "authorizedLatencyMs": null,
+              "authorizedScheduledLatencyMs": null
+            },
+            {
+              "index": 7,
+              "attempts": 1500,
+              "outcomes": {
+                "authorized": 0,
+                "healthy": 1500,
+                "denied": 0,
+                "unavailable": 0,
+                "error": 0,
+                "transport_error": 0,
+                "violation": 0
+              },
+              "authorizedLatencyMs": null,
+              "authorizedScheduledLatencyMs": null
+            }
+          ]
+        },
+        {
+          "name": "arrival-permission-reduction-concurrent",
+          "mode": "fixed-arrival",
+          "scheduled": 2000,
+          "attempts": 2000,
+          "wallMs": 10001.774,
+          "offeredRate": 200,
+          "outcomes": {
+            "authorized": 1992,
+            "healthy": 0,
+            "denied": 0,
+            "unavailable": 8,
+            "error": 0,
+            "transport_error": 0,
+            "violation": 0
+          },
+          "credentialDenials": 0,
+          "attemptsPerSecond": 199.965,
+          "authorizedPerSecond": 199.165,
+          "allLatencyMs": {
+            "p50": 7.106,
+            "p95": 9.793,
+            "p99": 38.668
+          },
+          "authorizedLatencyMs": {
+            "p50": 7.105,
+            "p95": 9.718,
+            "p99": 42.167
+          },
+          "allScheduledLatencyMs": {
+            "p50": 7.682,
+            "p95": 10.424,
+            "p99": 38.684
+          },
+          "authorizedScheduledLatencyMs": {
+            "p50": 7.68,
+            "p95": 10.261,
+            "p99": 43.193
+          },
+          "generatorDrops": {
+            "late": 0,
+            "full": 0
+          },
+          "change": {
+            "elapsedToAcknowledgementMs": 87.461
+          },
+          "byClient": [
+            {
+              "index": 0,
+              "attempts": 2000,
+              "outcomes": {
+                "authorized": 1992,
+                "healthy": 0,
+                "denied": 0,
+                "unavailable": 8,
+                "error": 0,
+                "transport_error": 0,
+                "violation": 0
+              },
+              "authorizedLatencyMs": {
+                "p50": 7.105,
+                "p95": 9.718,
+                "p99": 42.167
+              },
+              "authorizedScheduledLatencyMs": {
+                "p50": 7.68,
+                "p95": 10.261,
+                "p99": 43.193
+              }
+            }
+          ]
+        },
+        {
+          "name": "permission-reduction-after-commit",
+          "mode": "closed-loop",
+          "scheduled": null,
+          "attempts": 64,
+          "wallMs": 133.658,
+          "offeredRate": null,
+          "outcomes": {
+            "authorized": 51,
+            "healthy": 0,
+            "denied": 0,
+            "unavailable": 13,
+            "error": 0,
+            "transport_error": 0,
+            "violation": 0
+          },
+          "credentialDenials": 0,
+          "attemptsPerSecond": 478.834,
+          "authorizedPerSecond": 381.571,
+          "allLatencyMs": {
+            "p50": 17.291,
+            "p95": 22.07,
+            "p99": 26.902
+          },
+          "authorizedLatencyMs": {
+            "p50": 18.296,
+            "p95": 22.256,
+            "p99": 26.902
+          },
+          "allScheduledLatencyMs": null,
+          "authorizedScheduledLatencyMs": null,
+          "generatorDrops": null,
+          "change": null,
+          "byClient": [
+            {
+              "index": 0,
+              "attempts": 64,
+              "outcomes": {
+                "authorized": 51,
+                "healthy": 0,
+                "denied": 0,
+                "unavailable": 13,
+                "error": 0,
+                "transport_error": 0,
+                "violation": 0
+              },
+              "authorizedLatencyMs": {
+                "p50": 18.296,
+                "p95": 22.256,
+                "p99": 26.902
+              },
+              "authorizedScheduledLatencyMs": null
+            }
+          ]
+        },
+        {
+          "name": "arrival-revocation-concurrent",
+          "mode": "fixed-arrival",
+          "scheduled": 2000,
+          "attempts": 2000,
+          "wallMs": 10001.217,
+          "offeredRate": 200,
+          "outcomes": {
+            "authorized": 1000,
+            "healthy": 0,
+            "denied": 1000,
+            "unavailable": 0,
+            "error": 0,
+            "transport_error": 0,
+            "violation": 0
+          },
+          "credentialDenials": 0,
+          "attemptsPerSecond": 199.976,
+          "authorizedPerSecond": 99.988,
+          "allLatencyMs": {
+            "p50": 6.736,
+            "p95": 8.193,
+            "p99": 11.461
+          },
+          "authorizedLatencyMs": {
+            "p50": 7.105,
+            "p95": 9.832,
+            "p99": 12.36
+          },
+          "allScheduledLatencyMs": {
+            "p50": 7.059,
+            "p95": 8.829,
+            "p99": 12.128
+          },
+          "authorizedScheduledLatencyMs": {
+            "p50": 7.732,
+            "p95": 10.539,
+            "p99": 12.678
+          },
+          "generatorDrops": {
+            "late": 0,
+            "full": 0
+          },
+          "change": {
+            "elapsedToAcknowledgementMs": 8.279
+          },
+          "byClient": [
+            {
+              "index": 0,
+              "attempts": 2000,
+              "outcomes": {
+                "authorized": 1000,
+                "healthy": 0,
+                "denied": 1000,
+                "unavailable": 0,
+                "error": 0,
+                "transport_error": 0,
+                "violation": 0
+              },
+              "authorizedLatencyMs": {
+                "p50": 7.105,
+                "p95": 9.832,
+                "p99": 12.36
+              },
+              "authorizedScheduledLatencyMs": {
+                "p50": 7.732,
+                "p95": 10.539,
+                "p99": 12.678
+              }
+            }
+          ]
+        },
+        {
+          "name": "revocation-after-commit",
+          "mode": "closed-loop",
+          "scheduled": null,
+          "attempts": 64,
+          "wallMs": 108.441,
+          "offeredRate": null,
+          "outcomes": {
+            "authorized": 0,
+            "healthy": 0,
+            "denied": 47,
+            "unavailable": 17,
+            "error": 0,
+            "transport_error": 0,
+            "violation": 0
+          },
+          "credentialDenials": 0,
+          "attemptsPerSecond": 590.184,
+          "authorizedPerSecond": 0,
+          "allLatencyMs": {
+            "p50": 14.212,
+            "p95": 16.48,
+            "p99": 21.453
+          },
+          "authorizedLatencyMs": null,
+          "allScheduledLatencyMs": null,
+          "authorizedScheduledLatencyMs": null,
+          "generatorDrops": null,
+          "change": null,
+          "byClient": [
+            {
+              "index": 0,
+              "attempts": 64,
+              "outcomes": {
+                "authorized": 0,
+                "healthy": 0,
+                "denied": 47,
+                "unavailable": 17,
+                "error": 0,
+                "transport_error": 0,
+                "violation": 0
+              },
+              "authorizedLatencyMs": null,
+              "authorizedScheduledLatencyMs": null
+            }
+          ]
+        },
+        {
+          "name": "unaffected-resource",
+          "mode": "closed-loop",
+          "scheduled": null,
+          "attempts": 32,
+          "wallMs": 214.029,
+          "offeredRate": null,
+          "outcomes": {
+            "authorized": 32,
+            "healthy": 0,
+            "denied": 0,
+            "unavailable": 0,
+            "error": 0,
+            "transport_error": 0,
+            "violation": 0
+          },
+          "credentialDenials": 0,
+          "attemptsPerSecond": 149.513,
+          "authorizedPerSecond": 149.513,
+          "allLatencyMs": {
+            "p50": 6.628,
+            "p95": 6.992,
+            "p99": 7.001
+          },
+          "authorizedLatencyMs": {
+            "p50": 6.628,
+            "p95": 6.992,
+            "p99": 7.001
+          },
+          "allScheduledLatencyMs": null,
+          "authorizedScheduledLatencyMs": null,
+          "generatorDrops": null,
+          "change": null,
+          "byClient": [
+            {
+              "index": 0,
+              "attempts": 32,
+              "outcomes": {
+                "authorized": 32,
+                "healthy": 0,
+                "denied": 0,
+                "unavailable": 0,
+                "error": 0,
+                "transport_error": 0,
+                "violation": 0
+              },
+              "authorizedLatencyMs": {
+                "p50": 6.628,
+                "p95": 6.992,
+                "p99": 7.001
+              },
+              "authorizedScheduledLatencyMs": null
+            }
+          ]
+        }
+      ]
+    }
+  ],
+  "interpretation": {
+    "cacheEnabled": true,
+    "databaseRole": "postgres",
+    "databaseRoleNote": "The browser benchmark uses a disposable database-owner fixture, not the Compose runtime-role topology.",
+    "limits": [
+      "database-cold state",
+      "multi-host latency",
+      "large policy populations",
+      "pool acquisition and authorization stage timings",
+      "SQL statement counts and WAL observations",
+      "SQL round trips and plans",
+      "limiter incremental overhead",
+      "multi-hour endurance and production arrival distributions",
+      "sustained CPU/RSS peaks"
+    ],
+    "rawReports": "Full identifier-bearing reports and request traces remain in ignored .local/benchmarks directories. Run `make benchmark-arrivals-baseline` to regenerate them. This published summary preserves source/binary/image digests and per-phase/per-client aggregates."
+  }
+}
