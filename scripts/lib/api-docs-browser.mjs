@@ -283,7 +283,7 @@ export async function verifyApiDocumentation(browser, origin, ca) {
     await expect(page.locator(".api-operation-row")).toHaveCount(7);
     await expect(page.getByRole("main")).toHaveCount(1);
     await expect(page.locator("h1")).toHaveCount(1);
-    const resultStatus = page.locator(".api-result-count");
+    const resultStatus = page.locator(".api-section-heading .api-result-count");
     assert.equal(await resultStatus.getAttribute("role"), "status");
     assert.equal(await resultStatus.getAttribute("aria-live"), "polite");
     const unnamedControls = await page
@@ -368,6 +368,28 @@ export async function verifyApiDocumentation(browser, origin, ca) {
       page.getByText("Ninguna operación coincide con esta búsqueda."),
     ).toHaveAttribute("role", "status");
     await search.fill("");
+
+    const routeSearch = page.getByRole("searchbox", {
+      name: "Buscar rutas registradas",
+    });
+    const routeStatus = page.locator(".api-boundaries .api-result-count");
+    await expect(routeStatus).toHaveAttribute("role", "status");
+    await expect(routeStatus).toHaveAttribute("aria-live", "polite");
+    await expect(routeStatus).toContainText(
+      "Cantidad de rutas registradas: 80",
+    );
+    await routeSearch.fill("/api/admin/users");
+    await expect(page.locator(".api-boundary-entry")).toHaveCount(4);
+    await expect(routeStatus).toContainText("Cantidad de rutas registradas: 4");
+    await routeSearch.fill("administración");
+    await expect(page.locator(".api-boundary-entry")).toHaveCount(47);
+    await routeSearch.fill("no-existe-en-la-referencia");
+    await expect(page.locator(".api-boundary-entry")).toHaveCount(0);
+    await expect(routeStatus).toContainText("Cantidad de rutas registradas: 0");
+    await expect(
+      page.getByText("Ninguna ruta registrada coincide con esta búsqueda."),
+    ).toHaveAttribute("role", "status");
+    await routeSearch.fill("");
 
     const disclosure = page.locator(".api-operation summary").first();
     await disclosure.focus();

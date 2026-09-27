@@ -67,7 +67,10 @@ discovered registration a reviewed caller surface. Only entries carrying an
 other groups identify first-party browser/management endpoints, public sign-in
 presentation data, operational health probes, and static files. They remain
 subject to the runtime authorization checks and are not API grants or a promise
-of integration stability.
+of integration stability. The console lets administrators search this entire
+bounded inventory by HTTP method, path, supported operation ID, translated
+caller surface, or purpose. Search is performed locally and announces the
+matching route count; it does not execute a route or elevate its availability.
 
 The source walk is bounded to 1,024 Rust files, 4,096 directory entries, 32
 directory levels, 1 MiB per source file, 32 MiB total source and 512 route

@@ -544,6 +544,13 @@
 		"apiDocs.boundaryIntro",
 		"Estas rutas están inventariadas para que los colaboradores puedan revisar el límite HTTP. Su presencia aquí no las convierte en API de integración de terceros compatibles."
 	],
+	["apiDocs.routeSearch", "Buscar rutas registradas"],
+	[
+		"apiDocs.routeSearchHelp",
+		"Busca por método, ruta, operación compatible, superficie del llamador o propósito. Los resultados se filtran localmente; que una ruta aparezca no significa que sea una API compatible para terceros."
+	],
+	["apiDocs.routeResults", "Cantidad de rutas registradas: {count, number}"],
+	["apiDocs.noRouteResults", "Ninguna ruta registrada coincide con esta búsqueda."],
 	["apiDocs.integrationSurface", "API de integración compatible"],
 	["apiDocs.browserSurface", "API de navegador y administración de primera parte"],
 	["apiDocs.presentationSurface", "Datos públicos de presentación del inicio de sesión"],

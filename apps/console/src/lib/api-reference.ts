@@ -35,6 +35,8 @@ export interface RouteClassification {
 	}>;
 }
 
+export type RouteEntry = RouteClassification['entries'][number];
+
 export type ReferenceState =
 	| { kind: 'ready'; document: ApiDocument; classification: RouteClassification }
 	| { kind: 'unavailable' };
@@ -119,6 +121,31 @@ export function filterOperations(operations: ApiOperation[], query: string): Api
 			)
 		: operations;
 	return found.slice(0, 100);
+}
+
+/** Search the static route inventory locally with bounded input and output work. */
+export function filterRouteEntries(
+	entries: RouteEntry[],
+	query: string,
+	surfaceName: (surface: string) => string = (surface) => surface
+): RouteEntry[] {
+	const term = query.slice(0, 128).trim().toLocaleLowerCase();
+	const found = term
+		? entries.filter((entry) =>
+				[
+					entry.method,
+					entry.path,
+					entry.surface,
+					surfaceName(entry.surface),
+					entry.operation_id ?? '',
+					entry.rationale
+				]
+					.join(' ')
+					.toLocaleLowerCase()
+					.includes(term)
+			)
+		: entries;
+	return found.slice(0, 512);
 }
 
 /** Dereference only local pointers; cap work and recursion for safe rendering. */

@@ -2,10 +2,12 @@ import { describe, expect, it, vi } from 'vitest';
 import {
 	MAX_REFERENCE_BYTES,
 	filterOperations,
+	filterRouteEntries,
 	loadReference,
 	operationsFromDocument,
 	resolveLocalSchema,
-	type ApiDocument
+	type ApiDocument,
+	type RouteClassification
 } from '../../../src/lib/api-reference';
 
 const document: ApiDocument = {
@@ -43,6 +45,57 @@ describe('API documentation reader model', () => {
 		expect(filterOperations(operations, 'PKCE')).toEqual([operations[0]]);
 		expect(filterOperations(operations, 'post')).toEqual([operations[1]]);
 		expect(filterOperations(operations, 'missing')).toEqual([]);
+	});
+
+	it('searches the bounded route inventory by path, method, purpose and localized surface name', () => {
+		const entries: RouteClassification['entries'] = [
+			{
+				source: 'authentication_http.rs',
+				function: 'router',
+				method: 'GET',
+				path: '/api/admin/users/{id}',
+				handler: 'detail',
+				surface: 'first_party_browser',
+				rationale: 'First-party user administration.'
+			},
+			{
+				source: 'http.rs',
+				function: 'router',
+				method: 'GET',
+				path: '/health/live',
+				handler: 'liveness',
+				surface: 'operational',
+				rationale: 'Infrastructure health probe.'
+			}
+		];
+
+		expect(filterRouteEntries(entries, '  /API/ADMIN/USERS  ')).toEqual([entries[0]]);
+		expect(
+			filterRouteEntries(entries, 'get', (surface) =>
+				surface === 'operational' ? 'Operaciones' : 'Administración'
+			)
+		).toEqual(entries);
+		expect(
+			filterRouteEntries(entries, 'administración', (surface) =>
+				surface === 'operational' ? 'Operaciones' : 'Administración'
+			)
+		).toEqual([entries[0]]);
+		expect(filterRouteEntries(entries, 'user administration')).toEqual([entries[0]]);
+		expect(filterRouteEntries(entries, 'not present')).toEqual([]);
+		expect(entries).toHaveLength(2);
+	});
+
+	it('caps route search input and result projection', () => {
+		const entries: RouteClassification['entries'] = Array.from({ length: 600 }, (_, index) => ({
+			source: 'routes.rs',
+			function: 'router',
+			method: 'GET',
+			path: `/route/${index}`,
+			handler: 'read',
+			surface: 'first_party_browser',
+			rationale: 'Registered route.'
+		}));
+		expect(filterRouteEntries(entries, '')).toHaveLength(512);
 	});
 
 	it('expands local schema references with a cycle and work bound', () => {

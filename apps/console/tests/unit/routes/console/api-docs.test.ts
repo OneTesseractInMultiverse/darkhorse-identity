@@ -79,7 +79,7 @@ describe('API documentation page', () => {
 			.mockResolvedValueOnce(new Response(JSON.stringify(specification)))
 			.mockResolvedValueOnce(new Response(JSON.stringify(classification)));
 		vi.stubGlobal('fetch', fetcher);
-		render(ApiReferencePanel);
+		const view = render(ApiReferencePanel);
 
 		expect(await screen.findByRole('heading', { name: 'API documentation' })).toBeInTheDocument();
 		expect(
@@ -95,10 +95,17 @@ describe('API documentation page', () => {
 			redirect: 'error'
 		});
 		expect(fetcher).toHaveBeenCalledTimes(2);
-		const results = screen.getByRole('status');
+		const results = view.container.querySelector<HTMLParagraphElement>(
+			'.api-section-heading .api-result-count'
+		)!;
 		expect(results).toHaveClass('api-result-count');
 		expect(results).toHaveAttribute('aria-live', 'polite');
 		expect(results).toHaveTextContent('2 operations');
+		const routeResults = view.container.querySelector<HTMLParagraphElement>(
+			'.api-boundaries .api-result-count'
+		)!;
+		expect(routeResults).toHaveAttribute('aria-live', 'polite');
+		expect(routeResults).toHaveTextContent('Registered route count: 2');
 		expect(screen.getByRole('link', { name: 'Download OpenAPI specification' })).toHaveAttribute(
 			'href',
 			'/reference/openapi-v1.json'
@@ -113,7 +120,7 @@ describe('API documentation page', () => {
 		await fireEvent.input(screen.getByRole('searchbox', { name: /Search supported operations/ }), {
 			target: { value: 'introspect' }
 		});
-		expect(screen.getByText('/introspect')).toBeInTheDocument();
+		expect(view.container.querySelector('.api-operation-row')).toHaveTextContent('/introspect');
 		expect(screen.queryByText('/userinfo')).not.toBeInTheDocument();
 		expect(results).toHaveTextContent('1 operations');
 		await fireEvent.input(screen.getByRole('searchbox', { name: /Search supported operations/ }), {
@@ -124,7 +131,21 @@ describe('API documentation page', () => {
 		await fireEvent.input(screen.getByRole('searchbox', { name: /Search supported operations/ }), {
 			target: { value: 'introspect' }
 		});
-		await fireEvent.click(screen.getByText('/introspect'));
+		await fireEvent.input(screen.getByRole('searchbox', { name: /Search registered routes/ }), {
+			target: { value: '/userinfo' }
+		});
+		expect(view.container.querySelectorAll('.api-boundary-entry')).toHaveLength(1);
+		expect(routeResults).toHaveTextContent('Registered route count: 1');
+		await fireEvent.input(screen.getByRole('searchbox', { name: /Search registered routes/ }), {
+			target: { value: 'missing-route' }
+		});
+		expect(view.container.querySelectorAll('.api-boundary-entry')).toHaveLength(0);
+		expect(routeResults).toHaveTextContent('Registered route count: 0');
+		expect(screen.getByText('No registered routes match this search.')).toHaveAttribute(
+			'role',
+			'status'
+		);
+		await fireEvent.click(screen.getAllByText('/introspect')[0]);
 		await fireEvent.click(
 			screen.getByRole('button', { name: 'Copy opaqueAccess example for postIntrospection' })
 		);

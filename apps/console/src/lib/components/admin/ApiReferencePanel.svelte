@@ -4,6 +4,7 @@
 	import { useLocalization } from '$lib/i18n/context';
 	import {
 		filterOperations,
+		filterRouteEntries,
 		loadReference,
 		operationsFromDocument,
 		resolveLocalSchema,
@@ -16,6 +17,7 @@
 	type PanelState = 'loading' | ReferenceState;
 	let referenceState = $state<PanelState>('loading');
 	let search = $state('');
+	let boundarySearch = $state('');
 	type CopyStatus = 'copied' | 'failed' | null;
 	let copyStatus = $state<CopyStatus>(null);
 	let copiedOperation = $state('');
@@ -40,11 +42,12 @@
 			)
 		)
 	);
-	let boundaries: Array<[string, RouteClassification['entries']]> = $derived(
+	let boundaryEntries: RouteClassification['entries'] = $derived(
 		referenceState !== 'loading' && referenceState.kind === 'ready'
-			? groupBoundaries(referenceState.classification.entries)
+			? filterRouteEntries(referenceState.classification.entries, boundarySearch, boundaryTitle)
 			: []
 	);
+	let boundaries = $derived(groupBoundaries(boundaryEntries));
 
 	function groupBoundaries(
 		entries: RouteClassification['entries']
@@ -345,16 +348,30 @@
 		<section class="api-section api-boundaries" aria-labelledby="api-boundaries-title">
 			<h2 id="api-boundaries-title">{$language.t('apiDocs.boundaries')}</h2>
 			<p>{$language.t('apiDocs.boundaryIntro')}</p>
-			{#each boundaries as [surface, entries] (surface)}
-				<details>
-					<summary>{boundaryTitle(surface)} <span>{entries.length}</span></summary>
-					<ul>
-						{#each entries as entry (`${entry.method}-${entry.path}-${entry.source}-${entry.handler}`)}
-							<li><code>{entry.method} {entry.path}</code><span>{entry.rationale}</span></li>
-						{/each}
-					</ul>
-				</details>
-			{/each}
+			<label class="api-search">
+				<span>{$language.t('apiDocs.routeSearch')}</span>
+				<input bind:value={boundarySearch} maxlength="128" type="search" autocomplete="off" />
+				<small>{$language.t('apiDocs.routeSearchHelp')}</small>
+			</label>
+			<p class="api-result-count" role="status" aria-live="polite">
+				{$language.t('apiDocs.routeResults', { count: boundaryEntries.length })}
+			</p>
+			{#if boundaryEntries.length === 0}
+				<p role="status" class="api-notice">{$language.t('apiDocs.noRouteResults')}</p>
+			{:else}
+				{#each boundaries as [surface, entries] (surface)}
+					<details>
+						<summary>{boundaryTitle(surface)} <span>{entries.length}</span></summary>
+						<ul>
+							{#each entries as entry (`${entry.method}-${entry.path}-${entry.source}-${entry.handler}`)}
+								<li class="api-boundary-entry">
+									<code>{entry.method} {entry.path}</code><span>{entry.rationale}</span>
+								</li>
+							{/each}
+						</ul>
+					</details>
+				{/each}
+			{/if}
 		</section>
 	</div>
 {/if}

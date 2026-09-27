@@ -502,6 +502,13 @@
 		"apiDocs.boundaryIntro",
 		"These paths are inventoried so contributors can review the HTTP boundary. Their appearance here does not make them supported third-party integration APIs."
 	],
+	["apiDocs.routeSearch", "Search registered routes"],
+	[
+		"apiDocs.routeSearchHelp",
+		"Search by method, path, supported operation ID, caller surface, or purpose. Results update locally; a listed route is not necessarily a supported third-party API."
+	],
+	["apiDocs.routeResults", "Registered route count: {count, number}"],
+	["apiDocs.noRouteResults", "No registered routes match this search."],
 	["apiDocs.integrationSurface", "Supported integration API"],
 	["apiDocs.browserSurface", "First-party browser and management APIs"],
 	["apiDocs.presentationSurface", "Public sign-in presentation data"],
