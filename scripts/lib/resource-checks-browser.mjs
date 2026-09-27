@@ -116,7 +116,8 @@ async function verifyConfidentialResourceExample(options, app) {
 }
 
 export async function verifyResourceChecks(options) {
-  const { page, origin, ca, call, runSql, principal } = options;
+  const { page, origin, ca, call, runSql, principal, assertApiJsonResponse } =
+    options;
   const first = await register(options, "Inventory");
   const second = await register(options, "Billing");
   await verifyConfidentialResourceExample(options, first);
@@ -146,6 +147,7 @@ export async function verifyResourceChecks(options) {
     [second, tokens[1], tokens[0]],
   ]) {
     const active = await check(app, own.access_token);
+    assertApiJsonResponse("post", "/introspect", active);
     assert.equal(active.status, 200);
     assert.equal(active.headers["cache-control"], "no-store");
     assert.deepEqual(active.body, {
@@ -168,13 +170,22 @@ export async function verifyResourceChecks(options) {
       own.code,
       "unknown",
       "eyJ0eXAiOiJsb2dvdXQrand0In0.e30.AA",
-    ])
-      assert.deepEqual((await check(app, token)).body, { active: false });
-    assert.equal(
-      (await check(app, "unknown", "introspect", "00".repeat(32))).status,
-      401,
+    ]) {
+      const inactive = await check(app, token);
+      assertApiJsonResponse("post", "/introspect", inactive);
+      assert.deepEqual(inactive.body, { active: false });
+    }
+    const invalidCaller = await check(
+      app,
+      "unknown",
+      "introspect",
+      "00".repeat(32),
     );
-    assert.equal((await check(app, own.access_token, "revoke")).status, 401);
+    assert.equal(invalidCaller.status, 401);
+    assertApiJsonResponse("post", "/introspect", invalidCaller);
+    const revokeDenied = await check(app, own.access_token, "revoke");
+    assert.equal(revokeDenied.status, 401);
+    assertApiJsonResponse("post", "/revoke", revokeDenied);
     assert.deepEqual(
       (
         await manage(
@@ -239,18 +250,19 @@ export async function verifyResourceChecks(options) {
     permitted(await check(first, tokens[0].access_token), first, first.read),
     true,
   );
+  const revoked = await manage(
+    origin,
+    ca,
+    "revoke",
+    first.client,
+    first.secret,
+    tokens[0].access_token,
+  );
+  assert.equal(revoked.status, 200);
   assert.equal(
-    (
-      await manage(
-        origin,
-        ca,
-        "revoke",
-        first.client,
-        first.secret,
-        tokens[0].access_token,
-      )
-    ).status,
-    200,
+    revoked.body,
+    null,
+    "the documented revocation response is empty",
   );
   assert.deepEqual((await check(first, tokens[0].access_token)).body, {
     active: false,

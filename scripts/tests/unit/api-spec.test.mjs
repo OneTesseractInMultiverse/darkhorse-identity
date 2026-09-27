@@ -3,6 +3,7 @@ import test from "node:test";
 import {
   MAX_API_SPEC_BYTES,
   readBoundedApiInput,
+  validateApiJsonResponse,
   validateApiReference,
 } from "../../lib/api-spec.mjs";
 
@@ -69,6 +70,111 @@ test("accepts a version-aligned operation set and fully resolved local reference
     ok: true,
     operationCount: 1,
   });
+});
+
+test("validates live JSON responses through bounded local OpenAPI references", () => {
+  const specification = {
+    paths: {
+      "/fixture": {
+        get: {
+          responses: { 200: { $ref: "#/components/responses/Success" } },
+        },
+      },
+    },
+    components: {
+      responses: {
+        Success: {
+          content: {
+            "application/json": {
+              schema: { $ref: "#/components/schemas/Status" },
+            },
+          },
+        },
+      },
+      schemas: {
+        Status: {
+          type: "object",
+          required: ["active"],
+          properties: { active: { type: "boolean" } },
+          additionalProperties: false,
+        },
+      },
+    },
+  };
+  assert.deepEqual(
+    validateApiJsonResponse(specification, "/fixture", "get", 200, {
+      active: true,
+    }),
+    { ok: true },
+  );
+  assert.match(
+    validateApiJsonResponse(specification, "/fixture", "get", 200, {
+      active: "yes",
+      credential: "do-not-echo",
+    }).error,
+    /does not match/,
+  );
+  assert.equal(
+    JSON.stringify(
+      validateApiJsonResponse(specification, "/fixture", "get", 200, {
+        active: "yes",
+        credential: "do-not-echo",
+      }),
+    ).includes("do-not-echo"),
+    false,
+  );
+});
+
+test("fails closed when a live response status, operation or schema is absent", () => {
+  const specification = {
+    paths: {
+      "/fixture": {
+        get: { responses: { 200: { description: "No response body" } } },
+      },
+    },
+  };
+  assert.match(
+    validateApiJsonResponse(specification, "/fixture", "get", 201, {}).error,
+    /not documented/,
+  );
+  assert.match(
+    validateApiJsonResponse(specification, "/missing", "get", 200, {}).error,
+    /operation is missing/,
+  );
+  assert.match(
+    validateApiJsonResponse(specification, "/fixture", "get", 200, {}).error,
+    /does not define JSON schema/,
+  );
+  assert.match(
+    validateApiJsonResponse(specification, "/fixture", "connect", 200, {})
+      .error,
+    /operation is missing/,
+  );
+  assert.match(
+    validateApiJsonResponse(specification, "/fixture", "get", 99, {}).error,
+    /operation is missing/,
+  );
+});
+
+test("does not follow cyclic response references", () => {
+  const specification = {
+    paths: {
+      "/fixture": {
+        get: {
+          responses: { 200: { $ref: "#/components/responses/Loop" } },
+        },
+      },
+    },
+    components: {
+      responses: {
+        Loop: { $ref: "#/components/responses/Loop" },
+      },
+    },
+  };
+  assert.match(
+    validateApiJsonResponse(specification, "/fixture", "get", 200, {}).error,
+    /does not define JSON schema/,
+  );
 });
 
 test("rejects release version drift", () => {

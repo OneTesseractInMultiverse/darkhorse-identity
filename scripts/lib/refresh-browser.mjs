@@ -16,6 +16,7 @@ export async function verifyRefresh({
   principal,
   call,
   keys,
+  assertApiJsonResponse,
 }) {
   const application = await call(page, "/api/admin/registration", {
     operation: "create_application",
@@ -75,6 +76,7 @@ export async function verifyRefresh({
       verifier,
     );
     assert.equal(result.status, 200);
+    assertApiJsonResponse("post", "/token", result);
     assert.match(result.body.refresh_token, /^dr_[a-f0-9]{64}$/);
     validateIdToken(result.body.id_token, keys, {
       ...expected,
@@ -94,20 +96,30 @@ export async function verifyRefresh({
     initial.refresh_token,
     "access_token",
   );
+  assertApiJsonResponse("post", "/introspect", inactive);
   assert.deepEqual(inactive.body, { active: false });
-  assert.equal((await userinfo(origin, ca, initial.refresh_token)).status, 401);
-  assert.equal((await rotate(initial.access_token)).status, 400);
-  assert.equal(
-    (await refresh(origin, ca, client, "00".repeat(32), initial.refresh_token))
-      .status,
-    401,
+  const invalidUserInfo = await userinfo(origin, ca, initial.refresh_token);
+  assert.equal(invalidUserInfo.status, 401);
+  assertApiJsonResponse("get", "/userinfo", invalidUserInfo);
+  const wrongCredentialKind = await rotate(initial.access_token);
+  assert.equal(wrongCredentialKind.status, 400);
+  assertApiJsonResponse("post", "/token", wrongCredentialKind);
+  const invalidClient = await refresh(
+    origin,
+    ca,
+    client,
+    "00".repeat(32),
+    initial.refresh_token,
   );
+  assert.equal(invalidClient.status, 401);
+  assertApiJsonResponse("post", "/token", invalidClient);
   for (const headers of [{ origin }, { cookie: "unrelated=1" }])
     assert.equal(
       (await rotate(initial.refresh_token, undefined, headers)).status,
       403,
     );
   const narrowed = await rotate(initial.refresh_token, "openid email");
+  assertApiJsonResponse("post", "/token", narrowed);
   assert.equal(narrowed.status, 200);
   assert.equal(narrowed.headers["cache-control"], "no-store");
   assert.equal(narrowed.headers.pragma, "no-cache");
@@ -126,10 +138,13 @@ export async function verifyRefresh({
     "openid profile email",
   );
   assert.equal(expanded.status, 400);
+  assertApiJsonResponse("post", "/token", expanded);
   assert.deepEqual(expanded.body, { error: "invalid_scope" });
   const next = await rotate(narrowed.body.refresh_token);
   assert.equal(next.status, 200);
+  assertApiJsonResponse("post", "/token", next);
   const profile = await userinfo(origin, ca, next.body.access_token);
+  assertApiJsonResponse("get", "/userinfo", profile);
   assert.deepEqual(profile.body, {
     sub: principal,
     email: "browser@example.com",
@@ -137,6 +152,7 @@ export async function verifyRefresh({
   });
   const replay = await rotate(initial.refresh_token);
   assert.equal(replay.status, 400);
+  assertApiJsonResponse("post", "/token", replay);
   assert.deepEqual(replay.body, { error: "invalid_grant" });
   assert.equal(
     (await userinfo(origin, ca, next.body.access_token)).status,

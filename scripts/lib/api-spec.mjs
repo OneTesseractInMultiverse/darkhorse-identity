@@ -136,6 +136,42 @@ export function validateApiReference({
     : { ok: true, operationCount: documented.size };
 }
 
+/** Validate one observed JSON body against its reviewed local OpenAPI response. */
+export function validateApiJsonResponse(
+  specification,
+  path,
+  method,
+  status,
+  value,
+) {
+  const fail = (error) => ({ ok: false, error });
+  const normalizedMethod =
+    typeof method === "string" ? method.toLowerCase() : "";
+  if (
+    !isRecord(specification) ||
+    !validPath(path) ||
+    !METHODS.has(normalizedMethod) ||
+    !Number.isInteger(status) ||
+    status < 100 ||
+    status > 599
+  )
+    return fail("OpenAPI operation is missing.");
+  const operation = specification.paths?.[path]?.[normalizedMethod];
+  if (!isRecord(operation)) return fail("OpenAPI operation is missing.");
+  const declaredResponse = operation.responses?.[String(status)];
+  if (declaredResponse === undefined)
+    return fail("OpenAPI response status is not documented.");
+  const response = resolveLocalReference(declaredResponse, specification);
+  const schema = response?.content?.["application/json"]?.schema;
+  if (schema === undefined)
+    return fail("OpenAPI response does not define JSON schema.");
+  if (checkSchemaShape(schema))
+    return fail("OpenAPI response schema is malformed.");
+  if (!matchesSchema(value, schema, specification))
+    return fail("Live JSON response does not match its documented schema.");
+  return { ok: true };
+}
+
 function checkSchemasAndExamples(specification) {
   const schemaRoots = [
     ...Object.values(specification.components?.schemas ?? {}),
@@ -552,6 +588,24 @@ function resolvePointer(root, pointer) {
     if (isRecord(value)) return value[segment];
     return undefined;
   }, root);
+}
+
+function resolveLocalReference(value, root) {
+  const visited = new Set();
+  for (let depth = 0; depth < 32; depth++) {
+    if (!isRecord(value) || !Object.hasOwn(value, "$ref")) return value;
+    const reference = value.$ref;
+    if (
+      typeof reference !== "string" ||
+      !reference.startsWith("#/") ||
+      visited.has(reference)
+    )
+      return undefined;
+    visited.add(reference);
+    value = resolvePointer(root, reference);
+    if (value === undefined) return undefined;
+  }
+  return undefined;
 }
 
 function isRecord(value) {

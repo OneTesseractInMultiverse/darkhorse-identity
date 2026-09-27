@@ -49,7 +49,13 @@ version, local references, and exact operation parity with the source-derived
 route classification. Transport behavior is independently covered by Rust
 tests. A schema edit still requires review against the HTTP handlers and those
 tests; route parity alone does not prove that every schema constraint matches
-runtime behavior. This is an identified qualification item for issue #43.
+runtime behavior. The disposable HTTPS suite also validates observed JSON
+status/body pairs for exercised successful and failure paths against the local
+OpenAPI response schemas. It separately checks authorization redirects and the
+empty revocation response. These comparisons catch drift in exercised responses;
+they do not cover every possible runtime branch or prove every documented input
+constraint against all handler behavior. This remains a qualification item for
+issue #43.
 
 ## Route boundary inventory
 

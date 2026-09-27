@@ -1,5 +1,6 @@
 import { verifyOidcLanguages } from "./oidc-language-browser.mjs";
 import assert from "node:assert/strict";
+import { lstat, readFile } from "node:fs/promises";
 import {
   createPublicKey,
   createHash,
@@ -22,6 +23,30 @@ import {
   loadUserInfo,
 } from "../../examples/confidential-client/src/oidc-client.mjs";
 import { trustedFetch } from "../../examples/confidential-client/tests/support/trusted-fetch.mjs";
+import { readBoundedApiInput, validateApiJsonResponse } from "./api-spec.mjs";
+
+const apiSpecification = JSON.parse(
+  await readBoundedApiInput(
+    new URL("../../docs/api/openapi-v1.json", import.meta.url),
+    { lstat, readFile },
+  ),
+);
+
+function assertApiJsonResponse(method, path, response) {
+  const validation = validateApiJsonResponse(
+    apiSpecification,
+    path,
+    method,
+    response.status,
+    response.body,
+  );
+  assert.equal(
+    validation.ok,
+    true,
+    `${method.toUpperCase()} ${path} HTTP ${response.status} does not match the published JSON contract: ${validation.error}`,
+  );
+}
+
 export async function call(page, path, body) {
   return page.evaluate(
     async ({ path, body }) => {
@@ -93,6 +118,7 @@ export async function verifyProvider(
   runSql,
 ) {
   const metadata = await call(page, "/.well-known/openid-configuration");
+  assertApiJsonResponse("get", "/.well-known/openid-configuration", metadata);
   assert.equal(metadata.status, 200);
   assert.equal(metadata.body.issuer, origin);
   assert.equal(metadata.body.token_endpoint, `${origin}/token`);
@@ -111,6 +137,7 @@ export async function verifyProvider(
     "email",
   ]);
   const jwks = await call(page, "/jwks");
+  assertApiJsonResponse("get", "/jwks", jwks);
   assert.equal(jwks.status, 200);
   assert.equal(jwks.body.keys.length, 1);
   const key = jwks.body.keys[0];
@@ -273,11 +300,16 @@ export async function verifyProvider(
       proof,
       headers,
     );
-  assert.equal((await redeem(code, "00".repeat(32))).status, 401);
-  assert.equal(
-    (await redeem(code, registered.body.client_secret, "z".repeat(43))).status,
-    400,
+  const invalidClient = await redeem(code, "00".repeat(32));
+  assert.equal(invalidClient.status, 401);
+  assertApiJsonResponse("post", "/token", invalidClient);
+  const invalidProof = await redeem(
+    code,
+    registered.body.client_secret,
+    "z".repeat(43),
   );
+  assert.equal(invalidProof.status, 400);
+  assertApiJsonResponse("post", "/token", invalidProof);
   for (const headers of [{ origin }, { cookie: "unrelated=1" }])
     assert.equal(
       (await redeem(code, registered.body.client_secret, verifier, headers))
@@ -285,6 +317,7 @@ export async function verifyProvider(
       403,
     );
   const issued = await redeem();
+  assertApiJsonResponse("post", "/token", issued);
   assert.equal(issued.status, 200);
   assert.equal(issued.headers["cache-control"], "no-store");
   assert.equal(issued.headers.pragma, "no-cache");
@@ -312,6 +345,7 @@ export async function verifyProvider(
     );
   }
   const info = await userinfo(origin, ca, issued.body.access_token);
+  assertApiJsonResponse("get", "/userinfo", info);
   assert.equal(info.status, 200);
   assert.deepEqual(info.body, { sub: principal });
   for (const credential of [
@@ -319,7 +353,9 @@ export async function verifyProvider(
     code,
     "eyJ0eXAiOiJsb2dvdXQrand0In0.eyJldmVudHMiOnt9fQ.signature",
   ]) {
-    assert.equal((await userinfo(origin, ca, credential)).status, 401);
+    const rejected = await userinfo(origin, ca, credential);
+    assert.equal(rejected.status, 401);
+    assertApiJsonResponse("get", "/userinfo", rejected);
   }
   // An authenticated replay rejects and revokes the issued access credential.
   assert.equal((await redeem()).status, 400);
@@ -375,6 +411,7 @@ export async function verifyProvider(
     call,
     keys: jwks.body.keys,
     runSql,
+    assertApiJsonResponse,
   });
   await verifyRefresh({
     page,
@@ -383,6 +420,7 @@ export async function verifyProvider(
     principal,
     call,
     keys: jwks.body.keys,
+    assertApiJsonResponse,
   });
   let returned;
   query.set("prompt", "consent");
@@ -394,6 +432,10 @@ export async function verifyProvider(
   query.set("redirect_uri", "https://unregistered.example/callback");
   const denied = await page.goto(`${origin}/authorize?${query}`);
   assert.equal(denied.status(), 400);
+  assertApiJsonResponse("get", "/authorize", {
+    status: denied.status(),
+    body: await denied.json(),
+  });
   assert.equal(new URL(page.url()).origin, origin);
 
   const oidcTransport = trustedFetch(ca);
