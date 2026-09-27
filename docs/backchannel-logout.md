@@ -92,7 +92,8 @@ Associations and audits are retained. The future retention design must account f
 their foreign keys before deleting browser sessions or clients. The unique index
 and browser-session index bound individual lookups. Total storage growth, delivery
 fan-out limits and production capacity remain unqualified. No throughput increase
-is claimed for this change.
+is claimed for this change. See the [identity record lifecycle map](identity-retention.md)
+for cleanup dependencies and the outstanding delivery-retention decision.
 
 `make test-unit` checks typed identifiers, signed claim construction and the
 reference client's signature/session validation. `make test-postgres` covers

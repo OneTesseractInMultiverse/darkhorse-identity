@@ -141,6 +141,8 @@ audit storage still grow. No automatic retention or deletion is implemented.
 Audit foreign keys retain referenced sessions, so retention must account for these
 references and existing code/token bindings. Monitor storage growth and qualify a
 retention/export policy before long-running production deployment.
+See the [identity record lifecycle and foreign-key map](identity-retention.md)
+for the cross-record cleanup boundary and decisions still required.
 
 ## Verification and remaining work
 

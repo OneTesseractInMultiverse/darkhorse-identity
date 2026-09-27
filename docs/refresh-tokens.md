@@ -119,6 +119,8 @@ cascades their refresh/access rows. Each family is limited to 256 of each, so th
 maximum child work is bounded. Ordered root locks with `SKIP LOCKED` let concurrent
 workers skip busy families. Audit and authorization-code rows remain retained.
 Legacy access tokens, codes, consent and audit still need separate retention work.
+The [identity record lifecycle map](identity-retention.md) documents the
+dependencies and eligibility rules those cleanup slices must preserve.
 
 Server processes with the provider active run periodic cleanup. Each minute they attempt
 at most ten batches, stopping early when a batch is not full. Transactions release

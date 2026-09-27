@@ -1,0 +1,79 @@
+# Identity record lifecycle and retention
+
+This inventory is the policy boundary for [issue #33](https://github.com/OneTesseractInMultiverse/darkhorse-identity/issues/33). It records the current primary-database authority and foreign-key relationships before adding cleanup for sessions, authorization codes or legacy access tokens.
+
+Logical expiry and physical row retention are separate policies. A row past its protocol expiry must already fail authorization checks; its deletion still depends on replay, foreign-key, logout and audit obligations. This document does not introduce a general retention interval or a cleanup worker.
+
+## Dependency map
+
+```mermaid
+flowchart LR
+  S[Browser session]
+  R[Authorization request]
+  G[Authorization resource grant]
+  C[Authorization code]
+  A[Access token]
+  F[Refresh family]
+  T[Refresh token generation]
+  SA[Session audit]
+  RP[Relying-party session reference]
+  TA[Token audit]
+  CO[OAuth consent]
+  CA[Consent audit]
+
+  S -->|bound_session FK| R
+  R -->|ON DELETE CASCADE| G
+  S -->|session_digest FK| C
+  C -->|code_digest FK| A
+  C -->|code_digest FK| F
+  F -->|ON DELETE CASCADE| T
+  T -->|generation FK, ON DELETE CASCADE| A
+  S -->|target and actor FKs| SA
+  S -->|session_id FK| RP
+  RP -->|redemption FK| TA
+  CO -.->|change snapshot; no direct row FK| CA
+```
+
+Solid arrows show foreign keys; a relationship without an explicit cascade blocks parent deletion while the child exists. The dotted line marks an audit snapshot by principal/client, not a direct consent-row foreign key. Audit references are retained; they are not cleanup cascades. Source contracts are in migrations [0004](../crates/adapters/migrations/0004_browser_sessions.sql), [0007](../crates/adapters/migrations/0007_authorization_requests.sql), [0008](../crates/adapters/migrations/0008_code_exchange.sql), [0012](../crates/adapters/migrations/0012_refresh_rotation.sql), [0013](../crates/adapters/migrations/0013_session_management.sql), and [0016](../crates/adapters/migrations/0016_relying_party_sessions.sql).
+
+## Current records and future eligibility
+
+| Record class                     | Current authority and expiry                                                                                                                                             | References and evidence                                                                                                                                                                  | Current physical cleanup                                                                                                                                                                                                         | Future deletion eligibility                                                                                                                                                                                                                                 |
+| -------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------ | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Browser sessions                 | `expires_ms` is fixed at creation and bounded to eight hours. Revocation is terminal. Live checks also evaluate the account, credential epoch and current primary state. | Authorization requests, authorization codes, immutable session audit target/actor references, and immutable relying-party session references.                                            | No session-row cleanup.                                                                                                                                                                                                          | Only after the stored expiry or revocation, dependent requests/codes/credential families are handled, and audit and relying-party references have a reviewed retention representation. Existing session cookies and tokens must remain rejected throughout. |
+| Authorization requests           | Five-minute lifetime; approval, binding and terminal state are monotonic.                                                                                                | Optional resource grants reference the request and cascade with its removal. A bound browser session is a child-to-parent foreign key; deleting the request does not delete the session. | New authorization-request transactions opportunistically delete at most 100 rows with `expires_ms <= database_now`. This is admission-time pruning, not a standalone maintenance service.                                        | Expired rows may be pruned in bounded batches once no live transaction relies on them. Keep resource-grant deletion within the same reviewed transaction.                                                                                                   |
+| Authorization codes              | Sixty-second lifetime and one-use consumption. A consumed row supplies the current replay path.                                                                          | Access tokens and refresh families reference the code. Token audit records retain principal/client/event, but not the code digest.                                                       | No code-row cleanup.                                                                                                                                                                                                             | Only after child access and refresh records are ineligible, and an explicit replay-evidence policy defines behavior for later retries. Missing and expired credentials must remain non-authorizing.                                                         |
+| Access tokens                    | At most five minutes; revocation is terminal. Introspection checks current primary authority, grant and expiry.                                                          | Each row references an authorization code. Refresh-issued access rows also reference a refresh generation and cascade when that generation is removed.                                   | No general access-token cleanup.                                                                                                                                                                                                 | After expiry or revocation and any refresh-family dependency is resolved. Preserve code replay evidence independently of the access row.                                                                                                                    |
+| Refresh families and members     | A family ends no later than eight hours after original authentication. A member lasts at most 15 minutes and cannot outlive the family.                                  | The family references its root code. Family deletion cascades to refresh members and their access rows.                                                                                  | Existing sweep waits until 24 hours after family expiry, removes at most ten families per batch, skips busy roots and attempts at most ten batches per minute while the provider is active. The root authorization code remains. | Retain the current rule unless a separately measured and reviewed policy change is made. Coordinate any code cleanup after the family has been removed. See [refresh maintenance](refresh-tokens.md#migration-and-maintenance).                             |
+| Consent grants                   | No time-based expiry is defined. Current grant changes are authoritative policy transitions.                                                                             | Consent rows reference principal and client. Immutable consent audit records retain grant-change history.                                                                                | No generic consent cleanup.                                                                                                                                                                                                      | Only under explicit consent-revocation semantics, while preserving the audit trail and avoiding resurrection after restore.                                                                                                                                 |
+| Relying-party session references | Immutable mapping of issuer, client, principal and browser session to the `sid` included in new ID tokens.                                                               | References the browser session and client; new redemption audit rows reference the mapping.                                                                                              | No deletion path. Back-channel notification delivery is not implemented yet.                                                                                                                                                     | Defer until issue #14 defines durable delivery, terminal delivery outcomes and retention of notification context. Do not infer delivery completion from local browser-session revocation.                                                                   |
+| Audit records                    | Historical evidence; not an authorization cache.                                                                                                                         | Session, token, consent and policy audit records have immutable update/delete protections. Session audit and new token-redemption audit rows also have restrictive foreign keys.         | No audit deletion or archival worker is part of this issue.                                                                                                                                                                      | Retention, export and any archival representation remain under [issue #23](https://github.com/OneTesseractInMultiverse/darkhorse-identity/issues/23). Any schema change must keep audit records immutable and preserve their meaning.                       |
+
+Principals, credentials, applications, OAuth clients and access-catalog records are outside a generic expiry sweep. They carry durable ownership, policy or audit relationships and use their own deactivation/revision contracts.
+
+## Rules for the maintenance implementation
+
+1. Compute eligibility from explicit database time and category-specific cutoffs. Do not use a process clock or infer retention from protocol token lifetime alone.
+2. Remove dependent credential rows before parents, with deterministic lock ordering, bounded batches and skip-on-contention behavior. Keep refresh-family cleanup separate from any new category until their interaction is tested.
+3. Keep current authorization checks on the primary. Cleanup state never grants access, changes consent or reduces the immediate effect of a committed revocation.
+4. Preserve audit rows and necessary replay evidence. Do not disable immutable triggers, cascade through audit tables, reuse identifiers or reset bootstrap state to make rows deletable.
+5. Treat cancellation, shutdown, uncertain command outcomes and backup restoration as first-class cases. A later sweep must recompute eligibility against restored primary state; a partial batch must not remove its audit or replay dependencies.
+6. Add only aggregate, bounded backlog/age/deletion/failure metrics. Do not label metrics with principals, clients, identifiers, queries or credentials.
+
+## Decisions still required
+
+- The retention window for expired authorization-code replay evidence and legacy access-token rows.
+- How session audit keeps its immutable target and actor references if the browser-session row eventually becomes eligible for deletion.
+- How `sid` associations remain available through any future signed logout delivery, retry and terminal-failure window.
+- Which consent snapshots remain in the live table versus an approved immutable archive.
+- Backup/restore, runtime-role grants, and category-specific retention durations based on the organization's policy rather than a guessed universal interval.
+
+Until those decisions and their failure-boundary tests are reviewed, only the existing authorization-request and refresh-family sweeps are authorized to physically remove records in the categories covered here. No new session, code, access-token, consent, audit or relying-party cleanup is implemented by this inventory.
+
+## Sources
+
+- [Session validity and management](sessions.md)
+- [Refresh rotation and existing family maintenance](refresh-tokens.md#migration-and-maintenance)
+- [Back-channel logout session references](backchannel-logout.md)
+- [Request and code redemption transactions](../crates/adapters/src/postgres/oidc/writes.rs)
+- [Refresh-family maintenance transaction](../crates/adapters/src/postgres/tokens/refresh/maintenance.rs)
