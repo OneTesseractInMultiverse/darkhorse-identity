@@ -296,6 +296,81 @@ async fn expired_authorization_request_cleanup_has_a_lock_deadline_and_rolls_bac
     );
     db.store.close().await;
 }
+
+#[tokio::test]
+async fn terminated_cleanup_transaction_rolls_back_and_a_later_sweep_recovers() {
+    let db = fixture().await;
+    sqlx::query(
+        "INSERT INTO authorization_requests(digest,client_id,client_revision,application_revision,redirect_uri,challenge,scopes,prompt,created_ms,expires_ms) VALUES(decode(lpad(to_hex(1),64,'0'),'hex'),$1,0,0,$2,$3,ARRAY['openid'],'default',0,300000)",
+    )
+    .bind(Uuid::from_u128(32))
+    .bind("https://client.example/callback?fixed=1")
+    .bind([7u8; 32].as_slice())
+    .execute(&db.pool)
+    .await
+    .unwrap();
+    sqlx::raw_sql("CREATE FUNCTION block_expired_request_delete() RETURNS trigger LANGUAGE plpgsql AS $$ BEGIN PERFORM pg_advisory_xact_lock(314159,271828); RETURN OLD; END $$; CREATE TRIGGER block_expired_request_delete BEFORE DELETE ON authorization_requests FOR EACH ROW EXECUTE FUNCTION block_expired_request_delete();")
+        .execute(&db.pool)
+        .await
+        .unwrap();
+
+    let mut blocker = db.pool.begin().await.unwrap();
+    sqlx::query("SELECT pg_advisory_xact_lock(314159,271828)")
+        .execute(&mut *blocker)
+        .await
+        .unwrap();
+    let store = db.store.clone();
+    let operation = tokio::spawn(async move { store.prune_expired_authorization_requests().await });
+    let backend = tokio::time::timeout(std::time::Duration::from_secs(1), async {
+        loop {
+            let pid = sqlx::query_scalar::<_, i32>(
+                "SELECT pid FROM pg_stat_activity WHERE datname=current_database() AND pid<>pg_backend_pid() AND wait_event_type='Lock' AND query LIKE 'WITH expired AS MATERIALIZED%' ORDER BY query_start DESC LIMIT 1",
+            )
+            .fetch_optional(&db.pool)
+            .await
+            .unwrap();
+            if let Some(pid) = pid {
+                break pid;
+            }
+            tokio::time::sleep(std::time::Duration::from_millis(5)).await;
+        }
+    })
+    .await
+    .expect("cleanup reached the deliberately blocked delete trigger");
+    assert!(
+        sqlx::query_scalar::<_, bool>("SELECT pg_terminate_backend($1)")
+            .bind(backend)
+            .fetch_one(&db.pool)
+            .await
+            .unwrap()
+    );
+    assert_eq!(operation.await.unwrap(), Err(Error::Unavailable));
+    blocker.rollback().await.unwrap();
+    assert_eq!(
+        sqlx::query_scalar::<_, i64>("SELECT count(*) FROM authorization_requests")
+            .fetch_one(&db.pool)
+            .await
+            .unwrap(),
+        1
+    );
+
+    sqlx::query("DROP TRIGGER block_expired_request_delete ON authorization_requests")
+        .execute(&db.pool)
+        .await
+        .unwrap();
+    sqlx::query("DROP FUNCTION block_expired_request_delete()")
+        .execute(&db.pool)
+        .await
+        .unwrap();
+    let resumed = db
+        .store
+        .prune_expired_authorization_requests()
+        .await
+        .unwrap();
+    assert_eq!(resumed.deleted, 1);
+    assert!(!resumed.backlog_remaining);
+    db.store.close().await;
+}
 pub(super) fn request() -> Request {
     Request {
         client: ClientId::from_u128(32).unwrap(),

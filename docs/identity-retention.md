@@ -90,6 +90,13 @@ maintenance authorization_request_cleanup status=ok batches=10 deleted=1000 back
 
 The real PostgreSQL scale test seeds 20,000 expired and 20,000 live synthetic requests. One scheduled pass reports no more than ten batches and 1,000 deletions, preserves every live row, and reports aged remaining work. This demonstrates the configured work bound at that fixture size; it does not establish production latency, query-plan stability, vacuum/WAL impact, or interference with login, introspection, and security writes.
 
+The PostgreSQL boundary suite also terminates the cleanup transaction's backend
+while its delete trigger is blocked. It verifies the expired row remains after
+the interrupted transaction rolls back, removes the test-only blocker, and
+confirms a later sweep deletes the row. This exercises recovery from an
+uncertain in-flight cleanup command; it does not simulate a database-host crash
+or replace backup/restore qualification.
+
 `make benchmark-lifecycle-baseline` adds a separate restricted-runtime profile.
 It provisions real browser/OIDC credentials, inserts 20,000 expired and 20,000
 live synthetic requests into the disposable benchmark database, and runs the
