@@ -265,8 +265,10 @@ The repeated 800- and 1,600-arrival/s phases show substantial fail-closed load
 shedding in this local setup. Their authorized counts are useful observations for
 this host and topology, not sustainable-capacity estimates: the test driver, TLS
 proxy, server, database and Redis share one host, and unavailable responses are
-not successful work. The 200-arrival/s phase differed between runs (32 unavailable
-in the first, none in the second), so its tail and availability need more samples.
+not successful work. Every unavailable response in these two runs had HTTP status
+503; the aggregate sample does not identify the specific failing boundary. The
+200-arrival/s phase differed between runs (32 unavailable in the first, none in
+the second), so its tail and availability need more samples.
 
 The 1,200-arrival/s noisy-client phase mixed six clients with invalid credentials,
 one valid resource client and one health client. Run 1 recorded 7,938 denials,

@@ -270,7 +270,11 @@
               },
               "authorizedScheduledLatencyMs": null
             }
-          ]
+          ],
+          "httpStatusCounts": {
+            "200": 53,
+            "503": 11
+          }
         },
         {
           "name": "arrival-diverse-r200",
@@ -501,7 +505,11 @@
                 "p99": 102.03
               }
             }
-          ]
+          ],
+          "httpStatusCounts": {
+            "200": 1968,
+            "503": 32
+          }
         },
         {
           "name": "arrival-diverse-r800",
@@ -732,7 +740,12 @@
                 "p99": 68.501
               }
             }
-          ]
+          ],
+          "httpStatusCounts": {
+            "200": 3693,
+            "503": 4305,
+            "unsent": 2
+          }
         },
         {
           "name": "arrival-diverse-r1600",
@@ -963,7 +976,12 @@
                 "p99": 50.227
               }
             }
-          ]
+          ],
+          "httpStatusCounts": {
+            "200": 3642,
+            "503": 12357,
+            "unsent": 1
+          }
         },
         {
           "name": "arrival-noisy-invalid-client",
@@ -1138,7 +1156,12 @@
               "authorizedLatencyMs": null,
               "authorizedScheduledLatencyMs": null
             }
-          ]
+          ],
+          "httpStatusCounts": {
+            "200": 2864,
+            "401": 7938,
+            "503": 1198
+          }
         },
         {
           "name": "arrival-permission-reduction-concurrent",
@@ -1210,7 +1233,10 @@
                 "p99": 12.617
               }
             }
-          ]
+          ],
+          "httpStatusCounts": {
+            "200": 2000
+          }
         },
         {
           "name": "permission-reduction-after-commit",
@@ -1265,7 +1291,11 @@
               },
               "authorizedScheduledLatencyMs": null
             }
-          ]
+          ],
+          "httpStatusCounts": {
+            "200": 41,
+            "503": 23
+          }
         },
         {
           "name": "arrival-revocation-concurrent",
@@ -1337,7 +1367,10 @@
                 "p99": 10.996
               }
             }
-          ]
+          ],
+          "httpStatusCounts": {
+            "200": 2000
+          }
         },
         {
           "name": "revocation-after-commit",
@@ -1384,7 +1417,11 @@
               "authorizedLatencyMs": null,
               "authorizedScheduledLatencyMs": null
             }
-          ]
+          ],
+          "httpStatusCounts": {
+            "200": 52,
+            "503": 12
+          }
         },
         {
           "name": "unaffected-resource",
@@ -1439,7 +1476,10 @@
               },
               "authorizedScheduledLatencyMs": null
             }
-          ]
+          ],
+          "httpStatusCounts": {
+            "200": 32
+          }
         }
       ]
     },
@@ -1642,7 +1682,11 @@
               },
               "authorizedScheduledLatencyMs": null
             }
-          ]
+          ],
+          "httpStatusCounts": {
+            "200": 46,
+            "503": 18
+          }
         },
         {
           "name": "arrival-diverse-r200",
@@ -1873,7 +1917,10 @@
                 "p99": 20.165
               }
             }
-          ]
+          ],
+          "httpStatusCounts": {
+            "200": 2000
+          }
         },
         {
           "name": "arrival-diverse-r800",
@@ -2104,7 +2151,11 @@
                 "p99": 46.732
               }
             }
-          ]
+          ],
+          "httpStatusCounts": {
+            "200": 3766,
+            "503": 4234
+          }
         },
         {
           "name": "arrival-diverse-r1600",
@@ -2335,7 +2386,12 @@
                 "p99": 52.397
               }
             }
-          ]
+          ],
+          "httpStatusCounts": {
+            "200": 3662,
+            "503": 12337,
+            "unsent": 1
+          }
         },
         {
           "name": "arrival-noisy-invalid-client",
@@ -2510,7 +2566,12 @@
               "authorizedLatencyMs": null,
               "authorizedScheduledLatencyMs": null
             }
-          ]
+          ],
+          "httpStatusCounts": {
+            "200": 2958,
+            "401": 8631,
+            "503": 411
+          }
         },
         {
           "name": "arrival-permission-reduction-concurrent",
@@ -2582,7 +2643,11 @@
                 "p99": 43.193
               }
             }
-          ]
+          ],
+          "httpStatusCounts": {
+            "200": 1992,
+            "503": 8
+          }
         },
         {
           "name": "permission-reduction-after-commit",
@@ -2637,7 +2702,11 @@
               },
               "authorizedScheduledLatencyMs": null
             }
-          ]
+          ],
+          "httpStatusCounts": {
+            "200": 51,
+            "503": 13
+          }
         },
         {
           "name": "arrival-revocation-concurrent",
@@ -2709,7 +2778,10 @@
                 "p99": 12.678
               }
             }
-          ]
+          ],
+          "httpStatusCounts": {
+            "200": 2000
+          }
         },
         {
           "name": "revocation-after-commit",
@@ -2756,7 +2828,11 @@
               "authorizedLatencyMs": null,
               "authorizedScheduledLatencyMs": null
             }
-          ]
+          ],
+          "httpStatusCounts": {
+            "200": 47,
+            "503": 17
+          }
         },
         {
           "name": "unaffected-resource",
@@ -2811,7 +2887,10 @@
               },
               "authorizedScheduledLatencyMs": null
             }
-          ]
+          ],
+          "httpStatusCounts": {
+            "200": 32
+          }
         }
       ]
     }
