@@ -95,6 +95,13 @@ queue upgrade. Verified-HTTPS browser tests consume Spanish email through the
 actual authenticated TLS SMTP fixture, including accented text, link removal,
 explicit confirmation, enrollment and replay rejection.
 
+On 2026-09-27, `make test-browser` passed the complete HTTPS/browser suite,
+including bilingual verification and invitation delivery, primary-state queue
+and retry behavior, account-bound confirmation/enrollment, and replay rejection.
+`make check` also passed the source-defined renderer and MIME boundary tests.
+Independent fluent and security-meaning reviews remain part of release
+qualification in #42.
+
 No new SQL statement or join is required to select the delivery language. The
 existing verification actor projection adds `preferred_locale`; existing queue
 reads already project the whole row. Each new row adds a two-character language and
