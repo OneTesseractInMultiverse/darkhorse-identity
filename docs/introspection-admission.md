@@ -170,10 +170,10 @@ repeatability observations on one host, not restricted-runtime or multi-replica
 qualification.
 
 | Workload | Run 1 authorized / scheduled | Run 2 authorized / scheduled | Run 1 authorized p95 | Run 2 authorized p95 |
-| --- | ---: | ---: | ---: | ---: |
-| 200/s | 1,993 / 2,000 | 1,999 / 2,000 | 11.80 ms | 10.65 ms |
-| 800/s | 3,567 / 8,000 | 3,512 / 8,000 | 42.09 ms | 43.05 ms |
-| 1,600/s | 3,595 / 16,000 | 3,618 / 16,000 | 41.09 ms | 39.83 ms |
+| -------- | ---------------------------: | ---------------------------: | -------------------: | -------------------: |
+| 200/s    |                1,993 / 2,000 |                1,999 / 2,000 |             11.80 ms |             10.65 ms |
+| 800/s    |                3,567 / 8,000 |                3,512 / 8,000 |             42.09 ms |             43.05 ms |
+| 1,600/s  |               3,595 / 16,000 |               3,618 / 16,000 |             41.09 ms |             39.83 ms |
 
 At 800/s and 1,600/s, the bounded local admission/processing path returned many
 explicit unavailable responses; the counts and full scheduled latency percentiles

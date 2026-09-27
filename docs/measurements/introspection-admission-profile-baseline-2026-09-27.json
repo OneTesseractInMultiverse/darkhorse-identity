@@ -9,11 +9,7 @@
     "clients": 8,
     "arrivals": {
       "durationMs": 10000,
-      "rates": [
-        200,
-        800,
-        1600
-      ],
+      "rates": [200, 800, 1600],
       "noiseRate": 1200,
       "changeRate": 200,
       "maxInFlight": 128,
