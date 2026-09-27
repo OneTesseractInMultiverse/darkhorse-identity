@@ -260,6 +260,8 @@ export async function verifyApiDocumentation(browser, origin, ca) {
   await page.route("**/reference/openapi-v1.json", async (route) => {
     const document = structuredClone(originalDocument);
     document.paths["/userinfo"].get.summary = injectedText;
+    document.paths["/userinfo"].get["x-darkhorse-localization"].es.summary =
+      injectedText;
     await route.fulfill({
       status: 200,
       contentType: "application/json",
@@ -280,6 +282,17 @@ export async function verifyApiDocumentation(browser, origin, ca) {
       "open",
       "",
     );
+    await expect(
+      page.locator(".api-operation-summary", {
+        hasText: "Canjear un código de autorización",
+      }),
+    ).toBeVisible();
+    await expect(
+      page.locator("#operation-postToken .api-operation-body p"),
+    ).toContainText("Codifica el identificador y el secreto del cliente");
+    await expect(
+      page.getByRole("link", { name: /Descubrimiento/ }),
+    ).toHaveAttribute("href", "#group-discovery");
     await expect(page.locator(".api-operation-row")).toHaveCount(7);
     await expect(page.getByRole("main")).toHaveCount(1);
     await expect(page.locator("h1")).toHaveCount(1);
@@ -361,6 +374,9 @@ export async function verifyApiDocumentation(browser, origin, ca) {
       "/introspect",
     );
     await expect(resultStatus).toContainText("1");
+    await search.fill("must be redeemed with its original exact redirect_uri");
+    await expect(page.locator(".api-operation-row")).toHaveCount(1);
+    await expect(page.locator(".api-operation-row")).toContainText("/token");
     await search.fill("route-does-not-exist");
     await expect(page.locator(".api-operation-row")).toHaveCount(0);
     await expect(resultStatus).toContainText("0");

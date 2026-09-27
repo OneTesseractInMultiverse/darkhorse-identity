@@ -1,0 +1,58 @@
+{
+  "schema": 1,
+  "date": "2026-09-27",
+  "issue": 43,
+  "scope": "Local browser observation after adding Spanish operation summaries, descriptions and display groups to the static API reference. This is not a production performance claim.",
+  "environment": {
+    "host": "macOS on Apple Silicon",
+    "sourceRevision": "0c334df727f410d803ed259aa4a51f2c0c6b59b9",
+    "workingTreeDirty": true,
+    "browser": "Chromium via Playwright",
+    "application": "Rust debug server behind the local HTTPS test proxy; SvelteKit production build",
+    "database": "Disposable Percona Distribution for PostgreSQL container",
+    "viewport": "1440x1000",
+    "cacheSequence": "One fresh es-CR browser context for the cold navigation, followed by a reload in the same context for the warm navigation. No request interception was enabled for this sample."
+  },
+  "routeBundle": {
+    "entryAndEagerDependencies": 11,
+    "rawBytes": 221681,
+    "gzipBytes": 74689,
+    "gzipBudgetBytes": 81920,
+    "includes": "The API-reference route entry, its eagerly imported JavaScript dependencies and route CSS, counted once from the SvelteKit build manifest.",
+    "excludes": "Shared application chunks, separately fetched OpenAPI JSON, and content already held in the browser cache."
+  },
+  "browserLoads": {
+    "cold": {
+      "apiReferenceReadyMs": 53,
+      "domContentLoadedMs": 21,
+      "loadEventMs": 21,
+      "sameOriginTransferBytes": 360828,
+      "encodedResourceBytes": 354528,
+      "resourceCount": 21,
+      "openApiBytes": 45807
+    },
+    "warm": {
+      "apiReferenceReadyMs": 26,
+      "domContentLoadedMs": 6,
+      "loadEventMs": 7,
+      "sameOriginTransferBytes": 75402,
+      "encodedResourceBytes": 354528,
+      "resourceCount": 21,
+      "openApiBytes": 45807
+    },
+    "transferBytesReductionPercent": 79.1
+  },
+  "verification": {
+    "assetBudget": "make test-browser-focused passed; the deterministic API-route gzip budget is 80 KiB and the route measured 74,689 gzip bytes.",
+    "apiPayload": "The same-build static OpenAPI document transferred 45,807 encoded bytes. The previous 2026-09-26 observation recorded 38,938 bytes; the source revisions differ, so the increase is not attributed solely to the Spanish operation text.",
+    "browserSuite": "The HTTPS API-reference flow passed localized operation and group text, English and Spanish search terms, stable operation links, safe hostile-text rendering, copy/download, signed-out behavior, cookie omission, mobile width and zoom bounds.",
+    "contractChecks": "make api-spec-check and 13 source-defined API contract tests passed, including missing, empty and oversized Spanish operation text."
+  },
+  "limitations": [
+    "This sample was captured from a dirty working tree based on the recorded source revision; it is evidence for this implementation pass, not a clean release-build record.",
+    "Cold and warm figures are single-run observations on one local host. They are not stable latency percentiles or production capacity promises.",
+    "The comparison with the prior artifact uses different source revisions and cannot isolate the cost of the Spanish translations.",
+    "The route bundle budget excludes the separately fetched OpenAPI document; both sizes are recorded independently.",
+    "Manual screen-reader review and mechanical Rust-handler/schema parity remain open work for issue #43."
+  ]
+}

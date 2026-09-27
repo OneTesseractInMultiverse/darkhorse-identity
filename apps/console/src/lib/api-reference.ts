@@ -1,3 +1,5 @@
+import type { Locale } from '$lib/i18n/locale';
+
 export const MAX_REFERENCE_BYTES = 2 * 1024 * 1024;
 const METHODS = new Set(['get', 'post', 'put', 'patch', 'delete']);
 const API_PATH = '/reference/openapi-v1.json';
@@ -11,6 +13,7 @@ export interface ApiOperation {
 	description: string;
 	tags: string[];
 	value: Record<string, unknown>;
+	searchTerms?: string[];
 }
 
 export interface ApiDocument {
@@ -103,6 +106,26 @@ export function operationsFromDocument(document: ApiDocument): ApiOperation[] {
 	);
 }
 
+/** Apply the reviewed presentation overlay while retaining English search terms and stable IDs. */
+export function localizeOperation(operation: ApiOperation, locale: Locale): ApiOperation {
+	const sourceTerms = [operation.summary, operation.description, ...operation.tags];
+	if (locale === 'en') return { ...operation, searchTerms: sourceTerms };
+	const extension = operation.value['x-darkhorse-localization'];
+	const translations = isRecord(extension) ? extension[locale] : undefined;
+	if (!isRecord(translations)) return { ...operation, searchTerms: sourceTerms };
+	const summary = stringField(translations.summary);
+	const description = stringField(translations.description);
+	const group = stringField(translations.group);
+	if (!summary || !description || !group) return { ...operation, searchTerms: sourceTerms };
+	return {
+		...operation,
+		summary,
+		description,
+		tags: [group, ...operation.tags.slice(1)],
+		searchTerms: [...sourceTerms, summary, description, group]
+	};
+}
+
 export function filterOperations(operations: ApiOperation[], query: string): ApiOperation[] {
 	const term = query.slice(0, 128).trim().toLocaleLowerCase();
 	const found = term
@@ -113,7 +136,8 @@ export function filterOperations(operations: ApiOperation[], query: string): Api
 					operation.operationId,
 					operation.summary,
 					operation.description,
-					...operation.tags
+					...operation.tags,
+					...(operation.searchTerms ?? [])
 				]
 					.join(' ')
 					.toLocaleLowerCase()

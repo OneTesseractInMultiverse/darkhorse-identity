@@ -96,10 +96,11 @@ export function validateApiReference({
       if (
         !isRecord(operation) ||
         !validOperationId(operation.operationId) ||
-        !isRecord(operation.responses)
+        !isRecord(operation.responses) ||
+        !validSpanishOperation(operation)
       )
         return fail(
-          "Every operation needs a unique ID and at least one response.",
+          "Every operation needs a unique ID, responses, and bounded Spanish display text.",
         );
       const id = operation.operationId;
       const key = `${method} ${path}`;
@@ -134,6 +135,31 @@ export function validateApiReference({
   return parameterError
     ? fail(parameterError)
     : { ok: true, operationCount: documented.size };
+}
+
+function validSpanishOperation(operation) {
+  if (
+    typeof operation.summary !== "string" ||
+    operation.summary.length === 0 ||
+    operation.summary.length > 256 ||
+    typeof operation.description !== "string" ||
+    operation.description.length === 0 ||
+    operation.description.length > 4096
+  )
+    return false;
+  const translation = operation["x-darkhorse-localization"]?.es;
+  return (
+    isRecord(translation) &&
+    typeof translation.summary === "string" &&
+    translation.summary.trim().length > 0 &&
+    translation.summary.length <= 256 &&
+    typeof translation.description === "string" &&
+    translation.description.trim().length > 0 &&
+    translation.description.length <= 4096 &&
+    typeof translation.group === "string" &&
+    translation.group.trim().length > 0 &&
+    translation.group.length <= 64
+  );
 }
 
 /** Validate one observed JSON body against its reviewed local OpenAPI response. */

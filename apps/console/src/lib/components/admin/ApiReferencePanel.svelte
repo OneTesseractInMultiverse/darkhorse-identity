@@ -5,6 +5,7 @@
 	import {
 		filterOperations,
 		filterRouteEntries,
+		localizeOperation,
 		loadReference,
 		operationsFromDocument,
 		resolveLocalSchema,
@@ -24,23 +25,24 @@
 	let loading = false;
 	let operations = $derived(
 		referenceState !== 'loading' && referenceState.kind === 'ready'
-			? operationsFromDocument(referenceState.document)
+			? operationsFromDocument(referenceState.document).map((operation) =>
+					localizeOperation(operation, $language.locale)
+				)
 			: []
 	);
 	let visible = $derived(filterOperations(operations, search));
 	let groups = $derived(
 		Array.from(
-			visible.reduce(
-				(result, operation) => {
-					const name = operation.tags[0] ?? 'Other';
-					const entries = result.find(([group]) => group === name)?.[1] ?? [];
-					entries.push(operation);
-					if (!result.some(([group]) => group === name)) result.push([name, entries]);
-					return result;
-				},
-				[] as Array<[string, ApiOperation[]]>
-			)
-		)
+			visible.reduce((result, operation) => {
+				const key = Array.isArray(operation.value.tags)
+					? stringField(operation.value.tags[0]) || 'Other'
+					: 'Other';
+				const group = result.get(key);
+				if (group) group.entries.push(operation);
+				else result.set(key, { label: operation.tags[0] ?? key, entries: [operation] });
+				return result;
+			}, new Map<string, { label: string; entries: ApiOperation[] }>())
+		).map(([key, group]) => ({ key, ...group }))
 	);
 	let boundaryEntries: RouteClassification['entries'] = $derived(
 		referenceState !== 'loading' && referenceState.kind === 'ready'
@@ -149,6 +151,10 @@
 
 	function isRecord(value: unknown): value is Record<string, unknown> {
 		return typeof value === 'object' && value !== null && !Array.isArray(value);
+	}
+
+	function stringField(value: unknown): string {
+		return typeof value === 'string' ? value : '';
 	}
 </script>
 
@@ -273,14 +279,14 @@
 				<p role="status" class="api-notice">{$language.t('apiDocs.noResults')}</p>
 			{:else}
 				<nav class="api-group-nav" aria-label={$language.t('apiDocs.operationGroups')}>
-					{#each groups as [name, entries] (name)}
-						<a href="#{groupId(name)}">{name}<span>{entries.length}</span></a>
+					{#each groups as group (group.key)}
+						<a href="#{groupId(group.key)}">{group.label}<span>{group.entries.length}</span></a>
 					{/each}
 				</nav>
-				{#each groups as [name, entries] (name)}
-					<section class="api-operation-group" id={groupId(name)} aria-label={name}>
-						<h3>{name}</h3>
-						{#each entries as operation (operation.operationId)}
+				{#each groups as group (group.key)}
+					<section class="api-operation-group" id={groupId(group.key)} aria-label={group.label}>
+						<h3>{group.label}</h3>
+						{#each group.entries as operation (operation.operationId)}
 							<div class="api-operation-row">
 								<details id="operation-{operation.operationId}" class="api-operation">
 									<summary>

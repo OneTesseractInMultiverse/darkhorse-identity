@@ -12,6 +12,13 @@ const specification = {
 				summary: 'Check a credential',
 				description: 'Authenticate the resource server.',
 				tags: ['Tokens'],
+				'x-darkhorse-localization': {
+					es: {
+						summary: 'Consultar una credencial autorizada',
+						description: 'Envía un token y deniega el acceso si no hay una decisión vigente.',
+						group: 'Tokens'
+					}
+				},
 				security: [{ ResourceServerBasic: [] }],
 				requestBody: {
 					content: {
@@ -32,6 +39,13 @@ const specification = {
 				summary: '<img src=x onerror=alert(1)>',
 				description: 'Return authorized claims.',
 				tags: ['Tokens'],
+				'x-darkhorse-localization': {
+					es: {
+						summary: 'Consultar las claims autorizadas',
+						description: 'Devuelve solo las claims autorizadas para el token.',
+						group: 'Tokens'
+					}
+				},
 				responses: { '200': { description: 'Claims.' } }
 			}
 		}
@@ -158,6 +172,30 @@ describe('API documentation page', () => {
 			)
 		);
 		expect(await screen.findByText('Example copied.')).toHaveAttribute('role', 'status');
+	});
+
+	it('renders the Spanish operation summary and security guidance while retaining searchable source text', async () => {
+		const fetcher = vi
+			.fn<typeof fetch>()
+			.mockResolvedValueOnce(new Response(JSON.stringify(specification)))
+			.mockResolvedValueOnce(new Response(JSON.stringify(classification)));
+		vi.stubGlobal('fetch', fetcher);
+		const { default: SpanishHarness } = await import('./ApiReferenceSpanishHarness.svelte');
+		render(SpanishHarness);
+
+		expect(
+			await screen.findByRole('heading', { name: 'Documentación de API' })
+		).toBeInTheDocument();
+		expect(screen.getByText('Consultar una credencial autorizada')).toBeInTheDocument();
+		await fireEvent.click(screen.getByText('/introspect'));
+		expect(
+			screen.getByText(/deniega el acceso si no hay una decisión vigente/)
+		).toBeInTheDocument();
+		await fireEvent.input(
+			screen.getByRole('searchbox', { name: /Buscar operaciones compatibles/ }),
+			{ target: { value: 'Authenticate the resource server' } }
+		);
+		expect(screen.getByText('/introspect')).toBeInTheDocument();
 	});
 
 	it('supports stable deep links and reports a safe failure with a retry', async () => {

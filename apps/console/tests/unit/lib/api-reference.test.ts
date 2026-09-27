@@ -3,6 +3,7 @@ import {
 	MAX_REFERENCE_BYTES,
 	filterOperations,
 	filterRouteEntries,
+	localizeOperation,
 	loadReference,
 	operationsFromDocument,
 	resolveLocalSchema,
@@ -20,6 +21,13 @@ const document: ApiDocument = {
 				summary: 'Exchange a code',
 				description: 'Use verified TLS.',
 				tags: ['Tokens'],
+				'x-darkhorse-localization': {
+					es: {
+						summary: 'Canjear el código de autorización',
+						description: 'Usa el backend autorizado.',
+						group: 'Tokens'
+					}
+				},
 				responses: { '200': { description: 'Success' } }
 			}
 		},
@@ -29,6 +37,13 @@ const document: ApiDocument = {
 				summary: 'Start browser sign-in',
 				description: 'Use PKCE.',
 				tags: ['Authorization'],
+				'x-darkhorse-localization': {
+					es: {
+						summary: 'Iniciar la autorización',
+						description: 'Usa PKCE y una redirección exacta.',
+						group: 'Autorización'
+					}
+				},
 				responses: { '302': { description: 'Redirect' } }
 			}
 		}
@@ -45,6 +60,22 @@ describe('API documentation reader model', () => {
 		expect(filterOperations(operations, 'PKCE')).toEqual([operations[0]]);
 		expect(filterOperations(operations, 'post')).toEqual([operations[1]]);
 		expect(filterOperations(operations, 'missing')).toEqual([]);
+	});
+
+	it('localizes protocol guidance without changing routes or removing English search terms', () => {
+		const source = operationsFromDocument(document).find(
+			(operation) => operation.operationId === 'postToken'
+		)!;
+		const spanish = localizeOperation(source, 'es');
+
+		expect(spanish.summary).toBe('Canjear el código de autorización');
+		expect(spanish.description).toBe('Usa el backend autorizado.');
+		expect(spanish.tags).toEqual(['Tokens']);
+		expect(spanish.path).toBe(source.path);
+		expect(spanish.operationId).toBe(source.operationId);
+		expect(spanish.value).toBe(source.value);
+		expect(filterOperations([spanish], 'verified TLS')).toEqual([spanish]);
+		expect(filterOperations([spanish], 'autorización')).toEqual([spanish]);
 	});
 
 	it('searches the bounded route inventory by path, method, purpose and localized surface name', () => {

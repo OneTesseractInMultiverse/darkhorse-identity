@@ -37,6 +37,13 @@
         "tags": ["Discovery"],
         "summary": "Read the active issuer's OpenID Provider metadata",
         "description": "The document is available only when the provider has an active signing key. Values are derived from the configured canonical HTTPS issuer. A deployment without an active key returns 503.",
+        "x-darkhorse-localization": {
+          "es": {
+            "summary": "Consultar los metadatos OpenID Provider del emisor activo",
+            "description": "El documento solo está disponible cuando el proveedor tiene una clave de firma activa. Los valores provienen del emisor HTTPS canónico configurado. Si no hay una clave activa, el despliegue responde con 503.",
+            "group": "Descubrimiento"
+          }
+        },
         "responses": {
           "200": {
             "description": "Supported OIDC and token endpoint metadata.",
@@ -56,6 +63,13 @@
         "tags": ["Discovery"],
         "summary": "Read the public JSON Web Key Set",
         "description": "Returns public RSA signing keys only. The implementation uses RS256 and publishes the key ID, modulus, exponent, use, and algorithm. Private signing material is never returned. Responses currently use no-store caching.",
+        "x-darkhorse-localization": {
+          "es": {
+            "summary": "Consultar el conjunto público de claves web JSON",
+            "description": "Devuelve únicamente claves públicas RSA para firma. La implementación usa RS256 y publica el identificador, módulo, exponente, uso y algoritmo de cada clave. Nunca devuelve material de firma privado. Las respuestas usan actualmente la directiva de caché no-store.",
+            "group": "Descubrimiento"
+          }
+        },
         "responses": {
           "200": {
             "description": "Public signing keys.",
@@ -75,6 +89,13 @@
         "tags": ["Authorization"],
         "summary": "Start or continue an authorization request",
         "description": "Use a top-level browser navigation. This endpoint accepts only response_type=code, response_mode=query, and code_challenge_method=S256. Bounded unknown query parameters are ignored; duplicate recognized parameters and explicitly unsupported OIDC parameters are rejected. A browser may already have the host-only Darkhorse session cookie; the confidential client must not copy or forward that cookie. The endpoint redirects the browser to login or consent when needed, or to the exact registered callback after completion. It does not support public clients, implicit/password grants, request objects, request_uri, claims, login_hint, or id_token_hint. Identity and resource access profiles are mutually exclusive. Supply unpredictable state and nonce values and validate state, issuer, and nonce at the callback.",
+        "x-darkhorse-localization": {
+          "es": {
+            "summary": "Iniciar o continuar una solicitud de autorización",
+            "description": "Inicia este flujo mediante la navegación principal del navegador. El endpoint solo acepta response_type=code, response_mode=query y code_challenge_method=S256. Ignora parámetros de consulta desconocidos dentro del límite permitido; rechaza los parámetros reconocidos duplicados y los parámetros OIDC expresamente no admitidos. El navegador puede tener la cookie de sesión exclusiva del host de Darkhorse; el cliente confidencial no debe copiarla ni reenviarla. Cuando corresponde, el endpoint redirige el navegador al inicio de sesión o al consentimiento y, al completar el flujo, a la URL de callback registrada exacta. No admite clientes públicos, los grants implicit/password, request objects, request_uri, claims, login_hint ni id_token_hint. Los perfiles de identidad y de acceso a recursos son mutuamente excluyentes. Usa valores state y nonce impredecibles, y valida state, issuer y nonce al recibir el callback.",
+            "group": "Autorización"
+          }
+        },
         "security": [],
         "parameters": [
           { "$ref": "#/components/parameters/ClientId" },
@@ -113,6 +134,13 @@
         "tags": ["Tokens"],
         "summary": "Exchange an authorization code or rotate a refresh token",
         "description": "Call only from the confidential application's backend over verified HTTPS. Authenticate with one client_secret_basic HTTP Basic header. The client identifier and secret use OAuth form encoding before Base64 encoding; never put either in the body, query, URL, browser storage, or logs. Bodies are limited to 4096 bytes and 16 parameters; duplicate fields, query credentials, and parameters from the other grant are rejected. Bounded unrecognized form parameters are ignored for OAuth interoperability; recognized client-authentication parameters in the body are rejected. An authorization code is one-use, expires after 60 seconds, and must be redeemed with its original exact redirect_uri and PKCE verifier. A lost response after commit is uncertain: do not retry credential issuance automatically; start a new browser flow. Refresh rotation requires explicit client opt-in and remains bound to the original live browser session.",
+        "x-darkhorse-localization": {
+          "es": {
+            "summary": "Canjear un código de autorización o rotar un token de actualización",
+            "description": "Llama a este endpoint solo desde el backend de la aplicación confidencial y mediante HTTPS verificado. Autentica con un único encabezado HTTP Basic que usa client_secret_basic. Codifica el identificador y el secreto del cliente como formulario OAuth antes de aplicar Base64; nunca incluyas ninguno en el cuerpo, la consulta, la URL, el almacenamiento del navegador ni los logs. El cuerpo admite hasta 4096 bytes y 16 parámetros; se rechazan campos duplicados, credenciales en la consulta y parámetros del otro grant. Se ignoran los parámetros de formulario desconocidos dentro del límite para mantener la interoperabilidad con OAuth; se rechazan en el cuerpo los parámetros de autenticación de cliente reconocidos. El código de autorización es de un solo uso, vence a los 60 segundos y debe canjearse con el redirect_uri exacto y el verificador PKCE originales. Si se pierde la respuesta después del commit, el resultado es incierto: no reintentes automáticamente la emisión de credenciales; inicia un nuevo flujo del navegador. La rotación del token de actualización requiere que el cliente la haya habilitado expresamente y sigue vinculada a la sesión de navegador original que permanece activa.",
+            "group": "Tokens"
+          }
+        },
         "security": [{ "ClientSecretBasic": [] }],
         "requestBody": {
           "required": true,
@@ -174,6 +202,13 @@
         "tags": ["Tokens"],
         "summary": "Read claims authorized by an identity access token",
         "description": "Send one opaque access token in the Authorization: Bearer header. This endpoint accepts only identity-profile access tokens with the UserInfo audience; it does not accept ID tokens, refresh tokens, authorization codes, logout tokens, or resource access tokens. The response reflects only the claim ceiling approved for that token and current profile values. Checks read current primary authority; after a committed revocation, session termination, deactivation, registration change, or consent reduction, new checks reject the token. An unavailable decision must fail closed.",
+        "x-darkhorse-localization": {
+          "es": {
+            "summary": "Consultar las claims autorizadas por un token de acceso de identidad",
+            "description": "Envía un token de acceso opaco en el encabezado Authorization: Bearer. Este endpoint solo acepta tokens de acceso del perfil de identidad con la audiencia UserInfo; no acepta ID tokens, tokens de actualización, códigos de autorización, tokens de cierre de sesión ni tokens de acceso a recursos. La respuesta contiene únicamente las claims permitidas para ese token y los valores actuales del perfil. Las verificaciones consultan la autoridad primaria actual; después de confirmar una revocación, el cierre de una sesión, la desactivación, un cambio de registro o una reducción del consentimiento, las nuevas verificaciones rechazan el token. Si la decisión no está disponible, se debe denegar el acceso.",
+            "group": "Tokens"
+          }
+        },
         "security": [{ "OpaqueAccessBearer": [] }],
         "responses": {
           "200": {
@@ -195,6 +230,13 @@
         "tags": ["Tokens"],
         "summary": "Check a credential with its authorized caller",
         "description": "Send one token in an application/x-www-form-urlencoded body over verified HTTPS. A confidential issuing client authenticates with client_secret_basic and can inspect only its own issued credentials. A resource server authenticates with Basic username rs_<resource UUID> and its resource secret; this is required for resource access tokens and personal API keys. Inactive, expired, revoked, foreign, or wrong-purpose credentials return active=false after valid caller authentication. Authenticated checks consume shared admission budgets; 429 includes Retry-After. Resource servers must deny access when the decision is unavailable and must not fall back to cached positive decisions. Bodies are limited to 4096 bytes and 16 parameters; bounded unrecognized parameters are ignored and client-authentication parameters in the body are rejected. Token text is limited to 2048 bytes. Never send a credential in a URL or log it.",
+        "x-darkhorse-localization": {
+          "es": {
+            "summary": "Consultar una credencial con su cliente autorizado",
+            "description": "Envía un token en el cuerpo application/x-www-form-urlencoded y usa HTTPS verificado. Un cliente emisor confidencial se autentica con client_secret_basic y solo puede consultar las credenciales que él emitió. Un servidor de recursos se autentica con el nombre Basic rs_<UUID del recurso> y su secreto de recurso; esto es obligatorio para tokens de acceso a recursos y claves de API personales. Tras autenticar correctamente al cliente, las credenciales inactivas, vencidas, revocadas, ajenas o destinadas a otro uso devuelven active=false. Las consultas autenticadas consumen límites compartidos; la respuesta 429 incluye Retry-After. Los servidores de recursos deben denegar el acceso si la decisión no está disponible y no deben usar decisiones positivas almacenadas en caché como alternativa. El cuerpo admite hasta 4096 bytes y 16 parámetros; se ignoran los parámetros desconocidos dentro del límite y se rechazan los parámetros de autenticación de cliente en el cuerpo. El texto del token admite hasta 2048 bytes. Nunca envíes una credencial en una URL ni la incluyas en logs.",
+            "group": "Tokens"
+          }
+        },
         "security": [
           { "ClientSecretBasic": [] },
           { "ResourceServerBasic": [] }
@@ -240,6 +282,13 @@
         "tags": ["Tokens"],
         "summary": "Revoke an issued access or refresh credential",
         "description": "Call from the confidential application's backend over verified HTTPS and authenticate with client_secret_basic. The client can revoke only credentials from its own issuance context. Refresh-token revocation terminates its credential family and invalidates associated access credentials. A valid request returns 200 even if the credential is unknown, expired, already revoked, or belongs elsewhere. This endpoint does not revoke ID tokens or browser sessions. Bodies are limited to 4096 bytes and 16 parameters; bounded unrecognized parameters are ignored and client-authentication parameters in the body are rejected. Do not automatically retry if the response was lost after the request may have committed; re-check state through an authorized flow.",
+        "x-darkhorse-localization": {
+          "es": {
+            "summary": "Revocar un token de acceso o de actualización emitido",
+            "description": "Llama desde el backend de la aplicación confidencial mediante HTTPS verificado y autentica con client_secret_basic. El cliente solo puede revocar credenciales de su propio contexto de emisión. Revocar un token de actualización termina su familia de credenciales e invalida los tokens de acceso asociados. Una solicitud válida devuelve 200 aunque la credencial sea desconocida, esté vencida, ya revocada o pertenezca a otro cliente. Este endpoint no revoca ID tokens ni sesiones del navegador. El cuerpo admite hasta 4096 bytes y 16 parámetros; se ignoran los parámetros desconocidos dentro del límite y se rechazan los parámetros de autenticación de cliente en el cuerpo. No reintentes automáticamente si se perdió la respuesta después de que la solicitud pudo haberse confirmado; vuelve a comprobar el estado mediante un flujo autorizado.",
+            "group": "Tokens"
+          }
+        },
         "security": [{ "ClientSecretBasic": [] }],
         "requestBody": {
           "required": true,

@@ -57,6 +57,15 @@ they do not cover every possible runtime branch or prove every documented input
 constraint against all handler behavior. This remains a qualification item for
 issue #43.
 
+Each supported operation carries a bounded `x-darkhorse-localization.es` overlay
+for its summary, guidance and display group. The English OpenAPI fields remain
+the canonical integration contract. The Spanish console view renders the overlay
+as escaped text and searches both the displayed translation and source wording;
+paths, operation IDs, schemas, parameter names, protocol values and response
+codes remain unchanged. `api-spec-check` requires complete, size-bounded Spanish
+text for every supported operation. Operation and group fragment IDs use stable
+protocol identifiers, so switching languages does not invalidate shared links.
+
 ## Route boundary inventory
 
 [`route-registration-v1.json`](api/route-registration-v1.json) is generated from
@@ -202,3 +211,11 @@ viewports. Browser timings are environment-specific samples, while the
 deterministic asset budget and repeat-visit cache check are the performance
 gates. Manual screen-reader review and mechanical Rust-handler/schema parity
 remain tracked work for issue #43.
+
+The [2026-09-27 Spanish operation-text observation](measurements/api-reference-localization-2026-09-27.json)
+measured 74,689 gzip bytes for the API-reference route against its 81,920-byte
+budget, and a 45,807-byte encoded OpenAPI document. In one local browser sample,
+same-origin transfer measured 360,828 bytes on first visit and 75,402 on reload;
+readiness observations were 53 ms and 26 ms. These are single-run development
+measurements. The previous API-reference sample used a different source revision,
+so its smaller document size cannot isolate the cost of the localized text.

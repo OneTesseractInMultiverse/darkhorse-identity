@@ -36,6 +36,15 @@ const fixture = (overrides = {}) => ({
       "/authorize": {
         get: {
           operationId: "getAuthorization",
+          summary: "Start or continue authorization.",
+          description: "Use a top-level browser navigation.",
+          "x-darkhorse-localization": {
+            es: {
+              summary: "Iniciar o continuar la autorización.",
+              description: "Usa la navegación principal del navegador.",
+              group: "Autorización",
+            },
+          },
           responses: { 302: { description: "Redirect" } },
         },
       },
@@ -184,6 +193,26 @@ test("rejects release version drift", () => {
   );
 });
 
+test("requires bounded Spanish operation text for every supported route", () => {
+  const missing = fixture();
+  delete missing.specification.paths["/authorize"].get[
+    "x-darkhorse-localization"
+  ];
+  assert.match(validateApiReference(missing).error, /Spanish display text/);
+
+  const oversized = fixture();
+  oversized.specification.paths["/authorize"].get[
+    "x-darkhorse-localization"
+  ].es.description = "x".repeat(4097);
+  assert.match(validateApiReference(oversized).error, /Spanish display text/);
+
+  const empty = fixture();
+  empty.specification.paths["/authorize"].get[
+    "x-darkhorse-localization"
+  ].es.group = "  ";
+  assert.match(validateApiReference(empty).error, /Spanish display text/);
+});
+
 test("rejects missing, extra, renamed, duplicate, or malformed operations", () => {
   const missing = fixture();
   missing.specification.paths = {};
@@ -193,7 +222,19 @@ test("rejects missing, extra, renamed, duplicate, or malformed operations", () =
   assert.match(validateApiReference(renamed).error, /does not match/);
   const extra = fixture();
   extra.specification.paths["/extra"] = {
-    get: { operationId: "getExtra", responses: { 200: { description: "ok" } } },
+    get: {
+      operationId: "getExtra",
+      summary: "Get an extra value.",
+      description: "Read one extra value.",
+      "x-darkhorse-localization": {
+        es: {
+          summary: "Consultar un valor adicional.",
+          description: "Lee un valor adicional.",
+          group: "Otro",
+        },
+      },
+      responses: { 200: { description: "ok" } },
+    },
   };
   assert.match(validateApiReference(extra).error, /operation set/);
   const duplicate = fixture();
