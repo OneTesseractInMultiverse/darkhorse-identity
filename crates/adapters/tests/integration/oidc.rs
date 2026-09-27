@@ -8,7 +8,10 @@ use darkhorse_domain::{
     oidc::{Error, Interaction, Prompt, Request},
 };
 pub(super) async fn fixture() -> Database {
-    let db = Database::new().await;
+    fixture_at_version(i64::MAX).await
+}
+async fn fixture_at_version(version: i64) -> Database {
+    let db = Database::at_version(version).await;
     db.store
         .bootstrap(administrator(1, "one@example.com"))
         .await
@@ -22,6 +25,15 @@ pub(super) async fn fixture() -> Database {
     db.store.establish(&candidate, [1; 32], None).await.unwrap();
     sqlx::raw_sql("INSERT INTO applications(id,name,owner_id,active) VALUES('00000000-0000-0000-0000-000000000010','App','00000000-0000-0000-0000-000000000001',true); INSERT INTO oauth_clients(id,application_id,name,active) VALUES('00000000-0000-0000-0000-000000000020','00000000-0000-0000-0000-000000000010','Client',true); INSERT INTO client_redirects VALUES('00000000-0000-0000-0000-000000000020','https://client.example/callback?fixed=1');").execute(&db.pool).await.unwrap();
     db
+}
+async fn transaction_row_size(db: &Database, handle: [u8; 32]) -> i32 {
+    sqlx::query_scalar(
+        "SELECT pg_column_size(r)::integer FROM authorization_requests r WHERE digest=$1",
+    )
+    .bind(handle.as_slice())
+    .fetch_one(&db.pool)
+    .await
+    .unwrap()
 }
 pub(super) fn request() -> Request {
     Request {
@@ -516,5 +528,80 @@ async fn language_migration_preserves_existing_pending_request_bytes() {
     assert!(absent);
     let invalid = sqlx::query("INSERT INTO authorization_requests(digest,client_id,client_revision,application_revision,redirect_uri,challenge,scopes,prompt,created_ms,expires_ms,ui_locale) SELECT decode(repeat('42',32),'hex'),client_id,client_revision,application_revision,redirect_uri,challenge,scopes,prompt,created_ms,expires_ms,'unsupported' FROM authorization_requests").execute(&db.pool).await;
     assert!(invalid.is_err());
+    db.store.close().await;
+}
+
+#[tokio::test]
+async fn locale_column_storage_is_measured_and_existing_rows_are_not_rewritten() {
+    use darkhorse_domain::localization::Locale;
+
+    let db = fixture_at_version(33).await;
+    let legacy = request();
+    let created_ms = i64::try_from(
+        std::time::SystemTime::now()
+            .duration_since(std::time::UNIX_EPOCH)
+            .unwrap()
+            .as_millis(),
+    )
+    .unwrap();
+    sqlx::query("INSERT INTO authorization_requests(digest,client_id,client_revision,application_revision,redirect_uri,challenge,state,nonce,scopes,prompt,created_ms,expires_ms) VALUES(decode(repeat('35',32),'hex'),$1,0,0,$2,$3,$4,$5,ARRAY['openid'],'default',$6,$6+300000)")
+        .bind(Uuid::from_u128(32))
+        .bind(legacy.redirect)
+        .bind(legacy.challenge.as_slice())
+        .bind(legacy.state)
+        .bind(legacy.nonce)
+        .bind(created_ms)
+        .execute(&db.pool)
+        .await
+        .unwrap();
+    let legacy_bytes = transaction_row_size(&db, [53; 32]).await;
+
+    db.store.migrate().await.unwrap();
+    let retained_legacy_bytes = transaction_row_size(&db, [53; 32]).await;
+    let Outcome::Pending(retained) = db
+        .store
+        .resume([53; 32], Some([1; 32]), Decision::Inspect)
+        .await
+        .unwrap()
+    else {
+        panic!("legacy transaction remains pending")
+    };
+    assert_eq!(retained.ui_locale, None);
+
+    for (handle, locale) in [
+        ([54; 32], None),
+        ([55; 32], Some(Locale::English)),
+        ([56; 32], Some(Locale::Spanish)),
+    ] {
+        let mut localized = request();
+        localized.ui_locale = locale;
+        assert!(matches!(
+            db.store.begin(localized, handle, None).await.unwrap(),
+            Outcome::Pending(_)
+        ));
+    }
+
+    let null_bytes = transaction_row_size(&db, [54; 32]).await;
+    let english_bytes = transaction_row_size(&db, [55; 32]).await;
+    let spanish_bytes = transaction_row_size(&db, [56; 32]).await;
+    let locale_delta = english_bytes - null_bytes;
+    eprintln!(
+        "oidc_locale_row_storage_bytes={{\"legacy_before_migration\":{legacy_bytes},\"legacy_after_migration\":{retained_legacy_bytes},\"new_null\":{null_bytes},\"english\":{english_bytes},\"spanish\":{spanish_bytes},\"locale_delta\":{locale_delta}}}"
+    );
+
+    assert_eq!(
+        retained_legacy_bytes, legacy_bytes,
+        "adding the nullable column must not rewrite existing transaction tuples"
+    );
+    assert_eq!(
+        null_bytes, legacy_bytes,
+        "an absent language hint must not increase this transaction row's stored size"
+    );
+    assert_eq!(english_bytes, spanish_bytes);
+    assert!(locale_delta > 0, "a selected locale occupies stored bytes");
+    assert!(
+        locale_delta <= 16,
+        "the two-byte allowlisted locale should add only a small bounded tuple cost"
+    );
     db.store.close().await;
 }

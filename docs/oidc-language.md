@@ -97,9 +97,16 @@ and release qualification remain separate gates.
 The resolver runs once when parsing an authorization request. Inspection and
 decisions reuse the existing transaction reads; the two-byte resolved language
 adds no SQL statement, cache lookup or external request. The nullable PostgreSQL
-text column adds tuple representation/alignment overhead as well as the selected
-tag. Actual row-size and workload measurements remain part of PostgreSQL
-qualification; two payload bytes are not a claim about physical storage size.
+text column's actual tuple cost was measured against the pinned Percona PostgreSQL
+18.6 image. A representative 250-byte transaction row remained 250 bytes through
+the additive migration; new rows measured 250 bytes with no hint and 253 bytes
+with either `en` or `es`. The selected tag therefore added 3 bytes in this fixture,
+including its stored text representation. The
+[measurement record](measurements/oidc-language-storage-2026-09-26.json) describes
+the query and its limits. `pg_column_size` does not measure indexes, page free
+space, WAL, dead tuples or workload capacity; those remain deployment-level
+qualification. The two-byte payload therefore understates the measured stored
+delta by one byte for this fixture.
 
 `ui_locales=es-CR%20es%20en` adds 27 query bytes including its separating `&`.
 The per-flow cookie name adds 65 bytes over the former single cookie name, and the

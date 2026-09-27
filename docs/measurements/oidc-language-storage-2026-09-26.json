@@ -1,0 +1,34 @@
+{
+  "schema": 1,
+  "date": "2026-09-27T03:40:46Z",
+  "scope": "PostgreSQL pg_column_size measurements of representative authorization transaction rows before and after migration 34; not a workload or total database-size benchmark.",
+  "postgres": {
+    "distribution": "Percona Distribution for PostgreSQL",
+    "version": "18.6",
+    "image": "percona/percona-distribution-postgresql:18.6@sha256:dae47360e8137cafc1e8d66f9a1be348f1405e3cf51daa383b94e6c277e6b256"
+  },
+  "method": {
+    "query": "SELECT pg_column_size(r) FROM authorization_requests r WHERE digest = $1",
+    "fixture": "One synthetic authorization-code request for openid, with a fixed 32-byte digest and challenge, the same callback, state, nonce, default prompt, no resource, and no bound session. A pending legacy row was inserted under schema version 33, then the migration to version 34 was applied. Three new rows used NULL, en, and es.",
+    "assertions": [
+      "The pending pre-migration tuple remains readable with no language hint.",
+      "The pre-migration tuple size is unchanged after adding the nullable column.",
+      "The new NULL-hint row is the same size as the legacy row for this fixture.",
+      "English and Spanish rows have equal size and add no more than 16 bytes over NULL."
+    ]
+  },
+  "rowDatumBytes": {
+    "legacyBeforeMigration": 250,
+    "legacyAfterMigration": 250,
+    "newNullHint": 250,
+    "newEnglishHint": 253,
+    "newSpanishHint": 253,
+    "selectedHintDelta": 3,
+    "selectedHintDeltaPercent": 1.2
+  },
+  "limitations": [
+    "pg_column_size measures the row datum for this fixture, not full table or database disk usage.",
+    "The result excludes indexes, page free space, WAL, dead tuples, backups, replication and concurrent workload effects.",
+    "The fixture is representative but does not establish production capacity or a universal row size."
+  ]
+}
