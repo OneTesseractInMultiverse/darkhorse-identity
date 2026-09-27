@@ -60,8 +60,14 @@ const fixture = (overrides = {}) => ({
           ["grant_type", "refresh_token"],
           ["code", "redirect_uri", "code_verifier"],
         ),
-        IntrospectionRequest: formRequestSchema(["token"]),
-        RevocationRequest: formRequestSchema(["token"]),
+        IntrospectionRequest: {
+          ...formRequestSchema(["token"]),
+          properties: { token_type_hint: { type: "string" } },
+        },
+        RevocationRequest: {
+          ...formRequestSchema(["token"]),
+          properties: { token_type_hint: { type: "string" } },
+        },
       },
     },
   },
@@ -284,6 +290,15 @@ test("requires OAuth form schemas to allow extensions and reject body client cre
 
   const valid = fixture();
   assert.equal(validateApiReference(valid).ok, true);
+});
+
+test("does not document an unimplemented token_type_hint length restriction", () => {
+  const input = fixture();
+  input.specification.components.schemas.IntrospectionRequest.properties.token_type_hint.maxLength = 128;
+  assert.equal(
+    validateApiReference(input).error,
+    "Ignored token_type_hint must not claim value constraints the HTTP parser does not enforce.",
+  );
 });
 
 test("validates source-defined request examples against their local schema", () => {

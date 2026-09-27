@@ -237,6 +237,12 @@ fn management_requires_authentication_but_wrong_token_types_remain_opaque() {
         assert_eq!(parsed.client.as_u128(), 1);
         assert!(parsed.token.is_none());
     }
+    let long_hint = format!("token=unknown&token_type_hint={}", "h".repeat(129));
+    assert!(management(&headers, long_hint.as_bytes()).is_ok());
+    assert!(matches!(
+        introspection(&headers, long_hint.as_bytes()),
+        Ok(Inquiry::Client(_))
+    ));
     let token = format!("da_{}", "ab".repeat(32));
     assert!(
         matches!(management(&headers, format!("token={token}").as_bytes()).unwrap().token,

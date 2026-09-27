@@ -545,6 +545,17 @@ function checkOAuthFormParameterPolicy(specification) {
     )
       return "OAuth form parameter policy must allow extensions and reject body client credentials.";
   }
+  for (const name of ["IntrospectionRequest", "RevocationRequest"]) {
+    const hint = schemas?.[name]?.properties?.token_type_hint;
+    if (
+      !isRecord(hint) ||
+      hint.type !== "string" ||
+      ["minLength", "maxLength", "pattern", "const", "enum"].some((key) =>
+        Object.hasOwn(hint, key),
+      )
+    )
+      return "Ignored token_type_hint must not claim value constraints the HTTP parser does not enforce.";
+  }
   return null;
 }
 
