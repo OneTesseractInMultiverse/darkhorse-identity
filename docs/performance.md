@@ -15,6 +15,7 @@ make benchmark-arrivals # paced traffic: four clients, two seconds per arrival p
 make benchmark-arrivals-baseline # eight clients, ten seconds per arrival phase
 make benchmark-profile # same paced smoke with diagnostic instrumentation
 make benchmark-profile-baseline # same paced baseline with diagnostic instrumentation
+make benchmark-admission-comparison # same paced workload, alternating one and two shared-budget update lanes
 ```
 
 These commands build the static console and release server with locked dependencies. They create disposable Percona PostgreSQL and separate Redis limiter/cache containers, a temporary TLS certificate, a Rust server and Chromium. They require neither existing local settings nor host certificate trust. The existing development database, credentials and volumes are untouched. Owned processes, containers, anonymous volumes and temporary secrets are cleaned up on exit. The browser fixture advances only disposable recovery/key-publication setup timestamps. Runtime authorization and limiting remain active.
@@ -40,6 +41,20 @@ The matrix builds the frontend once, then runs each complete fixture sequentiall
 Compare only reports with matching source/binary digests, workload profile, host/Docker resources, versions, images and protection settings other than pool size. Compare normal and diagnostic series separately. For each size and offered rate, retain authorized throughput and scheduled authorized p95/p99 alongside unavailable responses and generator drops. Diagnostic runs expose pool acquisition and adapter timings. A smaller acquisition time alone does not prove an improvement: more database concurrency can move waiting into statement execution or locking. Inspect the full request latency, useful throughput, security checks and failure counts together. Before/after activity snapshots help confirm connections were used but do not capture their peak.
 
 These commands change only disposable benchmark configuration. Choosing a deployment pool requires the connection budget across all server replicas, other database clients and the target database. The production default, token-route admission limit and strict primary-state freshness contract remain unchanged.
+
+### Shared introspection admission lanes
+
+`make benchmark-admission-comparison` holds quota limits, the release binary,
+five-connection PostgreSQL pool and paced workload constant while alternating
+one- and two-lane local updates of the shared deployment budget (`1, 2, 2, 1`).
+It captures whole-run Redis and PostgreSQL deltas plus scheduled latency, useful
+throughput, unavailable outcomes and generator drops. The bounded runtime setting
+is `DARKHORSE_INTROSPECTION_GLOBAL_UPDATE_LANES` and accepts only `1` or `2`;
+the default remains `2`. The full two-repeat comparison and resource observations
+are in [`introspection-admission-lanes-2026-09-27.json`](measurements/introspection-admission-lanes-2026-09-27.json).
+These short, single-process local samples expose a tradeoff under the tested
+invalid-client mix; they do not establish a production optimum. Whole-run resource
+deltas include setup and depend on the outcomes each lane count admitted.
 
 ## Native CLI interference
 

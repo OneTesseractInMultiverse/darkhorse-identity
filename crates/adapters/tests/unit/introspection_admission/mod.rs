@@ -27,6 +27,15 @@ fn identities_are_stable_purpose_bound_and_independent_of_policy_or_secrets() {
     let caller_changed = attempt(&[7; 32], Policy::new(100, 20).unwrap(), None).unwrap();
     assert_eq!(global.budgets()[0].key, caller_changed.budgets()[0].key);
     assert_ne!(global.budgets()[0].rule, caller_changed.budgets()[0].rule);
+    assert_eq!(
+        global,
+        attempt(
+            &[7; 32],
+            Policy::with_global_update_lanes(100, 10, 1).unwrap(),
+            None
+        )
+        .unwrap()
+    );
     assert_eq!(a.budgets()[0].rule.limit(), 10);
     assert_eq!(a.budgets()[0].rule.window_ms(), 60_000);
     assert_eq!(
@@ -52,6 +61,15 @@ fn configuration_is_bounded_consistent_and_cannot_disable_enforcement() {
         load(MapEnvironment::new()).unwrap(),
         Policy::new(60_000, 6_000).unwrap()
     );
+    assert_eq!(
+        load(MapEnvironment::from_pairs([(
+            "DARKHORSE_INTROSPECTION_GLOBAL_UPDATE_LANES",
+            "1",
+        )]))
+        .unwrap()
+        .global_update_lanes(),
+        1
+    );
     for (global, caller) in [
         ("0", "1"),
         ("-1", "1"),
@@ -71,8 +89,21 @@ fn configuration_is_bounded_consistent_and_cannot_disable_enforcement() {
             Some(ConfigurationError)
         );
     }
+    for lanes in ["0", "3", "-1", "4294967296", "secret"] {
+        assert_eq!(
+            load(MapEnvironment::from_pairs([(
+                "DARKHORSE_INTROSPECTION_GLOBAL_UPDATE_LANES",
+                lanes,
+            )]))
+            .err(),
+            Some(ConfigurationError)
+        );
+    }
     assert!(Policy::new(1, 1).is_ok());
     assert!(Policy::new(1_000_000, 1_000_000).is_ok());
+    assert!(Policy::with_global_update_lanes(100, 10, 1).is_ok());
+    assert!(Policy::with_global_update_lanes(100, 10, 2).is_ok());
+    assert!(Policy::with_global_update_lanes(100, 10, 3).is_err());
 }
 
 #[tokio::test]
@@ -103,4 +134,16 @@ async fn global_queue_bounds_waiters_and_releases_capacity_on_cancellation() {
     assert_eq!(queue.waiters.available_permits(), 16);
     drop(held);
     assert!(queue.lanes.try_acquire().is_ok());
+}
+
+#[test]
+fn global_queue_concurrency_is_limited_to_the_configured_lane_count() {
+    for lanes in [1, 2] {
+        let queue = GlobalQueue::new(lanes);
+        let permit = queue.lanes.try_acquire_many(lanes as u32).unwrap();
+        assert!(queue.lanes.try_acquire().is_err());
+        assert_eq!(queue.waiters.available_permits(), 16);
+        drop(permit);
+        assert_eq!(queue.lanes.available_permits(), lanes);
+    }
 }

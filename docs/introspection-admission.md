@@ -83,6 +83,12 @@ queue with at most 16 queued or executing attempts. The one-second admission dea
 queue wait and consumption; cancellation releases the slot and cannot launch later
 work. Other replicas still arbitrate through the shared atomic counter. This does
 not reserve a quota, retry uncertain consumption or hold a database fence.
+`DARKHORSE_INTROSPECTION_GLOBAL_UPDATE_LANES` may be set to `1` or `2` to tune
+per-process Redis update concurrency; it defaults to `2` and does not alter shared
+quota identity, policy binding, caller enforcement or authorization. Keep quota
+settings equal across replicas. This scheduling setting may differ during controlled
+measurements, but production values should be selected from matched workload evidence
+and applied consistently to replicas.
 
 Use a separate bounded in-process Redis admission pool for introspection so its
 work cannot take login's local limiter permits. Reuse the existing atomic compare/
@@ -261,3 +267,40 @@ fairness, longer endurance, deployment-specific database and Redis limits, and
 production arrival/SLO qualification open. The tested machine used one server
 process and one host; nothing here claims replicated deployment behavior or a
 production capacity target.
+
+## Matched local lane comparison — 2026-09-27
+
+The [four-run artifact](measurements/introspection-admission-lanes-2026-09-27.json)
+records an alternating `1, 2, 2, 1` comparison of
+`DARKHORSE_INTROSPECTION_GLOBAL_UPDATE_LANES`. The same source and release-binary
+digests, five-connection pool, 60,000/6,000 shared per-minute budgets, HTTPS
+verification, eight resource clients and ten-second arrival phases were used in
+every run. The order reduces simple warmup/order bias, but two runs per setting
+are too few to establish stable performance differences.
+
+| Workload, two runs combined  | One lane authorized / scheduled | One lane unavailable | One lane mean authorized scheduled p95 | Two lanes authorized / scheduled | Two lanes unavailable | Two lanes mean authorized scheduled p95 |
+| ---------------------------- | ------------------------------: | -------------------: | -------------------------------------: | -------------------------------: | --------------------: | --------------------------------------: |
+| Diverse 200/s                |                   3,993 / 4,000 |                    6 |                               13.74 ms |                    3,996 / 4,000 |                     4 |                                15.83 ms |
+| Diverse 800/s                |                  7,664 / 16,000 |                8,334 |                               50.17 ms |                   6,612 / 16,000 |                 9,388 |                                45.37 ms |
+| Diverse 1,600/s              |                  7,408 / 32,000 |               24,533 |                               52.37 ms |                   6,436 / 32,000 |                25,558 |                                51.09 ms |
+| Noisy invalid-client 1,200/s |                  1,857 / 24,000 |                7,484 |                               34.62 ms |                   2,690 / 24,000 |                 3,053 |                                33.15 ms |
+
+The noisy phase also completed 3,000 healthy probes at each setting. Its two-lane
+runs admitted more valid resource checks and returned fewer unavailable responses,
+while the one-lane runs completed more authorized checks in the diverse 800/s and
+1,600/s phases. The data therefore show a hostile-traffic tolerance tradeoff,
+not a universal throughput win. Two-lane whole-run limiter command deltas averaged
+652k versus 598k for one lane; user CPU averaged 4.84s versus 4.00s. PostgreSQL
+commit deltas averaged 106k versus 99k, with no observed physical reads, temporary
+bytes, deadlocks or waiting locks. The cache Redis received two commands per run
+and had no current-memory growth. These totals include fixture work and probes,
+and reflect the different admitted traffic; they are not per-request costs.
+
+All four runs reported zero authority violations and no transport or unexpected
+HTTP errors. Post-commit revocation checks returned no active credentials; some
+two-lane checks were conservatively unavailable. The evidence supports keeping
+the existing two-lane development default for improved behavior in this noisy
+mixture, while retaining the one-lane option for measured, workload-specific
+tuning. The test used one local process and the PostgreSQL owner role; separate
+multi-process, restricted-role, longer-duration and deployment capacity evidence
+remains necessary. Do not use these figures as production SLOs.

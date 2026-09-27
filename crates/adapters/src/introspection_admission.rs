@@ -17,12 +17,24 @@ use zeroize::Zeroizing;
 pub struct Policy {
     global: BudgetRule,
     caller: BudgetRule,
+    global_update_lanes: usize,
 }
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub struct ConfigurationError;
 impl Policy {
     pub fn new(global: u32, caller: u32) -> Result<Self, ConfigurationError> {
+        Self::with_global_update_lanes(global, caller, 2)
+    }
+
+    pub fn with_global_update_lanes(
+        global: u32,
+        caller: u32,
+        global_update_lanes: u32,
+    ) -> Result<Self, ConfigurationError> {
         if caller > global {
+            return Err(ConfigurationError);
+        }
+        if !(1..=2).contains(&global_update_lanes) {
             return Err(ConfigurationError);
         }
         Ok(Self {
@@ -30,12 +42,18 @@ impl Policy {
                 .map_err(|_| ConfigurationError)?
                 .bound_to(caller),
             caller: BudgetRule::new(caller, 60_000).map_err(|_| ConfigurationError)?,
+            global_update_lanes: global_update_lanes as usize,
         })
+    }
+
+    pub fn global_update_lanes(self) -> usize {
+        self.global_update_lanes
     }
 }
 struct Raw {
     global: i64,
     caller: i64,
+    global_update_lanes: i64,
 }
 impl ParameterSource for Raw {
     fn bind<E: Environment>(b: &Binder<E>) -> Result<Self, envbind::BindError> {
@@ -44,14 +62,19 @@ impl ParameterSource for Raw {
                 .bind(&IntVar::new("DARKHORSE_INTROSPECTION_GLOBAL_PER_MINUTE").default(60_000))?,
             caller: b
                 .bind(&IntVar::new("DARKHORSE_INTROSPECTION_CALLER_PER_MINUTE").default(6_000))?,
+            global_update_lanes: b
+                .bind(&IntVar::new("DARKHORSE_INTROSPECTION_GLOBAL_UPDATE_LANES").default(2))?,
         })
     }
 }
 pub fn load(environment: impl Environment) -> Result<Policy, ConfigurationError> {
     let raw = Raw::from_environment(environment).map_err(|_| ConfigurationError)?;
-    Policy::new(
+    Policy::with_global_update_lanes(
         raw.global.try_into().map_err(|_| ConfigurationError)?,
         raw.caller.try_into().map_err(|_| ConfigurationError)?,
+        raw.global_update_lanes
+            .try_into()
+            .map_err(|_| ConfigurationError)?,
     )
 }
 struct GlobalQueue {
@@ -60,13 +83,16 @@ struct GlobalQueue {
 }
 impl Default for GlobalQueue {
     fn default() -> Self {
-        Self {
-            lanes: tokio::sync::Semaphore::new(2),
-            waiters: tokio::sync::Semaphore::new(16),
-        }
+        Self::new(2)
     }
 }
 impl GlobalQueue {
+    fn new(lanes: usize) -> Self {
+        Self {
+            lanes: tokio::sync::Semaphore::new(lanes),
+            waiters: tokio::sync::Semaphore::new(16),
+        }
+    }
     fn enter(&self) -> Result<tokio::sync::SemaphorePermit<'_>, Error> {
         self.waiters.try_acquire().map_err(|_| Error::Unavailable)
     }
@@ -93,7 +119,7 @@ pub struct SharedBudgets {
 impl SharedBudgets {
     pub fn new(limiter: RedisLimiter, key: [u8; 32], policy: Policy) -> Self {
         Self {
-            global_queue: GlobalQueue::default(),
+            global_queue: GlobalQueue::new(policy.global_update_lanes()),
             limiter,
             key: Zeroizing::new(key),
             policy,

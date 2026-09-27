@@ -1,0 +1,1836 @@
+{
+  "schemaVersion": 1,
+  "title": "Matched introspection admission lane comparison",
+  "purpose": "Compare the per-process concurrency for shared global introspection budget updates while holding shared quota enforcement, server build, database pool, client population and paced workload constant.",
+  "reproduction": "make benchmark-admission-comparison BENCH_POOL_SIZE=5",
+  "measuredAtUtc": [
+    "2026-09-27T21:04:53.925Z",
+    "2026-09-27T21:06:07.835Z",
+    "2026-09-27T21:07:21.460Z",
+    "2026-09-27T21:08:34.323Z"
+  ],
+  "control": {
+    "order": [1, 2, 2, 1],
+    "changedSetting": "DARKHORSE_INTROSPECTION_GLOBAL_UPDATE_LANES",
+    "values": [1, 2],
+    "allOtherProtectionsPreserved": true,
+    "globalBudgetPerMinute": 60000,
+    "callerBudgetPerMinute": 6000,
+    "budgetWindowMs": 60000,
+    "waiterCapacity": 16,
+    "admissionDeadlineMs": 1000,
+    "authorizationCache": false,
+    "localLimiterPoolSeparated": true,
+    "databasePoolConnections": 5,
+    "arrivalProfile": "arrival-baseline: 10-second phases at 200/s, 800/s, 1600/s, and 1200/s noisy invalid-client traffic; then permission-reduction and revocation checks."
+  },
+  "environment": {
+    "commit": "b7b57808025c5a5368ea65d88dc58322c472f96b",
+    "sourceDirty": true,
+    "sourceSha256": "23dfd159c7545feb4f28e393779aec361c20f2208d6fe7ef1078c497c0820107",
+    "binarySha256": "7a6d80ef68b578382719aa0cf016f84b43eafbcf28aa685278704cb151563fe1",
+    "rust": "rustc 1.97.1 (8bab26f4f 2026-07-14)",
+    "node": "v24.19.0",
+    "postgres": "postgres (PostgreSQL) 18.6 - Percona Server for PostgreSQL 18.6.1",
+    "images": {
+      "database": "percona/percona-distribution-postgresql:18.6@sha256:dae47360e8137cafc1e8d66f9a1be348f1405e3cf51daa383b94e6c277e6b256",
+      "cache": "redis:8.10.1@sha256:298e5b3bc566bade82f46ad5511777a4a07a294097ce16ada2f6a42be5239df5",
+      "limiter": "redis:8.10.1@sha256:298e5b3bc566bade82f46ad5511777a4a07a294097ce16ada2f6a42be5239df5"
+    },
+    "host": {
+      "platform": "darwin",
+      "release": "25.6.0",
+      "arch": "arm64",
+      "cpu": "Apple M5",
+      "logicalCpus": 10,
+      "availableParallelism": 10,
+      "memoryBytes": 25769803776
+    },
+    "docker": {
+      "version": "29.6.2",
+      "cpus": 10,
+      "memoryBytes": 8321515520,
+      "arch": "aarch64"
+    },
+    "topology": "One host release Rust process, Node TLS proxy and load generator; Docker Percona primary plus separate Redis cache/limiter containers on loopback. Chromium provisions real login/SSO credentials.",
+    "buildFeatures": []
+  },
+  "runs": [
+    {
+      "order": 1,
+      "lanes": 1,
+      "timestamp": "2026-09-27T21:04:53.925Z",
+      "runStatus": "passed",
+      "phases": {
+        "warmup": {
+          "offeredPerSecond": null,
+          "scheduled": null,
+          "attempts": 64,
+          "authorized": 64,
+          "credentialDenied": 0,
+          "healthy": 0,
+          "unavailable": 0,
+          "errors": 0,
+          "authorityViolations": 0,
+          "authorizedPerSecond": 251.757,
+          "authorizedScheduledLatencyMs": null,
+          "allScheduledLatencyMs": null,
+          "generatorDrops": null,
+          "scheduledFailureRate": null
+        },
+        "arrival-diverse-r200": {
+          "offeredPerSecond": 200,
+          "scheduled": 2000,
+          "attempts": 2000,
+          "authorized": 2000,
+          "credentialDenied": 0,
+          "healthy": 0,
+          "unavailable": 0,
+          "errors": 0,
+          "authorityViolations": 0,
+          "authorizedPerSecond": 199.947,
+          "authorizedScheduledLatencyMs": {
+            "p50": 8.735374999996566,
+            "p95": 16.494541000000027,
+            "p99": 44.90866599999572
+          },
+          "allScheduledLatencyMs": {
+            "p50": 8.735374999996566,
+            "p95": 16.494541000000027,
+            "p99": 44.90866599999572
+          },
+          "generatorDrops": {
+            "late": 0,
+            "full": 0,
+            "fraction": 0
+          },
+          "scheduledFailureRate": 0
+        },
+        "arrival-diverse-r800": {
+          "offeredPerSecond": 800,
+          "scheduled": 8000,
+          "attempts": 7998,
+          "authorized": 3998,
+          "credentialDenied": 0,
+          "healthy": 0,
+          "unavailable": 4000,
+          "errors": 0,
+          "authorityViolations": 0,
+          "authorizedPerSecond": 398.071,
+          "authorizedScheduledLatencyMs": {
+            "p50": 39.313540999995894,
+            "p95": 44.87562500000058,
+            "p99": 65.58737499998824
+          },
+          "allScheduledLatencyMs": {
+            "p50": 14.675957999992534,
+            "p95": 42.64174999999523,
+            "p99": 53.359874999994645
+          },
+          "generatorDrops": {
+            "late": 2,
+            "full": 0,
+            "fraction": 0.00025
+          },
+          "scheduledFailureRate": 0.5002500000000001
+        },
+        "arrival-diverse-r1600": {
+          "offeredPerSecond": 1600,
+          "scheduled": 16000,
+          "attempts": 15942,
+          "authorized": 3668,
+          "credentialDenied": 0,
+          "healthy": 0,
+          "unavailable": 12274,
+          "errors": 0,
+          "authorityViolations": 0,
+          "authorizedPerSecond": 365.251,
+          "authorizedScheduledLatencyMs": {
+            "p50": 42.056500000006054,
+            "p95": 53.741709000008996,
+            "p99": 69.67145900000469
+          },
+          "allScheduledLatencyMs": {
+            "p50": 1.040500000002794,
+            "p95": 47.002542000001995,
+            "p99": 57.09754200000316
+          },
+          "generatorDrops": {
+            "late": 58,
+            "full": 0,
+            "fraction": 0.003625
+          },
+          "scheduledFailureRate": 0.77075
+        },
+        "arrival-noisy-invalid-client": {
+          "offeredPerSecond": 1200,
+          "scheduled": 12000,
+          "attempts": 12000,
+          "authorized": 895,
+          "credentialDenied": 5749,
+          "healthy": 1500,
+          "unavailable": 3856,
+          "errors": 0,
+          "authorityViolations": 0,
+          "authorizedPerSecond": 89.334,
+          "authorizedScheduledLatencyMs": {
+            "p50": 28.243875000000116,
+            "p95": 36.41270833333692,
+            "p99": 58.008999333345855
+          },
+          "allScheduledLatencyMs": {
+            "p50": 20.236041333344474,
+            "p95": 28.933666666671343,
+            "p99": 37.16720766666549
+          },
+          "generatorDrops": {
+            "late": 0,
+            "full": 0,
+            "fraction": 0
+          },
+          "scheduledFailureRate": 0.32133333333333336
+        },
+        "arrival-permission-reduction-concurrent": {
+          "offeredPerSecond": 200,
+          "scheduled": 2000,
+          "attempts": 2000,
+          "authorized": 2000,
+          "credentialDenied": 0,
+          "healthy": 0,
+          "unavailable": 0,
+          "errors": 0,
+          "authorityViolations": 0,
+          "authorizedPerSecond": 199.946,
+          "authorizedScheduledLatencyMs": {
+            "p50": 8.095916000005673,
+            "p95": 14.941541000007419,
+            "p99": 33.041666000004625
+          },
+          "allScheduledLatencyMs": {
+            "p50": 8.095916000005673,
+            "p95": 14.941541000007419,
+            "p99": 33.041666000004625
+          },
+          "generatorDrops": {
+            "late": 0,
+            "full": 0,
+            "fraction": 0
+          },
+          "scheduledFailureRate": 0
+        },
+        "permission-reduction-after-commit": {
+          "offeredPerSecond": null,
+          "scheduled": null,
+          "attempts": 64,
+          "authorized": 64,
+          "credentialDenied": 0,
+          "healthy": 0,
+          "unavailable": 0,
+          "errors": 0,
+          "authorityViolations": 0,
+          "authorizedPerSecond": 384.644,
+          "authorizedScheduledLatencyMs": null,
+          "allScheduledLatencyMs": null,
+          "generatorDrops": null,
+          "scheduledFailureRate": null
+        },
+        "arrival-revocation-concurrent": {
+          "offeredPerSecond": 200,
+          "scheduled": 2000,
+          "attempts": 2000,
+          "authorized": 1000,
+          "credentialDenied": 1000,
+          "healthy": 0,
+          "unavailable": 0,
+          "errors": 0,
+          "authorityViolations": 0,
+          "authorizedPerSecond": 99.978,
+          "authorizedScheduledLatencyMs": {
+            "p50": 8.034125000005588,
+            "p95": 11.824250000005122,
+            "p99": 17.486917000001995
+          },
+          "allScheduledLatencyMs": {
+            "p50": 7.909792000005837,
+            "p95": 11.226209000000381,
+            "p99": 15.085124999997788
+          },
+          "generatorDrops": {
+            "late": 0,
+            "full": 0,
+            "fraction": 0
+          },
+          "scheduledFailureRate": 0
+        },
+        "revocation-after-commit": {
+          "offeredPerSecond": null,
+          "scheduled": null,
+          "attempts": 64,
+          "authorized": 0,
+          "credentialDenied": 64,
+          "healthy": 0,
+          "unavailable": 0,
+          "errors": 0,
+          "authorityViolations": 0,
+          "authorizedPerSecond": 0,
+          "authorizedScheduledLatencyMs": null,
+          "allScheduledLatencyMs": null,
+          "generatorDrops": null,
+          "scheduledFailureRate": null
+        },
+        "unaffected-resource": {
+          "offeredPerSecond": null,
+          "scheduled": null,
+          "attempts": 32,
+          "authorized": 32,
+          "credentialDenied": 0,
+          "healthy": 0,
+          "unavailable": 0,
+          "errors": 0,
+          "authorityViolations": 0,
+          "authorizedPerSecond": 128.403,
+          "authorizedScheduledLatencyMs": null,
+          "allScheduledLatencyMs": null,
+          "generatorDrops": null,
+          "scheduledFailureRate": null
+        }
+      },
+      "resources": {
+        "redis": {
+          "cache": {
+            "delta": {
+              "usedBytes": 0,
+              "peakUsedBytes": 0,
+              "commands": 2,
+              "systemCpuSeconds": 0.021422,
+              "userCpuSeconds": 0.038339
+            },
+            "peakUsedBytesAtEnd": 1289888
+          },
+          "limiter": {
+            "delta": {
+              "usedBytes": 72,
+              "peakUsedBytes": 65504,
+              "commands": 600434,
+              "systemCpuSeconds": 1.280201,
+              "userCpuSeconds": 4.086311
+            },
+            "peakUsedBytesAtEnd": 1643968
+          }
+        },
+        "postgres": {
+          "counters": {
+            "xact_commit": 99103,
+            "xact_rollback": 5750,
+            "blks_read": 0,
+            "blks_hit": 1276818,
+            "tup_returned": 629500,
+            "tup_fetched": 603030,
+            "tup_inserted": 51,
+            "tup_updated": 150,
+            "tup_deleted": 2,
+            "deadlocks": 0,
+            "temp_bytes": 0
+          },
+          "waitingLocksAfter": 0,
+          "container": {
+            "cpuAfter": "0.02%",
+            "memoryAfter": "85.75MiB / 7.75GiB",
+            "blockIOAfter": "0B / 339MB"
+          }
+        },
+        "server": {
+          "cpuSecondsDelta": 15.64,
+          "rssKiBAfter": 20736
+        }
+      }
+    },
+    {
+      "order": 2,
+      "lanes": 2,
+      "timestamp": "2026-09-27T21:06:07.835Z",
+      "runStatus": "passed",
+      "phases": {
+        "warmup": {
+          "offeredPerSecond": null,
+          "scheduled": null,
+          "attempts": 64,
+          "authorized": 47,
+          "credentialDenied": 0,
+          "healthy": 0,
+          "unavailable": 17,
+          "errors": 0,
+          "authorityViolations": 0,
+          "authorizedPerSecond": 241.262,
+          "authorizedScheduledLatencyMs": null,
+          "allScheduledLatencyMs": null,
+          "generatorDrops": null,
+          "scheduledFailureRate": null
+        },
+        "arrival-diverse-r200": {
+          "offeredPerSecond": 200,
+          "scheduled": 2000,
+          "attempts": 2000,
+          "authorized": 1999,
+          "credentialDenied": 0,
+          "healthy": 0,
+          "unavailable": 1,
+          "errors": 0,
+          "authorityViolations": 0,
+          "authorizedPerSecond": 199.854,
+          "authorizedScheduledLatencyMs": {
+            "p50": 7.909124999998312,
+            "p95": 13.502042000000074,
+            "p99": 23.73041699999885
+          },
+          "allScheduledLatencyMs": {
+            "p50": 7.90874999999869,
+            "p95": 13.31316699999843,
+            "p99": 23.51758399999926
+          },
+          "generatorDrops": {
+            "late": 0,
+            "full": 0,
+            "fraction": 0
+          },
+          "scheduledFailureRate": 0.0005
+        },
+        "arrival-diverse-r800": {
+          "offeredPerSecond": 800,
+          "scheduled": 8000,
+          "attempts": 8000,
+          "authorized": 3171,
+          "credentialDenied": 0,
+          "healthy": 0,
+          "unavailable": 4829,
+          "errors": 0,
+          "authorityViolations": 0,
+          "authorizedPerSecond": 316.142,
+          "authorizedScheduledLatencyMs": {
+            "p50": 39.24524999999994,
+            "p95": 48.46791700000176,
+            "p99": 56.164292000001296
+          },
+          "allScheduledLatencyMs": {
+            "p50": 25.618084000001545,
+            "p95": 45.04429199999868,
+            "p99": 51.90558400000009
+          },
+          "generatorDrops": {
+            "late": 0,
+            "full": 0,
+            "fraction": 0
+          },
+          "scheduledFailureRate": 0.603625
+        },
+        "arrival-diverse-r1600": {
+          "offeredPerSecond": 1600,
+          "scheduled": 16000,
+          "attempts": 15994,
+          "authorized": 3104,
+          "credentialDenied": 0,
+          "healthy": 0,
+          "unavailable": 12890,
+          "errors": 0,
+          "authorityViolations": 0,
+          "authorizedPerSecond": 309.151,
+          "authorizedScheduledLatencyMs": {
+            "p50": 39.395334000008006,
+            "p95": 55.99454200000764,
+            "p99": 81.66950000000361
+          },
+          "allScheduledLatencyMs": {
+            "p50": 1.156209000000672,
+            "p95": 43.89554200000566,
+            "p99": 60.77883400000428
+          },
+          "generatorDrops": {
+            "late": 6,
+            "full": 0,
+            "fraction": 0.000375
+          },
+          "scheduledFailureRate": 0.806
+        },
+        "arrival-noisy-invalid-client": {
+          "offeredPerSecond": 1200,
+          "scheduled": 12000,
+          "attempts": 12000,
+          "authorized": 1302,
+          "credentialDenied": 7491,
+          "healthy": 1500,
+          "unavailable": 1707,
+          "errors": 0,
+          "authorityViolations": 0,
+          "authorizedPerSecond": 129.993,
+          "authorizedScheduledLatencyMs": {
+            "p50": 24.10133333333215,
+            "p95": 33.44983333333221,
+            "p99": 39.5868749999936
+          },
+          "allScheduledLatencyMs": {
+            "p50": 14.863165999995545,
+            "p95": 25.626207666660775,
+            "p99": 33.079083333330345
+          },
+          "generatorDrops": {
+            "late": 0,
+            "full": 0,
+            "fraction": 0
+          },
+          "scheduledFailureRate": 0.14225
+        },
+        "arrival-permission-reduction-concurrent": {
+          "offeredPerSecond": 200,
+          "scheduled": 2000,
+          "attempts": 2000,
+          "authorized": 1999,
+          "credentialDenied": 0,
+          "healthy": 0,
+          "unavailable": 1,
+          "errors": 0,
+          "authorityViolations": 0,
+          "authorizedPerSecond": 199.815,
+          "authorizedScheduledLatencyMs": {
+            "p50": 8.202040999996825,
+            "p95": 14.75633299999754,
+            "p99": 22.705041000001074
+          },
+          "allScheduledLatencyMs": {
+            "p50": 8.202040999996825,
+            "p95": 14.75633299999754,
+            "p99": 22.705041000001074
+          },
+          "generatorDrops": {
+            "late": 0,
+            "full": 0,
+            "fraction": 0
+          },
+          "scheduledFailureRate": 0.0005
+        },
+        "permission-reduction-after-commit": {
+          "offeredPerSecond": null,
+          "scheduled": null,
+          "attempts": 64,
+          "authorized": 46,
+          "credentialDenied": 0,
+          "healthy": 0,
+          "unavailable": 18,
+          "errors": 0,
+          "authorityViolations": 0,
+          "authorizedPerSecond": 165.196,
+          "authorizedScheduledLatencyMs": null,
+          "allScheduledLatencyMs": null,
+          "generatorDrops": null,
+          "scheduledFailureRate": null
+        },
+        "arrival-revocation-concurrent": {
+          "offeredPerSecond": 200,
+          "scheduled": 2000,
+          "attempts": 2000,
+          "authorized": 995,
+          "credentialDenied": 1000,
+          "healthy": 0,
+          "unavailable": 5,
+          "errors": 0,
+          "authorityViolations": 0,
+          "authorizedPerSecond": 99.487,
+          "authorizedScheduledLatencyMs": {
+            "p50": 9.057791999999608,
+            "p95": 19.534583000000566,
+            "p99": 51.69616700000188
+          },
+          "allScheduledLatencyMs": {
+            "p50": 8.290625000001455,
+            "p95": 16.749000000003434,
+            "p99": 28.8526669999992
+          },
+          "generatorDrops": {
+            "late": 0,
+            "full": 0,
+            "fraction": 0
+          },
+          "scheduledFailureRate": 0.0025
+        },
+        "revocation-after-commit": {
+          "offeredPerSecond": null,
+          "scheduled": null,
+          "attempts": 64,
+          "authorized": 0,
+          "credentialDenied": 48,
+          "healthy": 0,
+          "unavailable": 16,
+          "errors": 0,
+          "authorityViolations": 0,
+          "authorizedPerSecond": 0,
+          "authorizedScheduledLatencyMs": null,
+          "allScheduledLatencyMs": null,
+          "generatorDrops": null,
+          "scheduledFailureRate": null
+        },
+        "unaffected-resource": {
+          "offeredPerSecond": null,
+          "scheduled": null,
+          "attempts": 32,
+          "authorized": 32,
+          "credentialDenied": 0,
+          "healthy": 0,
+          "unavailable": 0,
+          "errors": 0,
+          "authorityViolations": 0,
+          "authorizedPerSecond": 137.088,
+          "authorizedScheduledLatencyMs": null,
+          "allScheduledLatencyMs": null,
+          "generatorDrops": null,
+          "scheduledFailureRate": null
+        }
+      },
+      "resources": {
+        "redis": {
+          "cache": {
+            "delta": {
+              "usedBytes": 0,
+              "peakUsedBytes": 0,
+              "commands": 2,
+              "systemCpuSeconds": 0.023178,
+              "userCpuSeconds": 0.039167
+            },
+            "peakUsedBytesAtEnd": 1289888
+          },
+          "limiter": {
+            "delta": {
+              "usedBytes": -11576,
+              "peakUsedBytes": 94192,
+              "commands": 637907,
+              "systemCpuSeconds": 1.875625,
+              "userCpuSeconds": 5.024184
+            },
+            "peakUsedBytesAtEnd": 1672656
+          }
+        },
+        "postgres": {
+          "counters": {
+            "xact_commit": 103711,
+            "xact_rollback": 7516,
+            "blks_read": 0,
+            "blks_hit": 1246773,
+            "tup_returned": 607378,
+            "tup_fetched": 607095,
+            "tup_inserted": 107,
+            "tup_updated": 76,
+            "tup_deleted": 1,
+            "deadlocks": 0,
+            "temp_bytes": 0
+          },
+          "waitingLocksAfter": 0,
+          "container": {
+            "cpuAfter": "0.07%",
+            "memoryAfter": "85.82MiB / 7.75GiB",
+            "blockIOAfter": "0B / 341MB"
+          }
+        },
+        "server": {
+          "cpuSecondsDelta": 17.45,
+          "rssKiBAfter": 17264
+        }
+      }
+    },
+    {
+      "order": 3,
+      "lanes": 2,
+      "timestamp": "2026-09-27T21:07:21.460Z",
+      "runStatus": "passed",
+      "phases": {
+        "warmup": {
+          "offeredPerSecond": null,
+          "scheduled": null,
+          "attempts": 64,
+          "authorized": 51,
+          "credentialDenied": 0,
+          "healthy": 0,
+          "unavailable": 13,
+          "errors": 0,
+          "authorityViolations": 0,
+          "authorizedPerSecond": 280.767,
+          "authorizedScheduledLatencyMs": null,
+          "allScheduledLatencyMs": null,
+          "generatorDrops": null,
+          "scheduledFailureRate": null
+        },
+        "arrival-diverse-r200": {
+          "offeredPerSecond": 200,
+          "scheduled": 2000,
+          "attempts": 2000,
+          "authorized": 1997,
+          "credentialDenied": 0,
+          "healthy": 0,
+          "unavailable": 3,
+          "errors": 0,
+          "authorityViolations": 0,
+          "authorizedPerSecond": 199.616,
+          "authorizedScheduledLatencyMs": {
+            "p50": 9.852624999999534,
+            "p95": 18.166290999999546,
+            "p99": 32.57266600000003
+          },
+          "allScheduledLatencyMs": {
+            "p50": 9.852624999999534,
+            "p95": 18.166290999999546,
+            "p99": 32.220790999999736
+          },
+          "generatorDrops": {
+            "late": 0,
+            "full": 0,
+            "fraction": 0
+          },
+          "scheduledFailureRate": 0.0015
+        },
+        "arrival-diverse-r800": {
+          "offeredPerSecond": 800,
+          "scheduled": 8000,
+          "attempts": 8000,
+          "authorized": 3441,
+          "credentialDenied": 0,
+          "healthy": 0,
+          "unavailable": 4559,
+          "errors": 0,
+          "authorityViolations": 0,
+          "authorizedPerSecond": 343.065,
+          "authorizedScheduledLatencyMs": {
+            "p50": 35.70695899999555,
+            "p95": 42.26629200000025,
+            "p99": 47.88491699999577
+          },
+          "allScheduledLatencyMs": {
+            "p50": 25.243209000000206,
+            "p95": 40.7846669999999,
+            "p99": 44.080291999998735
+          },
+          "generatorDrops": {
+            "late": 0,
+            "full": 0,
+            "fraction": 0
+          },
+          "scheduledFailureRate": 0.569875
+        },
+        "arrival-diverse-r1600": {
+          "offeredPerSecond": 1600,
+          "scheduled": 16000,
+          "attempts": 16000,
+          "authorized": 3332,
+          "credentialDenied": 0,
+          "healthy": 0,
+          "unavailable": 12668,
+          "errors": 0,
+          "authorityViolations": 0,
+          "authorizedPerSecond": 332.073,
+          "authorizedScheduledLatencyMs": {
+            "p50": 37.18324999999459,
+            "p95": 46.17662500000006,
+            "p99": 52.24170800000138
+          },
+          "allScheduledLatencyMs": {
+            "p50": 1.1132909999942058,
+            "p95": 40.57487499999843,
+            "p99": 46.275957999998354
+          },
+          "generatorDrops": {
+            "late": 0,
+            "full": 0,
+            "fraction": 0
+          },
+          "scheduledFailureRate": 0.79175
+        },
+        "arrival-noisy-invalid-client": {
+          "offeredPerSecond": 1200,
+          "scheduled": 12000,
+          "attempts": 11999,
+          "authorized": 1388,
+          "credentialDenied": 7765,
+          "healthy": 1500,
+          "unavailable": 1346,
+          "errors": 0,
+          "authorityViolations": 0,
+          "authorizedPerSecond": 138.561,
+          "authorizedScheduledLatencyMs": {
+            "p50": 23.600708333331568,
+            "p95": 32.846916333335685,
+            "p99": 38.07370766667009
+          },
+          "allScheduledLatencyMs": {
+            "p50": 14.796041000001424,
+            "p95": 24.24941666666564,
+            "p99": 30.841249666664226
+          },
+          "generatorDrops": {
+            "late": 1,
+            "full": 0,
+            "fraction": 0.00008333333333333333
+          },
+          "scheduledFailureRate": 0.11225
+        },
+        "arrival-permission-reduction-concurrent": {
+          "offeredPerSecond": 200,
+          "scheduled": 2000,
+          "attempts": 2000,
+          "authorized": 2000,
+          "credentialDenied": 0,
+          "healthy": 0,
+          "unavailable": 0,
+          "errors": 0,
+          "authorityViolations": 0,
+          "authorizedPerSecond": 199.947,
+          "authorizedScheduledLatencyMs": {
+            "p50": 7.870000000002619,
+            "p95": 9.958125000004657,
+            "p99": 13.917958000005456
+          },
+          "allScheduledLatencyMs": {
+            "p50": 7.870000000002619,
+            "p95": 9.958125000004657,
+            "p99": 13.917958000005456
+          },
+          "generatorDrops": {
+            "late": 0,
+            "full": 0,
+            "fraction": 0
+          },
+          "scheduledFailureRate": 0
+        },
+        "permission-reduction-after-commit": {
+          "offeredPerSecond": null,
+          "scheduled": null,
+          "attempts": 64,
+          "authorized": 47,
+          "credentialDenied": 0,
+          "healthy": 0,
+          "unavailable": 17,
+          "errors": 0,
+          "authorityViolations": 0,
+          "authorizedPerSecond": 346.83,
+          "authorizedScheduledLatencyMs": null,
+          "allScheduledLatencyMs": null,
+          "generatorDrops": null,
+          "scheduledFailureRate": null
+        },
+        "arrival-revocation-concurrent": {
+          "offeredPerSecond": 200,
+          "scheduled": 2000,
+          "attempts": 2000,
+          "authorized": 998,
+          "credentialDenied": 1001,
+          "healthy": 0,
+          "unavailable": 1,
+          "errors": 0,
+          "authorityViolations": 0,
+          "authorizedPerSecond": 99.767,
+          "authorizedScheduledLatencyMs": {
+            "p50": 8.031083000001672,
+            "p95": 13.77154100000189,
+            "p99": 20.53612499999872
+          },
+          "allScheduledLatencyMs": {
+            "p50": 7.589332999996259,
+            "p95": 12.074124999999185,
+            "p99": 18.56716599999345
+          },
+          "generatorDrops": {
+            "late": 0,
+            "full": 0,
+            "fraction": 0
+          },
+          "scheduledFailureRate": 0.0005
+        },
+        "revocation-after-commit": {
+          "offeredPerSecond": null,
+          "scheduled": null,
+          "attempts": 64,
+          "authorized": 0,
+          "credentialDenied": 49,
+          "healthy": 0,
+          "unavailable": 15,
+          "errors": 0,
+          "authorityViolations": 0,
+          "authorizedPerSecond": 0,
+          "authorizedScheduledLatencyMs": null,
+          "allScheduledLatencyMs": null,
+          "generatorDrops": null,
+          "scheduledFailureRate": null
+        },
+        "unaffected-resource": {
+          "offeredPerSecond": null,
+          "scheduled": null,
+          "attempts": 32,
+          "authorized": 32,
+          "credentialDenied": 0,
+          "healthy": 0,
+          "unavailable": 0,
+          "errors": 0,
+          "authorityViolations": 0,
+          "authorizedPerSecond": 126.72,
+          "authorizedScheduledLatencyMs": null,
+          "allScheduledLatencyMs": null,
+          "generatorDrops": null,
+          "scheduledFailureRate": null
+        }
+      },
+      "resources": {
+        "redis": {
+          "cache": {
+            "delta": {
+              "usedBytes": 0,
+              "peakUsedBytes": 0,
+              "commands": 2,
+              "systemCpuSeconds": 0.023764,
+              "userCpuSeconds": 0.036482
+            },
+            "peakUsedBytesAtEnd": 1289888
+          },
+          "limiter": {
+            "delta": {
+              "usedBytes": 23904,
+              "peakUsedBytes": 64832,
+              "commands": 666762,
+              "systemCpuSeconds": 1.827126,
+              "userCpuSeconds": 4.6459
+            },
+            "peakUsedBytesAtEnd": 1643296
+          }
+        },
+        "postgres": {
+          "counters": {
+            "xact_commit": 108685,
+            "xact_rollback": 7790,
+            "blks_read": 0,
+            "blks_hit": 1304359,
+            "tup_returned": 635281,
+            "tup_fetched": 634994,
+            "tup_inserted": 110,
+            "tup_updated": 78,
+            "tup_deleted": 1,
+            "deadlocks": 0,
+            "temp_bytes": 0
+          },
+          "waitingLocksAfter": 0,
+          "container": {
+            "cpuAfter": "0.06%",
+            "memoryAfter": "86.12MiB / 7.75GiB",
+            "blockIOAfter": "0B / 353MB"
+          }
+        },
+        "server": {
+          "cpuSecondsDelta": 17.51,
+          "rssKiBAfter": 17904
+        }
+      }
+    },
+    {
+      "order": 4,
+      "lanes": 1,
+      "timestamp": "2026-09-27T21:08:34.323Z",
+      "runStatus": "passed",
+      "phases": {
+        "warmup": {
+          "offeredPerSecond": null,
+          "scheduled": null,
+          "attempts": 64,
+          "authorized": 64,
+          "credentialDenied": 0,
+          "healthy": 0,
+          "unavailable": 0,
+          "errors": 0,
+          "authorityViolations": 0,
+          "authorizedPerSecond": 283.707,
+          "authorizedScheduledLatencyMs": null,
+          "allScheduledLatencyMs": null,
+          "generatorDrops": null,
+          "scheduledFailureRate": null
+        },
+        "arrival-diverse-r200": {
+          "offeredPerSecond": 200,
+          "scheduled": 2000,
+          "attempts": 1999,
+          "authorized": 1993,
+          "credentialDenied": 0,
+          "healthy": 0,
+          "unavailable": 6,
+          "errors": 0,
+          "authorityViolations": 0,
+          "authorizedPerSecond": 199.256,
+          "authorizedScheduledLatencyMs": {
+            "p50": 8.01075000000128,
+            "p95": 10.976334000000861,
+            "p99": 52.224709000000075
+          },
+          "allScheduledLatencyMs": {
+            "p50": 8.009083999999348,
+            "p95": 10.976334000000861,
+            "p99": 52.224709000000075
+          },
+          "generatorDrops": {
+            "late": 1,
+            "full": 0,
+            "fraction": 0.0005
+          },
+          "scheduledFailureRate": 0.0035
+        },
+        "arrival-diverse-r800": {
+          "offeredPerSecond": 800,
+          "scheduled": 8000,
+          "attempts": 8000,
+          "authorized": 3666,
+          "credentialDenied": 0,
+          "healthy": 0,
+          "unavailable": 4334,
+          "errors": 0,
+          "authorityViolations": 0,
+          "authorizedPerSecond": 365.248,
+          "authorizedScheduledLatencyMs": {
+            "p50": 41.515416000002006,
+            "p95": 55.46587500000169,
+            "p99": 78.13120800000252
+          },
+          "allScheduledLatencyMs": {
+            "p50": 1.3968750000021828,
+            "p95": 49.96950000000288,
+            "p99": 64.49720800000068
+          },
+          "generatorDrops": {
+            "late": 0,
+            "full": 0,
+            "fraction": 0
+          },
+          "scheduledFailureRate": 0.54175
+        },
+        "arrival-diverse-r1600": {
+          "offeredPerSecond": 1600,
+          "scheduled": 16000,
+          "attempts": 15999,
+          "authorized": 3740,
+          "credentialDenied": 0,
+          "healthy": 0,
+          "unavailable": 12259,
+          "errors": 0,
+          "authorityViolations": 0,
+          "authorizedPerSecond": 372.775,
+          "authorizedScheduledLatencyMs": {
+            "p50": 41.73395800000071,
+            "p95": 50.99029100000189,
+            "p99": 66.22837500000242
+          },
+          "allScheduledLatencyMs": {
+            "p50": 1.025707999997394,
+            "p95": 46.285665999999765,
+            "p99": 52.017291000000114
+          },
+          "generatorDrops": {
+            "late": 1,
+            "full": 0,
+            "fraction": 0.0000625
+          },
+          "scheduledFailureRate": 0.76625
+        },
+        "arrival-noisy-invalid-client": {
+          "offeredPerSecond": 1200,
+          "scheduled": 12000,
+          "attempts": 12000,
+          "authorized": 962,
+          "credentialDenied": 5910,
+          "healthy": 1500,
+          "unavailable": 3628,
+          "errors": 0,
+          "authorityViolations": 0,
+          "authorizedPerSecond": 96.003,
+          "authorizedScheduledLatencyMs": {
+            "p50": 28.324999333337473,
+            "p95": 32.82683266666572,
+            "p99": 44.016541666664125
+          },
+          "allScheduledLatencyMs": {
+            "p50": 20.428457999994862,
+            "p95": 28.298957999999402,
+            "p99": 32.40704133333202
+          },
+          "generatorDrops": {
+            "late": 0,
+            "full": 0,
+            "fraction": 0
+          },
+          "scheduledFailureRate": 0.30233333333333334
+        },
+        "arrival-permission-reduction-concurrent": {
+          "offeredPerSecond": 200,
+          "scheduled": 2000,
+          "attempts": 2000,
+          "authorized": 2000,
+          "credentialDenied": 0,
+          "healthy": 0,
+          "unavailable": 0,
+          "errors": 0,
+          "authorityViolations": 0,
+          "authorizedPerSecond": 199.955,
+          "authorizedScheduledLatencyMs": {
+            "p50": 7.9684589999960735,
+            "p95": 13.249333999992814,
+            "p99": 39.27141699999629
+          },
+          "allScheduledLatencyMs": {
+            "p50": 7.9684589999960735,
+            "p95": 13.249333999992814,
+            "p99": 39.27141699999629
+          },
+          "generatorDrops": {
+            "late": 0,
+            "full": 0,
+            "fraction": 0
+          },
+          "scheduledFailureRate": 0
+        },
+        "permission-reduction-after-commit": {
+          "offeredPerSecond": null,
+          "scheduled": null,
+          "attempts": 64,
+          "authorized": 64,
+          "credentialDenied": 0,
+          "healthy": 0,
+          "unavailable": 0,
+          "errors": 0,
+          "authorityViolations": 0,
+          "authorizedPerSecond": 382.58,
+          "authorizedScheduledLatencyMs": null,
+          "allScheduledLatencyMs": null,
+          "generatorDrops": null,
+          "scheduledFailureRate": null
+        },
+        "arrival-revocation-concurrent": {
+          "offeredPerSecond": 200,
+          "scheduled": 2000,
+          "attempts": 2000,
+          "authorized": 1000,
+          "credentialDenied": 1000,
+          "healthy": 0,
+          "unavailable": 0,
+          "errors": 0,
+          "authorityViolations": 0,
+          "authorizedPerSecond": 99.991,
+          "authorizedScheduledLatencyMs": {
+            "p50": 7.850458999993862,
+            "p95": 9.492249999995693,
+            "p99": 12.431041999996523
+          },
+          "allScheduledLatencyMs": {
+            "p50": 7.30404199998884,
+            "p95": 9.549083999998402,
+            "p99": 14.035499999998137
+          },
+          "generatorDrops": {
+            "late": 0,
+            "full": 0,
+            "fraction": 0
+          },
+          "scheduledFailureRate": 0
+        },
+        "revocation-after-commit": {
+          "offeredPerSecond": null,
+          "scheduled": null,
+          "attempts": 64,
+          "authorized": 0,
+          "credentialDenied": 64,
+          "healthy": 0,
+          "unavailable": 0,
+          "errors": 0,
+          "authorityViolations": 0,
+          "authorizedPerSecond": 0,
+          "authorizedScheduledLatencyMs": null,
+          "allScheduledLatencyMs": null,
+          "generatorDrops": null,
+          "scheduledFailureRate": null
+        },
+        "unaffected-resource": {
+          "offeredPerSecond": null,
+          "scheduled": null,
+          "attempts": 32,
+          "authorized": 32,
+          "credentialDenied": 0,
+          "healthy": 0,
+          "unavailable": 0,
+          "errors": 0,
+          "authorityViolations": 0,
+          "authorizedPerSecond": 139.641,
+          "authorizedScheduledLatencyMs": null,
+          "allScheduledLatencyMs": null,
+          "generatorDrops": null,
+          "scheduledFailureRate": null
+        }
+      },
+      "resources": {
+        "redis": {
+          "cache": {
+            "delta": {
+              "usedBytes": 0,
+              "peakUsedBytes": 0,
+              "commands": 2,
+              "systemCpuSeconds": 0.023348,
+              "userCpuSeconds": 0.038038
+            },
+            "peakUsedBytesAtEnd": 1289888
+          },
+          "limiter": {
+            "delta": {
+              "usedBytes": 4704,
+              "peakUsedBytes": 82944,
+              "commands": 596389,
+              "systemCpuSeconds": 1.248268,
+              "userCpuSeconds": 3.912712
+            },
+            "peakUsedBytesAtEnd": 1661408
+          }
+        },
+        "postgres": {
+          "counters": {
+            "xact_commit": 98287,
+            "xact_rollback": 5935,
+            "blks_read": 0,
+            "blks_hit": 1266275,
+            "tup_returned": 619352,
+            "tup_fetched": 619065,
+            "tup_inserted": 110,
+            "tup_updated": 78,
+            "tup_deleted": 1,
+            "deadlocks": 0,
+            "temp_bytes": 0
+          },
+          "waitingLocksAfter": 0,
+          "container": {
+            "cpuAfter": "0.03%",
+            "memoryAfter": "85.37MiB / 7.75GiB",
+            "blockIOAfter": "0B / 335MB"
+          }
+        },
+        "server": {
+          "cpuSecondsDelta": 15.21,
+          "rssKiBAfter": 18608
+        }
+      }
+    }
+  ],
+  "aggregateByLane": {
+    "1": {
+      "runs": 2,
+      "phases": {
+        "arrival-diverse-r200": {
+          "authorized": 3993,
+          "scheduled": 4000,
+          "unavailable": 6,
+          "credentialDenied": 0,
+          "healthyProbes": 0,
+          "lateDrops": 1,
+          "fullDrops": 0,
+          "authorityViolations": 0,
+          "meanAuthorizedPerSecond": 199.601,
+          "meanAuthorizedScheduledP95Ms": 13.735,
+          "runValues": [
+            {
+              "authorized": 2000,
+              "scheduled": 2000,
+              "unavailable": 0,
+              "credentialDenied": 0,
+              "healthyProbes": 0,
+              "authorizedPerSecond": 199.947,
+              "authorizedScheduledLatencyMs": {
+                "p50": 8.735374999996566,
+                "p95": 16.494541000000027,
+                "p99": 44.90866599999572
+              },
+              "generatorDrops": {
+                "late": 0,
+                "full": 0,
+                "fraction": 0
+              }
+            },
+            {
+              "authorized": 1993,
+              "scheduled": 2000,
+              "unavailable": 6,
+              "credentialDenied": 0,
+              "healthyProbes": 0,
+              "authorizedPerSecond": 199.256,
+              "authorizedScheduledLatencyMs": {
+                "p50": 8.01075000000128,
+                "p95": 10.976334000000861,
+                "p99": 52.224709000000075
+              },
+              "generatorDrops": {
+                "late": 1,
+                "full": 0,
+                "fraction": 0.0005
+              }
+            }
+          ]
+        },
+        "arrival-diverse-r800": {
+          "authorized": 7664,
+          "scheduled": 16000,
+          "unavailable": 8334,
+          "credentialDenied": 0,
+          "healthyProbes": 0,
+          "lateDrops": 2,
+          "fullDrops": 0,
+          "authorityViolations": 0,
+          "meanAuthorizedPerSecond": 381.659,
+          "meanAuthorizedScheduledP95Ms": 50.171,
+          "runValues": [
+            {
+              "authorized": 3998,
+              "scheduled": 8000,
+              "unavailable": 4000,
+              "credentialDenied": 0,
+              "healthyProbes": 0,
+              "authorizedPerSecond": 398.071,
+              "authorizedScheduledLatencyMs": {
+                "p50": 39.313540999995894,
+                "p95": 44.87562500000058,
+                "p99": 65.58737499998824
+              },
+              "generatorDrops": {
+                "late": 2,
+                "full": 0,
+                "fraction": 0.00025
+              }
+            },
+            {
+              "authorized": 3666,
+              "scheduled": 8000,
+              "unavailable": 4334,
+              "credentialDenied": 0,
+              "healthyProbes": 0,
+              "authorizedPerSecond": 365.248,
+              "authorizedScheduledLatencyMs": {
+                "p50": 41.515416000002006,
+                "p95": 55.46587500000169,
+                "p99": 78.13120800000252
+              },
+              "generatorDrops": {
+                "late": 0,
+                "full": 0,
+                "fraction": 0
+              }
+            }
+          ]
+        },
+        "arrival-diverse-r1600": {
+          "authorized": 7408,
+          "scheduled": 32000,
+          "unavailable": 24533,
+          "credentialDenied": 0,
+          "healthyProbes": 0,
+          "lateDrops": 59,
+          "fullDrops": 0,
+          "authorityViolations": 0,
+          "meanAuthorizedPerSecond": 369.013,
+          "meanAuthorizedScheduledP95Ms": 52.366,
+          "runValues": [
+            {
+              "authorized": 3668,
+              "scheduled": 16000,
+              "unavailable": 12274,
+              "credentialDenied": 0,
+              "healthyProbes": 0,
+              "authorizedPerSecond": 365.251,
+              "authorizedScheduledLatencyMs": {
+                "p50": 42.056500000006054,
+                "p95": 53.741709000008996,
+                "p99": 69.67145900000469
+              },
+              "generatorDrops": {
+                "late": 58,
+                "full": 0,
+                "fraction": 0.003625
+              }
+            },
+            {
+              "authorized": 3740,
+              "scheduled": 16000,
+              "unavailable": 12259,
+              "credentialDenied": 0,
+              "healthyProbes": 0,
+              "authorizedPerSecond": 372.775,
+              "authorizedScheduledLatencyMs": {
+                "p50": 41.73395800000071,
+                "p95": 50.99029100000189,
+                "p99": 66.22837500000242
+              },
+              "generatorDrops": {
+                "late": 1,
+                "full": 0,
+                "fraction": 0.0000625
+              }
+            }
+          ]
+        },
+        "arrival-noisy-invalid-client": {
+          "authorized": 1857,
+          "scheduled": 24000,
+          "unavailable": 7484,
+          "credentialDenied": 11659,
+          "healthyProbes": 3000,
+          "lateDrops": 0,
+          "fullDrops": 0,
+          "authorityViolations": 0,
+          "meanAuthorizedPerSecond": 92.668,
+          "meanAuthorizedScheduledP95Ms": 34.62,
+          "runValues": [
+            {
+              "authorized": 895,
+              "scheduled": 12000,
+              "unavailable": 3856,
+              "credentialDenied": 5749,
+              "healthyProbes": 1500,
+              "authorizedPerSecond": 89.334,
+              "authorizedScheduledLatencyMs": {
+                "p50": 28.243875000000116,
+                "p95": 36.41270833333692,
+                "p99": 58.008999333345855
+              },
+              "generatorDrops": {
+                "late": 0,
+                "full": 0,
+                "fraction": 0
+              }
+            },
+            {
+              "authorized": 962,
+              "scheduled": 12000,
+              "unavailable": 3628,
+              "credentialDenied": 5910,
+              "healthyProbes": 1500,
+              "authorizedPerSecond": 96.003,
+              "authorizedScheduledLatencyMs": {
+                "p50": 28.324999333337473,
+                "p95": 32.82683266666572,
+                "p99": 44.016541666664125
+              },
+              "generatorDrops": {
+                "late": 0,
+                "full": 0,
+                "fraction": 0
+              }
+            }
+          ]
+        },
+        "arrival-permission-reduction-concurrent": {
+          "authorized": 4000,
+          "scheduled": 4000,
+          "unavailable": 0,
+          "credentialDenied": 0,
+          "healthyProbes": 0,
+          "lateDrops": 0,
+          "fullDrops": 0,
+          "authorityViolations": 0,
+          "meanAuthorizedPerSecond": 199.951,
+          "meanAuthorizedScheduledP95Ms": 14.095,
+          "runValues": [
+            {
+              "authorized": 2000,
+              "scheduled": 2000,
+              "unavailable": 0,
+              "credentialDenied": 0,
+              "healthyProbes": 0,
+              "authorizedPerSecond": 199.946,
+              "authorizedScheduledLatencyMs": {
+                "p50": 8.095916000005673,
+                "p95": 14.941541000007419,
+                "p99": 33.041666000004625
+              },
+              "generatorDrops": {
+                "late": 0,
+                "full": 0,
+                "fraction": 0
+              }
+            },
+            {
+              "authorized": 2000,
+              "scheduled": 2000,
+              "unavailable": 0,
+              "credentialDenied": 0,
+              "healthyProbes": 0,
+              "authorizedPerSecond": 199.955,
+              "authorizedScheduledLatencyMs": {
+                "p50": 7.9684589999960735,
+                "p95": 13.249333999992814,
+                "p99": 39.27141699999629
+              },
+              "generatorDrops": {
+                "late": 0,
+                "full": 0,
+                "fraction": 0
+              }
+            }
+          ]
+        },
+        "arrival-revocation-concurrent": {
+          "authorized": 2000,
+          "scheduled": 4000,
+          "unavailable": 0,
+          "credentialDenied": 2000,
+          "healthyProbes": 0,
+          "lateDrops": 0,
+          "fullDrops": 0,
+          "authorityViolations": 0,
+          "meanAuthorizedPerSecond": 99.984,
+          "meanAuthorizedScheduledP95Ms": 10.658,
+          "runValues": [
+            {
+              "authorized": 1000,
+              "scheduled": 2000,
+              "unavailable": 0,
+              "credentialDenied": 1000,
+              "healthyProbes": 0,
+              "authorizedPerSecond": 99.978,
+              "authorizedScheduledLatencyMs": {
+                "p50": 8.034125000005588,
+                "p95": 11.824250000005122,
+                "p99": 17.486917000001995
+              },
+              "generatorDrops": {
+                "late": 0,
+                "full": 0,
+                "fraction": 0
+              }
+            },
+            {
+              "authorized": 1000,
+              "scheduled": 2000,
+              "unavailable": 0,
+              "credentialDenied": 1000,
+              "healthyProbes": 0,
+              "authorizedPerSecond": 99.991,
+              "authorizedScheduledLatencyMs": {
+                "p50": 7.850458999993862,
+                "p95": 9.492249999995693,
+                "p99": 12.431041999996523
+              },
+              "generatorDrops": {
+                "late": 0,
+                "full": 0,
+                "fraction": 0
+              }
+            }
+          ]
+        }
+      }
+    },
+    "2": {
+      "runs": 2,
+      "phases": {
+        "arrival-diverse-r200": {
+          "authorized": 3996,
+          "scheduled": 4000,
+          "unavailable": 4,
+          "credentialDenied": 0,
+          "healthyProbes": 0,
+          "lateDrops": 0,
+          "fullDrops": 0,
+          "authorityViolations": 0,
+          "meanAuthorizedPerSecond": 199.735,
+          "meanAuthorizedScheduledP95Ms": 15.834,
+          "runValues": [
+            {
+              "authorized": 1999,
+              "scheduled": 2000,
+              "unavailable": 1,
+              "credentialDenied": 0,
+              "healthyProbes": 0,
+              "authorizedPerSecond": 199.854,
+              "authorizedScheduledLatencyMs": {
+                "p50": 7.909124999998312,
+                "p95": 13.502042000000074,
+                "p99": 23.73041699999885
+              },
+              "generatorDrops": {
+                "late": 0,
+                "full": 0,
+                "fraction": 0
+              }
+            },
+            {
+              "authorized": 1997,
+              "scheduled": 2000,
+              "unavailable": 3,
+              "credentialDenied": 0,
+              "healthyProbes": 0,
+              "authorizedPerSecond": 199.616,
+              "authorizedScheduledLatencyMs": {
+                "p50": 9.852624999999534,
+                "p95": 18.166290999999546,
+                "p99": 32.57266600000003
+              },
+              "generatorDrops": {
+                "late": 0,
+                "full": 0,
+                "fraction": 0
+              }
+            }
+          ]
+        },
+        "arrival-diverse-r800": {
+          "authorized": 6612,
+          "scheduled": 16000,
+          "unavailable": 9388,
+          "credentialDenied": 0,
+          "healthyProbes": 0,
+          "lateDrops": 0,
+          "fullDrops": 0,
+          "authorityViolations": 0,
+          "meanAuthorizedPerSecond": 329.603,
+          "meanAuthorizedScheduledP95Ms": 45.367,
+          "runValues": [
+            {
+              "authorized": 3171,
+              "scheduled": 8000,
+              "unavailable": 4829,
+              "credentialDenied": 0,
+              "healthyProbes": 0,
+              "authorizedPerSecond": 316.142,
+              "authorizedScheduledLatencyMs": {
+                "p50": 39.24524999999994,
+                "p95": 48.46791700000176,
+                "p99": 56.164292000001296
+              },
+              "generatorDrops": {
+                "late": 0,
+                "full": 0,
+                "fraction": 0
+              }
+            },
+            {
+              "authorized": 3441,
+              "scheduled": 8000,
+              "unavailable": 4559,
+              "credentialDenied": 0,
+              "healthyProbes": 0,
+              "authorizedPerSecond": 343.065,
+              "authorizedScheduledLatencyMs": {
+                "p50": 35.70695899999555,
+                "p95": 42.26629200000025,
+                "p99": 47.88491699999577
+              },
+              "generatorDrops": {
+                "late": 0,
+                "full": 0,
+                "fraction": 0
+              }
+            }
+          ]
+        },
+        "arrival-diverse-r1600": {
+          "authorized": 6436,
+          "scheduled": 32000,
+          "unavailable": 25558,
+          "credentialDenied": 0,
+          "healthyProbes": 0,
+          "lateDrops": 6,
+          "fullDrops": 0,
+          "authorityViolations": 0,
+          "meanAuthorizedPerSecond": 320.612,
+          "meanAuthorizedScheduledP95Ms": 51.086,
+          "runValues": [
+            {
+              "authorized": 3104,
+              "scheduled": 16000,
+              "unavailable": 12890,
+              "credentialDenied": 0,
+              "healthyProbes": 0,
+              "authorizedPerSecond": 309.151,
+              "authorizedScheduledLatencyMs": {
+                "p50": 39.395334000008006,
+                "p95": 55.99454200000764,
+                "p99": 81.66950000000361
+              },
+              "generatorDrops": {
+                "late": 6,
+                "full": 0,
+                "fraction": 0.000375
+              }
+            },
+            {
+              "authorized": 3332,
+              "scheduled": 16000,
+              "unavailable": 12668,
+              "credentialDenied": 0,
+              "healthyProbes": 0,
+              "authorizedPerSecond": 332.073,
+              "authorizedScheduledLatencyMs": {
+                "p50": 37.18324999999459,
+                "p95": 46.17662500000006,
+                "p99": 52.24170800000138
+              },
+              "generatorDrops": {
+                "late": 0,
+                "full": 0,
+                "fraction": 0
+              }
+            }
+          ]
+        },
+        "arrival-noisy-invalid-client": {
+          "authorized": 2690,
+          "scheduled": 24000,
+          "unavailable": 3053,
+          "credentialDenied": 15256,
+          "healthyProbes": 3000,
+          "lateDrops": 1,
+          "fullDrops": 0,
+          "authorityViolations": 0,
+          "meanAuthorizedPerSecond": 134.277,
+          "meanAuthorizedScheduledP95Ms": 33.148,
+          "runValues": [
+            {
+              "authorized": 1302,
+              "scheduled": 12000,
+              "unavailable": 1707,
+              "credentialDenied": 7491,
+              "healthyProbes": 1500,
+              "authorizedPerSecond": 129.993,
+              "authorizedScheduledLatencyMs": {
+                "p50": 24.10133333333215,
+                "p95": 33.44983333333221,
+                "p99": 39.5868749999936
+              },
+              "generatorDrops": {
+                "late": 0,
+                "full": 0,
+                "fraction": 0
+              }
+            },
+            {
+              "authorized": 1388,
+              "scheduled": 12000,
+              "unavailable": 1346,
+              "credentialDenied": 7765,
+              "healthyProbes": 1500,
+              "authorizedPerSecond": 138.561,
+              "authorizedScheduledLatencyMs": {
+                "p50": 23.600708333331568,
+                "p95": 32.846916333335685,
+                "p99": 38.07370766667009
+              },
+              "generatorDrops": {
+                "late": 1,
+                "full": 0,
+                "fraction": 0.00008333333333333333
+              }
+            }
+          ]
+        },
+        "arrival-permission-reduction-concurrent": {
+          "authorized": 3999,
+          "scheduled": 4000,
+          "unavailable": 1,
+          "credentialDenied": 0,
+          "healthyProbes": 0,
+          "lateDrops": 0,
+          "fullDrops": 0,
+          "authorityViolations": 0,
+          "meanAuthorizedPerSecond": 199.881,
+          "meanAuthorizedScheduledP95Ms": 12.357,
+          "runValues": [
+            {
+              "authorized": 1999,
+              "scheduled": 2000,
+              "unavailable": 1,
+              "credentialDenied": 0,
+              "healthyProbes": 0,
+              "authorizedPerSecond": 199.815,
+              "authorizedScheduledLatencyMs": {
+                "p50": 8.202040999996825,
+                "p95": 14.75633299999754,
+                "p99": 22.705041000001074
+              },
+              "generatorDrops": {
+                "late": 0,
+                "full": 0,
+                "fraction": 0
+              }
+            },
+            {
+              "authorized": 2000,
+              "scheduled": 2000,
+              "unavailable": 0,
+              "credentialDenied": 0,
+              "healthyProbes": 0,
+              "authorizedPerSecond": 199.947,
+              "authorizedScheduledLatencyMs": {
+                "p50": 7.870000000002619,
+                "p95": 9.958125000004657,
+                "p99": 13.917958000005456
+              },
+              "generatorDrops": {
+                "late": 0,
+                "full": 0,
+                "fraction": 0
+              }
+            }
+          ]
+        },
+        "arrival-revocation-concurrent": {
+          "authorized": 1993,
+          "scheduled": 4000,
+          "unavailable": 6,
+          "credentialDenied": 2001,
+          "healthyProbes": 0,
+          "lateDrops": 0,
+          "fullDrops": 0,
+          "authorityViolations": 0,
+          "meanAuthorizedPerSecond": 99.627,
+          "meanAuthorizedScheduledP95Ms": 16.653,
+          "runValues": [
+            {
+              "authorized": 995,
+              "scheduled": 2000,
+              "unavailable": 5,
+              "credentialDenied": 1000,
+              "healthyProbes": 0,
+              "authorizedPerSecond": 99.487,
+              "authorizedScheduledLatencyMs": {
+                "p50": 9.057791999999608,
+                "p95": 19.534583000000566,
+                "p99": 51.69616700000188
+              },
+              "generatorDrops": {
+                "late": 0,
+                "full": 0,
+                "fraction": 0
+              }
+            },
+            {
+              "authorized": 998,
+              "scheduled": 2000,
+              "unavailable": 1,
+              "credentialDenied": 1001,
+              "healthyProbes": 0,
+              "authorizedPerSecond": 99.767,
+              "authorizedScheduledLatencyMs": {
+                "p50": 8.031083000001672,
+                "p95": 13.77154100000189,
+                "p99": 20.53612499999872
+              },
+              "generatorDrops": {
+                "late": 0,
+                "full": 0,
+                "fraction": 0
+              }
+            }
+          ]
+        }
+      }
+    }
+  },
+  "interpretation": "Both lane counts preserved the same shared admission checks and recorded zero authority violations, HTTP errors or transport errors in every phase. Two lanes reduced explicit unavailable outcomes in the noisy invalid-client mixture and delivered more authorized resource checks there. One lane delivered more authorized checks in each sustained diverse 800/s and 1600/s run; 200/s results were close. Two runs per setting do not establish a stable winner. The existing two-lane default retains better tolerance in the hostile mixture, while production tuning requires workload-specific evidence.",
+  "limitations": [
+    "Two repetitions per setting on one Apple M5 host, one Rust server process and an owner-role PostgreSQL profile.",
+    "Not a multi-process, multi-host, restricted-database-role, production arrival-distribution, endurance or SLO qualification.",
+    "Redis and PostgreSQL counters are whole-run snapshots that include setup/probes and are not per-request costs.",
+    "Resource deltas are affected by the admitted/rejected outcome mix; they should not be interpreted as isolated lane overhead.",
+    "The test applies permission reduction and revocation and checks post-commit behavior, but short local runs do not establish production availability."
+  ]
+}

@@ -383,6 +383,14 @@ benchmark-profile: ## Performance: paced smoke with opt-in Rust stage/pool and P
 benchmark-profile-baseline: ## Performance: paced baseline with opt-in stage and SQL profiling
 	$(MAKE) benchmark BENCH_PROFILE=profile-baseline
 
+.PHONY: benchmark-admission-comparison
+
+benchmark-admission-comparison: build-web ## Performance: matched shared-introspection admission runs at one and two local Redis-update lanes
+	@set -eu; for lanes in 1 2 2 1; do \
+		echo "Running matched introspection admission benchmark with $$lanes global update lane(s)"; \
+		DARKHORSE_INTROSPECTION_GLOBAL_UPDATE_LANES="$$lanes" BENCH_PROFILE=arrival-baseline BENCH_POOL_SIZE="$(BENCH_POOL_SIZE)" $(NODE) scripts/redis-test.mjs --benchmark; \
+	done
+
 .PHONY: benchmark-lifecycle-baseline
 
 benchmark-lifecycle-baseline: ## Performance: restricted-role arrival profile overlapping bounded request cleanup with auth load

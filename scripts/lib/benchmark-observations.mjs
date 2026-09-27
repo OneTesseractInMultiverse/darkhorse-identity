@@ -115,7 +115,9 @@ export async function metadata({
         caller: Number(env.DARKHORSE_INTROSPECTION_CALLER_PER_MINUTE ?? 6_000),
         separateLocalPool: true,
         globalQueueCapacity: 16,
-        globalUpdateConcurrency: 2,
+        globalUpdateConcurrency: Number(
+          env.DARKHORSE_INTROSPECTION_GLOBAL_UPDATE_LANES ?? 2,
+        ),
         queueIncludedInDeadlineMs: 1000,
       },
       tokenRouteConcurrency: 16,
