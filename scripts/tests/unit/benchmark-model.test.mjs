@@ -17,6 +17,7 @@ test("benchmark profiles bound load and reject accidental unbounded settings", (
       ...benchmarkProfile(`arrival-${suffix}`),
       name: `profile-${suffix}`,
       profiling: true,
+      restrictedDatabase: true,
     });
   }
   assert.throws(() => benchmarkProfile("production"), /profile/);

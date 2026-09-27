@@ -28,6 +28,7 @@ export function benchmarkProfile(name) {
       ...benchmarkProfile(name.replace("profile-", "arrival-")),
       name,
       profiling: true,
+      restrictedDatabase: true,
     };
   if (["arrival-smoke", "arrival-baseline"].includes(name))
     return {
