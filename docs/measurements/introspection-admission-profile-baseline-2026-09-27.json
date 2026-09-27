@@ -1,0 +1,3755 @@
+{
+  "schema": 1,
+  "measuredAt": "2026-09-27",
+  "purpose": "Repeated protected introspection admission workload observations. This is local development evidence, not an SLO or production capacity claim.",
+  "reproduction": "make benchmark-profile-baseline",
+  "workload": {
+    "name": "profile-baseline",
+    "requests": 128,
+    "clients": 8,
+    "arrivals": {
+      "durationMs": 10000,
+      "rates": [
+        200,
+        800,
+        1600
+      ],
+      "noiseRate": 1200,
+      "changeRate": 200,
+      "maxInFlight": 128,
+      "maxLatenessMs": 5
+    },
+    "profiling": true
+  },
+  "source": {
+    "commit": "483b1339e009ace9031620a120067e303d1c4960",
+    "sourceSha256": "5196cfe729a86bee49b6a250b208a9ccdfc07fa4fa949a710d733226728a510a",
+    "binarySha256": "e7b94cd3fff089c4347c9e927203ecb2458d18d04d3b80018987d9280531c43c",
+    "dirty": false
+  },
+  "protections": {
+    "httpsVerification": true,
+    "clientAuthentication": "client_secret_basic",
+    "loginSharedRedisLimiter": true,
+    "introspectionSharedRedisLimiter": true,
+    "introspectionBudgets": {
+      "windowMs": 60000,
+      "global": 60000,
+      "caller": 6000,
+      "separateLocalPool": true,
+      "globalQueueCapacity": 16,
+      "globalUpdateConcurrency": 2,
+      "queueIncludedInDeadlineMs": 1000
+    },
+    "tokenRouteConcurrency": 16,
+    "databasePoolConnections": 5,
+    "positiveDecisionCache": false,
+    "computationCache": false,
+    "databaseRole": "postgres"
+  },
+  "environment": {
+    "rust": "rustc 1.97.1 (8bab26f4f 2026-07-14)",
+    "node": "v24.19.0",
+    "database": "postgres (PostgreSQL) 18.6 - Percona Server for PostgreSQL 18.6.1",
+    "images": {
+      "database": "percona/percona-distribution-postgresql:18.6@sha256:dae47360e8137cafc1e8d66f9a1be348f1405e3cf51daa383b94e6c277e6b256",
+      "cache": "redis:8.10.1@sha256:298e5b3bc566bade82f46ad5511777a4a07a294097ce16ada2f6a42be5239df5",
+      "limiter": "redis:8.10.1@sha256:298e5b3bc566bade82f46ad5511777a4a07a294097ce16ada2f6a42be5239df5"
+    },
+    "host": {
+      "platform": "darwin",
+      "release": "25.6.0",
+      "arch": "arm64",
+      "cpu": "Apple M5",
+      "logicalCpus": 10,
+      "availableParallelism": 10,
+      "memoryBytes": 25769803776
+    },
+    "docker": {
+      "version": "29.6.2",
+      "cpus": 10,
+      "memoryBytes": 8321515520,
+      "arch": "aarch64"
+    },
+    "topology": "One host release Rust process, Node TLS proxy and load generator; Docker Percona primary plus separate Redis cache/limiter containers on loopback. Chromium provisions real login/SSO credentials."
+  },
+  "explicitLimits": [
+    "database-cold state",
+    "multi-host latency",
+    "large policy populations",
+    "SQL round trips and plans",
+    "limiter incremental overhead",
+    "multi-hour endurance and production arrival distributions",
+    "sustained CPU/RSS peaks"
+  ],
+  "runs": [
+    {
+      "timestamp": "2026-09-27T04:14:23.129Z",
+      "status": "passed",
+      "redis": {
+        "cache": {
+          "before": {
+            "usedBytes": 1289568,
+            "peakUsedBytes": 1289888,
+            "commands": 9,
+            "systemCpuSeconds": 0.055393,
+            "userCpuSeconds": 0.071218
+          },
+          "after": {
+            "usedBytes": 1289568,
+            "peakUsedBytes": 1289888,
+            "commands": 11,
+            "systemCpuSeconds": 0.06969,
+            "userCpuSeconds": 0.10832
+          },
+          "delta": {
+            "commands": 2,
+            "usedBytes": 0,
+            "userCpuSeconds": 0.037101999999999996,
+            "systemCpuSeconds": 0.014297000000000004
+          }
+        },
+        "limiter": {
+          "before": {
+            "usedBytes": 1569072,
+            "peakUsedBytes": 1578464,
+            "commands": 73,
+            "systemCpuSeconds": 0.05291,
+            "userCpuSeconds": 0.065422
+          },
+          "after": {
+            "usedBytes": 1602368,
+            "peakUsedBytes": 1661952,
+            "commands": 694178,
+            "systemCpuSeconds": 1.711126,
+            "userCpuSeconds": 4.439152
+          },
+          "delta": {
+            "commands": 694105,
+            "usedBytes": 33296,
+            "userCpuSeconds": 4.37373,
+            "systemCpuSeconds": 1.658216
+          }
+        }
+      },
+      "postgres": {
+        "role": "postgres",
+        "before": {
+          "xact_commit": 201,
+          "xact_rollback": 42,
+          "blks_read": 122,
+          "blks_hit": 166271,
+          "tup_returned": 102593,
+          "tup_fetched": 101020,
+          "tup_inserted": 9262,
+          "tup_updated": 678,
+          "tup_deleted": 135,
+          "deadlocks": 0,
+          "temp_bytes": 0
+        },
+        "after": {
+          "xact_commit": 114050,
+          "xact_rollback": 8438,
+          "blks_read": 122,
+          "blks_hit": 1522855,
+          "tup_returned": 782223,
+          "tup_fetched": 749630,
+          "tup_inserted": 9704,
+          "tup_updated": 874,
+          "tup_deleted": 411,
+          "deadlocks": 0,
+          "temp_bytes": 0
+        },
+        "delta": {
+          "xact_commit": 113849,
+          "xact_rollback": 8396,
+          "blks_read": 0,
+          "blks_hit": 1356584,
+          "tup_returned": 679630,
+          "tup_fetched": 648610,
+          "tup_inserted": 442,
+          "tup_updated": 196,
+          "tup_deleted": 276,
+          "deadlocks": 0,
+          "temp_bytes": 0
+        },
+        "waitingLocksAfter": 0,
+        "processSampleAfter": "0:17.35  20672",
+        "databaseContainerSampleAfter": {
+          "cpu": "0.02%",
+          "memory": "88.8MiB / 7.75GiB",
+          "blockIO": "406kB / 363MB"
+        }
+      },
+      "phases": [
+        {
+          "name": "arrival-diverse-r200",
+          "mode": "fixed-arrival",
+          "offeredRatePerSecond": 200,
+          "scheduled": 2000,
+          "attempts": 2000,
+          "wallMs": 10002.981916999997,
+          "outcomes": {
+            "authorized": 1993,
+            "healthy": 0,
+            "denied": 0,
+            "unavailable": 7,
+            "error": 0,
+            "transport_error": 0,
+            "violation": 0
+          },
+          "scheduledFailureRate": 0.0035,
+          "allScheduledLatencyMs": {
+            "p50": 8.281583999996656,
+            "p95": 11.998459000009461,
+            "p99": 34.64362499999697
+          },
+          "authorizedScheduledLatencyMs": {
+            "p50": 8.280500000008033,
+            "p95": 11.795959000002767,
+            "p99": 24.717459000006784
+          },
+          "generatorDrops": {
+            "late": 0,
+            "full": 0,
+            "fraction": 0
+          },
+          "peakInFlight": 14,
+          "sql": {
+            "topLevelStatementCalls": 47881,
+            "executionMs": 288.05045800000005,
+            "rows": 39895,
+            "sharedBufferHits": 169496,
+            "sharedBufferReads": 0,
+            "walBytes": 1054546,
+            "categories": [
+              {
+                "category": "policy_projection",
+                "calls": 1993,
+                "execution_ms": 87.98164499999996,
+                "rows": 1993,
+                "shared_hits": 55804,
+                "shared_reads": 0,
+                "wal_bytes": 0
+              },
+              {
+                "category": "identity_read",
+                "calls": 5979,
+                "execution_ms": 55.05975000000005,
+                "rows": 5979,
+                "shared_hits": 41853,
+                "shared_reads": 0,
+                "wal_bytes": 538650
+              },
+              {
+                "category": "token_read",
+                "calls": 5979,
+                "execution_ms": 37.58871400000009,
+                "rows": 5979,
+                "shared_hits": 19930,
+                "shared_reads": 0,
+                "wal_bytes": 215244
+              },
+              {
+                "category": "other",
+                "calls": 7986,
+                "execution_ms": 35.97135499999977,
+                "rows": 7986,
+                "shared_hits": 15972,
+                "shared_reads": 0,
+                "wal_bytes": 0
+              },
+              {
+                "category": "security_fence",
+                "calls": 3993,
+                "execution_ms": 29.65590200000003,
+                "rows": 3993,
+                "shared_hits": 11979,
+                "shared_reads": 0,
+                "wal_bytes": 300652
+              },
+              {
+                "category": "resource_authentication",
+                "calls": 3993,
+                "execution_ms": 26.161364000000045,
+                "rows": 3993,
+                "shared_hits": 23958,
+                "shared_reads": 0,
+                "wal_bytes": 0
+              },
+              {
+                "category": "clock",
+                "calls": 9972,
+                "execution_ms": 13.269851000000118,
+                "rows": 9972,
+                "shared_hits": 0,
+                "shared_reads": 0,
+                "wal_bytes": 0
+              },
+              {
+                "category": "begin",
+                "calls": 3993,
+                "execution_ms": 1.3156769999999913,
+                "rows": 0,
+                "shared_hits": 0,
+                "shared_reads": 0,
+                "wal_bytes": 0
+              },
+              {
+                "category": "commit",
+                "calls": 3993,
+                "execution_ms": 1.0461999999999927,
+                "rows": 0,
+                "shared_hits": 0,
+                "shared_reads": 0,
+                "wal_bytes": 0
+              }
+            ]
+          },
+          "rustStageTimings": {
+            "total": {
+              "count": 1993,
+              "maxUs": 36280,
+              "meanUs": 3764.8600100351227,
+              "percentileUpperUs": {
+                "p50": 5000,
+                "p95": 5000,
+                "p99": 10000
+              }
+            },
+            "pool_acquire": {
+              "count": 1993,
+              "maxUs": 8839,
+              "meanUs": 234.65679879578525,
+              "percentileUpperUs": {
+                "p50": 250,
+                "p95": 500,
+                "p99": 1000
+              }
+            },
+            "begin": {
+              "count": 1993,
+              "maxUs": 2539,
+              "meanUs": 195.44004014049173,
+              "percentileUpperUs": {
+                "p50": 250,
+                "p95": 500,
+                "p99": 1000
+              }
+            },
+            "fence": {
+              "count": 1993,
+              "maxUs": 3062,
+              "meanUs": 208.8198695434019,
+              "percentileUpperUs": {
+                "p50": 250,
+                "p95": 500,
+                "p99": 1000
+              }
+            },
+            "authenticate": {
+              "count": 1993,
+              "maxUs": 6301,
+              "meanUs": 412.5173105870547,
+              "percentileUpperUs": {
+                "p50": 500,
+                "p95": 1000,
+                "p99": 1000
+              }
+            },
+            "inspect": {
+              "count": 1993,
+              "maxUs": 21848,
+              "meanUs": 2103.0130456598094,
+              "percentileUpperUs": {
+                "p50": 2500,
+                "p95": 5000,
+                "p99": 5000
+              }
+            },
+            "policy_load": {
+              "count": 1993,
+              "maxUs": 3590,
+              "meanUs": 306.1445057701957,
+              "percentileUpperUs": {
+                "p50": 500,
+                "p95": 500,
+                "p99": 1000
+              }
+            },
+            "decision": {
+              "count": 1993,
+              "maxUs": 16,
+              "meanUs": 1.2197691921726042,
+              "percentileUpperUs": {
+                "p50": 1,
+                "p95": 5,
+                "p99": 10
+              }
+            },
+            "commit": {
+              "count": 1993,
+              "maxUs": 9457,
+              "meanUs": 393.34420471650776,
+              "percentileUpperUs": {
+                "p50": 500,
+                "p95": 1000,
+                "p99": 1000
+              }
+            }
+          }
+        },
+        {
+          "name": "arrival-diverse-r800",
+          "mode": "fixed-arrival",
+          "offeredRatePerSecond": 800,
+          "scheduled": 8000,
+          "attempts": 8000,
+          "wallMs": 10027.664999999994,
+          "outcomes": {
+            "authorized": 3567,
+            "healthy": 0,
+            "denied": 0,
+            "unavailable": 4433,
+            "error": 0,
+            "transport_error": 0,
+            "violation": 0
+          },
+          "scheduledFailureRate": 0.554125,
+          "allScheduledLatencyMs": {
+            "p50": 24.91454199999862,
+            "p95": 39.00320899998769,
+            "p99": 46.260791999986395
+          },
+          "authorizedScheduledLatencyMs": {
+            "p50": 34.42004199999792,
+            "p95": 42.091333999997005,
+            "p99": 50.09824999999546
+          },
+          "generatorDrops": {
+            "late": 0,
+            "full": 0,
+            "fraction": 0
+          },
+          "peakInFlight": 18,
+          "sql": {
+            "topLevelStatementCalls": 95177,
+            "executionMs": 699.2109159999975,
+            "rows": 78175,
+            "sharedBufferHits": 320192,
+            "sharedBufferReads": 0,
+            "walBytes": 2352108,
+            "categories": [
+              {
+                "category": "policy_projection",
+                "calls": 3567,
+                "execution_ms": 172.8982760000002,
+                "rows": 3567,
+                "shared_hits": 99876,
+                "shared_reads": 0,
+                "wal_bytes": 0
+              },
+              {
+                "category": "identity_read",
+                "calls": 10701,
+                "execution_ms": 131.3386699999998,
+                "rows": 10701,
+                "shared_hits": 74907,
+                "shared_reads": 0,
+                "wal_bytes": 1012684
+              },
+              {
+                "category": "other",
+                "calls": 17002,
+                "execution_ms": 98.6104129999978,
+                "rows": 17002,
+                "shared_hits": 34004,
+                "shared_reads": 0,
+                "wal_bytes": 0
+              },
+              {
+                "category": "token_read",
+                "calls": 10701,
+                "execution_ms": 91.4929899999999,
+                "rows": 10701,
+                "shared_hits": 35670,
+                "shared_reads": 0,
+                "wal_bytes": 385236
+              },
+              {
+                "category": "security_fence",
+                "calls": 8501,
+                "execution_ms": 88.6542519999992,
+                "rows": 8501,
+                "shared_hits": 24729,
+                "shared_reads": 0,
+                "wal_bytes": 954188
+              },
+              {
+                "category": "resource_authentication",
+                "calls": 8501,
+                "execution_ms": 70.90519399999977,
+                "rows": 8501,
+                "shared_hits": 51006,
+                "shared_reads": 0,
+                "wal_bytes": 0
+              },
+              {
+                "category": "clock",
+                "calls": 19202,
+                "execution_ms": 38.385981000000754,
+                "rows": 19202,
+                "shared_hits": 0,
+                "shared_reads": 0,
+                "wal_bytes": 0
+              },
+              {
+                "category": "commit",
+                "calls": 8501,
+                "execution_ms": 3.581046000000009,
+                "rows": 0,
+                "shared_hits": 0,
+                "shared_reads": 0,
+                "wal_bytes": 0
+              },
+              {
+                "category": "begin",
+                "calls": 8501,
+                "execution_ms": 3.3440940000000734,
+                "rows": 0,
+                "shared_hits": 0,
+                "shared_reads": 0,
+                "wal_bytes": 0
+              }
+            ]
+          },
+          "rustStageTimings": {
+            "total": {
+              "count": 3567,
+              "maxUs": 15321,
+              "meanUs": 6459.4847210541075,
+              "percentileUpperUs": {
+                "p50": 10000,
+                "p95": 10000,
+                "p99": 25000
+              }
+            },
+            "pool_acquire": {
+              "count": 3567,
+              "maxUs": 5879,
+              "meanUs": 1141.8794505186431,
+              "percentileUpperUs": {
+                "p50": 2500,
+                "p95": 2500,
+                "p99": 5000
+              }
+            },
+            "begin": {
+              "count": 3567,
+              "maxUs": 1994,
+              "meanUs": 313.5346229324362,
+              "percentileUpperUs": {
+                "p50": 500,
+                "p95": 500,
+                "p99": 1000
+              }
+            },
+            "fence": {
+              "count": 3567,
+              "maxUs": 2252,
+              "meanUs": 331.96047098402016,
+              "percentileUpperUs": {
+                "p50": 500,
+                "p95": 500,
+                "p99": 1000
+              }
+            },
+            "authenticate": {
+              "count": 3567,
+              "maxUs": 5077,
+              "meanUs": 659.6464816372302,
+              "percentileUpperUs": {
+                "p50": 1000,
+                "p95": 1000,
+                "p99": 2500
+              }
+            },
+            "inspect": {
+              "count": 3567,
+              "maxUs": 12578,
+              "meanUs": 3132.649845808803,
+              "percentileUpperUs": {
+                "p50": 5000,
+                "p95": 5000,
+                "p99": 10000
+              }
+            },
+            "policy_load": {
+              "count": 3567,
+              "maxUs": 2013,
+              "meanUs": 426.2806279786936,
+              "percentileUpperUs": {
+                "p50": 500,
+                "p95": 1000,
+                "p99": 1000
+              }
+            },
+            "decision": {
+              "count": 3567,
+              "maxUs": 39,
+              "meanUs": 1.641996075133165,
+              "percentileUpperUs": {
+                "p50": 1,
+                "p95": 5,
+                "p99": 10
+              }
+            },
+            "commit": {
+              "count": 3567,
+              "maxUs": 2931,
+              "meanUs": 554.9001962433417,
+              "percentileUpperUs": {
+                "p50": 1000,
+                "p95": 1000,
+                "p99": 2500
+              }
+            }
+          }
+        },
+        {
+          "name": "arrival-diverse-r1600",
+          "mode": "fixed-arrival",
+          "offeredRatePerSecond": 1600,
+          "scheduled": 16000,
+          "attempts": 15999,
+          "wallMs": 10026.849875,
+          "outcomes": {
+            "authorized": 3595,
+            "healthy": 0,
+            "denied": 0,
+            "unavailable": 12404,
+            "error": 0,
+            "transport_error": 0,
+            "violation": 0
+          },
+          "scheduledFailureRate": 0.7753125,
+          "allScheduledLatencyMs": {
+            "p50": 1.128207999994629,
+            "p95": 36.99083300000348,
+            "p99": 41.97149999999965
+          },
+          "authorizedScheduledLatencyMs": {
+            "p50": 34.778791000004276,
+            "p95": 41.08979100000579,
+            "p99": 52.84875000000466
+          },
+          "generatorDrops": {
+            "late": 1,
+            "full": 0,
+            "fraction": 0.0000625
+          },
+          "peakInFlight": 57,
+          "sql": {
+            "topLevelStatementCalls": 95919,
+            "executionMs": 683.9835969999974,
+            "rows": 78785,
+            "sharedBufferHits": 314909,
+            "sharedBufferReads": 0,
+            "walBytes": 2373658,
+            "categories": [
+              {
+                "category": "policy_projection",
+                "calls": 3595,
+                "execution_ms": 166.2826700000001,
+                "rows": 3595,
+                "shared_hits": 100660,
+                "shared_reads": 0,
+                "wal_bytes": 0
+              },
+              {
+                "category": "identity_read",
+                "calls": 10785,
+                "execution_ms": 123.32673499999987,
+                "rows": 10785,
+                "shared_hits": 75495,
+                "shared_reads": 0,
+                "wal_bytes": 1022204
+              },
+              {
+                "category": "other",
+                "calls": 17134,
+                "execution_ms": 97.35589699999801,
+                "rows": 17134,
+                "shared_hits": 34268,
+                "shared_reads": 0,
+                "wal_bytes": 0
+              },
+              {
+                "category": "security_fence",
+                "calls": 8567,
+                "execution_ms": 92.66429599999913,
+                "rows": 8567,
+                "shared_hits": 17134,
+                "shared_reads": 0,
+                "wal_bytes": 960656
+              },
+              {
+                "category": "token_read",
+                "calls": 10785,
+                "execution_ms": 86.99314899999993,
+                "rows": 10785,
+                "shared_hits": 35950,
+                "shared_reads": 0,
+                "wal_bytes": 390798
+              },
+              {
+                "category": "resource_authentication",
+                "calls": 8567,
+                "execution_ms": 71.96184399999956,
+                "rows": 8567,
+                "shared_hits": 51402,
+                "shared_reads": 0,
+                "wal_bytes": 0
+              },
+              {
+                "category": "clock",
+                "calls": 19352,
+                "execution_ms": 38.66838100000062,
+                "rows": 19352,
+                "shared_hits": 0,
+                "shared_reads": 0,
+                "wal_bytes": 0
+              },
+              {
+                "category": "commit",
+                "calls": 8567,
+                "execution_ms": 3.6154489999999906,
+                "rows": 0,
+                "shared_hits": 0,
+                "shared_reads": 0,
+                "wal_bytes": 0
+              },
+              {
+                "category": "begin",
+                "calls": 8567,
+                "execution_ms": 3.1151760000000808,
+                "rows": 0,
+                "shared_hits": 0,
+                "shared_reads": 0,
+                "wal_bytes": 0
+              }
+            ]
+          },
+          "rustStageTimings": {
+            "total": {
+              "count": 3595,
+              "maxUs": 18801,
+              "meanUs": 6417.6044506258695,
+              "percentileUpperUs": {
+                "p50": 10000,
+                "p95": 10000,
+                "p99": 25000
+              }
+            },
+            "pool_acquire": {
+              "count": 3595,
+              "maxUs": 4773,
+              "meanUs": 1139.7969401947148,
+              "percentileUpperUs": {
+                "p50": 2500,
+                "p95": 2500,
+                "p99": 2500
+              }
+            },
+            "begin": {
+              "count": 3595,
+              "maxUs": 2618,
+              "meanUs": 313.736578581363,
+              "percentileUpperUs": {
+                "p50": 500,
+                "p95": 500,
+                "p99": 1000
+              }
+            },
+            "fence": {
+              "count": 3595,
+              "maxUs": 2763,
+              "meanUs": 329.734909596662,
+              "percentileUpperUs": {
+                "p50": 500,
+                "p95": 500,
+                "p99": 1000
+              }
+            },
+            "authenticate": {
+              "count": 3595,
+              "maxUs": 3521,
+              "meanUs": 660.2901251738526,
+              "percentileUpperUs": {
+                "p50": 1000,
+                "p95": 1000,
+                "p99": 2500
+              }
+            },
+            "inspect": {
+              "count": 3595,
+              "maxUs": 12715,
+              "meanUs": 3102.1746870653687,
+              "percentileUpperUs": {
+                "p50": 5000,
+                "p95": 5000,
+                "p99": 10000
+              }
+            },
+            "policy_load": {
+              "count": 3595,
+              "maxUs": 3109,
+              "meanUs": 420.67732962447843,
+              "percentileUpperUs": {
+                "p50": 500,
+                "p95": 1000,
+                "p99": 1000
+              }
+            },
+            "decision": {
+              "count": 3595,
+              "maxUs": 23,
+              "meanUs": 1.524895688456189,
+              "percentileUpperUs": {
+                "p50": 1,
+                "p95": 5,
+                "p99": 25
+              }
+            },
+            "commit": {
+              "count": 3595,
+              "maxUs": 4289,
+              "meanUs": 549.9401947148817,
+              "percentileUpperUs": {
+                "p50": 1000,
+                "p95": 1000,
+                "p99": 2500
+              }
+            }
+          }
+        },
+        {
+          "name": "arrival-noisy-invalid-client",
+          "mode": "fixed-arrival",
+          "offeredRatePerSecond": 1200,
+          "scheduled": 12000,
+          "attempts": 11999,
+          "wallMs": 10015.654084000009,
+          "outcomes": {
+            "authorized": 1453,
+            "healthy": 1500,
+            "denied": 8389,
+            "unavailable": 657,
+            "error": 0,
+            "transport_error": 0,
+            "violation": 0
+          },
+          "scheduledFailureRate": 0.05483333333333333,
+          "allScheduledLatencyMs": {
+            "p50": 14.149708333345188,
+            "p95": 22.69887533333531,
+            "p99": 25.183208666676364
+          },
+          "authorizedScheduledLatencyMs": {
+            "p50": 22.362250000005588,
+            "p95": 25.534875666671724,
+            "p99": 32.51445866666472
+          },
+          "generatorDrops": {
+            "late": 1,
+            "full": 0,
+            "fraction": 0.00008333333333333333
+          },
+          "peakInFlight": 20,
+          "sql": {
+            "topLevelStatementCalls": 85206,
+            "executionMs": 439.02164199999464,
+            "rows": 54227,
+            "sharedBufferHits": 212878,
+            "sharedBufferReads": 0,
+            "walBytes": 1567282,
+            "categories": [
+              {
+                "category": "other",
+                "calls": 22590,
+                "execution_ms": 106.04153499999553,
+                "rows": 22590,
+                "shared_hits": 45180,
+                "shared_reads": 0,
+                "wal_bytes": 0
+              },
+              {
+                "category": "security_fence",
+                "calls": 11295,
+                "execution_ms": 87.48783199999929,
+                "rows": 11295,
+                "shared_hits": 22590,
+                "shared_reads": 0,
+                "wal_bytes": 1017994
+              },
+              {
+                "category": "policy_projection",
+                "calls": 1453,
+                "execution_ms": 70.73176899999996,
+                "rows": 1453,
+                "shared_hits": 40684,
+                "shared_reads": 0,
+                "wal_bytes": 0
+              },
+              {
+                "category": "resource_authentication",
+                "calls": 11295,
+                "execution_ms": 69.32403499999943,
+                "rows": 2906,
+                "shared_hits": 59381,
+                "shared_reads": 0,
+                "wal_bytes": 0
+              },
+              {
+                "category": "identity_read",
+                "calls": 4359,
+                "execution_ms": 49.45545800000002,
+                "rows": 4359,
+                "shared_hits": 30513,
+                "shared_reads": 0,
+                "wal_bytes": 392310
+              },
+              {
+                "category": "token_read",
+                "calls": 4359,
+                "execution_ms": 34.87598300000007,
+                "rows": 4359,
+                "shared_hits": 14530,
+                "shared_reads": 0,
+                "wal_bytes": 156978
+              },
+              {
+                "category": "clock",
+                "calls": 7265,
+                "execution_ms": 14.55482900000013,
+                "rows": 7265,
+                "shared_hits": 0,
+                "shared_reads": 0,
+                "wal_bytes": 0
+              },
+              {
+                "category": "begin",
+                "calls": 11295,
+                "execution_ms": 2.97458700000016,
+                "rows": 0,
+                "shared_hits": 0,
+                "shared_reads": 0,
+                "wal_bytes": 0
+              },
+              {
+                "category": "rollback",
+                "calls": 8389,
+                "execution_ms": 2.5326280000000843,
+                "rows": 0,
+                "shared_hits": 0,
+                "shared_reads": 0,
+                "wal_bytes": 0
+              },
+              {
+                "category": "commit",
+                "calls": 2906,
+                "execution_ms": 1.042986,
+                "rows": 0,
+                "shared_hits": 0,
+                "shared_reads": 0,
+                "wal_bytes": 0
+              }
+            ]
+          },
+          "rustStageTimings": {
+            "total": {
+              "count": 1453,
+              "maxUs": 13177,
+              "meanUs": 5226.068134893324,
+              "percentileUpperUs": {
+                "p50": 10000,
+                "p95": 10000,
+                "p99": 10000
+              }
+            },
+            "pool_acquire": {
+              "count": 1453,
+              "maxUs": 1331,
+              "meanUs": 353.16448726772194,
+              "percentileUpperUs": {
+                "p50": 500,
+                "p95": 1000,
+                "p99": 1000
+              }
+            },
+            "begin": {
+              "count": 1453,
+              "maxUs": 1553,
+              "meanUs": 282.618719889883,
+              "percentileUpperUs": {
+                "p50": 500,
+                "p95": 500,
+                "p99": 1000
+              }
+            },
+            "fence": {
+              "count": 1453,
+              "maxUs": 2447,
+              "meanUs": 291.2849277357192,
+              "percentileUpperUs": {
+                "p50": 500,
+                "p95": 500,
+                "p99": 1000
+              }
+            },
+            "authenticate": {
+              "count": 1453,
+              "maxUs": 1926,
+              "meanUs": 590.596008258775,
+              "percentileUpperUs": {
+                "p50": 1000,
+                "p95": 1000,
+                "p99": 1000
+              }
+            },
+            "inspect": {
+              "count": 1453,
+              "maxUs": 7603,
+              "meanUs": 2841.655884377151,
+              "percentileUpperUs": {
+                "p50": 5000,
+                "p95": 5000,
+                "p99": 5000
+              }
+            },
+            "policy_load": {
+              "count": 1453,
+              "maxUs": 1117,
+              "meanUs": 397.88024776324846,
+              "percentileUpperUs": {
+                "p50": 500,
+                "p95": 1000,
+                "p99": 1000
+              }
+            },
+            "decision": {
+              "count": 1453,
+              "maxUs": 21,
+              "meanUs": 1.7611837577426015,
+              "percentileUpperUs": {
+                "p50": 1,
+                "p95": 5,
+                "p99": 25
+              }
+            },
+            "commit": {
+              "count": 1453,
+              "maxUs": 7631,
+              "meanUs": 557.2594631796284,
+              "percentileUpperUs": {
+                "p50": 1000,
+                "p95": 1000,
+                "p99": 2500
+              }
+            }
+          }
+        },
+        {
+          "name": "arrival-permission-reduction-concurrent",
+          "mode": "fixed-arrival",
+          "offeredRatePerSecond": 200,
+          "scheduled": 2000,
+          "attempts": 2000,
+          "wallMs": 10002.564457999993,
+          "outcomes": {
+            "authorized": 2000,
+            "healthy": 0,
+            "denied": 0,
+            "unavailable": 0,
+            "error": 0,
+            "transport_error": 0,
+            "violation": 0
+          },
+          "scheduledFailureRate": 0,
+          "allScheduledLatencyMs": {
+            "p50": 7.814291000002413,
+            "p95": 9.147916000001715,
+            "p99": 13.58720799999719
+          },
+          "authorizedScheduledLatencyMs": {
+            "p50": 7.814291000002413,
+            "p95": 9.147916000001715,
+            "p99": 13.58720799999719
+          },
+          "generatorDrops": {
+            "late": 0,
+            "full": 0,
+            "fraction": 0
+          },
+          "peakInFlight": 5,
+          "sql": {
+            "topLevelStatementCalls": 48003,
+            "executionMs": 235.86737099999993,
+            "rows": 40003,
+            "sharedBufferHits": 166307,
+            "sharedBufferReads": 0,
+            "walBytes": 1036612,
+            "categories": [
+              {
+                "category": "policy_projection",
+                "calls": 2000,
+                "execution_ms": 69.84869,
+                "rows": 2000,
+                "shared_hits": 56000,
+                "shared_reads": 0,
+                "wal_bytes": 0
+              },
+              {
+                "category": "identity_read",
+                "calls": 6000,
+                "execution_ms": 43.77271900000011,
+                "rows": 6000,
+                "shared_hits": 42000,
+                "shared_reads": 0,
+                "wal_bytes": 540000
+              },
+              {
+                "category": "token_read",
+                "calls": 6000,
+                "execution_ms": 31.002394000000113,
+                "rows": 6000,
+                "shared_hits": 20000,
+                "shared_reads": 0,
+                "wal_bytes": 216270
+              },
+              {
+                "category": "other",
+                "calls": 8000,
+                "execution_ms": 29.55876399999965,
+                "rows": 8000,
+                "shared_hits": 16000,
+                "shared_reads": 0,
+                "wal_bytes": 0
+              },
+              {
+                "category": "security_fence",
+                "calls": 4002,
+                "execution_ms": 26.021444999999886,
+                "rows": 4002,
+                "shared_hits": 8013,
+                "shared_reads": 0,
+                "wal_bytes": 279866
+              },
+              {
+                "category": "resource_authentication",
+                "calls": 4000,
+                "execution_ms": 21.847959000000092,
+                "rows": 4000,
+                "shared_hits": 24000,
+                "shared_reads": 0,
+                "wal_bytes": 0
+              },
+              {
+                "category": "clock",
+                "calls": 10000,
+                "execution_ms": 11.109192000000084,
+                "rows": 10000,
+                "shared_hits": 0,
+                "shared_reads": 0,
+                "wal_bytes": 0
+              },
+              {
+                "category": "begin",
+                "calls": 4000,
+                "execution_ms": 0.9422309999999953,
+                "rows": 0,
+                "shared_hits": 0,
+                "shared_reads": 0,
+                "wal_bytes": 0
+              },
+              {
+                "category": "mutation",
+                "calls": 1,
+                "execution_ms": 0.928249,
+                "rows": 1,
+                "shared_hits": 294,
+                "shared_reads": 0,
+                "wal_bytes": 476
+              },
+              {
+                "category": "commit",
+                "calls": 4000,
+                "execution_ms": 0.8357279999999999,
+                "rows": 0,
+                "shared_hits": 0,
+                "shared_reads": 0,
+                "wal_bytes": 0
+              }
+            ]
+          },
+          "rustStageTimings": {
+            "total": {
+              "count": 2000,
+              "maxUs": 11101,
+              "meanUs": 3368.6045,
+              "percentileUpperUs": {
+                "p50": 5000,
+                "p95": 5000,
+                "p99": 10000
+              }
+            },
+            "pool_acquire": {
+              "count": 2000,
+              "maxUs": 2561,
+              "meanUs": 193.923,
+              "percentileUpperUs": {
+                "p50": 250,
+                "p95": 500,
+                "p99": 500
+              }
+            },
+            "begin": {
+              "count": 2000,
+              "maxUs": 909,
+              "meanUs": 172.5445,
+              "percentileUpperUs": {
+                "p50": 250,
+                "p95": 250,
+                "p99": 500
+              }
+            },
+            "fence": {
+              "count": 2000,
+              "maxUs": 1094,
+              "meanUs": 181.633,
+              "percentileUpperUs": {
+                "p50": 250,
+                "p95": 500,
+                "p99": 500
+              }
+            },
+            "authenticate": {
+              "count": 2000,
+              "maxUs": 2992,
+              "meanUs": 370.3705,
+              "percentileUpperUs": {
+                "p50": 500,
+                "p95": 500,
+                "p99": 1000
+              }
+            },
+            "inspect": {
+              "count": 2000,
+              "maxUs": 7159,
+              "meanUs": 1896.7035,
+              "percentileUpperUs": {
+                "p50": 2500,
+                "p95": 2500,
+                "p99": 5000
+              }
+            },
+            "policy_load": {
+              "count": 2000,
+              "maxUs": 2016,
+              "meanUs": 274.426,
+              "percentileUpperUs": {
+                "p50": 500,
+                "p95": 500,
+                "p99": 1000
+              }
+            },
+            "decision": {
+              "count": 2000,
+              "maxUs": 18,
+              "meanUs": 0.5685,
+              "percentileUpperUs": {
+                "p50": 1,
+                "p95": 1,
+                "p99": 5
+              }
+            },
+            "commit": {
+              "count": 2000,
+              "maxUs": 3452,
+              "meanUs": 352.249,
+              "percentileUpperUs": {
+                "p50": 500,
+                "p95": 1000,
+                "p99": 1000
+              }
+            }
+          }
+        },
+        {
+          "name": "permission-reduction-after-commit",
+          "mode": "closed-loop",
+          "offeredRatePerSecond": null,
+          "scheduled": null,
+          "attempts": 64,
+          "wallMs": 130.73408399999607,
+          "outcomes": {
+            "authorized": 45,
+            "healthy": 0,
+            "denied": 0,
+            "unavailable": 19,
+            "error": 0,
+            "transport_error": 0,
+            "violation": 0
+          },
+          "scheduledFailureRate": 0.296875,
+          "allScheduledLatencyMs": {
+            "p50": 16.84254100000544,
+            "p95": 22.6529589999991,
+            "p99": 23.719040999989375
+          },
+          "authorizedScheduledLatencyMs": {
+            "p50": 18.453125,
+            "p95": 22.846042000004672,
+            "p99": 23.719040999989375
+          },
+          "generatorDrops": null,
+          "peakInFlight": null,
+          "sql": {
+            "topLevelStatementCalls": 1213,
+            "executionMs": 8.079968999999998,
+            "rows": 995,
+            "sharedBufferHits": 3963,
+            "sharedBufferReads": 0,
+            "walBytes": 29934,
+            "categories": [
+              {
+                "category": "policy_projection",
+                "calls": 45,
+                "execution_ms": 1.8969599999999998,
+                "rows": 45,
+                "shared_hits": 1260,
+                "shared_reads": 0,
+                "wal_bytes": 0
+              },
+              {
+                "category": "identity_read",
+                "calls": 135,
+                "execution_ms": 1.4157420000000003,
+                "rows": 135,
+                "shared_hits": 945,
+                "shared_reads": 0,
+                "wal_bytes": 12150
+              },
+              {
+                "category": "security_fence",
+                "calls": 109,
+                "execution_ms": 1.220627,
+                "rows": 109,
+                "shared_hits": 218,
+                "shared_reads": 0,
+                "wal_bytes": 12006
+              },
+              {
+                "category": "other",
+                "calls": 218,
+                "execution_ms": 1.1600769999999998,
+                "rows": 218,
+                "shared_hits": 436,
+                "shared_reads": 0,
+                "wal_bytes": 0
+              },
+              {
+                "category": "token_read",
+                "calls": 135,
+                "execution_ms": 1.0307939999999998,
+                "rows": 135,
+                "shared_hits": 450,
+                "shared_reads": 0,
+                "wal_bytes": 5778
+              },
+              {
+                "category": "resource_authentication",
+                "calls": 109,
+                "execution_ms": 0.8481129999999997,
+                "rows": 109,
+                "shared_hits": 654,
+                "shared_reads": 0,
+                "wal_bytes": 0
+              },
+              {
+                "category": "clock",
+                "calls": 244,
+                "execution_ms": 0.41932399999999936,
+                "rows": 244,
+                "shared_hits": 0,
+                "shared_reads": 0,
+                "wal_bytes": 0
+              },
+              {
+                "category": "commit",
+                "calls": 109,
+                "execution_ms": 0.04658300000000001,
+                "rows": 0,
+                "shared_hits": 0,
+                "shared_reads": 0,
+                "wal_bytes": 0
+              },
+              {
+                "category": "begin",
+                "calls": 109,
+                "execution_ms": 0.041749000000000015,
+                "rows": 0,
+                "shared_hits": 0,
+                "shared_reads": 0,
+                "wal_bytes": 0
+              }
+            ]
+          },
+          "rustStageTimings": {
+            "total": {
+              "count": 45,
+              "maxUs": 9859,
+              "meanUs": 6185.644444444444,
+              "percentileUpperUs": {
+                "p50": 10000,
+                "p95": 10000,
+                "p99": 10000
+              }
+            },
+            "pool_acquire": {
+              "count": 45,
+              "maxUs": 3284,
+              "meanUs": 1025.6,
+              "percentileUpperUs": {
+                "p50": 1000,
+                "p95": 2500,
+                "p99": 5000
+              }
+            },
+            "begin": {
+              "count": 45,
+              "maxUs": 412,
+              "meanUs": 286.44444444444446,
+              "percentileUpperUs": {
+                "p50": 500,
+                "p95": 500,
+                "p99": 500
+              }
+            },
+            "fence": {
+              "count": 45,
+              "maxUs": 706,
+              "meanUs": 334.6222222222222,
+              "percentileUpperUs": {
+                "p50": 500,
+                "p95": 1000,
+                "p99": 1000
+              }
+            },
+            "authenticate": {
+              "count": 45,
+              "maxUs": 1148,
+              "meanUs": 629.3333333333334,
+              "percentileUpperUs": {
+                "p50": 1000,
+                "p95": 1000,
+                "p99": 2500
+              }
+            },
+            "inspect": {
+              "count": 45,
+              "maxUs": 6463,
+              "meanUs": 3122.6,
+              "percentileUpperUs": {
+                "p50": 5000,
+                "p95": 10000,
+                "p99": 10000
+              }
+            },
+            "policy_load": {
+              "count": 45,
+              "maxUs": 714,
+              "meanUs": 387.3777777777778,
+              "percentileUpperUs": {
+                "p50": 500,
+                "p95": 1000,
+                "p99": 1000
+              }
+            },
+            "decision": {
+              "count": 45,
+              "maxUs": 7,
+              "meanUs": 1.1777777777777778,
+              "percentileUpperUs": {
+                "p50": 1,
+                "p95": 5,
+                "p99": 10
+              }
+            },
+            "commit": {
+              "count": 45,
+              "maxUs": 933,
+              "meanUs": 502.35555555555555,
+              "percentileUpperUs": {
+                "p50": 500,
+                "p95": 1000,
+                "p99": 1000
+              }
+            }
+          }
+        },
+        {
+          "name": "arrival-revocation-concurrent",
+          "mode": "fixed-arrival",
+          "offeredRatePerSecond": 200,
+          "scheduled": 2000,
+          "attempts": 2000,
+          "wallMs": 10001.782625,
+          "outcomes": {
+            "authorized": 1000,
+            "healthy": 0,
+            "denied": 1000,
+            "unavailable": 0,
+            "error": 0,
+            "transport_error": 0,
+            "violation": 0
+          },
+          "scheduledFailureRate": 0,
+          "allScheduledLatencyMs": {
+            "p50": 7.158999999999651,
+            "p95": 11.318417000002228,
+            "p99": 15.525958999991417
+          },
+          "authorizedScheduledLatencyMs": {
+            "p50": 7.899084000004223,
+            "p95": 13.282374999995227,
+            "p99": 17.053166999990935
+          },
+          "generatorDrops": {
+            "late": 0,
+            "full": 0,
+            "fraction": 0
+          },
+          "peakInFlight": 4,
+          "sql": {
+            "topLevelStatementCalls": 42014,
+            "executionMs": 191.32286399999956,
+            "rows": 33009,
+            "sharedBufferHits": 116567,
+            "sharedBufferReads": 0,
+            "walBytes": 686990,
+            "categories": [
+              {
+                "category": "policy_projection",
+                "calls": 1000,
+                "execution_ms": 38.521096999999976,
+                "rows": 1000,
+                "shared_hits": 28000,
+                "shared_reads": 0,
+                "wal_bytes": 0
+              },
+              {
+                "category": "token_read",
+                "calls": 6002,
+                "execution_ms": 31.93516600000016,
+                "rows": 5002,
+                "shared_hits": 19009,
+                "shared_reads": 0,
+                "wal_bytes": 162324
+              },
+              {
+                "category": "other",
+                "calls": 8002,
+                "execution_ms": 31.781709999999517,
+                "rows": 8001,
+                "shared_hits": 16006,
+                "shared_reads": 0,
+                "wal_bytes": 0
+              },
+              {
+                "category": "security_fence",
+                "calls": 4002,
+                "execution_ms": 26.622235999999827,
+                "rows": 4002,
+                "shared_hits": 8004,
+                "shared_reads": 0,
+                "wal_bytes": 254242
+              },
+              {
+                "category": "identity_read",
+                "calls": 3000,
+                "execution_ms": 24.94565299999997,
+                "rows": 3000,
+                "shared_hits": 21000,
+                "shared_reads": 0,
+                "wal_bytes": 270000
+              },
+              {
+                "category": "resource_authentication",
+                "calls": 4000,
+                "execution_ms": 23.192416000000012,
+                "rows": 4000,
+                "shared_hits": 24000,
+                "shared_reads": 0,
+                "wal_bytes": 0
+              },
+              {
+                "category": "clock",
+                "calls": 8002,
+                "execution_ms": 10.05441700000009,
+                "rows": 8002,
+                "shared_hits": 0,
+                "shared_reads": 0,
+                "wal_bytes": 0
+              },
+              {
+                "category": "mutation",
+                "calls": 2,
+                "execution_ms": 2.37846,
+                "rows": 2,
+                "shared_hits": 548,
+                "shared_reads": 0,
+                "wal_bytes": 424
+              },
+              {
+                "category": "begin",
+                "calls": 4002,
+                "execution_ms": 1.003487999999998,
+                "rows": 0,
+                "shared_hits": 0,
+                "shared_reads": 0,
+                "wal_bytes": 0
+              },
+              {
+                "category": "commit",
+                "calls": 4002,
+                "execution_ms": 0.8882210000000138,
+                "rows": 0,
+                "shared_hits": 0,
+                "shared_reads": 0,
+                "wal_bytes": 0
+              }
+            ]
+          },
+          "rustStageTimings": {
+            "total": {
+              "count": 2000,
+              "maxUs": 9847,
+              "meanUs": 2793.7765,
+              "percentileUpperUs": {
+                "p50": 5000,
+                "p95": 5000,
+                "p99": 10000
+              }
+            },
+            "pool_acquire": {
+              "count": 2000,
+              "maxUs": 1097,
+              "meanUs": 200.1035,
+              "percentileUpperUs": {
+                "p50": 250,
+                "p95": 500,
+                "p99": 500
+              }
+            },
+            "begin": {
+              "count": 2000,
+              "maxUs": 805,
+              "meanUs": 177.704,
+              "percentileUpperUs": {
+                "p50": 250,
+                "p95": 500,
+                "p99": 500
+              }
+            },
+            "fence": {
+              "count": 2000,
+              "maxUs": 1073,
+              "meanUs": 187.6965,
+              "percentileUpperUs": {
+                "p50": 250,
+                "p95": 500,
+                "p99": 500
+              }
+            },
+            "authenticate": {
+              "count": 2000,
+              "maxUs": 1833,
+              "meanUs": 377.9415,
+              "percentileUpperUs": {
+                "p50": 500,
+                "p95": 1000,
+                "p99": 1000
+              }
+            },
+            "inspect": {
+              "count": 2000,
+              "maxUs": 6978,
+              "meanUs": 1302.031,
+              "percentileUpperUs": {
+                "p50": 2500,
+                "p95": 2500,
+                "p99": 5000
+              }
+            },
+            "policy_load": {
+              "count": 1000,
+              "maxUs": 1820,
+              "meanUs": 292.15,
+              "percentileUpperUs": {
+                "p50": 500,
+                "p95": 500,
+                "p99": 1000
+              }
+            },
+            "decision": {
+              "count": 1000,
+              "maxUs": 21,
+              "meanUs": 0.808,
+              "percentileUpperUs": {
+                "p50": 1,
+                "p95": 5,
+                "p99": 10
+              }
+            },
+            "commit": {
+              "count": 2000,
+              "maxUs": 5348,
+              "meanUs": 346.988,
+              "percentileUpperUs": {
+                "p50": 500,
+                "p95": 1000,
+                "p99": 1000
+              }
+            }
+          }
+        },
+        {
+          "name": "revocation-after-commit",
+          "mode": "closed-loop",
+          "offeredRatePerSecond": null,
+          "scheduled": null,
+          "attempts": 64,
+          "wallMs": 108.15179200001876,
+          "outcomes": {
+            "authorized": 0,
+            "healthy": 0,
+            "denied": 47,
+            "unavailable": 17,
+            "error": 0,
+            "transport_error": 0,
+            "violation": 0
+          },
+          "scheduledFailureRate": 0.265625,
+          "allScheduledLatencyMs": {
+            "p50": 14.300832999986596,
+            "p95": 16.587541999993846,
+            "p99": 20.048083000001498
+          },
+          "authorizedScheduledLatencyMs": null,
+          "generatorDrops": null,
+          "peakInFlight": null,
+          "sql": {
+            "topLevelStatementCalls": 965,
+            "executionMs": 4.043157999999999,
+            "rows": 696,
+            "sharedBufferHits": 1755,
+            "sharedBufferReads": 0,
+            "walBytes": 14382,
+            "categories": [
+              {
+                "category": "other",
+                "calls": 222,
+                "execution_ms": 1.1368319999999994,
+                "rows": 222,
+                "shared_hits": 444,
+                "shared_reads": 0,
+                "wal_bytes": 0
+              },
+              {
+                "category": "security_fence",
+                "calls": 111,
+                "execution_ms": 0.8627469999999998,
+                "rows": 111,
+                "shared_hits": 222,
+                "shared_reads": 0,
+                "wal_bytes": 11682
+              },
+              {
+                "category": "token_read",
+                "calls": 141,
+                "execution_ms": 0.8247069999999999,
+                "rows": 94,
+                "shared_hits": 423,
+                "shared_reads": 0,
+                "wal_bytes": 2700
+              },
+              {
+                "category": "resource_authentication",
+                "calls": 111,
+                "execution_ms": 0.7816619999999996,
+                "rows": 111,
+                "shared_hits": 666,
+                "shared_reads": 0,
+                "wal_bytes": 0
+              },
+              {
+                "category": "clock",
+                "calls": 158,
+                "execution_ms": 0.2874159999999998,
+                "rows": 158,
+                "shared_hits": 0,
+                "shared_reads": 0,
+                "wal_bytes": 0
+              },
+              {
+                "category": "begin",
+                "calls": 111,
+                "execution_ms": 0.12221000000000001,
+                "rows": 0,
+                "shared_hits": 0,
+                "shared_reads": 0,
+                "wal_bytes": 0
+              },
+              {
+                "category": "commit",
+                "calls": 111,
+                "execution_ms": 0.027584000000000015,
+                "rows": 0,
+                "shared_hits": 0,
+                "shared_reads": 0,
+                "wal_bytes": 0
+              }
+            ]
+          },
+          "rustStageTimings": {
+            "total": {
+              "count": 47,
+              "maxUs": 4861,
+              "meanUs": 3687.6170212765956,
+              "percentileUpperUs": {
+                "p50": 5000,
+                "p95": 5000,
+                "p99": 5000
+              }
+            },
+            "pool_acquire": {
+              "count": 47,
+              "maxUs": 1649,
+              "meanUs": 779.063829787234,
+              "percentileUpperUs": {
+                "p50": 1000,
+                "p95": 2500,
+                "p99": 2500
+              }
+            },
+            "begin": {
+              "count": 47,
+              "maxUs": 473,
+              "meanUs": 296.72340425531917,
+              "percentileUpperUs": {
+                "p50": 500,
+                "p95": 500,
+                "p99": 500
+              }
+            },
+            "fence": {
+              "count": 47,
+              "maxUs": 534,
+              "meanUs": 301.9574468085106,
+              "percentileUpperUs": {
+                "p50": 500,
+                "p95": 500,
+                "p99": 1000
+              }
+            },
+            "authenticate": {
+              "count": 47,
+              "maxUs": 908,
+              "meanUs": 601.7872340425532,
+              "percentileUpperUs": {
+                "p50": 1000,
+                "p95": 1000,
+                "p99": 1000
+              }
+            },
+            "inspect": {
+              "count": 47,
+              "maxUs": 1205,
+              "meanUs": 935.9574468085107,
+              "percentileUpperUs": {
+                "p50": 1000,
+                "p95": 2500,
+                "p99": 2500
+              }
+            },
+            "policy_load": {
+              "count": 0,
+              "maxUs": 0,
+              "meanUs": null,
+              "percentileUpperUs": {
+                "p50": null,
+                "p95": null,
+                "p99": null
+              }
+            },
+            "decision": {
+              "count": 0,
+              "maxUs": 0,
+              "meanUs": null,
+              "percentileUpperUs": {
+                "p50": null,
+                "p95": null,
+                "p99": null
+              }
+            },
+            "commit": {
+              "count": 47,
+              "maxUs": 766,
+              "meanUs": 479,
+              "percentileUpperUs": {
+                "p50": 500,
+                "p95": 1000,
+                "p99": 1000
+              }
+            }
+          }
+        }
+      ]
+    },
+    {
+      "timestamp": "2026-09-27T04:17:22.886Z",
+      "status": "passed",
+      "redis": {
+        "cache": {
+          "before": {
+            "usedBytes": 1289568,
+            "peakUsedBytes": 1289888,
+            "commands": 9,
+            "systemCpuSeconds": 0.028096,
+            "userCpuSeconds": 0.020092
+          },
+          "after": {
+            "usedBytes": 1289568,
+            "peakUsedBytes": 1289888,
+            "commands": 11,
+            "systemCpuSeconds": 0.050822,
+            "userCpuSeconds": 0.054462
+          },
+          "delta": {
+            "commands": 2,
+            "usedBytes": 0,
+            "userCpuSeconds": 0.034370000000000005,
+            "systemCpuSeconds": 0.022726
+          }
+        },
+        "limiter": {
+          "before": {
+            "usedBytes": 1569040,
+            "peakUsedBytes": 1578464,
+            "commands": 73,
+            "systemCpuSeconds": 0.020455,
+            "userCpuSeconds": 0.019003
+          },
+          "after": {
+            "usedBytes": 1576592,
+            "peakUsedBytes": 1661696,
+            "commands": 689035,
+            "systemCpuSeconds": 1.579111,
+            "userCpuSeconds": 4.28054
+          },
+          "delta": {
+            "commands": 688962,
+            "usedBytes": 7552,
+            "userCpuSeconds": 4.261537000000001,
+            "systemCpuSeconds": 1.558656
+          }
+        }
+      },
+      "postgres": {
+        "role": "postgres",
+        "before": {
+          "xact_commit": 205,
+          "xact_rollback": 48,
+          "blks_read": 122,
+          "blks_hit": 166872,
+          "tup_returned": 102783,
+          "tup_fetched": 101199,
+          "tup_inserted": 9275,
+          "tup_updated": 689,
+          "tup_deleted": 135,
+          "deadlocks": 0,
+          "temp_bytes": 0
+        },
+        "after": {
+          "xact_commit": 113269,
+          "xact_rollback": 8298,
+          "blks_read": 122,
+          "blks_hit": 1537631,
+          "tup_returned": 773826,
+          "tup_fetched": 771935,
+          "tup_inserted": 9658,
+          "tup_updated": 727,
+          "tup_deleted": 410,
+          "deadlocks": 0,
+          "temp_bytes": 0
+        },
+        "delta": {
+          "xact_commit": 113064,
+          "xact_rollback": 8250,
+          "blks_read": 0,
+          "blks_hit": 1370759,
+          "tup_returned": 671043,
+          "tup_fetched": 670736,
+          "tup_inserted": 383,
+          "tup_updated": 38,
+          "tup_deleted": 275,
+          "deadlocks": 0,
+          "temp_bytes": 0
+        },
+        "waitingLocksAfter": 0,
+        "processSampleAfter": "0:17.32  20032",
+        "databaseContainerSampleAfter": {
+          "cpu": "0.00%",
+          "memory": "88.43MiB / 7.75GiB",
+          "blockIO": "0B / 361MB"
+        }
+      },
+      "phases": [
+        {
+          "name": "arrival-diverse-r200",
+          "mode": "fixed-arrival",
+          "offeredRatePerSecond": 200,
+          "scheduled": 2000,
+          "attempts": 2000,
+          "wallMs": 10002.844541999999,
+          "outcomes": {
+            "authorized": 1999,
+            "healthy": 0,
+            "denied": 0,
+            "unavailable": 1,
+            "error": 0,
+            "transport_error": 0,
+            "violation": 0
+          },
+          "scheduledFailureRate": 0.0005,
+          "allScheduledLatencyMs": {
+            "p50": 8.128250000001572,
+            "p95": 10.625209000001632,
+            "p99": 16.692167000001064
+          },
+          "authorizedScheduledLatencyMs": {
+            "p50": 8.129084000000148,
+            "p95": 10.652874999999767,
+            "p99": 16.797749999997905
+          },
+          "generatorDrops": {
+            "late": 0,
+            "full": 0,
+            "fraction": 0
+          },
+          "peakInFlight": 6,
+          "sql": {
+            "topLevelStatementCalls": 47976,
+            "executionMs": 260.3132660000001,
+            "rows": 39980,
+            "sharedBufferHits": 169915,
+            "sharedBufferReads": 0,
+            "walBytes": 1053108,
+            "categories": [
+              {
+                "category": "policy_projection",
+                "calls": 1999,
+                "execution_ms": 80.84065399999997,
+                "rows": 1999,
+                "shared_hits": 55972,
+                "shared_reads": 0,
+                "wal_bytes": 0
+              },
+              {
+                "category": "identity_read",
+                "calls": 5997,
+                "execution_ms": 50.311684000000085,
+                "rows": 5997,
+                "shared_hits": 41979,
+                "shared_reads": 0,
+                "wal_bytes": 539962
+              },
+              {
+                "category": "token_read",
+                "calls": 5997,
+                "execution_ms": 33.352719000000164,
+                "rows": 5997,
+                "shared_hits": 19990,
+                "shared_reads": 0,
+                "wal_bytes": 215892
+              },
+              {
+                "category": "other",
+                "calls": 7996,
+                "execution_ms": 31.688809999999783,
+                "rows": 7996,
+                "shared_hits": 15992,
+                "shared_reads": 0,
+                "wal_bytes": 0
+              },
+              {
+                "category": "security_fence",
+                "calls": 3998,
+                "execution_ms": 26.092045999999907,
+                "rows": 3998,
+                "shared_hits": 11994,
+                "shared_reads": 0,
+                "wal_bytes": 297254
+              },
+              {
+                "category": "resource_authentication",
+                "calls": 3998,
+                "execution_ms": 24.023098000000083,
+                "rows": 3998,
+                "shared_hits": 23988,
+                "shared_reads": 0,
+                "wal_bytes": 0
+              },
+              {
+                "category": "clock",
+                "calls": 9995,
+                "execution_ms": 12.001225000000199,
+                "rows": 9995,
+                "shared_hits": 0,
+                "shared_reads": 0,
+                "wal_bytes": 0
+              },
+              {
+                "category": "begin",
+                "calls": 3998,
+                "execution_ms": 1.0962809999999925,
+                "rows": 0,
+                "shared_hits": 0,
+                "shared_reads": 0,
+                "wal_bytes": 0
+              },
+              {
+                "category": "commit",
+                "calls": 3998,
+                "execution_ms": 0.9067489999999958,
+                "rows": 0,
+                "shared_hits": 0,
+                "shared_reads": 0,
+                "wal_bytes": 0
+              }
+            ]
+          },
+          "rustStageTimings": {
+            "total": {
+              "count": 1999,
+              "maxUs": 19792,
+              "meanUs": 3551.157578789395,
+              "percentileUpperUs": {
+                "p50": 5000,
+                "p95": 5000,
+                "p99": 10000
+              }
+            },
+            "pool_acquire": {
+              "count": 1999,
+              "maxUs": 1347,
+              "meanUs": 203.41470735367685,
+              "percentileUpperUs": {
+                "p50": 250,
+                "p95": 500,
+                "p99": 500
+              }
+            },
+            "begin": {
+              "count": 1999,
+              "maxUs": 2261,
+              "meanUs": 181.7728864432216,
+              "percentileUpperUs": {
+                "p50": 250,
+                "p95": 500,
+                "p99": 500
+              }
+            },
+            "fence": {
+              "count": 1999,
+              "maxUs": 1162,
+              "meanUs": 191.45022511255627,
+              "percentileUpperUs": {
+                "p50": 250,
+                "p95": 500,
+                "p99": 500
+              }
+            },
+            "authenticate": {
+              "count": 1999,
+              "maxUs": 2724,
+              "meanUs": 384.7263631815908,
+              "percentileUpperUs": {
+                "p50": 500,
+                "p95": 1000,
+                "p99": 1000
+              }
+            },
+            "inspect": {
+              "count": 1999,
+              "maxUs": 12954,
+              "meanUs": 2010.8689344672337,
+              "percentileUpperUs": {
+                "p50": 2500,
+                "p95": 2500,
+                "p99": 5000
+              }
+            },
+            "policy_load": {
+              "count": 1999,
+              "maxUs": 2537,
+              "meanUs": 292.5372686343172,
+              "percentileUpperUs": {
+                "p50": 500,
+                "p95": 500,
+                "p99": 1000
+              }
+            },
+            "decision": {
+              "count": 1999,
+              "maxUs": 20,
+              "meanUs": 0.6498249124562281,
+              "percentileUpperUs": {
+                "p50": 1,
+                "p95": 5,
+                "p99": 10
+              }
+            },
+            "commit": {
+              "count": 1999,
+              "maxUs": 12278,
+              "meanUs": 370.3391695847924,
+              "percentileUpperUs": {
+                "p50": 500,
+                "p95": 1000,
+                "p99": 1000
+              }
+            }
+          }
+        },
+        {
+          "name": "arrival-diverse-r800",
+          "mode": "fixed-arrival",
+          "offeredRatePerSecond": 800,
+          "scheduled": 8000,
+          "attempts": 8000,
+          "wallMs": 10020.053082999999,
+          "outcomes": {
+            "authorized": 3512,
+            "healthy": 0,
+            "denied": 0,
+            "unavailable": 4488,
+            "error": 0,
+            "transport_error": 0,
+            "violation": 0
+          },
+          "scheduledFailureRate": 0.561,
+          "allScheduledLatencyMs": {
+            "p50": 24.771749999999884,
+            "p95": 39.12474999999904,
+            "p99": 51.996916000000056
+          },
+          "authorizedScheduledLatencyMs": {
+            "p50": 34.85266599999886,
+            "p95": 43.04949999999735,
+            "p99": 61.138874999996915
+          },
+          "generatorDrops": {
+            "late": 0,
+            "full": 0,
+            "fraction": 0
+          },
+          "peakInFlight": 20,
+          "sql": {
+            "topLevelStatementCalls": 93598,
+            "executionMs": 682.6646339999979,
+            "rows": 76890,
+            "sharedBufferHits": 315810,
+            "sharedBufferReads": 0,
+            "walBytes": 2312716,
+            "categories": [
+              {
+                "category": "policy_projection",
+                "calls": 3512,
+                "execution_ms": 166.42530900000008,
+                "rows": 3512,
+                "shared_hits": 98336,
+                "shared_reads": 0,
+                "wal_bytes": 0
+              },
+              {
+                "category": "identity_read",
+                "calls": 10536,
+                "execution_ms": 128.36556699999997,
+                "rows": 10536,
+                "shared_hits": 73752,
+                "shared_reads": 0,
+                "wal_bytes": 996516
+              },
+              {
+                "category": "other",
+                "calls": 16708,
+                "execution_ms": 94.78856099999825,
+                "rows": 16708,
+                "shared_hits": 33416,
+                "shared_reads": 0,
+                "wal_bytes": 0
+              },
+              {
+                "category": "token_read",
+                "calls": 10536,
+                "execution_ms": 88.73387400000003,
+                "rows": 10536,
+                "shared_hits": 35120,
+                "shared_reads": 0,
+                "wal_bytes": 379350
+              },
+              {
+                "category": "security_fence",
+                "calls": 8354,
+                "execution_ms": 85.20832399999951,
+                "rows": 8354,
+                "shared_hits": 25062,
+                "shared_reads": 0,
+                "wal_bytes": 936850
+              },
+              {
+                "category": "resource_authentication",
+                "calls": 8354,
+                "execution_ms": 72.04903899999958,
+                "rows": 8354,
+                "shared_hits": 50124,
+                "shared_reads": 0,
+                "wal_bytes": 0
+              },
+              {
+                "category": "clock",
+                "calls": 18890,
+                "execution_ms": 40.13196600000046,
+                "rows": 18890,
+                "shared_hits": 0,
+                "shared_reads": 0,
+                "wal_bytes": 0
+              },
+              {
+                "category": "commit",
+                "calls": 8354,
+                "execution_ms": 3.682674999999997,
+                "rows": 0,
+                "shared_hits": 0,
+                "shared_reads": 0,
+                "wal_bytes": 0
+              },
+              {
+                "category": "begin",
+                "calls": 8354,
+                "execution_ms": 3.279319000000072,
+                "rows": 0,
+                "shared_hits": 0,
+                "shared_reads": 0,
+                "wal_bytes": 0
+              }
+            ]
+          },
+          "rustStageTimings": {
+            "total": {
+              "count": 3512,
+              "maxUs": 31280,
+              "meanUs": 6589.362471526196,
+              "percentileUpperUs": {
+                "p50": 10000,
+                "p95": 10000,
+                "p99": 25000
+              }
+            },
+            "pool_acquire": {
+              "count": 3512,
+              "maxUs": 11362,
+              "meanUs": 1188.0213553530753,
+              "percentileUpperUs": {
+                "p50": 2500,
+                "p95": 2500,
+                "p99": 5000
+              }
+            },
+            "begin": {
+              "count": 3512,
+              "maxUs": 2049,
+              "meanUs": 319.29641230068336,
+              "percentileUpperUs": {
+                "p50": 500,
+                "p95": 500,
+                "p99": 1000
+              }
+            },
+            "fence": {
+              "count": 3512,
+              "maxUs": 2736,
+              "meanUs": 337.27107061503415,
+              "percentileUpperUs": {
+                "p50": 500,
+                "p95": 500,
+                "p99": 1000
+              }
+            },
+            "authenticate": {
+              "count": 3512,
+              "maxUs": 6503,
+              "meanUs": 668.250284738041,
+              "percentileUpperUs": {
+                "p50": 1000,
+                "p95": 1000,
+                "p99": 2500
+              }
+            },
+            "inspect": {
+              "count": 3512,
+              "maxUs": 16481,
+              "meanUs": 3180.7223804100227,
+              "percentileUpperUs": {
+                "p50": 5000,
+                "p95": 5000,
+                "p99": 10000
+              }
+            },
+            "policy_load": {
+              "count": 3512,
+              "maxUs": 3760,
+              "meanUs": 431.35563781321184,
+              "percentileUpperUs": {
+                "p50": 500,
+                "p95": 1000,
+                "p99": 1000
+              }
+            },
+            "decision": {
+              "count": 3512,
+              "maxUs": 26,
+              "meanUs": 1.4894646924829158,
+              "percentileUpperUs": {
+                "p50": 1,
+                "p95": 5,
+                "p99": 25
+              }
+            },
+            "commit": {
+              "count": 3512,
+              "maxUs": 5986,
+              "meanUs": 567.5136674259682,
+              "percentileUpperUs": {
+                "p50": 1000,
+                "p95": 1000,
+                "p99": 2500
+              }
+            }
+          }
+        },
+        {
+          "name": "arrival-diverse-r1600",
+          "mode": "fixed-arrival",
+          "offeredRatePerSecond": 1600,
+          "scheduled": 16000,
+          "attempts": 16000,
+          "wallMs": 10025.764709,
+          "outcomes": {
+            "authorized": 3618,
+            "healthy": 0,
+            "denied": 0,
+            "unavailable": 12382,
+            "error": 0,
+            "transport_error": 0,
+            "violation": 0
+          },
+          "scheduledFailureRate": 0.773875,
+          "allScheduledLatencyMs": {
+            "p50": 1.1151669999999285,
+            "p95": 36.635667000002286,
+            "p99": 40.38258399999904
+          },
+          "authorizedScheduledLatencyMs": {
+            "p50": 34.60945899999933,
+            "p95": 39.82987499999945,
+            "p99": 54.995834000001196
+          },
+          "generatorDrops": {
+            "late": 0,
+            "full": 0,
+            "fraction": 0
+          },
+          "peakInFlight": 34,
+          "sql": {
+            "topLevelStatementCalls": 96331,
+            "executionMs": 650.3917779999994,
+            "rows": 79145,
+            "sharedBufferHits": 325171,
+            "sharedBufferReads": 0,
+            "walBytes": 2385122,
+            "categories": [
+              {
+                "category": "policy_projection",
+                "calls": 3618,
+                "execution_ms": 159.8804590000006,
+                "rows": 3618,
+                "shared_hits": 101304,
+                "shared_reads": 0,
+                "wal_bytes": 0
+              },
+              {
+                "category": "identity_read",
+                "calls": 10854,
+                "execution_ms": 121.94066599999991,
+                "rows": 10854,
+                "shared_hits": 75978,
+                "shared_reads": 0,
+                "wal_bytes": 1026852
+              },
+              {
+                "category": "other",
+                "calls": 17186,
+                "execution_ms": 89.29665499999818,
+                "rows": 17186,
+                "shared_hits": 34372,
+                "shared_reads": 0,
+                "wal_bytes": 0
+              },
+              {
+                "category": "token_read",
+                "calls": 10854,
+                "execution_ms": 86.7461199999998,
+                "rows": 10854,
+                "shared_hits": 36180,
+                "shared_reads": 0,
+                "wal_bytes": 393552
+              },
+              {
+                "category": "security_fence",
+                "calls": 8593,
+                "execution_ms": 76.26157099999949,
+                "rows": 8593,
+                "shared_hits": 25779,
+                "shared_reads": 0,
+                "wal_bytes": 964718
+              },
+              {
+                "category": "resource_authentication",
+                "calls": 8593,
+                "execution_ms": 73.1246839999994,
+                "rows": 8593,
+                "shared_hits": 51558,
+                "shared_reads": 0,
+                "wal_bytes": 0
+              },
+              {
+                "category": "clock",
+                "calls": 19447,
+                "execution_ms": 36.66795400000185,
+                "rows": 19447,
+                "shared_hits": 0,
+                "shared_reads": 0,
+                "wal_bytes": 0
+              },
+              {
+                "category": "commit",
+                "calls": 8593,
+                "execution_ms": 3.7017350000000153,
+                "rows": 0,
+                "shared_hits": 0,
+                "shared_reads": 0,
+                "wal_bytes": 0
+              },
+              {
+                "category": "begin",
+                "calls": 8593,
+                "execution_ms": 2.771934000000058,
+                "rows": 0,
+                "shared_hits": 0,
+                "shared_reads": 0,
+                "wal_bytes": 0
+              }
+            ]
+          },
+          "rustStageTimings": {
+            "total": {
+              "count": 3618,
+              "maxUs": 42744,
+              "meanUs": 6394.351299060254,
+              "percentileUpperUs": {
+                "p50": 10000,
+                "p95": 10000,
+                "p99": 10000
+              }
+            },
+            "pool_acquire": {
+              "count": 3618,
+              "maxUs": 17987,
+              "meanUs": 1146.3040353786623,
+              "percentileUpperUs": {
+                "p50": 2500,
+                "p95": 2500,
+                "p99": 5000
+              }
+            },
+            "begin": {
+              "count": 3618,
+              "maxUs": 2703,
+              "meanUs": 313.5942509673853,
+              "percentileUpperUs": {
+                "p50": 500,
+                "p95": 500,
+                "p99": 1000
+              }
+            },
+            "fence": {
+              "count": 3618,
+              "maxUs": 9221,
+              "meanUs": 329.91017136539523,
+              "percentileUpperUs": {
+                "p50": 500,
+                "p95": 500,
+                "p99": 1000
+              }
+            },
+            "authenticate": {
+              "count": 3618,
+              "maxUs": 9177,
+              "meanUs": 655.8805970149253,
+              "percentileUpperUs": {
+                "p50": 1000,
+                "p95": 1000,
+                "p99": 2500
+              }
+            },
+            "inspect": {
+              "count": 3618,
+              "maxUs": 29813,
+              "meanUs": 3079.474571586512,
+              "percentileUpperUs": {
+                "p50": 5000,
+                "p95": 5000,
+                "p99": 10000
+              }
+            },
+            "policy_load": {
+              "count": 3618,
+              "maxUs": 3005,
+              "meanUs": 413.5865118850193,
+              "percentileUpperUs": {
+                "p50": 500,
+                "p95": 1000,
+                "p99": 1000
+              }
+            },
+            "decision": {
+              "count": 3618,
+              "maxUs": 27,
+              "meanUs": 1.2761194029850746,
+              "percentileUpperUs": {
+                "p50": 1,
+                "p95": 5,
+                "p99": 10
+              }
+            },
+            "commit": {
+              "count": 3618,
+              "maxUs": 9144,
+              "meanUs": 548.0152017689331,
+              "percentileUpperUs": {
+                "p50": 1000,
+                "p95": 1000,
+                "p99": 2500
+              }
+            }
+          }
+        },
+        {
+          "name": "arrival-noisy-invalid-client",
+          "mode": "fixed-arrival",
+          "offeredRatePerSecond": 1200,
+          "scheduled": 12000,
+          "attempts": 11997,
+          "wallMs": 10016.401375000001,
+          "outcomes": {
+            "authorized": 1433,
+            "healthy": 1500,
+            "denied": 8249,
+            "unavailable": 815,
+            "error": 0,
+            "transport_error": 0,
+            "violation": 0
+          },
+          "scheduledFailureRate": 0.06816666666666667,
+          "allScheduledLatencyMs": {
+            "p50": 14.227458666668099,
+            "p95": 22.959792333334917,
+            "p99": 25.748958333337214
+          },
+          "authorizedScheduledLatencyMs": {
+            "p50": 22.531583333329763,
+            "p95": 25.752042333340796,
+            "p99": 32.74795833334065
+          },
+          "generatorDrops": {
+            "late": 3,
+            "full": 0,
+            "fraction": 0.00025
+          },
+          "peakInFlight": 25,
+          "sql": {
+            "topLevelStatementCalls": 83886,
+            "executionMs": 419.1015159999953,
+            "rows": 53407,
+            "sharedBufferHits": 220793,
+            "sharedBufferReads": 0,
+            "walBytes": 1544790,
+            "categories": [
+              {
+                "category": "other",
+                "calls": 22230,
+                "execution_ms": 99.96021099999697,
+                "rows": 22230,
+                "shared_hits": 44460,
+                "shared_reads": 0,
+                "wal_bytes": 0
+              },
+              {
+                "category": "security_fence",
+                "calls": 11115,
+                "execution_ms": 73.95058299999889,
+                "rows": 11115,
+                "shared_hits": 33345,
+                "shared_reads": 0,
+                "wal_bytes": 1003062
+              },
+              {
+                "category": "policy_projection",
+                "calls": 1433,
+                "execution_ms": 72.82009099999998,
+                "rows": 1433,
+                "shared_hits": 40124,
+                "shared_reads": 0,
+                "wal_bytes": 0
+              },
+              {
+                "category": "resource_authentication",
+                "calls": 11115,
+                "execution_ms": 68.58210999999909,
+                "rows": 2866,
+                "shared_hits": 58441,
+                "shared_reads": 0,
+                "wal_bytes": 0
+              },
+              {
+                "category": "identity_read",
+                "calls": 4299,
+                "execution_ms": 48.621325,
+                "rows": 4299,
+                "shared_hits": 30093,
+                "shared_reads": 0,
+                "wal_bytes": 386910
+              },
+              {
+                "category": "token_read",
+                "calls": 4299,
+                "execution_ms": 34.7463330000001,
+                "rows": 4299,
+                "shared_hits": 14330,
+                "shared_reads": 0,
+                "wal_bytes": 154818
+              },
+              {
+                "category": "clock",
+                "calls": 7165,
+                "execution_ms": 13.790250000000091,
+                "rows": 7165,
+                "shared_hits": 0,
+                "shared_reads": 0,
+                "wal_bytes": 0
+              },
+              {
+                "category": "begin",
+                "calls": 11115,
+                "execution_ms": 3.1187010000001574,
+                "rows": 0,
+                "shared_hits": 0,
+                "shared_reads": 0,
+                "wal_bytes": 0
+              },
+              {
+                "category": "rollback",
+                "calls": 8249,
+                "execution_ms": 2.361442000000037,
+                "rows": 0,
+                "shared_hits": 0,
+                "shared_reads": 0,
+                "wal_bytes": 0
+              },
+              {
+                "category": "commit",
+                "calls": 2866,
+                "execution_ms": 1.1504699999999994,
+                "rows": 0,
+                "shared_hits": 0,
+                "shared_reads": 0,
+                "wal_bytes": 0
+              }
+            ]
+          },
+          "rustStageTimings": {
+            "total": {
+              "count": 1433,
+              "maxUs": 31407,
+              "meanUs": 5305.274249825541,
+              "percentileUpperUs": {
+                "p50": 10000,
+                "p95": 10000,
+                "p99": 10000
+              }
+            },
+            "pool_acquire": {
+              "count": 1433,
+              "maxUs": 6621,
+              "meanUs": 364.5757152826239,
+              "percentileUpperUs": {
+                "p50": 500,
+                "p95": 1000,
+                "p99": 1000
+              }
+            },
+            "begin": {
+              "count": 1433,
+              "maxUs": 1351,
+              "meanUs": 287.20935101186325,
+              "percentileUpperUs": {
+                "p50": 500,
+                "p95": 500,
+                "p99": 1000
+              }
+            },
+            "fence": {
+              "count": 1433,
+              "maxUs": 2318,
+              "meanUs": 292.76971388695046,
+              "percentileUpperUs": {
+                "p50": 500,
+                "p95": 500,
+                "p99": 1000
+              }
+            },
+            "authenticate": {
+              "count": 1433,
+              "maxUs": 3810,
+              "meanUs": 599.3140265177948,
+              "percentileUpperUs": {
+                "p50": 1000,
+                "p95": 1000,
+                "p99": 2500
+              }
+            },
+            "inspect": {
+              "count": 1433,
+              "maxUs": 14564,
+              "meanUs": 2879.494766224703,
+              "percentileUpperUs": {
+                "p50": 5000,
+                "p95": 5000,
+                "p99": 10000
+              }
+            },
+            "policy_load": {
+              "count": 1433,
+              "maxUs": 3342,
+              "meanUs": 406.86182833217026,
+              "percentileUpperUs": {
+                "p50": 500,
+                "p95": 1000,
+                "p99": 1000
+              }
+            },
+            "decision": {
+              "count": 1433,
+              "maxUs": 29,
+              "meanUs": 1.7390090718771807,
+              "percentileUpperUs": {
+                "p50": 1,
+                "p95": 5,
+                "p99": 25
+              }
+            },
+            "commit": {
+              "count": 1433,
+              "maxUs": 9448,
+              "meanUs": 571.7369155617586,
+              "percentileUpperUs": {
+                "p50": 1000,
+                "p95": 1000,
+                "p99": 2500
+              }
+            }
+          }
+        },
+        {
+          "name": "arrival-permission-reduction-concurrent",
+          "mode": "fixed-arrival",
+          "offeredRatePerSecond": 200,
+          "scheduled": 2000,
+          "attempts": 2000,
+          "wallMs": 10002.469208000002,
+          "outcomes": {
+            "authorized": 2000,
+            "healthy": 0,
+            "denied": 0,
+            "unavailable": 0,
+            "error": 0,
+            "transport_error": 0,
+            "violation": 0
+          },
+          "scheduledFailureRate": 0,
+          "allScheduledLatencyMs": {
+            "p50": 7.909292000003916,
+            "p95": 11.963042000003043,
+            "p99": 15.65741700000217
+          },
+          "authorizedScheduledLatencyMs": {
+            "p50": 7.909292000003916,
+            "p95": 11.963042000003043,
+            "p99": 15.65741700000217
+          },
+          "generatorDrops": {
+            "late": 0,
+            "full": 0,
+            "fraction": 0
+          },
+          "peakInFlight": 4,
+          "sql": {
+            "topLevelStatementCalls": 48003,
+            "executionMs": 250.833549,
+            "rows": 40003,
+            "sharedBufferHits": 170310,
+            "sharedBufferReads": 0,
+            "walBytes": 1043916,
+            "categories": [
+              {
+                "category": "policy_projection",
+                "calls": 2000,
+                "execution_ms": 76.50336500000006,
+                "rows": 2000,
+                "shared_hits": 56000,
+                "shared_reads": 0,
+                "wal_bytes": 0
+              },
+              {
+                "category": "identity_read",
+                "calls": 6000,
+                "execution_ms": 47.18092800000013,
+                "rows": 6000,
+                "shared_hits": 42000,
+                "shared_reads": 0,
+                "wal_bytes": 540000
+              },
+              {
+                "category": "token_read",
+                "calls": 6000,
+                "execution_ms": 32.144070000000134,
+                "rows": 6000,
+                "shared_hits": 20000,
+                "shared_reads": 0,
+                "wal_bytes": 216216
+              },
+              {
+                "category": "other",
+                "calls": 8000,
+                "execution_ms": 31.320547999999647,
+                "rows": 8000,
+                "shared_hits": 16000,
+                "shared_reads": 0,
+                "wal_bytes": 0
+              },
+              {
+                "category": "security_fence",
+                "calls": 4002,
+                "execution_ms": 24.570134999999865,
+                "rows": 4002,
+                "shared_hits": 12018,
+                "shared_reads": 0,
+                "wal_bytes": 287224
+              },
+              {
+                "category": "resource_authentication",
+                "calls": 4000,
+                "execution_ms": 23.956889999999937,
+                "rows": 4000,
+                "shared_hits": 24000,
+                "shared_reads": 0,
+                "wal_bytes": 0
+              },
+              {
+                "category": "clock",
+                "calls": 10000,
+                "execution_ms": 12.034515000000185,
+                "rows": 10000,
+                "shared_hits": 0,
+                "shared_reads": 0,
+                "wal_bytes": 0
+              },
+              {
+                "category": "mutation",
+                "calls": 1,
+                "execution_ms": 1.119042,
+                "rows": 1,
+                "shared_hits": 292,
+                "shared_reads": 0,
+                "wal_bytes": 476
+              },
+              {
+                "category": "begin",
+                "calls": 4000,
+                "execution_ms": 1.0519849999999997,
+                "rows": 0,
+                "shared_hits": 0,
+                "shared_reads": 0,
+                "wal_bytes": 0
+              },
+              {
+                "category": "commit",
+                "calls": 4000,
+                "execution_ms": 0.9520710000000017,
+                "rows": 0,
+                "shared_hits": 0,
+                "shared_reads": 0,
+                "wal_bytes": 0
+              }
+            ]
+          },
+          "rustStageTimings": {
+            "total": {
+              "count": 2000,
+              "maxUs": 10016,
+              "meanUs": 3518.0775,
+              "percentileUpperUs": {
+                "p50": 5000,
+                "p95": 10000,
+                "p99": 10000
+              }
+            },
+            "pool_acquire": {
+              "count": 2000,
+              "maxUs": 1803,
+              "meanUs": 205.4205,
+              "percentileUpperUs": {
+                "p50": 250,
+                "p95": 500,
+                "p99": 500
+              }
+            },
+            "begin": {
+              "count": 2000,
+              "maxUs": 1161,
+              "meanUs": 182.9405,
+              "percentileUpperUs": {
+                "p50": 250,
+                "p95": 500,
+                "p99": 500
+              }
+            },
+            "fence": {
+              "count": 2000,
+              "maxUs": 1920,
+              "meanUs": 195.062,
+              "percentileUpperUs": {
+                "p50": 250,
+                "p95": 500,
+                "p99": 500
+              }
+            },
+            "authenticate": {
+              "count": 2000,
+              "maxUs": 1478,
+              "meanUs": 386.4055,
+              "percentileUpperUs": {
+                "p50": 500,
+                "p95": 1000,
+                "p99": 1000
+              }
+            },
+            "inspect": {
+              "count": 2000,
+              "maxUs": 5446,
+              "meanUs": 1970.0315,
+              "percentileUpperUs": {
+                "p50": 2500,
+                "p95": 5000,
+                "p99": 5000
+              }
+            },
+            "policy_load": {
+              "count": 2000,
+              "maxUs": 1425,
+              "meanUs": 286.157,
+              "percentileUpperUs": {
+                "p50": 500,
+                "p95": 500,
+                "p99": 1000
+              }
+            },
+            "decision": {
+              "count": 2000,
+              "maxUs": 18,
+              "meanUs": 0.426,
+              "percentileUpperUs": {
+                "p50": 1,
+                "p95": 5,
+                "p99": 5
+              }
+            },
+            "commit": {
+              "count": 2000,
+              "maxUs": 1954,
+              "meanUs": 368.4805,
+              "percentileUpperUs": {
+                "p50": 500,
+                "p95": 1000,
+                "p99": 1000
+              }
+            }
+          }
+        },
+        {
+          "name": "permission-reduction-after-commit",
+          "mode": "closed-loop",
+          "offeredRatePerSecond": null,
+          "scheduled": null,
+          "attempts": 64,
+          "wallMs": 129.29683400000067,
+          "outcomes": {
+            "authorized": 47,
+            "healthy": 0,
+            "denied": 0,
+            "unavailable": 17,
+            "error": 0,
+            "transport_error": 0,
+            "violation": 0
+          },
+          "scheduledFailureRate": 0.265625,
+          "allScheduledLatencyMs": {
+            "p50": 17.404750000001513,
+            "p95": 22.076750000000175,
+            "p99": 28.656583000003593
+          },
+          "authorizedScheduledLatencyMs": {
+            "p50": 18.274457999999868,
+            "p95": 22.103291999999783,
+            "p99": 28.656583000003593
+          },
+          "generatorDrops": null,
+          "peakInFlight": null,
+          "sql": {
+            "topLevelStatementCalls": 1233,
+            "executionMs": 7.4385879999999975,
+            "rows": 1015,
+            "sharedBufferHits": 4190,
+            "sharedBufferReads": 0,
+            "walBytes": 31064,
+            "categories": [
+              {
+                "category": "policy_projection",
+                "calls": 47,
+                "execution_ms": 1.7228730000000005,
+                "rows": 47,
+                "shared_hits": 1316,
+                "shared_reads": 0,
+                "wal_bytes": 0
+              },
+              {
+                "category": "identity_read",
+                "calls": 141,
+                "execution_ms": 1.352837,
+                "rows": 141,
+                "shared_hits": 987,
+                "shared_reads": 0,
+                "wal_bytes": 12798
+              },
+              {
+                "category": "other",
+                "calls": 218,
+                "execution_ms": 1.1109189999999987,
+                "rows": 218,
+                "shared_hits": 436,
+                "shared_reads": 0,
+                "wal_bytes": 0
+              },
+              {
+                "category": "token_read",
+                "calls": 141,
+                "execution_ms": 0.9653739999999997,
+                "rows": 141,
+                "shared_hits": 470,
+                "shared_reads": 0,
+                "wal_bytes": 6118
+              },
+              {
+                "category": "security_fence",
+                "calls": 109,
+                "execution_ms": 0.9060390000000001,
+                "rows": 109,
+                "shared_hits": 327,
+                "shared_reads": 0,
+                "wal_bytes": 12148
+              },
+              {
+                "category": "resource_authentication",
+                "calls": 109,
+                "execution_ms": 0.8239159999999998,
+                "rows": 109,
+                "shared_hits": 654,
+                "shared_reads": 0,
+                "wal_bytes": 0
+              },
+              {
+                "category": "clock",
+                "calls": 250,
+                "execution_ms": 0.4368389999999992,
+                "rows": 250,
+                "shared_hits": 0,
+                "shared_reads": 0,
+                "wal_bytes": 0
+              },
+              {
+                "category": "commit",
+                "calls": 109,
+                "execution_ms": 0.08712600000000002,
+                "rows": 0,
+                "shared_hits": 0,
+                "shared_reads": 0,
+                "wal_bytes": 0
+              },
+              {
+                "category": "begin",
+                "calls": 109,
+                "execution_ms": 0.03266500000000001,
+                "rows": 0,
+                "shared_hits": 0,
+                "shared_reads": 0,
+                "wal_bytes": 0
+              }
+            ]
+          },
+          "rustStageTimings": {
+            "total": {
+              "count": 47,
+              "maxUs": 10018,
+              "meanUs": 6214.553191489362,
+              "percentileUpperUs": {
+                "p50": 10000,
+                "p95": 10000,
+                "p99": 25000
+              }
+            },
+            "pool_acquire": {
+              "count": 47,
+              "maxUs": 1906,
+              "meanUs": 1115.468085106383,
+              "percentileUpperUs": {
+                "p50": 2500,
+                "p95": 2500,
+                "p99": 2500
+              }
+            },
+            "begin": {
+              "count": 47,
+              "maxUs": 516,
+              "meanUs": 316.6170212765957,
+              "percentileUpperUs": {
+                "p50": 500,
+                "p95": 500,
+                "p99": 1000
+              }
+            },
+            "fence": {
+              "count": 47,
+              "maxUs": 520,
+              "meanUs": 313.6170212765957,
+              "percentileUpperUs": {
+                "p50": 500,
+                "p95": 500,
+                "p99": 1000
+              }
+            },
+            "authenticate": {
+              "count": 47,
+              "maxUs": 1114,
+              "meanUs": 640.0851063829788,
+              "percentileUpperUs": {
+                "p50": 1000,
+                "p95": 1000,
+                "p99": 2500
+              }
+            },
+            "inspect": {
+              "count": 47,
+              "maxUs": 5456,
+              "meanUs": 2931.851063829787,
+              "percentileUpperUs": {
+                "p50": 5000,
+                "p95": 5000,
+                "p99": 10000
+              }
+            },
+            "policy_load": {
+              "count": 47,
+              "maxUs": 843,
+              "meanUs": 377.3404255319149,
+              "percentileUpperUs": {
+                "p50": 500,
+                "p95": 1000,
+                "p99": 1000
+              }
+            },
+            "decision": {
+              "count": 47,
+              "maxUs": 4,
+              "meanUs": 0.7659574468085106,
+              "percentileUpperUs": {
+                "p50": 1,
+                "p95": 5,
+                "p99": 5
+              }
+            },
+            "commit": {
+              "count": 47,
+              "maxUs": 1357,
+              "meanUs": 562.4255319148937,
+              "percentileUpperUs": {
+                "p50": 1000,
+                "p95": 1000,
+                "p99": 2500
+              }
+            }
+          }
+        },
+        {
+          "name": "arrival-revocation-concurrent",
+          "mode": "fixed-arrival",
+          "offeredRatePerSecond": 200,
+          "scheduled": 2000,
+          "attempts": 2000,
+          "wallMs": 10000.852541,
+          "outcomes": {
+            "authorized": 1000,
+            "healthy": 0,
+            "denied": 1000,
+            "unavailable": 0,
+            "error": 0,
+            "transport_error": 0,
+            "violation": 0
+          },
+          "scheduledFailureRate": 0,
+          "allScheduledLatencyMs": {
+            "p50": 7.159832999997889,
+            "p95": 9.899915999994846,
+            "p99": 16.61441599999671
+          },
+          "authorizedScheduledLatencyMs": {
+            "p50": 7.920082999997248,
+            "p95": 12.120708000002196,
+            "p99": 18.095790999999736
+          },
+          "generatorDrops": {
+            "late": 0,
+            "full": 0,
+            "fraction": 0
+          },
+          "peakInFlight": 5,
+          "sql": {
+            "topLevelStatementCalls": 42014,
+            "executionMs": 182.47670699999978,
+            "rows": 33009,
+            "sharedBufferHits": 120525,
+            "sharedBufferReads": 0,
+            "walBytes": 687718,
+            "categories": [
+              {
+                "category": "policy_projection",
+                "calls": 1000,
+                "execution_ms": 37.95859100000001,
+                "rows": 1000,
+                "shared_hits": 28000,
+                "shared_reads": 0,
+                "wal_bytes": 0
+              },
+              {
+                "category": "token_read",
+                "calls": 6002,
+                "execution_ms": 32.76335800000019,
+                "rows": 5002,
+                "shared_hits": 19009,
+                "shared_reads": 0,
+                "wal_bytes": 162486
+              },
+              {
+                "category": "other",
+                "calls": 8002,
+                "execution_ms": 29.671481999999692,
+                "rows": 8001,
+                "shared_hits": 16006,
+                "shared_reads": 0,
+                "wal_bytes": 0
+              },
+              {
+                "category": "identity_read",
+                "calls": 3000,
+                "execution_ms": 23.833708999999963,
+                "rows": 3000,
+                "shared_hits": 21000,
+                "shared_reads": 0,
+                "wal_bytes": 270000
+              },
+              {
+                "category": "resource_authentication",
+                "calls": 4000,
+                "execution_ms": 23.121518999999957,
+                "rows": 4000,
+                "shared_hits": 24000,
+                "shared_reads": 0,
+                "wal_bytes": 0
+              },
+              {
+                "category": "security_fence",
+                "calls": 4002,
+                "execution_ms": 20.886386999999946,
+                "rows": 4002,
+                "shared_hits": 12006,
+                "shared_reads": 0,
+                "wal_bytes": 254808
+              },
+              {
+                "category": "clock",
+                "calls": 8002,
+                "execution_ms": 9.494138000000016,
+                "rows": 8002,
+                "shared_hits": 0,
+                "shared_reads": 0,
+                "wal_bytes": 0
+              },
+              {
+                "category": "mutation",
+                "calls": 2,
+                "execution_ms": 2.9266250000000005,
+                "rows": 2,
+                "shared_hits": 504,
+                "shared_reads": 0,
+                "wal_bytes": 424
+              },
+              {
+                "category": "begin",
+                "calls": 4002,
+                "execution_ms": 0.9545589999999992,
+                "rows": 0,
+                "shared_hits": 0,
+                "shared_reads": 0,
+                "wal_bytes": 0
+              },
+              {
+                "category": "commit",
+                "calls": 4002,
+                "execution_ms": 0.8663390000000106,
+                "rows": 0,
+                "shared_hits": 0,
+                "shared_reads": 0,
+                "wal_bytes": 0
+              }
+            ]
+          },
+          "rustStageTimings": {
+            "total": {
+              "count": 2000,
+              "maxUs": 14468,
+              "meanUs": 2767.8945,
+              "percentileUpperUs": {
+                "p50": 5000,
+                "p95": 5000,
+                "p99": 10000
+              }
+            },
+            "pool_acquire": {
+              "count": 2000,
+              "maxUs": 856,
+              "meanUs": 197.054,
+              "percentileUpperUs": {
+                "p50": 250,
+                "p95": 500,
+                "p99": 500
+              }
+            },
+            "begin": {
+              "count": 2000,
+              "maxUs": 1198,
+              "meanUs": 177.5595,
+              "percentileUpperUs": {
+                "p50": 250,
+                "p95": 500,
+                "p99": 500
+              }
+            },
+            "fence": {
+              "count": 2000,
+              "maxUs": 731,
+              "meanUs": 185.247,
+              "percentileUpperUs": {
+                "p50": 250,
+                "p95": 500,
+                "p99": 500
+              }
+            },
+            "authenticate": {
+              "count": 2000,
+              "maxUs": 3877,
+              "meanUs": 374.11,
+              "percentileUpperUs": {
+                "p50": 500,
+                "p95": 1000,
+                "p99": 1000
+              }
+            },
+            "inspect": {
+              "count": 2000,
+              "maxUs": 8660,
+              "meanUs": 1288.251,
+              "percentileUpperUs": {
+                "p50": 2500,
+                "p95": 2500,
+                "p99": 5000
+              }
+            },
+            "policy_load": {
+              "count": 1000,
+              "maxUs": 2962,
+              "meanUs": 289.242,
+              "percentileUpperUs": {
+                "p50": 500,
+                "p95": 500,
+                "p99": 1000
+              }
+            },
+            "decision": {
+              "count": 1000,
+              "maxUs": 15,
+              "meanUs": 0.495,
+              "percentileUpperUs": {
+                "p50": 1,
+                "p95": 5,
+                "p99": 5
+              }
+            },
+            "commit": {
+              "count": 2000,
+              "maxUs": 3050,
+              "meanUs": 345.889,
+              "percentileUpperUs": {
+                "p50": 500,
+                "p95": 1000,
+                "p99": 1000
+              }
+            }
+          }
+        },
+        {
+          "name": "revocation-after-commit",
+          "mode": "closed-loop",
+          "offeredRatePerSecond": null,
+          "scheduled": null,
+          "attempts": 64,
+          "wallMs": 106.92983400000958,
+          "outcomes": {
+            "authorized": 0,
+            "healthy": 0,
+            "denied": 48,
+            "unavailable": 16,
+            "error": 0,
+            "transport_error": 0,
+            "violation": 0
+          },
+          "scheduledFailureRate": 0.25,
+          "allScheduledLatencyMs": {
+            "p50": 14.419957999998587,
+            "p95": 16.225500000000466,
+            "p99": 21.02224999999453
+          },
+          "authorizedScheduledLatencyMs": null,
+          "generatorDrops": null,
+          "peakInFlight": null,
+          "sql": {
+            "topLevelStatementCalls": 976,
+            "executionMs": 3.6809919999999985,
+            "rows": 704,
+            "sharedBufferHits": 1888,
+            "sharedBufferReads": 0,
+            "walBytes": 14644,
+            "categories": [
+              {
+                "category": "other",
+                "calls": 224,
+                "execution_ms": 1.190372999999999,
+                "rows": 224,
+                "shared_hits": 448,
+                "shared_reads": 0,
+                "wal_bytes": 0
+              },
+              {
+                "category": "token_read",
+                "calls": 144,
+                "execution_ms": 0.7592789999999998,
+                "rows": 96,
+                "shared_hits": 432,
+                "shared_reads": 0,
+                "wal_bytes": 2754
+              },
+              {
+                "category": "resource_authentication",
+                "calls": 112,
+                "execution_ms": 0.7357969999999999,
+                "rows": 112,
+                "shared_hits": 672,
+                "shared_reads": 0,
+                "wal_bytes": 0
+              },
+              {
+                "category": "security_fence",
+                "calls": 112,
+                "execution_ms": 0.6749979999999999,
+                "rows": 112,
+                "shared_hits": 336,
+                "shared_reads": 0,
+                "wal_bytes": 11890
+              },
+              {
+                "category": "clock",
+                "calls": 160,
+                "execution_ms": 0.2677579999999997,
+                "rows": 160,
+                "shared_hits": 0,
+                "shared_reads": 0,
+                "wal_bytes": 0
+              },
+              {
+                "category": "commit",
+                "calls": 112,
+                "execution_ms": 0.027586000000000013,
+                "rows": 0,
+                "shared_hits": 0,
+                "shared_reads": 0,
+                "wal_bytes": 0
+              },
+              {
+                "category": "begin",
+                "calls": 112,
+                "execution_ms": 0.025201000000000008,
+                "rows": 0,
+                "shared_hits": 0,
+                "shared_reads": 0,
+                "wal_bytes": 0
+              }
+            ]
+          },
+          "rustStageTimings": {
+            "total": {
+              "count": 48,
+              "maxUs": 4680,
+              "meanUs": 3687.2083333333335,
+              "percentileUpperUs": {
+                "p50": 5000,
+                "p95": 5000,
+                "p99": 5000
+              }
+            },
+            "pool_acquire": {
+              "count": 48,
+              "maxUs": 1426,
+              "meanUs": 772.0416666666666,
+              "percentileUpperUs": {
+                "p50": 1000,
+                "p95": 2500,
+                "p99": 2500
+              }
+            },
+            "begin": {
+              "count": 48,
+              "maxUs": 411,
+              "meanUs": 283.8541666666667,
+              "percentileUpperUs": {
+                "p50": 500,
+                "p95": 500,
+                "p99": 500
+              }
+            },
+            "fence": {
+              "count": 48,
+              "maxUs": 545,
+              "meanUs": 311.0416666666667,
+              "percentileUpperUs": {
+                "p50": 500,
+                "p95": 500,
+                "p99": 1000
+              }
+            },
+            "authenticate": {
+              "count": 48,
+              "maxUs": 827,
+              "meanUs": 593.8125,
+              "percentileUpperUs": {
+                "p50": 1000,
+                "p95": 1000,
+                "p99": 1000
+              }
+            },
+            "inspect": {
+              "count": 48,
+              "maxUs": 1281,
+              "meanUs": 932.3958333333334,
+              "percentileUpperUs": {
+                "p50": 1000,
+                "p95": 2500,
+                "p99": 2500
+              }
+            },
+            "policy_load": {
+              "count": 0,
+              "maxUs": 0,
+              "meanUs": null,
+              "percentileUpperUs": {
+                "p50": null,
+                "p95": null,
+                "p99": null
+              }
+            },
+            "decision": {
+              "count": 0,
+              "maxUs": 0,
+              "meanUs": null,
+              "percentileUpperUs": {
+                "p50": null,
+                "p95": null,
+                "p99": null
+              }
+            },
+            "commit": {
+              "count": 48,
+              "maxUs": 982,
+              "meanUs": 477.0625,
+              "percentileUpperUs": {
+                "p50": 500,
+                "p95": 1000,
+                "p99": 1000
+              }
+            }
+          }
+        }
+      ]
+    }
+  ]
+}

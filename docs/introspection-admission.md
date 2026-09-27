@@ -153,8 +153,56 @@ two-lane measurements; older variants are explicitly identified in the artifact.
 
 These short owner-role, single-host observations justify a bounded development
 scheduling choice, not production throughput, stable percentiles, multi-host
-fairness or a general Redis speedup. Longer matched repetitions with complete
-Redis observations, runtime-role deployments and production budgets remain open.
+fairness or a general Redis speedup. Cross-variant before/after measurements
+with complete Redis observations, runtime-role deployments and production budgets
+remain open.
+
+## Repeated paced baseline — 2026-09-27
+
+Two additional `make benchmark-profile-baseline` runs used the same clean source
+and release binary at commit `483b133`, the same pinned Percona/Redis images,
+verified HTTPS, eight confidential test clients, five PostgreSQL connections,
+and the existing 60,000/6,000 per-minute admission policy. Each ran ten-second
+windows at 200, 800 and 1,600 offered requests per second, a 1,200/s invalid-client
+mixture, and concurrent permission-change/revocation checks. The local host was
+an Apple M5 arm64 machine; PostgreSQL used the `postgres` owner role. These are
+repeatability observations on one host, not restricted-runtime or multi-replica
+qualification.
+
+| Workload | Run 1 authorized / scheduled | Run 2 authorized / scheduled | Run 1 authorized p95 | Run 2 authorized p95 |
+| --- | ---: | ---: | ---: | ---: |
+| 200/s | 1,993 / 2,000 | 1,999 / 2,000 | 11.80 ms | 10.65 ms |
+| 800/s | 3,567 / 8,000 | 3,512 / 8,000 | 42.09 ms | 43.05 ms |
+| 1,600/s | 3,595 / 16,000 | 3,618 / 16,000 | 41.09 ms | 39.83 ms |
+
+At 800/s and 1,600/s, the bounded local admission/processing path returned many
+explicit unavailable responses; the counts and full scheduled latency percentiles
+are retained. The load driver had zero full-queue drops and one late arrival across
+the two 1,600/s trials; the noisy 1,200/s trials had one and three late arrivals.
+The noisy mix had zero authority mismatches. After revocation commit, both trials
+returned zero active credentials; unavailable limiter responses are counted
+separately from inactive-token denials. Concurrent revocation phases split 1,000
+pre-change active and 1,000 post-change denied results in each run. No access
+decision was accepted after the acknowledged revocation.
+
+Whole-run Redis limiter observations were 689k–694k commands, about 1.58 MiB peak
+memory, 4.26–4.37 seconds user CPU, and 1.56–1.66 seconds system CPU. Current
+memory grew by 7.4–32.5 KiB. The separate cache Redis received two commands and
+showed no current-memory growth. PostgreSQL reported about 113k–114k commits,
+8.2k–8.4k rollbacks, no physical block reads, and no waiting locks. Per-phase
+`pg_stat_statements` categories, statement counts, execution time, buffer hits,
+WAL, Rust stage histograms, before/after Redis snapshots, and dropped-arrival
+counts are retained in
+[`introspection-admission-profile-baseline-2026-09-27.json`](measurements/introspection-admission-profile-baseline-2026-09-27.json).
+The artifact omits request bodies, client identifiers and SQL text. Redis command,
+CPU and memory deltas cover the whole workload, including probes and script work;
+they are not isolated per-request costs.
+
+This repeat narrows variability evidence but does not set a production SLO. The
+rejections above 200/s require a workload target and restricted-runtime, multi-host,
+larger-population and longer endurance measurements before any capacity claim or
+queue/default change. The current baseline still uses a database owner and a
+single-host process; those gaps remain open under this issue.
 
 `make ci` exercises isolated policy, configuration, wire-format, queue, HTTP and
 reporting cases. `make test-postgres` verifies primary caller authentication and
