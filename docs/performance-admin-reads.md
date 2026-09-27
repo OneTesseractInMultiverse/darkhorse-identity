@@ -133,6 +133,45 @@ the hashes distinguish the actual variants. Raw reports and request traces remai
 in the ignored `.local/benchmarks/` directories; the published evidence includes
 their digests and omits audit identifiers and credential/profile data.
 
+## September 27, 2026 clean-source mixed-outcome baseline
+
+`make benchmark-operator-details-baseline` ran on clean commit
+`91800cb04d19a210aa069c6c5edd3c5209f999a2`, using the restricted
+`darkhorse_runtime` database role and the pinned local Percona PostgreSQL and Redis
+images. The profile offered 200 HTTPS introspection arrivals per second for each
+10-second phase, used eight clients, and overlapped two authenticated CLI processes
+with four reads each. The fixture added 1,000 principals and 64 unassigned roles.
+The CLI outcome mix was three successful details, one missing account, and four
+non-administrator denials; all eight results matched their committed audit rows.
+
+| Phase                 | HTTP outcomes                               | Authorized scheduled p95 / p99 | Driver drops |
+| --------------------- | ------------------------------------------- | ------------------------------ | ------------ |
+| Before CLI            | 1,982 authorized, 18 unavailable            | 13.77 / 35.74 ms               | 0            |
+| Detail reads overlap  | 1,981 authorized, 18 unavailable            | 15.73 / 65.96 ms               | 1 late       |
+| After CLI             | 2,000 authorized                            | 13.21 / 20.77 ms               | 0            |
+| Concurrent revocation | 1,018 authorized, 975 denied, 6 unavailable | 9.05 / 11.11 ms                | 1 late       |
+| 64 post-commit probes | 0 authorized, 47 denied, 17 unavailable     | 22.14 / 24.41 ms overall       | not paced    |
+
+The detail-overlap subset contained 114 HTTP requests and had authorized scheduled
+p95/p99 of 18.10/18.82 ms. The eight CLI reads had a scheduled p95 of 151.95 ms;
+that percentile is just the maximum of this small command sample. Every post-commit
+probe failed closed, with no stale authorization, transport error or invariant
+violation. The 18 unavailable outcomes in both the pre-CLI control and detail phase,
+the 17 unavailable post-commit checks, and one late arrival in each of the detail
+and revocation phases remain visible; this run does not establish an availability
+target or explain their causes.
+
+This is one clean-source sample, not a repeatability estimate, a matched comparison
+with the September 26 workload, or evidence of an additional performance gain. No
+cache or security control was relaxed. The [redacted machine-readable results](measurements/operator-details-2026-09-27.json)
+retain phase outcomes, percentiles, command result timings, source/binary hashes,
+topology and protection settings. The [redacted request-level trace](measurements/operator-details-2026-09-27-requests.jsonl)
+retains each scheduled sample's phase, latency, HTTP status and outcome. Operation
+identifiers, identities, credentials, tokens, client slots, raw timestamps and
+machine paths are omitted. Detailed resource-stage timings, cold and sustained load,
+varied effective policy sizes, and Compose or Kubernetes runtime scheduling remain
+unmeasured.
+
 ## Security checks and remaining measurements
 
 Real PostgreSQL regressions verify that account reads can share a fence, avoid an

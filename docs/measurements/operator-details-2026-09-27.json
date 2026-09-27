@@ -1,0 +1,441 @@
+{
+  "schema": 1,
+  "purpose": "One clean-source restricted-role administrative-read outcome baseline; descriptive local evidence, not production capacity or SLO qualification.",
+  "run": {
+    "timestamp": "2026-09-27T22:37:07.373Z",
+    "status": "passed",
+    "rawReportSha256": "915579deeb9a49a5e68456439c5c61bedc2b257e837965fe19ecc0ce7e7e89aa",
+    "rawRequestTraceSha256": "58b766a778d81e8ce624d59657bdd20a88896e6dd8581273357b01ba3249f831",
+    "redactedRequestTrace": "operator-details-2026-09-27-requests.jsonl",
+    "redactedRequestTraceSha256": "a1cdfef1929ee8698c9f694766deadfba64e5ff458930c30e8573386ff346301",
+    "redactedRequestCount": 8128
+  },
+  "source": {
+    "commit": "91800cb04d19a210aa069c6c5edd3c5209f999a2",
+    "sourceSha256": "02ffd026da0ad29aac8cdf5dd38c2b2511801c74113c12f6915c43a90ad1c515",
+    "binarySha256": "7a6d80ef68b578382719aa0cf016f84b43eafbcf28aa685278704cb151563fe1",
+    "sourceDirty": false
+  },
+  "environment": {
+    "rust": "rustc 1.97.1 (8bab26f4f 2026-07-14)",
+    "node": "v24.19.0",
+    "database": "postgres (PostgreSQL) 18.6 - Percona Server for PostgreSQL 18.6.1",
+    "images": {
+      "database": "percona/percona-distribution-postgresql:18.6@sha256:dae47360e8137cafc1e8d66f9a1be348f1405e3cf51daa383b94e6c277e6b256",
+      "cache": "redis:8.10.1@sha256:298e5b3bc566bade82f46ad5511777a4a07a294097ce16ada2f6a42be5239df5",
+      "limiter": "redis:8.10.1@sha256:298e5b3bc566bade82f46ad5511777a4a07a294097ce16ada2f6a42be5239df5"
+    },
+    "host": {
+      "platform": "darwin",
+      "arch": "arm64",
+      "cpu": "Apple M5",
+      "logicalCpus": 10,
+      "memoryBytes": 25769803776
+    },
+    "docker": {
+      "version": "29.6.2",
+      "arch": "aarch64",
+      "cpus": 10,
+      "memoryBytes": 8321515520
+    },
+    "topology": "One host release Rust process, Node TLS proxy and load generator; Docker Percona primary plus separate Redis cache/limiter containers on loopback. Chromium provisions real login/SSO credentials.",
+    "protections": {
+      "httpsVerification": true,
+      "clientAuthentication": "client_secret_basic",
+      "loginSharedRedisLimiter": true,
+      "introspectionSharedRedisLimiter": true,
+      "databasePoolConnections": 5,
+      "databaseRole": "darkhorse_runtime",
+      "positiveDecisionCache": false,
+      "computationCache": false
+    }
+  },
+  "workload": {
+    "profile": {
+      "name": "operator-detail-baseline",
+      "operators": true,
+      "clients": 8,
+      "arrivals": {
+        "durationMs": 10000,
+        "rate": 200,
+        "maxInFlight": 128,
+        "maxLatenessMs": 5
+      },
+      "details": true,
+      "restrictedDatabase": true
+    },
+    "population": {
+      "additionalPrincipals": 1000,
+      "additionalBoundRoles": 64
+    },
+    "operatorLimits": {
+      "readWorkers": 2,
+      "callsPerWorker": 4,
+      "commandDeadlineMs": 30000,
+      "databaseConnectionsPerCli": 2,
+      "limiterConnectionsPerCli": 1,
+      "configuredReadPhaseDatabaseEnvelope": 9,
+      "databaseRole": "darkhorse_runtime",
+      "note": "Configured maxima, not observed peaks. CLI and HTTP use deployment runtime grants; container and replica qualification remain separate."
+    },
+    "audit": {
+      "readCommands": 3,
+      "notFoundCommands": 1,
+      "deniedCommands": 4,
+      "revocationCommands": 1
+    }
+  },
+  "phases": [
+    {
+      "name": "warmup",
+      "mode": "closed-loop",
+      "scheduled": null,
+      "attempts": 64,
+      "wallMs": 164.277,
+      "outcomes": {
+        "authorized": 46,
+        "healthy": 0,
+        "denied": 0,
+        "unavailable": 18,
+        "error": 0,
+        "transport_error": 0,
+        "violation": 0
+      },
+      "attemptsPerSecond": 389.586,
+      "authorizedPerSecond": 280.015,
+      "latencyMs": {
+        "p50": 18.267,
+        "p95": 43.439,
+        "p99": 50.419
+      },
+      "authorizedLatencyMs": {
+        "p50": 18.811,
+        "p95": 43.655,
+        "p99": 50.419
+      },
+      "scheduledLatencyMs": null,
+      "authorizedScheduledLatencyMs": null,
+      "generatorDrops": null,
+      "operatorOverlap": null
+    },
+    {
+      "name": "operator-control-before",
+      "mode": "fixed-arrival",
+      "scheduled": 2000,
+      "attempts": 2000,
+      "wallMs": 10003.382,
+      "outcomes": {
+        "authorized": 1982,
+        "healthy": 0,
+        "denied": 0,
+        "unavailable": 18,
+        "error": 0,
+        "transport_error": 0,
+        "violation": 0
+      },
+      "attemptsPerSecond": 199.932,
+      "authorizedPerSecond": 198.133,
+      "latencyMs": {
+        "p50": 7.408,
+        "p95": 13.25,
+        "p99": 46.338
+      },
+      "authorizedLatencyMs": {
+        "p50": 7.409,
+        "p95": 13.011,
+        "p99": 34.782
+      },
+      "scheduledLatencyMs": {
+        "p50": 8.115,
+        "p95": 13.988,
+        "p99": 46.54
+      },
+      "authorizedScheduledLatencyMs": {
+        "p50": 8.115,
+        "p95": 13.774,
+        "p99": 35.739
+      },
+      "generatorDrops": {
+        "late": 0,
+        "full": 0
+      },
+      "operatorOverlap": null
+    },
+    {
+      "name": "operator-read-bursts",
+      "mode": "fixed-arrival",
+      "scheduled": 2000,
+      "attempts": 1999,
+      "wallMs": 10001.969,
+      "outcomes": {
+        "authorized": 1981,
+        "healthy": 0,
+        "denied": 0,
+        "unavailable": 18,
+        "error": 0,
+        "transport_error": 0,
+        "violation": 0
+      },
+      "attemptsPerSecond": 199.861,
+      "authorizedPerSecond": 198.061,
+      "latencyMs": {
+        "p50": 7.292,
+        "p95": 15.548,
+        "p99": 73.519
+      },
+      "authorizedLatencyMs": {
+        "p50": 7.291,
+        "p95": 15.225,
+        "p99": 65.101
+      },
+      "scheduledLatencyMs": {
+        "p50": 8.051,
+        "p95": 16.189,
+        "p99": 74.679
+      },
+      "authorizedScheduledLatencyMs": {
+        "p50": 8.051,
+        "p95": 15.73,
+        "p99": 65.955
+      },
+      "generatorDrops": {
+        "late": 1,
+        "full": 0
+      },
+      "operatorOverlap": {
+        "allHttpLatencyMs": {
+          "p50": 12.505,
+          "p95": 17.145,
+          "p99": 17.99
+        },
+        "authorizedHttpScheduledLatencyMs": {
+          "p50": 13.313,
+          "p95": 18.101,
+          "p99": 18.816
+        },
+        "cliLatencyMs": {
+          "p50": 137.389,
+          "p95": 151.875,
+          "p99": 151.875
+        },
+        "cliScheduledLatencyMs": {
+          "p50": 138.321,
+          "p95": 151.946,
+          "p99": 151.946
+        },
+        "httpRequestsDuringCommands": 114,
+        "commands": [
+          {
+            "operation": "account.show",
+            "result": "read",
+            "durationMs": 151.875,
+            "httpRequestsDuring": 31
+          },
+          {
+            "operation": "application.show",
+            "result": "read",
+            "durationMs": 136.014,
+            "httpRequestsDuring": 27
+          },
+          {
+            "operation": "account.show.missing",
+            "result": "not_found",
+            "durationMs": 141.217,
+            "httpRequestsDuring": 28
+          },
+          {
+            "operation": "client.show",
+            "result": "read",
+            "durationMs": 138.011,
+            "httpRequestsDuring": 28
+          },
+          {
+            "operation": "account.show.denied",
+            "result": "denied",
+            "durationMs": 150.3,
+            "httpRequestsDuring": 30
+          },
+          {
+            "operation": "application.show.denied",
+            "result": "denied",
+            "durationMs": 131.535,
+            "httpRequestsDuring": 26
+          },
+          {
+            "operation": "account.show.denied",
+            "result": "denied",
+            "durationMs": 137.389,
+            "httpRequestsDuring": 27
+          },
+          {
+            "operation": "client.show.denied",
+            "result": "denied",
+            "durationMs": 129.039,
+            "httpRequestsDuring": 26
+          }
+        ]
+      }
+    },
+    {
+      "name": "operator-control-after",
+      "mode": "fixed-arrival",
+      "scheduled": 2000,
+      "attempts": 2000,
+      "wallMs": 10002.23,
+      "outcomes": {
+        "authorized": 2000,
+        "healthy": 0,
+        "denied": 0,
+        "unavailable": 0,
+        "error": 0,
+        "transport_error": 0,
+        "violation": 0
+      },
+      "attemptsPerSecond": 199.955,
+      "authorizedPerSecond": 199.955,
+      "latencyMs": {
+        "p50": 7.088,
+        "p95": 12.674,
+        "p99": 20.17
+      },
+      "authorizedLatencyMs": {
+        "p50": 7.088,
+        "p95": 12.674,
+        "p99": 20.17
+      },
+      "scheduledLatencyMs": {
+        "p50": 7.754,
+        "p95": 13.209,
+        "p99": 20.774
+      },
+      "authorizedScheduledLatencyMs": {
+        "p50": 7.754,
+        "p95": 13.209,
+        "p99": 20.774
+      },
+      "generatorDrops": {
+        "late": 0,
+        "full": 0
+      },
+      "operatorOverlap": null
+    },
+    {
+      "name": "operator-revocation-concurrent",
+      "mode": "fixed-arrival",
+      "scheduled": 2000,
+      "attempts": 1999,
+      "wallMs": 10001.458,
+      "outcomes": {
+        "authorized": 1018,
+        "healthy": 0,
+        "denied": 975,
+        "unavailable": 6,
+        "error": 0,
+        "transport_error": 0,
+        "violation": 0
+      },
+      "attemptsPerSecond": 199.871,
+      "authorizedPerSecond": 101.785,
+      "latencyMs": {
+        "p50": 6.915,
+        "p95": 8.758,
+        "p99": 32.401
+      },
+      "authorizedLatencyMs": {
+        "p50": 7.138,
+        "p95": 8.435,
+        "p99": 10.444
+      },
+      "scheduledLatencyMs": {
+        "p50": 7.46,
+        "p95": 9.463,
+        "p99": 33.17
+      },
+      "authorizedScheduledLatencyMs": {
+        "p50": 7.807,
+        "p95": 9.049,
+        "p99": 11.111
+      },
+      "generatorDrops": {
+        "late": 1,
+        "full": 0
+      },
+      "operatorOverlap": {
+        "allHttpLatencyMs": {
+          "p50": 8.443,
+          "p95": 16.099,
+          "p99": 21.377
+        },
+        "authorizedHttpScheduledLatencyMs": {
+          "p50": 9.022,
+          "p95": 9.896,
+          "p99": 9.896
+        },
+        "cliLatencyMs": {
+          "p50": 105.396,
+          "p95": 105.396,
+          "p99": 105.396
+        },
+        "cliScheduledLatencyMs": {
+          "p50": 105.396,
+          "p95": 105.396,
+          "p99": 105.396
+        },
+        "httpRequestsDuringCommands": 22,
+        "commands": [
+          {
+            "operation": "account.revoke_all",
+            "durationMs": 105.396,
+            "httpRequestsDuring": 22
+          }
+        ]
+      }
+    },
+    {
+      "name": "operator-revocation-after-commit",
+      "mode": "closed-loop",
+      "scheduled": null,
+      "attempts": 64,
+      "wallMs": 121.414,
+      "outcomes": {
+        "authorized": 0,
+        "healthy": 0,
+        "denied": 47,
+        "unavailable": 17,
+        "error": 0,
+        "transport_error": 0,
+        "violation": 0
+      },
+      "attemptsPerSecond": 527.122,
+      "authorizedPerSecond": 0,
+      "latencyMs": {
+        "p50": 15.645,
+        "p95": 22.141,
+        "p99": 24.407
+      },
+      "authorizedLatencyMs": null,
+      "scheduledLatencyMs": null,
+      "authorizedScheduledLatencyMs": null,
+      "generatorDrops": null,
+      "operatorOverlap": null
+    }
+  ],
+  "ssoSetup": {
+    "loginMs": 224.13,
+    "authorizationCodeFlowsMs": [
+      144.464, 102.471, 96.848, 100.057, 97.483, 96.357, 96.597, 96.83
+    ]
+  },
+  "unmeasured": [
+    "database-cold state",
+    "multi-host latency",
+    "large policy populations",
+    "pool acquisition and authorization stage timings",
+    "SQL statement counts and WAL observations",
+    "SQL round trips and plans",
+    "limiter incremental overhead",
+    "multi-hour endurance and production arrival distributions",
+    "sustained CPU/RSS peaks"
+  ],
+  "redaction": "Operation IDs, principal/client IDs, credentials, tokens, client slots, epochs, absolute phase timestamps, raw request records, and machine paths omitted. The companion trace retains phase, sample number, dispatch delay, elapsed and scheduled latency, HTTP status and outcome."
+}
