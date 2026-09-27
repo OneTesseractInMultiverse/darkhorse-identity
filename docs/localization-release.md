@@ -25,7 +25,11 @@ personal data, raw service logs, or unredacted screenshots to public evidence.
       catalog inputs.
 - [ ] `make test-i18n` exercises source-defined catalog failures, fallback,
       persisted choices, interpolation and the test-only expansion pseudolocale.
-- [ ] `make check` and `make build-web` pass with no coverage gate lowered.
+- [ ] `make check` and `make build-web` pass with no coverage gate lowered. The
+      web build enforces the recorded ceiling for total production JavaScript.
+- [ ] `make benchmark-i18n` confirms the localization-specific 36 KiB differential
+      against an English-only build from matching application source and locked
+      dependencies. This comparison requires the explicit baseline build directory.
 - [ ] Browser qualification covers both languages, keyboard-only operation, narrow
       viewports, text zoom, persisted selection, concurrent authorization transactions,
       success/failure flows, and security-sensitive confirmation wording.
@@ -38,8 +42,10 @@ personal data, raw service logs, or unredacted screenshots to public evidence.
 - [ ] Security-sensitive translations receive a meaning review for authentication,
       consent, verification, recovery, revocation, destructive actions and uncertainty.
 - [ ] Comparable web, email, CLI and server measurements are recorded. Browser
-      payload stays within the existing 36 KiB localization regression budget; no
-      budget is raised just to accommodate a regression.
+      payload stays within the existing 36 KiB localization regression budget when
+      measured against a matching English-only build. The whole-application JS cap
+      is independently enforced during `make build-web`; do not use it as a substitute
+      for the matched localization measurement or raise either budget to fit a regression.
 - [ ] Third-party catalog and country metadata sources have compatible licensing
       and attribution recorded in the notices document.
 - [ ] Remaining translation, accessibility, coverage, capacity and dependency gaps

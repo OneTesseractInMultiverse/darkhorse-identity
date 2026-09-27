@@ -24,7 +24,8 @@ them.
    Record any environment-dependent qualification separately; isolated unit tests
    do not require services, private context, or external files.
 6. Review the updated [translation inventory and measurements](localization.md),
-   and verify the static build remains within its recorded payload budget.
+   and run `make build-web`. The build enforces the recorded whole-application
+   JavaScript ceiling as well as the API-reference route budget.
 
 The source contract defines which messages exist and the exact interpolation
 contract. English is the fallback if an optional Spanish catalog cannot be used;

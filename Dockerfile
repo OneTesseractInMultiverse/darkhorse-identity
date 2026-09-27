@@ -5,6 +5,8 @@ COPY package.json pnpm-lock.yaml pnpm-workspace.yaml ./
 COPY apps/console/package.json apps/console/package.json
 RUN pnpm install --frozen-lockfile
 COPY apps/console apps/console
+ARG DARKHORSE_BUILD_VERSION=darkhorse-source
+ENV DARKHORSE_BUILD_VERSION=${DARKHORSE_BUILD_VERSION}
 RUN pnpm --filter @darkhorse/console build
 
 FROM rust:1.97.1-bookworm@sha256:0e2bcaef56d041a486784e54104a81aebe0da44bd03019bd70bc0401e42e4a97 AS backend

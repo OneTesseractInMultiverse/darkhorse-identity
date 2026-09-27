@@ -1,7 +1,7 @@
 {
   "schema": 1,
-  "date": "2026-09-26T16:40:59.356Z",
-  "scope": "Static production JavaScript asset sizes only. Sorted asset tree fingerprint with gzip bytes compared to the recorded English-only baseline. This does not measure loading time, authenticated behavior, server cost, or production capacity.",
+  "date": "2026-09-27T01:09:29.000Z",
+  "scope": "Static production JavaScript asset sizes only. The original matched-build localization differential is retained as historical evidence; a separate absolute production-bundle ceiling is measured for the current application. Neither measurement covers loading time, authenticated behavior, server cost, or production capacity.",
   "node": "v24.19.0",
   "host": {
     "platform": "darwin",
@@ -24,6 +24,15 @@
       "sha256": "b3bcbf799bda4c46704aa6ffd569d72c47b8283595ee8360728140f0b8df4098"
     }
   },
+  "productionBuildCeiling": {
+    "observedAt": "2026-09-27T01:09:29.000Z",
+    "basis": "Absolute ceiling for the complete current SvelteKit production JavaScript bundle after the application policy explorer was added. Two consecutive builds with the same source revision produced byte-identical static output. The 1 KiB headroom allows small build-identifier compression differences and is not a matched English-only localization comparison.",
+    "javascriptFiles": 45,
+    "rawBytes": 688106,
+    "gzipBytes": 224509,
+    "maximumGzipBytes": 225533,
+    "sha256": "c4644581d97955c68dab06e12457e514adc5518db5a5c440bac9e7b124c01f6d"
+  },
   "additionalGzipBytes": 36328,
   "budgetHeadroomBytes": 536,
   "inputSha256": {
@@ -33,6 +42,8 @@
   "testOnlyPseudolocaleIncludedInProductionBuild": false,
   "notes": [
     "The baseline values and English-only revision are from the comparable presentation measurement in localization-2026-09-26.json.",
+    "The original matched-build differential is 36,328 gzip bytes under its 36,864-byte allowance, with 536 bytes of headroom. Its English-only baseline predates the policy explorer now in the current application, so it must not be used as the current whole-application bundle baseline.",
+    "After the policy explorer, the current production JavaScript bundle is 688,106 raw / 224,509 gzip bytes. Two builds at source revision fcd00f6971f49b1e5de77d098422a8eab0180224 had byte-identical output after the SvelteKit app version was made deterministic. The build-time whole-application ceiling is 225,533 gzip bytes (the measured bundle plus 1 KiB of headroom); a fresh matched English-only build is still required to re-qualify the localization differential for current source.",
     "The test-only pseudolocale lives outside the production src tree and its identifier was absent from the built static output.",
     "Cold/warm observations remain in localization-2026-09-26.json; this report records the later asset-only rebuild and makes no latency claim."
   ]

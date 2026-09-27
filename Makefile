@@ -10,6 +10,7 @@ MUTATION_JOBS ?= 2
 IMAGE ?= darkhorse:local
 SOURCE_REF ?= HEAD
 PYTHON ?= python3
+DARKHORSE_BUILD_VERSION ?= $(shell git rev-parse --verify HEAD 2>/dev/null || printf 'darkhorse-source')
 WEB := $(PNPM) --filter @darkhorse/console
 
 .PHONY: help doctor deps-install deps-check fmt fmt-check lint typecheck architecture-check check ci test test-unit test-unit-rust test-unit-web test-tooling test-example test-component test-unit-watch build build-api build-web dev-setup dev dev-api dev-web proxy-up https-setup https-check https-trust https-untrust clean
@@ -53,7 +54,7 @@ test-browser-focused: build-web ## Test: browser flows only; skip separate Redis
 
 help: ## Help: list implemented targets; no setup required
 	@awk 'BEGIN { FS = ":.*## " } /^[a-zA-Z_-]+:.*## / { printf "  %-23s %s\n", $$1, $$2 }' $(MAKEFILE_LIST)
-	@printf '\nVariables: PNPM=pnpm NODE=node CADDY=caddy IMAGE=darkhorse:local TEST_FILTER=<test-name> MUTATION_JOBS=2\n'
+	@printf '\nVariables: PNPM=pnpm NODE=node CADDY=caddy IMAGE=darkhorse:local DARKHORSE_BUILD_VERSION=<immutable-build-id> TEST_FILTER=<test-name> MUTATION_JOBS=2\n'
 	@printf 'Compose: STACK=local STACK_ORIGIN=https://darkhorse.localhost:9443; see docs/compose.md\n'
 	@printf 'Examples: make deps-install; make check; make https-setup; make dev\n'
 	@printf 'Tests need Rust + Node + pnpm. HTTPS development also needs Caddy 2.11.4.\n'
@@ -221,6 +222,7 @@ build-api: ## Build: release Rust server (no network after dependency installati
 build-web: i18n-check api-reference-bundle ## Build: static SvelteKit console, with no runtime Node server
 	$(WEB) build
 	$(NODE) scripts/api-docs-budget-check.mjs
+	$(NODE) scripts/javascript-bundle-check.mjs
 
 db-setup: ## Database: generate owner-only local credentials; preserve existing files
 	$(NODE) scripts/database.mjs setup
@@ -248,7 +250,7 @@ test-db-authority: ## Test: real restricted database roles, reviewed grants and 
 	$(NODE) scripts/postgres-test.mjs --authority-only
 
 docker-build: ## Build: pinned multi-stage Rust/static image; requires network on first build
-	docker build --tag "$(IMAGE)" .
+	docker build --build-arg DARKHORSE_BUILD_VERSION="$(DARKHORSE_BUILD_VERSION)" --tag "$(IMAGE)" .
 
 docker-smoke: ## Test: built image, temporary database, bootstrap and HTTP/static behavior
 	$(NODE) scripts/postgres-test.mjs --image "$(IMAGE)"
@@ -600,9 +602,12 @@ benchmark-operators-baseline: ## Performance: longer CLI interference comparison
 test-benchmark-tools: ## Test: bounded benchmark subprocess input, deadlines, interruption and output
 	$(NODE) scripts/benchmark-tools-test.mjs
 
-.PHONY: i18n-check test-i18n
+.PHONY: i18n-check javascript-bundle-check test-i18n
 i18n-check: ## Localization: validate production catalog keys, ICU arguments, plurals and safe text
 	$(NODE) scripts/i18n-check.mjs
+
+javascript-bundle-check: ## Performance: enforce the measured total production JavaScript gzip ceiling
+	$(NODE) scripts/javascript-bundle-check.mjs
 
 test-i18n: ## Localization: isolated locale, formatter, storage and sign-in interactions
 	$(WEB) test:unit i18n LoginPanel

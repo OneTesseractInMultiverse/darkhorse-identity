@@ -5,6 +5,7 @@
   "scope": "Production API-reference route bundle budget and local HTTPS browser-load observations. Single-run development measurements; not service-capacity or production-SLO evidence.",
   "environment": {
     "host": "macOS on Apple Silicon",
+    "sourceRevision": "fcd00f6971f49b1e5de77d098422a8eab0180224",
     "browser": "Chromium via Playwright",
     "application": "Rust debug server behind the local HTTPS test proxy; SvelteKit production build",
     "database": "Disposable Percona Distribution for PostgreSQL container",
@@ -13,26 +14,28 @@
   },
   "routeBundle": {
     "entryAndEagerDependencies": 11,
-    "rawBytes": 219341,
-    "gzipBytes": 74041,
+    "rawBytes": 219372,
+    "gzipBytes": 74068,
     "gzipBudgetBytes": 81920,
     "includes": "The API-reference route entry, its eagerly imported JavaScript dependencies and route CSS, counted once from the SvelteKit build manifest.",
     "excludes": "Shared application chunks, separately fetched OpenAPI JSON, and content already held in the browser cache."
   },
   "browserLoads": {
     "cold": {
-      "apiReferenceReadyMs": 49,
-      "domContentLoadedMs": 19,
-      "loadEventMs": 19,
-      "sameOriginTransferBytes": 351619,
+      "apiReferenceReadyMs": 52,
+      "domContentLoadedMs": 20,
+      "loadEventMs": 20,
+      "sameOriginTransferBytes": 351650,
+      "encodedResourceBytes": 345350,
       "resourceCount": 21,
       "openApiBytes": 38938
     },
     "warm": {
-      "apiReferenceReadyMs": 23,
+      "apiReferenceReadyMs": 25,
       "domContentLoadedMs": 6,
-      "loadEventMs": 6,
+      "loadEventMs": 7,
       "sameOriginTransferBytes": 68533,
+      "encodedResourceBytes": 345350,
       "resourceCount": 21,
       "openApiBytes": 38938
     },

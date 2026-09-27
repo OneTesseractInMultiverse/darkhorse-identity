@@ -208,9 +208,15 @@ and CLI evidence separately from fluent and accessibility approval.
 - `make test-browser`: actual static output and verified HTTPS authentication;
   language, reload, error, keyboard and route-preservation checks run in Chromium.
 
-The provisional foundation budget is at most 36 KiB additional summed compressed
-JavaScript over the matching English-only build. It is a regression budget, not a
-performance improvement claim. Fixed catalog loading adds no HTTP/API query. Deployment configuration adds one
+The provisional localization differential is at most 36 KiB additional summed
+compressed JavaScript over an English-only build of the same application source.
+`make benchmark-i18n` measures and enforces that comparison when given a matching
+baseline build directory. The current total application bundle also has a separate
+measured ceiling enforced by `make build-web`: 224,509 gzip bytes measured, plus
+1 KiB headroom. This absolute cap catches overall bundle growth but does not stand
+in for the matched localization comparison. Neither budget is a performance
+improvement claim.
+Fixed catalog loading adds no HTTP/API query. Deployment configuration adds one
 small, credential-free GET per layout mount. Account language extends existing
 session/profile projections, with no additional SQL statement on those reads and
 no preference lookup added to introspection or authorization. Cold/warm browser and build
@@ -243,11 +249,21 @@ ranges overlap and the readiness probe includes two animation frames. These smal
 samples do not establish a speedup or stable latency percentiles. Warm rendering
 cost is a follow-up measurement as the catalog grows.
 
-To repeat, build the English-only revision in a separate source export with its
-locked dependencies, build the current console, then run
-`make benchmark-i18n I18N_BASELINE=/absolute/path/to/baseline/build`.
-The target enforces the byte budget and writes the complete observations to
-`.local/benchmarks/i18n.json`. It requires the pinned Chromium installation.
+To repeat the comparative cold/warm browser observations and check the relative
+36 KiB localization allowance, build the English-only version of the same source
+revision with its locked dependencies, build the current console, then run
+`make benchmark-i18n I18N_BASELINE=/absolute/path/to/baseline/build`. The target
+enforces the same byte budget and writes complete observations to
+`.local/benchmarks/i18n.json`. It requires the pinned Chromium installation; the
+ordinary production build enforces the separately recorded whole-application
+JavaScript ceiling without Chromium or an external baseline directory.
+The current bundle ceiling and its fingerprint are recorded in the
+[localization quality-gate measurement](measurements/localization-quality-gates-2026-09-26.json).
+The SvelteKit app version is pinned to the supplied build identifier or Git
+revision, rather than its timestamp default, so repeated builds of the same source
+produce identical static assets. `make docker-build` passes the current Git
+revision; other production builders should set `DARKHORSE_BUILD_VERSION` to their
+immutable release identifier.
 
 ### Preference integration observations — 2026-09-26
 

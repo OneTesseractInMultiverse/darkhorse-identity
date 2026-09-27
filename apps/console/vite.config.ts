@@ -1,7 +1,10 @@
+import { execFileSync } from 'node:child_process';
 import tailwindcss from '@tailwindcss/vite';
 import { defineConfig } from 'vitest/config';
 import adapter from '@sveltejs/adapter-static';
 import { sveltekit } from '@sveltejs/kit/vite';
+import applicationPackage from './package.json' with { type: 'json' };
+import { resolveBuildVersion } from './build-version.ts';
 import { compileCatalog, packCatalog } from './src/lib/i18n/catalog.ts';
 import { contract } from './src/lib/i18n/contract.ts';
 import { adminContract } from './src/lib/i18n/admin-contract.ts';
@@ -9,6 +12,24 @@ import en from './src/lib/i18n/catalogs/en.json' with { type: 'json' };
 import es from './src/lib/i18n/catalogs/es.json' with { type: 'json' };
 import adminEn from './src/lib/i18n/catalogs/admin-en.json' with { type: 'json' };
 import adminEs from './src/lib/i18n/catalogs/admin-es.json' with { type: 'json' };
+
+function checkedOutRevision(): string | undefined {
+	try {
+		return execFileSync('git', ['rev-parse', '--verify', 'HEAD'], {
+			encoding: 'utf8',
+			stdio: ['ignore', 'pipe', 'ignore'],
+			timeout: 1000
+		}).trim();
+	} catch {
+		return undefined;
+	}
+}
+
+const buildVersion = resolveBuildVersion({
+	override: process.env.DARKHORSE_BUILD_VERSION ?? process.env.GITHUB_SHA,
+	sourceRevision: checkedOutRevision(),
+	packageVersion: applicationPackage.version
+});
 
 const bundledCatalogs = [
 	{ path: '/src/lib/i18n/catalogs/en.json', contract, value: en, locale: 'en' },
@@ -52,6 +73,7 @@ export default defineConfig({
 		},
 		tailwindcss(),
 		sveltekit({
+			version: { name: buildVersion },
 			compilerOptions: {
 				// Force runes mode for the project, except for libraries. Can be removed in svelte 6.
 				runes: ({ filename }) =>
