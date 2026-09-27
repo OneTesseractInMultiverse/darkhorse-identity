@@ -2,6 +2,7 @@ import { resolve } from "node:path";
 import { readFile, stat } from "node:fs/promises";
 import { randomBytes } from "node:crypto";
 import { loadStack } from "./deployment-state.mjs";
+import { withStackOperation } from "./deployment-lock.mjs";
 import { configuration } from "./kubernetes-plan.mjs";
 import {
   composeAccount,
@@ -41,7 +42,7 @@ async function select(mode, args, values) {
     env: stack.env,
   };
 }
-async function main(options) {
+async function main(options, operation) {
   const [mode, ...extra] = process.argv.slice(2);
   if (
     extra.length ||
@@ -50,21 +51,26 @@ async function main(options) {
     throw new UsageError(
       "Use compose-exec, compose-run, kube-exec or kube-run; nonsecret settings are environment variables. See docs/container-accounts.md.",
     );
-  const args = options(process.env, Boolean(process.stdin.isTTY));
-  const selected = await select(mode, args, process.env);
-  const result =
-    mode === "kube-run"
-      ? await kubernetesAccountRun(selected.configuration, process.env, args)
-      : await transport(selected);
-  if (result.uncertain)
-    console.error(
-      "Administration transport interrupted or timed out. Remote execution may continue or have committed. Inspect the operation audit and applicable target state before any retry; no retry was attempted.",
-    );
-  process.exitCode = result.code;
+  const perform = async () => {
+    const args = options(process.env, Boolean(process.stdin.isTTY));
+    const selected = await select(mode, args, process.env);
+    const result =
+      mode === "kube-run"
+        ? await kubernetesAccountRun(selected.configuration, process.env, args)
+        : await transport(selected);
+    if (result.uncertain)
+      console.error(
+        "Administration transport interrupted or timed out. Remote execution may continue or have committed. Inspect the operation audit and applicable target state before any retry; no retry was attempted.",
+      );
+    process.exitCode = result.code;
+  };
+  if (mode.startsWith("compose-"))
+    await withStackOperation(process.env.STACK ?? "local", operation, perform);
+  else await perform();
 }
-export async function launch(options) {
+export async function launch(options, operation) {
   process.chdir(resolve(import.meta.dirname, "../.."));
-  await main(options).catch((error) => {
+  await main(options, operation).catch((error) => {
     console.error(
       error instanceof UsageError
         ? error.message

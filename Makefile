@@ -439,7 +439,7 @@ dev-media: ## Develop: HTTPS password portal with prepared local S3 image storag
 
 STACK ?= local
 STACK_ORIGIN ?= https://darkhorse.localhost:9443
-.PHONY: stack-setup stack-infra stack-migrate stack-bootstrap stack-up stack-stop stack-down stack-status stack-check stack-backup stack-signing-status stack-signing-generate stack-signing-activate stack-limiter-status stack-limiter-fence stack-limiter-activate test-compose
+.PHONY: stack-setup stack-infra stack-migrate stack-bootstrap stack-up stack-stop stack-down stack-status stack-lock-status stack-check stack-backup stack-signing-status stack-signing-generate stack-signing-activate stack-limiter-status stack-limiter-fence stack-limiter-activate test-compose
 stack-setup: stack-edge-build ## Compose: prepare an isolated stack and short-lived local TLS certificates
 	$(NODE) scripts/deployment.mjs setup "$(STACK)" "$(STACK_ORIGIN)" "$(IMAGE)"
 stack-infra: ## Compose: start owned PostgreSQL and separate TLS Redis services
@@ -456,6 +456,8 @@ stack-down: ## Compose: stop/remove this stack's containers and networks; preser
 	$(NODE) scripts/deployment.mjs down "$(STACK)"
 stack-status: ## Compose: list owned service state
 	$(NODE) scripts/deployment.mjs status "$(STACK)"
+stack-lock-status: ## Compose: inspect a managed operation lock; never removes it
+	$(NODE) scripts/deployment.mjs lock-status "$(STACK)"
 stack-check: ## Compose: verify canonical HTTPS, signing and current shared attempt enforcement
 	$(NODE) scripts/deployment.mjs check "$(STACK)"
 stack-backup: ## Compose: back up a stopped stack's database and identity material; no automatic restore

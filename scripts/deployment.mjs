@@ -1,6 +1,10 @@
 import { resolve } from "node:path";
 import { setupStack, loadStack } from "./lib/deployment-state.mjs";
 import {
+  inspectStackOperation,
+  withStackOperation,
+} from "./lib/deployment-lock.mjs";
+import {
   compose,
   operator,
   migrate,
@@ -16,8 +20,25 @@ async function main() {
   ) {
     if (name !== undefined)
       throw new Error("Use STACK and OPERATION_ID for operation inspection.");
-    const stack = await loadStack(process.env.STACK);
-    await operator(stack, mode, [process.env.OPERATION_ID]);
+    await withStackOperation(
+      process.env.STACK ?? "local",
+      "inspect",
+      async () => {
+        const stack = await loadStack(process.env.STACK ?? "local");
+        await operator(stack, mode, [process.env.OPERATION_ID]);
+      },
+    );
+    return;
+  }
+  if (mode === "lock-status") {
+    const state = await inspectStackOperation(name);
+    if (state.status === "available") {
+      console.log(`Stack ${name} has no managed operation lock.`);
+      return;
+    }
+    console.log(
+      `Stack ${name} lock: ${state.operation}; pid ${state.pid} on ${state.host}; started ${state.startedAt}. Process liveness is not verified.`,
+    );
     return;
   }
   if (mode === "setup") {
@@ -25,45 +46,61 @@ async function main() {
       throw new Error(
         "Setup needs a stack name, canonical HTTPS origin and local image.",
       );
-    const s = await setupStack(name, args[0], args[1], run);
-    console.log(
-      `Stack ${s.settings.name} is prepared at ${s.directory}. Local test certificates expire in seven days; no host trust was changed.`,
-    );
+    await withStackOperation(name, "setup", async () => {
+      const s = await setupStack(name, args[0], args[1], run);
+      console.log(
+        `Stack ${s.settings.name} is prepared at ${s.directory}. Local test certificates expire in seven days; no host trust was changed.`,
+      );
+    });
     return;
   }
-  const stack = await loadStack(name);
-  if (mode === "infra")
-    await compose(stack, [
+  if (
+    ![
+      "infra",
+      "migrate",
       "up",
-      "--detach",
-      "--wait",
-      "--wait-timeout",
-      "90",
-      "postgres",
-      "cache",
-      "limiter",
-    ]);
-  else if (mode === "migrate") await migrate(stack);
-  else if (mode === "up")
-    await compose(stack, [
-      "up",
-      "--detach",
-      "--wait",
-      "--wait-timeout",
-      "60",
-      "api",
-      "edge",
-    ]);
-  else if (mode === "stop") await compose(stack, ["stop", "edge", "api"]);
-  else if (mode === "down") await compose(stack, ["down"]);
-  else if (mode === "status") await compose(stack, ["ps"]);
-  else if (mode === "check") await check(stack);
-  else if (mode === "backup") await backup(stack);
-  else if (mode === "operator") await operator(stack, args[0], args.slice(1));
-  else
+      "stop",
+      "down",
+      "status",
+      "check",
+      "backup",
+      "operator",
+    ].includes(mode)
+  )
     throw new Error(
-      "Use setup, infra, migrate, up, stop, down, status, check, backup or operator.",
+      "Use setup, infra, migrate, up, stop, down, status, check, backup, operator or lock-status.",
     );
+  await withStackOperation(name, mode, async () => {
+    const stack = await loadStack(name);
+    if (mode === "infra")
+      await compose(stack, [
+        "up",
+        "--detach",
+        "--wait",
+        "--wait-timeout",
+        "90",
+        "postgres",
+        "cache",
+        "limiter",
+      ]);
+    else if (mode === "migrate") await migrate(stack);
+    else if (mode === "up")
+      await compose(stack, [
+        "up",
+        "--detach",
+        "--wait",
+        "--wait-timeout",
+        "60",
+        "api",
+        "edge",
+      ]);
+    else if (mode === "stop") await compose(stack, ["stop", "edge", "api"]);
+    else if (mode === "down") await compose(stack, ["down"]);
+    else if (mode === "status") await compose(stack, ["ps"]);
+    else if (mode === "check") await check(stack);
+    else if (mode === "backup") await backup(stack);
+    else await operator(stack, args[0], args.slice(1));
+  });
 }
 main().catch((error) => {
   console.error(error.message);
