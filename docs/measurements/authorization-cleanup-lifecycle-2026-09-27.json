@@ -1,0 +1,1538 @@
+{
+  "schema": 1,
+  "recordedOn": "2026-09-27",
+  "issue": 33,
+  "sourceCommit": "b20be9207d988e1d5a6588bfdc8bb342e71c3f2c",
+  "runtime": {
+    "rust": "rustc 1.97.1 (8bab26f4f 2026-07-14)",
+    "node": "v24.19.0",
+    "database": "postgres (PostgreSQL) 18.6 - Percona Server for PostgreSQL 18.6.1",
+    "databaseImage": "percona/percona-distribution-postgresql:18.6@sha256:dae47360e8137cafc1e8d66f9a1be348f1405e3cf51daa383b94e6c277e6b256",
+    "redisImage": "redis:8.10.1@sha256:298e5b3bc566bade82f46ad5511777a4a07a294097ce16ada2f6a42be5239df5",
+    "databaseRole": "darkhorse_runtime",
+    "databasePoolConnections": 5,
+    "topology": "One host release Rust process, Node TLS proxy and load generator; Docker Percona primary plus separate Redis cache/limiter containers on loopback. Chromium provisions real login/SSO credentials."
+  },
+  "methodology": {
+    "controlProfile": "profile-baseline",
+    "lifecycleProfile": "lifecycle-baseline",
+    "controlRuns": 2,
+    "lifecycleRuns": 2,
+    "workload": "200/s, 800/s and 1600/s paced HTTPS introspection, noisy invalid-client traffic, concurrent permission reduction and revocation; each phase reports authorization, denial, unavailability, latency and PostgreSQL WAL.",
+    "lifecycleFixture": "20,000 expired and 20,000 live synthetic authorization requests with identical expired timestamps; only the isolated benchmark database is modified.",
+    "limitations": [
+      "Two local single-host runs per profile are directional samples, not a statistical capacity comparison or production SLO.",
+      "The rates above 200/s returned substantial explicit unavailable responses; they do not demonstrate supported throughput.",
+      "The pre-index query-plan observation came from an exploratory run whose source tree was marked dirty; post-index runs are clean at source commit b20be9207d988e1d5a6588bfdc8bb342e71c3f2c.",
+      "Relation and vacuum statistics are point-in-time estimates; they do not measure long-term autovacuum, backup, or storage growth."
+    ]
+  },
+  "preIndexExploratoryObservation": {
+    "sourceCommit": "39849c8cfd1faf6b0c2c2fb787c06f91f92549b7",
+    "cleanSource": false,
+    "syntheticRows": 40000,
+    "boundedSelection": {
+      "planningMs": 0.182,
+      "executionMs": 8.887,
+      "root": {
+        "nodeType": "Limit",
+        "relation": null,
+        "index": null,
+        "estimatedRows": 100,
+        "actualRows": 100,
+        "loops": 1,
+        "sharedBuffers": {
+          "hit": 1396,
+          "read": 0
+        },
+        "children": [
+          {
+            "nodeType": "LockRows",
+            "relation": null,
+            "index": null,
+            "estimatedRows": 13336,
+            "actualRows": 100,
+            "loops": 1,
+            "sharedBuffers": {
+              "hit": 1396,
+              "read": 0
+            },
+            "children": [
+              {
+                "nodeType": "Incremental Sort",
+                "relation": null,
+                "index": null,
+                "estimatedRows": 13336,
+                "actualRows": 100,
+                "loops": 1,
+                "sharedBuffers": {
+                  "hit": 1296,
+                  "read": 0
+                },
+                "children": [
+                  {
+                    "nodeType": "Index Scan",
+                    "relation": "authorization_requests",
+                    "index": "authorization_expiry",
+                    "estimatedRows": 13336,
+                    "actualRows": 20000,
+                    "loops": 1,
+                    "sharedBuffers": {
+                      "hit": 1287,
+                      "read": 0
+                    },
+                    "children": []
+                  }
+                ]
+              }
+            ]
+          }
+        ]
+      }
+    },
+    "totalRelationAndIndexBytes": 13238272
+  },
+  "controlRuns": [
+    {
+      "timestamp": "2026-09-27T20:13:00.182Z",
+      "source": {
+        "commit": "b20be9207d988e1d5a6588bfdc8bb342e71c3f2c",
+        "clean": true,
+        "sha256": "d4a532746b3d45b2091f3932939f043293d2795544fdc7f663fc81100ce83172"
+      },
+      "phases": [
+        {
+          "name": "warmup",
+          "attempts": 64,
+          "outcomes": {
+            "authorized": 51,
+            "healthy": 0,
+            "denied": 0,
+            "unavailable": 13,
+            "error": 0,
+            "transport_error": 0,
+            "violation": 0
+          },
+          "authorizedLatencyMs": {
+            "p50": 23.331000000005588,
+            "p95": 61.79641700000502,
+            "p99": 72.55770900000061
+          },
+          "clusterWalBytes": "39016"
+        },
+        {
+          "name": "arrival-diverse-r200",
+          "attempts": 2000,
+          "outcomes": {
+            "authorized": 1995,
+            "healthy": 0,
+            "denied": 0,
+            "unavailable": 5,
+            "error": 0,
+            "transport_error": 0,
+            "violation": 0
+          },
+          "authorizedLatencyMs": {
+            "p50": 8.333750000005239,
+            "p95": 16.15412500000093,
+            "p99": 28.098792000004323
+          },
+          "clusterWalBytes": "1278888"
+        },
+        {
+          "name": "arrival-diverse-r800",
+          "attempts": 7994,
+          "outcomes": {
+            "authorized": 2939,
+            "healthy": 0,
+            "denied": 0,
+            "unavailable": 5055,
+            "error": 0,
+            "transport_error": 0,
+            "violation": 0
+          },
+          "authorizedLatencyMs": {
+            "p50": 39.413375000003725,
+            "p95": 57.662707999988925,
+            "p99": 90.43004199999268
+          },
+          "clusterWalBytes": "2487056"
+        },
+        {
+          "name": "arrival-diverse-r1600",
+          "attempts": 15990,
+          "outcomes": {
+            "authorized": 3121,
+            "healthy": 0,
+            "denied": 0,
+            "unavailable": 12869,
+            "error": 0,
+            "transport_error": 0,
+            "violation": 0
+          },
+          "authorizedLatencyMs": {
+            "p50": 39.456374999994296,
+            "p95": 47.970083000007435,
+            "p99": 64.7151659999945
+          },
+          "clusterWalBytes": "2436704"
+        },
+        {
+          "name": "arrival-noisy-invalid-client",
+          "attempts": 11997,
+          "outcomes": {
+            "authorized": 1344,
+            "healthy": 1500,
+            "denied": 7409,
+            "unavailable": 1744,
+            "error": 0,
+            "transport_error": 0,
+            "violation": 0
+          },
+          "authorizedLatencyMs": {
+            "p50": 24.422208000003593,
+            "p95": 31.36050000000978,
+            "p99": 40.076708000007784
+          },
+          "clusterWalBytes": "2214344"
+        },
+        {
+          "name": "arrival-permission-reduction-concurrent",
+          "attempts": 2000,
+          "outcomes": {
+            "authorized": 1998,
+            "healthy": 0,
+            "denied": 0,
+            "unavailable": 2,
+            "error": 0,
+            "transport_error": 0,
+            "violation": 0
+          },
+          "authorizedLatencyMs": {
+            "p50": 7.419499999989057,
+            "p95": 11.38437499999418,
+            "p99": 22.953374999997322
+          },
+          "clusterWalBytes": "1257352"
+        },
+        {
+          "name": "permission-reduction-after-commit",
+          "attempts": 64,
+          "outcomes": {
+            "authorized": 44,
+            "healthy": 0,
+            "denied": 0,
+            "unavailable": 20,
+            "error": 0,
+            "transport_error": 0,
+            "violation": 0
+          },
+          "authorizedLatencyMs": {
+            "p50": 18.204666999998153,
+            "p95": 21.496624999999767,
+            "p99": 24.61341699998593
+          },
+          "clusterWalBytes": "34144"
+        },
+        {
+          "name": "arrival-revocation-concurrent",
+          "attempts": 2000,
+          "outcomes": {
+            "authorized": 1000,
+            "healthy": 0,
+            "denied": 997,
+            "unavailable": 3,
+            "error": 0,
+            "transport_error": 0,
+            "violation": 0
+          },
+          "authorizedLatencyMs": {
+            "p50": 7.60137499999837,
+            "p95": 9.749458000005689,
+            "p99": 13.257542000006652
+          },
+          "clusterWalBytes": "890312"
+        },
+        {
+          "name": "revocation-after-commit",
+          "attempts": 64,
+          "outcomes": {
+            "authorized": 0,
+            "healthy": 0,
+            "denied": 51,
+            "unavailable": 13,
+            "error": 0,
+            "transport_error": 0,
+            "violation": 0
+          },
+          "authorizedLatencyMs": null,
+          "clusterWalBytes": "20096"
+        },
+        {
+          "name": "unaffected-resource",
+          "attempts": 32,
+          "outcomes": {
+            "authorized": 32,
+            "healthy": 0,
+            "denied": 0,
+            "unavailable": 0,
+            "error": 0,
+            "transport_error": 0,
+            "violation": 0
+          },
+          "authorizedLatencyMs": {
+            "p50": 7.497417000005953,
+            "p95": 8.705959000013536,
+            "p99": 9.126583000004757
+          },
+          "clusterWalBytes": "18736"
+        }
+      ]
+    },
+    {
+      "timestamp": "2026-09-27T20:17:49.309Z",
+      "source": {
+        "commit": "b20be9207d988e1d5a6588bfdc8bb342e71c3f2c",
+        "clean": true,
+        "sha256": "d4a532746b3d45b2091f3932939f043293d2795544fdc7f663fc81100ce83172"
+      },
+      "phases": [
+        {
+          "name": "warmup",
+          "attempts": 64,
+          "outcomes": {
+            "authorized": 45,
+            "healthy": 0,
+            "denied": 0,
+            "unavailable": 19,
+            "error": 0,
+            "transport_error": 0,
+            "violation": 0
+          },
+          "authorizedLatencyMs": {
+            "p50": 29.973833000000013,
+            "p95": 54.91454200000044,
+            "p99": 58.88495899999907
+          },
+          "clusterWalBytes": "34808"
+        },
+        {
+          "name": "arrival-diverse-r200",
+          "attempts": 2000,
+          "outcomes": {
+            "authorized": 2000,
+            "healthy": 0,
+            "denied": 0,
+            "unavailable": 0,
+            "error": 0,
+            "transport_error": 0,
+            "violation": 0
+          },
+          "authorizedLatencyMs": {
+            "p50": 7.586124999999811,
+            "p95": 10.466833000000406,
+            "p99": 17.624707999999373
+          },
+          "clusterWalBytes": "1259248"
+        },
+        {
+          "name": "arrival-diverse-r800",
+          "attempts": 8000,
+          "outcomes": {
+            "authorized": 3361,
+            "healthy": 0,
+            "denied": 0,
+            "unavailable": 4639,
+            "error": 0,
+            "transport_error": 0,
+            "violation": 0
+          },
+          "authorizedLatencyMs": {
+            "p50": 35.70241700000042,
+            "p95": 44.58316600000035,
+            "p99": 63.67054200000348
+          },
+          "clusterWalBytes": "2628016"
+        },
+        {
+          "name": "arrival-diverse-r1600",
+          "attempts": 15999,
+          "outcomes": {
+            "authorized": 3387,
+            "healthy": 0,
+            "denied": 0,
+            "unavailable": 12612,
+            "error": 0,
+            "transport_error": 0,
+            "violation": 0
+          },
+          "authorizedLatencyMs": {
+            "p50": 36.146374999996624,
+            "p95": 42.80941700000403,
+            "p99": 56.613083000003826
+          },
+          "clusterWalBytes": "2649080"
+        },
+        {
+          "name": "arrival-noisy-invalid-client",
+          "attempts": 11996,
+          "outcomes": {
+            "authorized": 1381,
+            "healthy": 1499,
+            "denied": 7621,
+            "unavailable": 1495,
+            "error": 0,
+            "transport_error": 0,
+            "violation": 0
+          },
+          "authorizedLatencyMs": {
+            "p50": 24.07666700000118,
+            "p95": 28.905666999999085,
+            "p99": 36.653792000004614
+          },
+          "clusterWalBytes": "1940632"
+        },
+        {
+          "name": "arrival-permission-reduction-concurrent",
+          "attempts": 1999,
+          "outcomes": {
+            "authorized": 1995,
+            "healthy": 0,
+            "denied": 0,
+            "unavailable": 4,
+            "error": 0,
+            "transport_error": 0,
+            "violation": 0
+          },
+          "authorizedLatencyMs": {
+            "p50": 7.807583999994677,
+            "p95": 15.440999999998894,
+            "p99": 33.82037499999569
+          },
+          "clusterWalBytes": "1271592"
+        },
+        {
+          "name": "permission-reduction-after-commit",
+          "attempts": 64,
+          "outcomes": {
+            "authorized": 43,
+            "healthy": 0,
+            "denied": 0,
+            "unavailable": 21,
+            "error": 0,
+            "transport_error": 0,
+            "violation": 0
+          },
+          "authorizedLatencyMs": {
+            "p50": 19.169042000001355,
+            "p95": 22.921666000002006,
+            "p99": 25.54283299999952
+          },
+          "clusterWalBytes": "33904"
+        },
+        {
+          "name": "arrival-revocation-concurrent",
+          "attempts": 1998,
+          "outcomes": {
+            "authorized": 1000,
+            "healthy": 0,
+            "denied": 998,
+            "unavailable": 0,
+            "error": 0,
+            "transport_error": 0,
+            "violation": 0
+          },
+          "authorizedLatencyMs": {
+            "p50": 7.487166999999317,
+            "p95": 10.03133300000627,
+            "p99": 13.169292000005953
+          },
+          "clusterWalBytes": "893184"
+        },
+        {
+          "name": "revocation-after-commit",
+          "attempts": 64,
+          "outcomes": {
+            "authorized": 0,
+            "healthy": 0,
+            "denied": 48,
+            "unavailable": 16,
+            "error": 0,
+            "transport_error": 0,
+            "violation": 0
+          },
+          "authorizedLatencyMs": null,
+          "clusterWalBytes": "19312"
+        },
+        {
+          "name": "unaffected-resource",
+          "attempts": 32,
+          "outcomes": {
+            "authorized": 32,
+            "healthy": 0,
+            "denied": 0,
+            "unavailable": 0,
+            "error": 0,
+            "transport_error": 0,
+            "violation": 0
+          },
+          "authorizedLatencyMs": {
+            "p50": 9.35783399999491,
+            "p95": 18.219708999997238,
+            "p99": 24.259874999988824
+          },
+          "clusterWalBytes": "18736"
+        }
+      ]
+    }
+  ],
+  "lifecycleRuns": [
+    {
+      "timestamp": "2026-09-27T20:14:30.397Z",
+      "source": {
+        "commit": "b20be9207d988e1d5a6588bfdc8bb342e71c3f2c",
+        "clean": true,
+        "sha256": "d4a532746b3d45b2091f3932939f043293d2795544fdc7f663fc81100ce83172"
+      },
+      "fixture": {
+        "expiredRows": 20000,
+        "liveRows": 20000
+      },
+      "cleanup": {
+        "populationBefore": {
+          "expired": 20000,
+          "live": 20000
+        },
+        "populationAfter": {
+          "expired": 19000,
+          "live": 20000
+        },
+        "tableStatisticsBefore": {
+          "relationBytes": 10248192,
+          "totalBytes": 15720448,
+          "liveTuplesEstimate": 40008,
+          "deadTuplesEstimate": 0,
+          "deletedTuplesSinceStatsReset": 0,
+          "autovacuumCount": 0,
+          "lastAutovacuumAt": null
+        },
+        "tableStatisticsAfter": {
+          "relationBytes": 10248192,
+          "totalBytes": 15720448,
+          "liveTuplesEstimate": 39008,
+          "deadTuplesEstimate": 1000,
+          "deletedTuplesSinceStatsReset": 1000,
+          "autovacuumCount": 0,
+          "lastAutovacuumAt": null
+        },
+        "queryPlans": {
+          "boundedSelection": {
+            "planningMs": 0.168,
+            "executionMs": 0.106,
+            "root": {
+              "nodeType": "Limit",
+              "relation": null,
+              "index": null,
+              "estimatedRows": 100,
+              "actualRows": 100,
+              "loops": 1,
+              "sharedBuffers": {
+                "hit": 108,
+                "read": 0
+              },
+              "children": [
+                {
+                  "nodeType": "LockRows",
+                  "relation": null,
+                  "index": null,
+                  "estimatedRows": 13336,
+                  "actualRows": 100,
+                  "loops": 1,
+                  "sharedBuffers": {
+                    "hit": 108,
+                    "read": 0
+                  },
+                  "children": [
+                    {
+                      "nodeType": "Index Scan",
+                      "relation": "authorization_requests",
+                      "index": "authorization_expiry",
+                      "estimatedRows": 13336,
+                      "actualRows": 100,
+                      "loops": 1,
+                      "sharedBuffers": {
+                        "hit": 8,
+                        "read": 0
+                      },
+                      "children": []
+                    }
+                  ]
+                }
+              ]
+            }
+          },
+          "boundedDelete": {
+            "planningMs": null,
+            "executionMs": null,
+            "root": {
+              "nodeType": "Result",
+              "relation": null,
+              "index": null,
+              "estimatedRows": 1,
+              "actualRows": null,
+              "loops": null,
+              "sharedBuffers": {
+                "hit": null,
+                "read": null
+              },
+              "children": [
+                {
+                  "nodeType": "Limit",
+                  "relation": null,
+                  "index": null,
+                  "estimatedRows": 100,
+                  "actualRows": null,
+                  "loops": null,
+                  "sharedBuffers": {
+                    "hit": null,
+                    "read": null
+                  },
+                  "children": [
+                    {
+                      "nodeType": "LockRows",
+                      "relation": null,
+                      "index": null,
+                      "estimatedRows": 13336,
+                      "actualRows": null,
+                      "loops": null,
+                      "sharedBuffers": {
+                        "hit": null,
+                        "read": null
+                      },
+                      "children": [
+                        {
+                          "nodeType": "Index Scan",
+                          "relation": "authorization_requests",
+                          "index": "authorization_expiry",
+                          "estimatedRows": 13336,
+                          "actualRows": null,
+                          "loops": null,
+                          "sharedBuffers": {
+                            "hit": null,
+                            "read": null
+                          },
+                          "children": []
+                        }
+                      ]
+                    }
+                  ]
+                },
+                {
+                  "nodeType": "ModifyTable",
+                  "relation": "authorization_requests",
+                  "index": null,
+                  "estimatedRows": 100,
+                  "actualRows": null,
+                  "loops": null,
+                  "sharedBuffers": {
+                    "hit": null,
+                    "read": null
+                  },
+                  "children": [
+                    {
+                      "nodeType": "Nested Loop",
+                      "relation": null,
+                      "index": null,
+                      "estimatedRows": 100,
+                      "actualRows": null,
+                      "loops": null,
+                      "sharedBuffers": {
+                        "hit": null,
+                        "read": null
+                      },
+                      "children": [
+                        {
+                          "nodeType": "CTE Scan",
+                          "relation": null,
+                          "index": null,
+                          "estimatedRows": 100,
+                          "actualRows": null,
+                          "loops": null,
+                          "sharedBuffers": {
+                            "hit": null,
+                            "read": null
+                          },
+                          "children": []
+                        },
+                        {
+                          "nodeType": "Index Scan",
+                          "relation": "authorization_requests",
+                          "index": "authorization_requests_pkey",
+                          "estimatedRows": 1,
+                          "actualRows": null,
+                          "loops": null,
+                          "sharedBuffers": {
+                            "hit": null,
+                            "read": null
+                          },
+                          "children": []
+                        }
+                      ]
+                    }
+                  ]
+                },
+                {
+                  "nodeType": "Limit",
+                  "relation": null,
+                  "index": null,
+                  "estimatedRows": 1,
+                  "actualRows": null,
+                  "loops": null,
+                  "sharedBuffers": {
+                    "hit": null,
+                    "read": null
+                  },
+                  "children": [
+                    {
+                      "nodeType": "Nested Loop",
+                      "relation": null,
+                      "index": null,
+                      "estimatedRows": 13303,
+                      "actualRows": null,
+                      "loops": null,
+                      "sharedBuffers": {
+                        "hit": null,
+                        "read": null
+                      },
+                      "children": [
+                        {
+                          "nodeType": "Index Only Scan",
+                          "relation": "authorization_requests",
+                          "index": "authorization_expiry",
+                          "estimatedRows": 13336,
+                          "actualRows": null,
+                          "loops": null,
+                          "sharedBuffers": {
+                            "hit": null,
+                            "read": null
+                          },
+                          "children": []
+                        },
+                        {
+                          "nodeType": "CTE Scan",
+                          "relation": null,
+                          "index": null,
+                          "estimatedRows": 100,
+                          "actualRows": null,
+                          "loops": null,
+                          "sharedBuffers": {
+                            "hit": null,
+                            "read": null
+                          },
+                          "children": []
+                        }
+                      ]
+                    }
+                  ]
+                },
+                {
+                  "nodeType": "Aggregate",
+                  "relation": null,
+                  "index": null,
+                  "estimatedRows": 1,
+                  "actualRows": null,
+                  "loops": null,
+                  "sharedBuffers": {
+                    "hit": null,
+                    "read": null
+                  },
+                  "children": [
+                    {
+                      "nodeType": "CTE Scan",
+                      "relation": null,
+                      "index": null,
+                      "estimatedRows": 100,
+                      "actualRows": null,
+                      "loops": null,
+                      "sharedBuffers": {
+                        "hit": null,
+                        "read": null
+                      },
+                      "children": []
+                    }
+                  ]
+                },
+                {
+                  "nodeType": "Aggregate",
+                  "relation": null,
+                  "index": null,
+                  "estimatedRows": 1,
+                  "actualRows": null,
+                  "loops": null,
+                  "sharedBuffers": {
+                    "hit": null,
+                    "read": null
+                  },
+                  "children": [
+                    {
+                      "nodeType": "CTE Scan",
+                      "relation": null,
+                      "index": null,
+                      "estimatedRows": 100,
+                      "actualRows": null,
+                      "loops": null,
+                      "sharedBuffers": {
+                        "hit": null,
+                        "read": null
+                      },
+                      "children": []
+                    }
+                  ]
+                },
+                {
+                  "nodeType": "CTE Scan",
+                  "relation": null,
+                  "index": null,
+                  "estimatedRows": 1,
+                  "actualRows": null,
+                  "loops": null,
+                  "sharedBuffers": {
+                    "hit": null,
+                    "read": null
+                  },
+                  "children": []
+                }
+              ]
+            }
+          }
+        },
+        "expiredRowsRemoved": 1000,
+        "scheduledSweeps": [
+          {
+            "status": "ok",
+            "batches": 10,
+            "deleted": 1000,
+            "backlogRemaining": true,
+            "oldestExpiredAgeMs": 356475,
+            "durationMs": 43
+          }
+        ],
+        "overlappingPhases": ["arrival-revocation-concurrent"]
+      },
+      "phases": [
+        {
+          "name": "warmup",
+          "attempts": 64,
+          "outcomes": {
+            "authorized": 49,
+            "healthy": 0,
+            "denied": 0,
+            "unavailable": 15,
+            "error": 0,
+            "transport_error": 0,
+            "violation": 0
+          },
+          "authorizedLatencyMs": {
+            "p50": 21.91583400000127,
+            "p95": 42.18712499999856,
+            "p99": 47.771459000001414
+          },
+          "clusterWalBytes": "38080"
+        },
+        {
+          "name": "arrival-diverse-r200",
+          "attempts": 1998,
+          "outcomes": {
+            "authorized": 1917,
+            "healthy": 0,
+            "denied": 0,
+            "unavailable": 81,
+            "error": 0,
+            "transport_error": 0,
+            "violation": 0
+          },
+          "authorizedLatencyMs": {
+            "p50": 8.29570799999965,
+            "p95": 42.744416999999885,
+            "p99": 132.33929199999875
+          },
+          "clusterWalBytes": "1250416"
+        },
+        {
+          "name": "arrival-diverse-r800",
+          "attempts": 7998,
+          "outcomes": {
+            "authorized": 3284,
+            "healthy": 0,
+            "denied": 0,
+            "unavailable": 4714,
+            "error": 0,
+            "transport_error": 0,
+            "violation": 0
+          },
+          "authorizedLatencyMs": {
+            "p50": 36.1292910000011,
+            "p95": 49.01262499999939,
+            "p99": 73.96716699999888
+          },
+          "clusterWalBytes": "2570360"
+        },
+        {
+          "name": "arrival-diverse-r1600",
+          "attempts": 15998,
+          "outcomes": {
+            "authorized": 3184,
+            "healthy": 0,
+            "denied": 0,
+            "unavailable": 12814,
+            "error": 0,
+            "transport_error": 0,
+            "violation": 0
+          },
+          "authorizedLatencyMs": {
+            "p50": 38.44458300000406,
+            "p95": 48.19908299999952,
+            "p99": 58.46312500000204
+          },
+          "clusterWalBytes": "2488600"
+        },
+        {
+          "name": "arrival-noisy-invalid-client",
+          "attempts": 12000,
+          "outcomes": {
+            "authorized": 1138,
+            "healthy": 1500,
+            "denied": 6812,
+            "unavailable": 2550,
+            "error": 0,
+            "transport_error": 0,
+            "violation": 0
+          },
+          "authorizedLatencyMs": {
+            "p50": 26.545750000004773,
+            "p95": 38.30808299999626,
+            "p99": 54.097666999994544
+          },
+          "clusterWalBytes": "1654688"
+        },
+        {
+          "name": "arrival-permission-reduction-concurrent",
+          "attempts": 2000,
+          "outcomes": {
+            "authorized": 1967,
+            "healthy": 0,
+            "denied": 0,
+            "unavailable": 33,
+            "error": 0,
+            "transport_error": 0,
+            "violation": 0
+          },
+          "authorizedLatencyMs": {
+            "p50": 9.367166999996698,
+            "p95": 28.418707999997423,
+            "p99": 89.97649999999703
+          },
+          "clusterWalBytes": "1653384"
+        },
+        {
+          "name": "permission-reduction-after-commit",
+          "attempts": 64,
+          "outcomes": {
+            "authorized": 47,
+            "healthy": 0,
+            "denied": 0,
+            "unavailable": 17,
+            "error": 0,
+            "transport_error": 0,
+            "violation": 0
+          },
+          "authorizedLatencyMs": {
+            "p50": 20.02799999999843,
+            "p95": 24.38787500000035,
+            "p99": 24.694083000002138
+          },
+          "clusterWalBytes": "36976"
+        },
+        {
+          "name": "arrival-revocation-concurrent",
+          "attempts": 2000,
+          "outcomes": {
+            "authorized": 1000,
+            "healthy": 0,
+            "denied": 987,
+            "unavailable": 13,
+            "error": 0,
+            "transport_error": 0,
+            "violation": 0
+          },
+          "authorizedLatencyMs": {
+            "p50": 8.932459000003291,
+            "p95": 17.027249999999185,
+            "p99": 23.84625000000233
+          },
+          "clusterWalBytes": "1027328"
+        },
+        {
+          "name": "revocation-after-commit",
+          "attempts": 64,
+          "outcomes": {
+            "authorized": 0,
+            "healthy": 0,
+            "denied": 51,
+            "unavailable": 13,
+            "error": 0,
+            "transport_error": 0,
+            "violation": 0
+          },
+          "authorizedLatencyMs": null,
+          "clusterWalBytes": "20320"
+        },
+        {
+          "name": "unaffected-resource",
+          "attempts": 32,
+          "outcomes": {
+            "authorized": 32,
+            "healthy": 0,
+            "denied": 0,
+            "unavailable": 0,
+            "error": 0,
+            "transport_error": 0,
+            "violation": 0
+          },
+          "authorizedLatencyMs": {
+            "p50": 8.355374999999185,
+            "p95": 15.574874999991152,
+            "p99": 17.160332999992534
+          },
+          "clusterWalBytes": "18760"
+        }
+      ]
+    },
+    {
+      "timestamp": "2026-09-27T20:19:09.545Z",
+      "source": {
+        "commit": "b20be9207d988e1d5a6588bfdc8bb342e71c3f2c",
+        "clean": true,
+        "sha256": "d4a532746b3d45b2091f3932939f043293d2795544fdc7f663fc81100ce83172"
+      },
+      "fixture": {
+        "expiredRows": 20000,
+        "liveRows": 20000
+      },
+      "cleanup": {
+        "populationBefore": {
+          "expired": 20000,
+          "live": 20000
+        },
+        "populationAfter": {
+          "expired": 19000,
+          "live": 20000
+        },
+        "tableStatisticsBefore": {
+          "relationBytes": 10248192,
+          "totalBytes": 15704064,
+          "liveTuplesEstimate": 40008,
+          "deadTuplesEstimate": 0,
+          "deletedTuplesSinceStatsReset": 0,
+          "autovacuumCount": 0,
+          "lastAutovacuumAt": null
+        },
+        "tableStatisticsAfter": {
+          "relationBytes": 10248192,
+          "totalBytes": 15704064,
+          "liveTuplesEstimate": 39012,
+          "deadTuplesEstimate": 1006,
+          "deletedTuplesSinceStatsReset": 1000,
+          "autovacuumCount": 0,
+          "lastAutovacuumAt": null
+        },
+        "queryPlans": {
+          "boundedSelection": {
+            "planningMs": 0.193,
+            "executionMs": 0.132,
+            "root": {
+              "nodeType": "Limit",
+              "relation": null,
+              "index": null,
+              "estimatedRows": 100,
+              "actualRows": 100,
+              "loops": 1,
+              "sharedBuffers": {
+                "hit": 108,
+                "read": 0
+              },
+              "children": [
+                {
+                  "nodeType": "LockRows",
+                  "relation": null,
+                  "index": null,
+                  "estimatedRows": 13336,
+                  "actualRows": 100,
+                  "loops": 1,
+                  "sharedBuffers": {
+                    "hit": 108,
+                    "read": 0
+                  },
+                  "children": [
+                    {
+                      "nodeType": "Index Scan",
+                      "relation": "authorization_requests",
+                      "index": "authorization_expiry",
+                      "estimatedRows": 13336,
+                      "actualRows": 100,
+                      "loops": 1,
+                      "sharedBuffers": {
+                        "hit": 8,
+                        "read": 0
+                      },
+                      "children": []
+                    }
+                  ]
+                }
+              ]
+            }
+          },
+          "boundedDelete": {
+            "planningMs": null,
+            "executionMs": null,
+            "root": {
+              "nodeType": "Result",
+              "relation": null,
+              "index": null,
+              "estimatedRows": 1,
+              "actualRows": null,
+              "loops": null,
+              "sharedBuffers": {
+                "hit": null,
+                "read": null
+              },
+              "children": [
+                {
+                  "nodeType": "Limit",
+                  "relation": null,
+                  "index": null,
+                  "estimatedRows": 100,
+                  "actualRows": null,
+                  "loops": null,
+                  "sharedBuffers": {
+                    "hit": null,
+                    "read": null
+                  },
+                  "children": [
+                    {
+                      "nodeType": "LockRows",
+                      "relation": null,
+                      "index": null,
+                      "estimatedRows": 13336,
+                      "actualRows": null,
+                      "loops": null,
+                      "sharedBuffers": {
+                        "hit": null,
+                        "read": null
+                      },
+                      "children": [
+                        {
+                          "nodeType": "Index Scan",
+                          "relation": "authorization_requests",
+                          "index": "authorization_expiry",
+                          "estimatedRows": 13336,
+                          "actualRows": null,
+                          "loops": null,
+                          "sharedBuffers": {
+                            "hit": null,
+                            "read": null
+                          },
+                          "children": []
+                        }
+                      ]
+                    }
+                  ]
+                },
+                {
+                  "nodeType": "ModifyTable",
+                  "relation": "authorization_requests",
+                  "index": null,
+                  "estimatedRows": 100,
+                  "actualRows": null,
+                  "loops": null,
+                  "sharedBuffers": {
+                    "hit": null,
+                    "read": null
+                  },
+                  "children": [
+                    {
+                      "nodeType": "Nested Loop",
+                      "relation": null,
+                      "index": null,
+                      "estimatedRows": 100,
+                      "actualRows": null,
+                      "loops": null,
+                      "sharedBuffers": {
+                        "hit": null,
+                        "read": null
+                      },
+                      "children": [
+                        {
+                          "nodeType": "CTE Scan",
+                          "relation": null,
+                          "index": null,
+                          "estimatedRows": 100,
+                          "actualRows": null,
+                          "loops": null,
+                          "sharedBuffers": {
+                            "hit": null,
+                            "read": null
+                          },
+                          "children": []
+                        },
+                        {
+                          "nodeType": "Index Scan",
+                          "relation": "authorization_requests",
+                          "index": "authorization_requests_pkey",
+                          "estimatedRows": 1,
+                          "actualRows": null,
+                          "loops": null,
+                          "sharedBuffers": {
+                            "hit": null,
+                            "read": null
+                          },
+                          "children": []
+                        }
+                      ]
+                    }
+                  ]
+                },
+                {
+                  "nodeType": "Limit",
+                  "relation": null,
+                  "index": null,
+                  "estimatedRows": 1,
+                  "actualRows": null,
+                  "loops": null,
+                  "sharedBuffers": {
+                    "hit": null,
+                    "read": null
+                  },
+                  "children": [
+                    {
+                      "nodeType": "Nested Loop",
+                      "relation": null,
+                      "index": null,
+                      "estimatedRows": 13303,
+                      "actualRows": null,
+                      "loops": null,
+                      "sharedBuffers": {
+                        "hit": null,
+                        "read": null
+                      },
+                      "children": [
+                        {
+                          "nodeType": "Index Only Scan",
+                          "relation": "authorization_requests",
+                          "index": "authorization_expiry",
+                          "estimatedRows": 13336,
+                          "actualRows": null,
+                          "loops": null,
+                          "sharedBuffers": {
+                            "hit": null,
+                            "read": null
+                          },
+                          "children": []
+                        },
+                        {
+                          "nodeType": "CTE Scan",
+                          "relation": null,
+                          "index": null,
+                          "estimatedRows": 100,
+                          "actualRows": null,
+                          "loops": null,
+                          "sharedBuffers": {
+                            "hit": null,
+                            "read": null
+                          },
+                          "children": []
+                        }
+                      ]
+                    }
+                  ]
+                },
+                {
+                  "nodeType": "Aggregate",
+                  "relation": null,
+                  "index": null,
+                  "estimatedRows": 1,
+                  "actualRows": null,
+                  "loops": null,
+                  "sharedBuffers": {
+                    "hit": null,
+                    "read": null
+                  },
+                  "children": [
+                    {
+                      "nodeType": "CTE Scan",
+                      "relation": null,
+                      "index": null,
+                      "estimatedRows": 100,
+                      "actualRows": null,
+                      "loops": null,
+                      "sharedBuffers": {
+                        "hit": null,
+                        "read": null
+                      },
+                      "children": []
+                    }
+                  ]
+                },
+                {
+                  "nodeType": "Aggregate",
+                  "relation": null,
+                  "index": null,
+                  "estimatedRows": 1,
+                  "actualRows": null,
+                  "loops": null,
+                  "sharedBuffers": {
+                    "hit": null,
+                    "read": null
+                  },
+                  "children": [
+                    {
+                      "nodeType": "CTE Scan",
+                      "relation": null,
+                      "index": null,
+                      "estimatedRows": 100,
+                      "actualRows": null,
+                      "loops": null,
+                      "sharedBuffers": {
+                        "hit": null,
+                        "read": null
+                      },
+                      "children": []
+                    }
+                  ]
+                },
+                {
+                  "nodeType": "CTE Scan",
+                  "relation": null,
+                  "index": null,
+                  "estimatedRows": 1,
+                  "actualRows": null,
+                  "loops": null,
+                  "sharedBuffers": {
+                    "hit": null,
+                    "read": null
+                  },
+                  "children": []
+                }
+              ]
+            }
+          }
+        },
+        "expiredRowsRemoved": 1000,
+        "scheduledSweeps": [
+          {
+            "status": "ok",
+            "batches": 10,
+            "deleted": 1000,
+            "backlogRemaining": true,
+            "oldestExpiredAgeMs": 356680,
+            "durationMs": 35
+          }
+        ],
+        "overlappingPhases": ["arrival-revocation-concurrent"]
+      },
+      "phases": [
+        {
+          "name": "warmup",
+          "attempts": 64,
+          "outcomes": {
+            "authorized": 51,
+            "healthy": 0,
+            "denied": 0,
+            "unavailable": 13,
+            "error": 0,
+            "transport_error": 0,
+            "violation": 0
+          },
+          "authorizedLatencyMs": {
+            "p50": 23.21312500000022,
+            "p95": 47.45112499999959,
+            "p99": 51.853916999998546
+          },
+          "clusterWalBytes": "39104"
+        },
+        {
+          "name": "arrival-diverse-r200",
+          "attempts": 1997,
+          "outcomes": {
+            "authorized": 1994,
+            "healthy": 0,
+            "denied": 0,
+            "unavailable": 3,
+            "error": 0,
+            "transport_error": 0,
+            "violation": 0
+          },
+          "authorizedLatencyMs": {
+            "p50": 8.119584000000032,
+            "p95": 18.073292000000947,
+            "p99": 28.005707999996957
+          },
+          "clusterWalBytes": "1278176"
+        },
+        {
+          "name": "arrival-diverse-r800",
+          "attempts": 8000,
+          "outcomes": {
+            "authorized": 3322,
+            "healthy": 0,
+            "denied": 0,
+            "unavailable": 4678,
+            "error": 0,
+            "transport_error": 0,
+            "violation": 0
+          },
+          "authorizedLatencyMs": {
+            "p50": 36.15570899999875,
+            "p95": 45.62616600000183,
+            "p99": 55.76633299999958
+          },
+          "clusterWalBytes": "2595552"
+        },
+        {
+          "name": "arrival-diverse-r1600",
+          "attempts": 16000,
+          "outcomes": {
+            "authorized": 3109,
+            "healthy": 0,
+            "denied": 0,
+            "unavailable": 12891,
+            "error": 0,
+            "transport_error": 0,
+            "violation": 0
+          },
+          "authorizedLatencyMs": {
+            "p50": 38.900792000000365,
+            "p95": 52.20570900000166,
+            "p99": 78.51241599999776
+          },
+          "clusterWalBytes": "2431760"
+        },
+        {
+          "name": "arrival-noisy-invalid-client",
+          "attempts": 11999,
+          "outcomes": {
+            "authorized": 1288,
+            "healthy": 1500,
+            "denied": 7451,
+            "unavailable": 1760,
+            "error": 0,
+            "transport_error": 0,
+            "violation": 0
+          },
+          "authorizedLatencyMs": {
+            "p50": 24.010207999999693,
+            "p95": 31.06945799999812,
+            "p99": 50.109667000004265
+          },
+          "clusterWalBytes": "1847240"
+        },
+        {
+          "name": "arrival-permission-reduction-concurrent",
+          "attempts": 2000,
+          "outcomes": {
+            "authorized": 2000,
+            "healthy": 0,
+            "denied": 0,
+            "unavailable": 0,
+            "error": 0,
+            "transport_error": 0,
+            "violation": 0
+          },
+          "authorizedLatencyMs": {
+            "p50": 7.394000000000233,
+            "p95": 9.001666999996814,
+            "p99": 12.207500000004075
+          },
+          "clusterWalBytes": "1607760"
+        },
+        {
+          "name": "permission-reduction-after-commit",
+          "attempts": 64,
+          "outcomes": {
+            "authorized": 44,
+            "healthy": 0,
+            "denied": 0,
+            "unavailable": 20,
+            "error": 0,
+            "transport_error": 0,
+            "violation": 0
+          },
+          "authorizedLatencyMs": {
+            "p50": 19.381583000002138,
+            "p95": 22.183833000002778,
+            "p99": 27.421875
+          },
+          "clusterWalBytes": "34960"
+        },
+        {
+          "name": "arrival-revocation-concurrent",
+          "attempts": 2000,
+          "outcomes": {
+            "authorized": 999,
+            "healthy": 0,
+            "denied": 1000,
+            "unavailable": 1,
+            "error": 0,
+            "transport_error": 0,
+            "violation": 0
+          },
+          "authorizedLatencyMs": {
+            "p50": 7.50762499999837,
+            "p95": 14.82012499999837,
+            "p99": 24.506207999998878
+          },
+          "clusterWalBytes": "1000784"
+        },
+        {
+          "name": "revocation-after-commit",
+          "attempts": 64,
+          "outcomes": {
+            "authorized": 0,
+            "healthy": 0,
+            "denied": 51,
+            "unavailable": 13,
+            "error": 0,
+            "transport_error": 0,
+            "violation": 0
+          },
+          "authorizedLatencyMs": null,
+          "clusterWalBytes": "20272"
+        },
+        {
+          "name": "unaffected-resource",
+          "attempts": 32,
+          "outcomes": {
+            "authorized": 32,
+            "healthy": 0,
+            "denied": 0,
+            "unavailable": 0,
+            "error": 0,
+            "transport_error": 0,
+            "violation": 0
+          },
+          "authorizedLatencyMs": {
+            "p50": 7.505707999996957,
+            "p95": 8.122124999994412,
+            "p99": 9.216375000003609
+          },
+          "clusterWalBytes": "18736"
+        }
+      ]
+    }
+  ],
+  "storageComparison": {
+    "preIndexTotalRelationAndIndexBytes": 13238272,
+    "postIndexTotalRelationAndIndexBytes": [15720448, 15704064],
+    "note": "Separate disposable 40,000-row runs; this is an observed fixture-size difference, not a per-row production forecast."
+  }
+}

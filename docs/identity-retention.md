@@ -110,6 +110,40 @@ instances, disk-cold behavior, prolonged autovacuum/vacuum interaction, backup
 growth, or production arrival distributions. Vacuum tuple counts and relation
 bytes are point-in-time snapshots, not a long-term storage-growth forecast.
 
+## Local lifecycle profile — 2026-09-27
+
+Two control runs and two cleanup runs were collected from clean source commit
+`b20be9207d988e1d5a6588bfdc8bb342e71c3f2c` with the same five-connection
+`darkhorse_runtime` profile. The full aggregate reports and bounded query plans
+are in the [lifecycle measurement record](measurements/authorization-cleanup-lifecycle-2026-09-27.json).
+
+| Run       | Authorized introspection p95 at 200/s |   800/s | 1,600/s | Scheduled sweep |
+| --------- | ------------------------------------: | ------: | ------: | --------------: |
+| Control 1 |                               16.2 ms | 57.7 ms | 48.0 ms |               — |
+| Cleanup 1 |                               42.7 ms | 49.0 ms | 48.2 ms |           43 ms |
+| Control 2 |                               10.5 ms | 44.6 ms | 42.8 ms |               — |
+| Cleanup 2 |                               18.1 ms | 45.6 ms | 52.2 ms |           35 ms |
+
+Each cleanup run deleted exactly its 1,000-row budget from the expired backlog,
+left 19,000 expired rows for later passes, preserved all 20,000 live requests,
+and overlapped the concurrent revocation phase. The post-migration candidate
+plan used `authorization_expiry` and returned 100 rows after reading 100 index
+entries in 0.106–0.132 ms. The exploratory pre-migration plan read 20,000
+same-expiry rows through an incremental sort in 8.887 ms. That earlier plan
+probe had dirty source and is marked as such in the record; the four workload
+runs used clean source.
+
+The relation heap measured 10.25 MB in these fixtures. Total relation and index
+size was 13.24 MB before the composite index and 15.70–15.72 MB after it, a
+roughly 2.47 MB increase for this 40,000-row fixture. After one cleanup pass,
+PostgreSQL estimated 1,000 dead tuples and reported no autovacuum during the
+short run. Treat these as local observations, not scale projections. The 200/s
+authorized p95 varied by more than 20 ms within the cleanup runs, and both
+profiles returned substantial `unavailable` responses at 800/s and 1,600/s.
+These samples do not establish a causal latency change, supported request rate,
+or production capacity; more controlled repetitions and longer vacuum/storage
+measurements remain open work.
+
 Until the remaining decisions and their failure-boundary tests are reviewed, no new session, code, access-token, consent, audit or relying-party cleanup is authorized. The request sweep does not establish retention policy for those records.
 
 ## Sources
