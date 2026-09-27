@@ -231,6 +231,7 @@ async function hostChecks(env, db, directory, benchmark) {
           signal: abort.signal,
           profiling,
           restrictedDatabase: benchmark.profile.restrictedDatabase === true,
+          cleanupMonitoring: benchmark.profile.lifecycleCleanup !== undefined,
           poolSize: benchmark.poolSize,
           exercise: async (options) =>
             (await import("./lib/benchmark-browser.mjs")).benchmarkBrowser(

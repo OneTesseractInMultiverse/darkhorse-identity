@@ -144,6 +144,13 @@ async fn large_expired_request_population_keeps_each_scheduled_sweep_bounded() {
         .execute(&db.pool)
         .await
         .unwrap();
+    let expiry_index: String = sqlx::query_scalar(
+        "SELECT indexdef FROM pg_indexes WHERE schemaname='public' AND tablename='authorization_requests' AND indexname='authorization_expiry'",
+    )
+    .fetch_one(&db.pool)
+    .await
+    .unwrap();
+    assert!(expiry_index.contains("(expires_ms, digest)"));
 
     let report = sweep_expired_authorization_requests(&db.store)
         .await

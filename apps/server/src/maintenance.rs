@@ -1,6 +1,6 @@
 use darkhorse_adapters::postgres::PostgresStore;
 use darkhorse_application::{oidc_maintenance, refresh};
-use std::time::Duration;
+use std::time::{Duration, Instant};
 
 #[cfg(test)]
 #[path = "../tests/unit/maintenance.rs"]
@@ -8,6 +8,7 @@ mod tests;
 
 fn authorization_cleanup_event(
     report: oidc_maintenance::AuthorizationRequestCleanupSweep,
+    duration_ms: u64,
 ) -> Option<String> {
     if report.deleted == 0 && !report.backlog_remaining {
         return None;
@@ -16,9 +17,19 @@ fn authorization_cleanup_event(
         .oldest_expired_age_ms
         .map_or_else(|| "none".to_owned(), |age| age.to_string());
     Some(format!(
-        "maintenance authorization_request_cleanup status=ok batches={} deleted={} backlog_remaining={} oldest_expired_age_ms={oldest_age_ms}",
+        "maintenance authorization_request_cleanup status=ok batches={} deleted={} backlog_remaining={} oldest_expired_age_ms={oldest_age_ms} duration_ms={duration_ms}",
         report.batches, report.deleted, report.backlog_remaining
     ))
+}
+
+fn authorization_cleanup_failure_event(duration_ms: u64) -> String {
+    format!(
+        "maintenance authorization_request_cleanup status=failed error=unavailable duration_ms={duration_ms}; retrying next interval."
+    )
+}
+
+fn elapsed_millis(started: Instant) -> u64 {
+    u64::try_from(started.elapsed().as_millis()).unwrap_or(u64::MAX)
 }
 
 /// One bounded sweep per minute. Dropping this future cancels pending work;
@@ -35,14 +46,16 @@ pub async fn run(store: Option<PostgresStore>) {
         if refresh::sweep(&store).await.is_err() {
             eprintln!("Refresh credential cleanup unavailable; retrying next interval.");
         }
+        let started = Instant::now();
         match oidc_maintenance::sweep_expired_authorization_requests(&store).await {
             Ok(report) => {
-                if let Some(event) = authorization_cleanup_event(report) {
+                if let Some(event) = authorization_cleanup_event(report, elapsed_millis(started)) {
                     eprintln!("{event}");
                 }
             }
             Err(_) => eprintln!(
-                "maintenance authorization_request_cleanup status=failed error=unavailable; retrying next interval."
+                "{}",
+                authorization_cleanup_failure_event(elapsed_millis(started))
             ),
         }
     }

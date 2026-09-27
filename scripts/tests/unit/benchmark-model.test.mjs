@@ -23,6 +23,11 @@ test("benchmark profiles bound load and reject accidental unbounded settings", (
   assert.throws(() => benchmarkProfile("production"), /profile/);
   assert.equal(benchmarkProfile("arrival-smoke").arrivals.durationMs, 2000);
   assert.equal(benchmarkProfile("arrival-baseline").clients, 8);
+  assert.deepEqual(benchmarkProfile("lifecycle-baseline"), {
+    ...benchmarkProfile("profile-baseline"),
+    name: "lifecycle-baseline",
+    lifecycleCleanup: { expiredRows: 20_000, liveRows: 20_000 },
+  });
 });
 const expected = {
   active: true,

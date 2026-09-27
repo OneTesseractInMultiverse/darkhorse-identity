@@ -383,6 +383,11 @@ benchmark-profile: ## Performance: paced smoke with opt-in Rust stage/pool and P
 benchmark-profile-baseline: ## Performance: paced baseline with opt-in stage and SQL profiling
 	$(MAKE) benchmark BENCH_PROFILE=profile-baseline
 
+.PHONY: benchmark-lifecycle-baseline
+
+benchmark-lifecycle-baseline: ## Performance: restricted-role arrival profile overlapping bounded request cleanup with auth load
+	$(MAKE) benchmark BENCH_PROFILE=lifecycle-baseline
+
 BENCH_POOL_PROFILE ?= arrival-smoke
 .PHONY: benchmark-pools benchmark-pools-baseline
 

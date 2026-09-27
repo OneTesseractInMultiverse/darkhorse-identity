@@ -18,6 +18,13 @@ import { runLoad } from "./benchmark-load.mjs";
 import { verifyPhaseProfile } from "./benchmark-profile-consistency.mjs";
 import { profiler } from "./benchmark-profiler.mjs";
 import { metadata, snapshot } from "./benchmark-observations.mjs";
+import { lifecycleFixtureStatements } from "./benchmark-cleanup-fixture.mjs";
+import {
+  cleanupDeletePlanSql,
+  cleanupSelectionPlanSql,
+  cleanupTableStatisticsSql,
+  summarizeCleanupQueryPlan,
+} from "./benchmark-cleanup-plan.mjs";
 
 function expectation(options, fixture, reduced = false) {
   return {
@@ -66,6 +73,122 @@ function selection(options, fixtures, index, diverse = true) {
     expected: expectation(options, fixtures[client]),
   };
 }
+function benchmarkUnixMs() {
+  return performance.timeOrigin + performance.now();
+}
+async function queryDatabaseJson(options, statement) {
+  const result = await options.docker([
+    "exec",
+    options.db.name,
+    "psql",
+    "-U",
+    "postgres",
+    "-d",
+    "browser_test",
+    "-v",
+    "ON_ERROR_STOP=1",
+    "-qAtc",
+    statement,
+  ]);
+  return JSON.parse(result.stdout.trim());
+}
+async function cleanupPopulation(options, statement) {
+  const population = await queryDatabaseJson(options, statement);
+  for (const key of ["expired", "live"])
+    if (!Number.isSafeInteger(population[key]) || population[key] < 0)
+      throw new Error("Invalid lifecycle benchmark population result.");
+  return population;
+}
+async function prepareLifecycleCleanup(state) {
+  const applicationId = state.fixtures[0].app.identity.application_id;
+  const statements = lifecycleFixtureStatements(
+    applicationId,
+    state.profile.lifecycleCleanup,
+  );
+  await state.options.runSql(statements.seed);
+  await state.options.runSql("ANALYZE authorization_requests");
+  const before = await cleanupPopulation(state.options, statements.counts);
+  assert.equal(before.expired, state.profile.lifecycleCleanup.expiredRows);
+  assert.equal(before.live, state.profile.lifecycleCleanup.liveRows);
+  state.lifecycleCleanup = {
+    countsSql: statements.counts,
+    seededAtUnixMs: benchmarkUnixMs(),
+    before,
+  };
+  state.report.lifecycleCleanup = {
+    populationBefore: before,
+    tableStatisticsBefore: await queryDatabaseJson(
+      state.options,
+      cleanupTableStatisticsSql,
+    ),
+    queryPlans: {
+      boundedSelection: summarizeCleanupQueryPlan(
+        await queryDatabaseJson(state.options, cleanupSelectionPlanSql),
+      ),
+      boundedDelete: summarizeCleanupQueryPlan(
+        await queryDatabaseJson(state.options, cleanupDeletePlanSql),
+      ),
+    },
+    scheduledSweeps: [],
+    overlappingPhases: [],
+  };
+}
+async function completeLifecycleCleanup(state) {
+  const { options, lifecycleCleanup, cleanupEvents } = state;
+  const deadline = performance.now() + 65_000;
+  while (
+    !cleanupEvents.some(
+      (event) =>
+        event.observedAtUnixMs >= lifecycleCleanup.seededAtUnixMs &&
+        event.status === "ok" &&
+        event.deleted > 0,
+    ) &&
+    performance.now() < deadline
+  )
+    await delay(100);
+
+  const sweeps = cleanupEvents.filter(
+    (event) => event.observedAtUnixMs >= lifecycleCleanup.seededAtUnixMs,
+  );
+  const successful = sweeps.filter((event) => event.status === "ok");
+  assert.ok(
+    successful.some((event) => event.deleted > 0),
+    "Scheduled cleanup did not report progress against the synthetic population.",
+  );
+  const after = await cleanupPopulation(options, lifecycleCleanup.countsSql);
+  const tableStatisticsAfter = await queryDatabaseJson(
+    options,
+    cleanupTableStatisticsSql,
+  );
+  assert.equal(after.live, lifecycleCleanup.before.live);
+  assert.ok(after.expired < lifecycleCleanup.before.expired);
+  assert.equal(
+    lifecycleCleanup.before.expired - after.expired,
+    successful.reduce((sum, event) => sum + event.deleted, 0),
+    "Scheduled cleanup report and synthetic expired-row progress disagree.",
+  );
+  assert.ok(successful.some((event) => event.backlogRemaining));
+
+  const overlappingPhases = state.report.phases
+    .filter((phase) =>
+      sweeps.some(
+        (event) =>
+          event.observedAtUnixMs >= phase.measurementWindowUnixMs.startedAt &&
+          event.observedAtUnixMs <= phase.measurementWindowUnixMs.endedAt,
+      ),
+    )
+    .map((phase) => phase.name);
+  state.report.lifecycleCleanup = {
+    populationBefore: lifecycleCleanup.before,
+    populationAfter: after,
+    tableStatisticsBefore: state.report.lifecycleCleanup.tableStatisticsBefore,
+    tableStatisticsAfter,
+    queryPlans: state.report.lifecycleCleanup.queryPlans,
+    expiredRowsRemoved: lifecycleCleanup.before.expired - after.expired,
+    scheduledSweeps: sweeps,
+    overlappingPhases,
+  };
+}
 function request(options, fixtures, agent, selected) {
   if (selected.client === "health")
     return health(options.origin, options.ca, agent);
@@ -92,6 +215,7 @@ async function phase(
   concurrentChange,
 ) {
   await state.observer?.before();
+  const startedAt = benchmarkUnixMs();
   const clock = () => performance.now() - state.started;
   let begin;
   const dispatched = new Promise((resolve) => {
@@ -117,6 +241,10 @@ async function phase(
   if (changed.status === "rejected") throw changed.reason;
   const { rows, wallMs } = loaded.value;
   const summary = phaseSummary(name, concurrency, rows, wallMs, changed.value);
+  summary.measurementWindowUnixMs = {
+    startedAt,
+    endedAt: benchmarkUnixMs(),
+  };
   await recordPhase(state, name, rows, summary);
   return summary;
 }
@@ -300,6 +428,7 @@ async function changes(state, agent, measure = phase) {
 }
 async function pacedPhase(state, name, select, agent, rate, change, operator) {
   await state.observer?.before();
+  const startedAt = benchmarkUnixMs();
   const settings = { ...state.profile.arrivals, rate };
   const load = () =>
     measureArrivals({
@@ -322,6 +451,10 @@ async function pacedPhase(state, name, select, agent, rate, change, operator) {
         details: state.profile.details,
       })
     : await load();
+  summary.measurementWindowUnixMs = {
+    startedAt,
+    endedAt: benchmarkUnixMs(),
+  };
   if (operator?.mutation)
     summary.operators = operatorSummary(
       [
@@ -458,6 +591,7 @@ export async function benchmarkBrowser(options, profile) {
     directory,
     report,
     profile,
+    cleanupEvents: options.cleanupEvents ?? [],
     started: performance.now(),
   };
   await save(state);
@@ -471,6 +605,7 @@ export async function benchmarkBrowser(options, profile) {
   try {
     const provisioned = await provision(options, profile);
     state.fixtures = provisioned.fixtures;
+    if (profile.lifecycleCleanup) await prepareLifecycleCleanup(state);
     report.sso = provisioned.sso;
     if (profile.operators)
       report.operatorLimits = operatorLimits(
@@ -488,6 +623,7 @@ export async function benchmarkBrowser(options, profile) {
       await steady(state, agent);
       await changes(state, agent);
     }
+    if (profile.lifecycleCleanup) await completeLifecycleCleanup(state);
     report.after = await snapshot(options);
     report.status = "passed";
   } finally {

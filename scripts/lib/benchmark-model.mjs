@@ -30,6 +30,12 @@ export function benchmarkProfile(name) {
       profiling: true,
       restrictedDatabase: true,
     };
+  if (name === "lifecycle-baseline")
+    return {
+      ...benchmarkProfile("profile-baseline"),
+      name,
+      lifecycleCleanup: { expiredRows: 20_000, liveRows: 20_000 },
+    };
   if (["arrival-smoke", "arrival-baseline"].includes(name))
     return {
       name,
@@ -45,7 +51,7 @@ export function benchmarkProfile(name) {
       },
     };
   throw new Error(
-    "Unknown benchmark profile; use smoke, baseline, arrival-smoke, arrival-baseline, profile-smoke, profile-baseline, operator-smoke, operator-baseline, operator-detail-smoke or operator-detail-baseline.",
+    "Unknown benchmark profile; use smoke, baseline, arrival-smoke, arrival-baseline, profile-smoke, profile-baseline, lifecycle-baseline, operator-smoke, operator-baseline, operator-detail-smoke or operator-detail-baseline.",
   );
 }
 export function classify(response, expected) {

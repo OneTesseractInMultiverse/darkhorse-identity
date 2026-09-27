@@ -15,6 +15,7 @@ import { chromium } from "@playwright/test";
 import { tlsProxy } from "./lib/redis-test-proxy.mjs";
 import { runtimeEnvironment } from "./lib/redis-settings.mjs";
 import { profileChannel } from "./lib/benchmark-profile-channel.mjs";
+import { createCleanupEventCollector } from "./lib/benchmark-cleanup-events.mjs";
 import { runBenchmarkCommand } from "./lib/benchmark-command.mjs";
 import { restrictBenchmarkDatabase } from "./lib/benchmark-database.mjs";
 import { startProcess } from "./lib/process.mjs";
@@ -82,6 +83,7 @@ export async function verifyBrowser(
     exercise = exerciseBrowser,
     profiling = false,
     restrictedDatabase = false,
+    cleanupMonitoring = false,
     poolSize = 5,
     signal,
   } = {},
@@ -183,13 +185,23 @@ export async function verifyBrowser(
         runtime.DARKHORSE_DATABASE_URL,
       );
     const channel = profiling ? profileChannel() : undefined;
+    const cleanupEvents = [];
+    const collectCleanupEvent = cleanupMonitoring
+      ? createCleanupEventCollector(cleanupEvents)
+      : undefined;
     server = startProcess({
       command: executable,
       args: [],
       env: runtime,
       stdout: channel?.accept,
+      stderr: collectCleanupEvent,
     });
     if (channel) void server.done.then(channel.close, channel.close);
+    if (collectCleanupEvent)
+      void server.done.then(
+        collectCleanupEvent.flush,
+        collectCleanupEvent.flush,
+      );
     await ready(origin, tls.ca);
     await assert.rejects(https(origin, undefined, "/health/live"));
     browser = await launchBrowser(directory);
@@ -230,6 +242,7 @@ export async function verifyBrowser(
       executable,
       poolSize,
       databaseRole: restrictedDatabase ? "darkhorse_runtime" : "postgres",
+      cleanupEvents,
     });
   } finally {
     await browser?.close();

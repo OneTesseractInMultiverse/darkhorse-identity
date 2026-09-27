@@ -70,15 +70,45 @@ Principals, credentials, applications, OAuth clients and access-catalog records 
 
 The authorization-request sweep is the first maintenance slice for #33. It checks primary database time while holding the shared primary-authority fence; each request remains non-authorizing after expiry even if cleanup is delayed or fails. Lock contention, statement failure and shutdown leave the batch retryable. The query emits no per-record logs or metric labels. The existing refresh-family sweep remains separate.
 
+Migration 35 replaces the single-column authorization-expiry index with a B-tree
+on `(expires_ms, digest)`. The second key matches the cleanup query's stable
+tie-breaking order. On a large synthetic set with identical expiry times, the
+single-column index made PostgreSQL read and incrementally sort the entire
+expired set to obtain each 100-row batch. The composite key lets the bounded
+scan follow both ordering columns. This changes no request data or expiry
+semantics. The migration is transactional and uses the repository's ordinary
+index-build path, so database operators should account for its write-lock window
+when upgrading a deployment with a large request table.
+
 When a scheduled sweep deletes rows or observes expired backlog, the server emits one structured stderr event with fixed fields:
 
 ```text
-maintenance authorization_request_cleanup status=ok batches=10 deleted=1000 backlog_remaining=true oldest_expired_age_ms=...
+maintenance authorization_request_cleanup status=ok batches=10 deleted=1000 backlog_remaining=true oldest_expired_age_ms=... duration_ms=...
 ```
 
-`batches` and `deleted` describe that scheduled sweep only; authorization-start transactions may independently remove one batch and are not included. `backlog_remaining` means at least one expired row was visible after the last batch in its SQL statement snapshot. This is a lower-bound signal, not an exact queue count; another worker may have the row locked or be deleting it. `oldest_expired_age_ms` is an aggregate age derived from primary database time and the oldest expired row observed in the processed or remaining set. Failed sweeps emit only a fixed `status=failed error=unavailable` event and retry at the next interval. Empty successful sweeps are silent. These are bounded log observations, not a Prometheus/OpenTelemetry exporter or a complete count of cleanup initiated by request traffic.
+`batches` and `deleted` describe that scheduled sweep only; authorization-start transactions may independently remove one batch and are not included. `duration_ms` is wall time for the OIDC sweep, including its bounded database transactions, and excludes the separate refresh-family sweep. `backlog_remaining` means at least one expired row was visible after the last batch in its SQL statement snapshot. This is a lower-bound signal, not an exact queue count; another worker may have the row locked or be deleting it. `oldest_expired_age_ms` is an aggregate age derived from primary database time and the oldest expired row observed in the processed or remaining set. Failed sweeps include the same aggregate duration and a fixed `error=unavailable` field, then retry at the next interval. Empty successful sweeps are silent. These are bounded log observations, not a Prometheus/OpenTelemetry exporter or a complete count of cleanup initiated by request traffic.
 
 The real PostgreSQL scale test seeds 20,000 expired and 20,000 live synthetic requests. One scheduled pass reports no more than ten batches and 1,000 deletions, preserves every live row, and reports aged remaining work. This demonstrates the configured work bound at that fixture size; it does not establish production latency, query-plan stability, vacuum/WAL impact, or interference with login, introspection, and security writes.
+
+`make benchmark-lifecycle-baseline` adds a separate restricted-runtime profile.
+It provisions real browser/OIDC credentials, inserts 20,000 expired and 20,000
+live synthetic requests into the disposable benchmark database, and runs the
+60-second cleanup worker alongside the paced introspection, permission
+reduction, and revocation phases. Reports include the aggregate cleanup event,
+phase overlap and latency, the query planner's bounded-selection and deletion
+plans, authorization-request table-size and vacuum-stat snapshots, and the
+existing per-phase PostgreSQL statement/WAL and Rust-stage observations. The
+selection plan is analyzed against the fixture; the deletion CTE is explained
+without executing it. Only a bounded projection of plan nodes is kept, without
+query text. The disposable benchmark owner creates fixtures; server traffic
+uses the restricted `darkhorse_runtime` role.
+
+Use the adjacent `profile-baseline` workload as a directional control for
+traffic without the large expired backlog. These local, single-host runs do not
+establish a deployment capacity or SLO. They do not model multiple server
+instances, disk-cold behavior, prolonged autovacuum/vacuum interaction, backup
+growth, or production arrival distributions. Vacuum tuple counts and relation
+bytes are point-in-time snapshots, not a long-term storage-growth forecast.
 
 Until the remaining decisions and their failure-boundary tests are reviewed, no new session, code, access-token, consent, audit or relying-party cleanup is authorized. The request sweep does not establish retention policy for those records.
 

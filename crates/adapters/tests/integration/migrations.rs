@@ -30,7 +30,7 @@ async fn fresh_upgrade_and_noop_preserve_baseline_and_step_receipts() {
         db.store.migrate_operation(id(1)).await.unwrap();
         let record = db.store.inspect_migration(id(1)).await.unwrap().unwrap();
         assert!(record.completed_ms.is_some());
-        assert_eq!(record.steps.len(), 34);
+        assert_eq!(record.steps.len(), 35);
         assert_eq!(
             record.steps.iter().filter(|s| s.already_applied).count(),
             version as usize
@@ -41,7 +41,7 @@ async fn fresh_upgrade_and_noop_preserve_baseline_and_step_receipts() {
                 .iter()
                 .filter(|s| s.completed_ms.is_some())
                 .count(),
-            34 - version as usize
+            35 - version as usize
         );
         assert!(record.steps.iter().all(|s| s.current_matches));
         let before = history(&db).await;
@@ -151,7 +151,7 @@ async fn journal_failure_prevents_changes_and_completion_failure_keeps_steps() {
             assert!(record.completed_ms.is_none());
             assert!(record.steps[23].completed_ms.is_some());
             assert!(record.steps.iter().all(|s| s.current_matches));
-            assert_eq!(history(&db).await, 34);
+            assert_eq!(history(&db).await, 35);
         }
         db.pool.close().await;
     }
@@ -175,7 +175,7 @@ async fn concurrent_migrators_serialize_and_history_drift_does_not_rewrite_recei
             .filter(|s| s.completed_ms.is_some())
             .count();
     }
-    assert_eq!(applied, 12);
+    assert_eq!(applied, 13);
     sqlx::query("UPDATE _sqlx_migrations SET checksum='\\x00' WHERE version=24")
         .execute(&db.pool)
         .await
@@ -199,7 +199,7 @@ async fn concurrent_migrators_serialize_and_history_drift_does_not_rewrite_recei
 }
 #[tokio::test]
 async fn lost_intent_step_and_final_commit_replies_are_inspectable() {
-    for commit in 1..=13 {
+    for commit in 1..=14 {
         let db = Database::at_version(23).await;
         let (store, proxy) = super::limiter_activation::lost_nth_commit(&db.pool, commit).await;
         assert_eq!(store.migrate_operation(id(1)).await, Err(Error::Uncertain));
@@ -207,8 +207,8 @@ async fn lost_intent_step_and_final_commit_replies_are_inspectable() {
         let record = db.store.inspect_migration(id(1)).await.unwrap().unwrap();
         assert_eq!(record.steps[23].completed_ms.is_some(), commit >= 2);
         assert_eq!(record.steps[23].current_matches, commit >= 2);
-        assert_eq!(record.completed_ms.is_some(), commit == 13);
-        assert_eq!(history(&db).await, 23 + (commit - 1).min(11) as i64);
+        assert_eq!(record.completed_ms.is_some(), commit == 14);
+        assert_eq!(history(&db).await, 23 + (commit - 1).min(12) as i64);
         store.close().await;
         db.pool.close().await;
     }
