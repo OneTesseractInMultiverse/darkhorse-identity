@@ -2,6 +2,25 @@ use darkhorse_adapters::postgres::PostgresStore;
 use darkhorse_application::{oidc_maintenance, refresh};
 use std::time::Duration;
 
+#[cfg(test)]
+#[path = "../tests/unit/maintenance.rs"]
+mod tests;
+
+fn authorization_cleanup_event(
+    report: oidc_maintenance::AuthorizationRequestCleanupSweep,
+) -> Option<String> {
+    if report.deleted == 0 && !report.backlog_remaining {
+        return None;
+    }
+    let oldest_age_ms = report
+        .oldest_expired_age_ms
+        .map_or_else(|| "none".to_owned(), |age| age.to_string());
+    Some(format!(
+        "maintenance authorization_request_cleanup status=ok batches={} deleted={} backlog_remaining={} oldest_expired_age_ms={oldest_age_ms}",
+        report.batches, report.deleted, report.backlog_remaining
+    ))
+}
+
 /// One bounded sweep per minute. Dropping this future cancels pending work;
 /// SQL transaction drop rolls it back when the HTTP server finishes shutdown.
 pub async fn run(store: Option<PostgresStore>) {
@@ -16,11 +35,15 @@ pub async fn run(store: Option<PostgresStore>) {
         if refresh::sweep(&store).await.is_err() {
             eprintln!("Refresh credential cleanup unavailable; retrying next interval.");
         }
-        if oidc_maintenance::sweep_expired_authorization_requests(&store)
-            .await
-            .is_err()
-        {
-            eprintln!("Authorization request cleanup unavailable; retrying next interval.");
+        match oidc_maintenance::sweep_expired_authorization_requests(&store).await {
+            Ok(report) => {
+                if let Some(event) = authorization_cleanup_event(report) {
+                    eprintln!("{event}");
+                }
+            }
+            Err(_) => eprintln!(
+                "maintenance authorization_request_cleanup status=failed error=unavailable; retrying next interval."
+            ),
         }
     }
 }

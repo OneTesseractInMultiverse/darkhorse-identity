@@ -2,7 +2,7 @@ use super::*;
 use darkhorse_application::{
     authentication::AuthenticationStore,
     oidc::{AuthorizationStore, Decision, Outcome},
-    oidc_maintenance::AuthorizationMaintenance,
+    oidc_maintenance::{AuthorizationMaintenance, sweep_expired_authorization_requests},
 };
 use darkhorse_domain::{
     identity::ClientId,
@@ -76,13 +76,14 @@ async fn expired_authorization_request_cleanup_is_bounded_and_preserves_live_row
     .await
     .unwrap();
 
-    assert_eq!(
-        db.store
-            .prune_expired_authorization_requests()
-            .await
-            .unwrap(),
-        100
-    );
+    let first = db
+        .store
+        .prune_expired_authorization_requests()
+        .await
+        .unwrap();
+    assert_eq!(first.deleted, 100);
+    assert!(first.backlog_remaining);
+    assert!(first.oldest_expired_age_ms.is_some());
     assert_eq!(
         sqlx::query_scalar::<_, i64>(
             "SELECT count(*) FROM authorization_requests WHERE expires_ms<=floor(extract(epoch FROM clock_timestamp())*1000)::bigint",
@@ -92,20 +93,21 @@ async fn expired_authorization_request_cleanup_is_bounded_and_preserves_live_row
         .unwrap(),
         6
     );
-    assert_eq!(
-        db.store
-            .prune_expired_authorization_requests()
-            .await
-            .unwrap(),
-        6
-    );
-    assert_eq!(
-        db.store
-            .prune_expired_authorization_requests()
-            .await
-            .unwrap(),
-        0
-    );
+    let second = db
+        .store
+        .prune_expired_authorization_requests()
+        .await
+        .unwrap();
+    assert_eq!(second.deleted, 6);
+    assert!(!second.backlog_remaining);
+    let drained = db
+        .store
+        .prune_expired_authorization_requests()
+        .await
+        .unwrap();
+    assert_eq!(drained.deleted, 0);
+    assert_eq!(drained.oldest_expired_age_ms, None);
+    assert!(!drained.backlog_remaining);
     assert_eq!(
         sqlx::query_scalar::<_, i64>("SELECT count(*) FROM authorization_resource_grants")
             .fetch_one(&db.pool)
@@ -122,6 +124,51 @@ async fn expired_authorization_request_cleanup_is_bounded_and_preserves_live_row
         .await
         .unwrap(),
         1
+    );
+    db.store.close().await;
+}
+
+#[tokio::test]
+async fn large_expired_request_population_keeps_each_scheduled_sweep_bounded() {
+    let db = fixture().await;
+    sqlx::query(
+        "WITH clock AS (SELECT floor(extract(epoch FROM clock_timestamp())*1000)::bigint AS ms), synthetic AS (SELECT n AS n,0::bigint AS created_ms,300000::bigint AS expires_ms FROM generate_series(1,20000) n UNION ALL SELECT n+20000,clock.ms,clock.ms+300000 FROM generate_series(1,20000) n CROSS JOIN clock) INSERT INTO authorization_requests(digest,client_id,client_revision,application_revision,redirect_uri,challenge,scopes,prompt,created_ms,expires_ms) SELECT decode(lpad(to_hex(n),64,'0'),'hex'),$1,0,0,$2,$3,ARRAY['openid'],'default',created_ms,expires_ms FROM synthetic",
+    )
+    .bind(Uuid::from_u128(32))
+    .bind("https://client.example/callback?fixed=1")
+    .bind([7u8; 32].as_slice())
+    .execute(&db.pool)
+    .await
+    .unwrap();
+    sqlx::query("ANALYZE authorization_requests")
+        .execute(&db.pool)
+        .await
+        .unwrap();
+
+    let report = sweep_expired_authorization_requests(&db.store)
+        .await
+        .unwrap();
+    assert_eq!(report.batches, 10);
+    assert_eq!(report.deleted, 1_000);
+    assert!(report.backlog_remaining);
+    assert!(report.oldest_expired_age_ms.unwrap() > 1_000_000);
+    assert_eq!(
+        sqlx::query_scalar::<_, i64>(
+            "SELECT count(*) FROM authorization_requests WHERE expires_ms<=floor(extract(epoch FROM clock_timestamp())*1000)::bigint",
+        )
+        .fetch_one(&db.pool)
+        .await
+        .unwrap(),
+        19_000
+    );
+    assert_eq!(
+        sqlx::query_scalar::<_, i64>(
+            "SELECT count(*) FROM authorization_requests WHERE expires_ms>floor(extract(epoch FROM clock_timestamp())*1000)::bigint",
+        )
+        .fetch_one(&db.pool)
+        .await
+        .unwrap(),
+        20_000
     );
     db.store.close().await;
 }
@@ -144,13 +191,13 @@ async fn expired_authorization_request_cleanup_skips_locked_rows() {
         .await
         .unwrap();
 
-    assert_eq!(
-        db.store
-            .prune_expired_authorization_requests()
-            .await
-            .unwrap(),
-        1
-    );
+    let first = db
+        .store
+        .prune_expired_authorization_requests()
+        .await
+        .unwrap();
+    assert_eq!(first.deleted, 1);
+    assert!(first.backlog_remaining);
     assert_eq!(
         sqlx::query_scalar::<_, i64>("SELECT count(*) FROM authorization_requests")
             .fetch_one(&db.pool)
@@ -159,13 +206,13 @@ async fn expired_authorization_request_cleanup_skips_locked_rows() {
         1
     );
     held.rollback().await.unwrap();
-    assert_eq!(
-        db.store
-            .prune_expired_authorization_requests()
-            .await
-            .unwrap(),
-        1
-    );
+    let second = db
+        .store
+        .prune_expired_authorization_requests()
+        .await
+        .unwrap();
+    assert_eq!(second.deleted, 1);
+    assert!(!second.backlog_remaining);
     db.store.close().await;
 }
 
@@ -186,7 +233,7 @@ async fn concurrent_authorization_request_sweepers_claim_disjoint_batches() {
         db.store.prune_expired_authorization_requests(),
         db.store.prune_expired_authorization_requests(),
     );
-    assert_eq!(left.unwrap() + right.unwrap(), 200);
+    assert_eq!(left.unwrap().deleted + right.unwrap().deleted, 200);
     assert_eq!(
         sqlx::query_scalar::<_, i64>("SELECT count(*) FROM authorization_requests")
             .fetch_one(&db.pool)
