@@ -205,22 +205,28 @@ and any other body. It discards all response text and arbitrary error fields. Th
 records the body shape only; it cannot prove whether the API, edge proxy, or another
 component emitted a matching response.
 
-One unprofiled packaged Compose repeat offered 200 introspections per second for
-three eight-second phases. All 4,800 scheduled requests were dispatched and returned
-HTTP 200; there were no 429 or 503 responses to classify. Scheduled p95 latency was
-4.63 ms before the CLI reads, 5.74 ms during them, and 6.82 ms afterwards. The
-runtime-role fixture again recorded three reads, one not-found result, and four
-expected denials. Runtime sampling saw at most eight connections and no waiting
-locks. This clean repeat does not explain the intermittent 503s or change the
-capacity conclusion.
+Three unprofiled packaged Compose repeats offered 200 introspections per second for
+three eight-second phases each. All 14,400 scheduled requests were dispatched and
+returned HTTP 200; there were no 429 or 503 responses to classify. Scheduled p95
+latencies were:
+
+| Run | Before CLI reads | During reads | After reads | Maximum sampled connections | Waiting locks |
+| --- | ---------------: | -----------: | ----------: | --------------------------: | ------------: |
+| 1   |          4.63 ms |      5.74 ms |     6.82 ms |                           8 |             0 |
+| 2   |          4.59 ms |      5.67 ms |     4.42 ms |                           9 |             0 |
+| 3   |          4.64 ms |      5.76 ms |     6.91 ms |                           9 |             0 |
+
+Every runtime-role fixture again recorded three reads, one not-found result, and
+four expected denials. These clean repeats do not explain the intermittent 503s or
+change the capacity conclusion.
 
 The [machine-readable result](measurements/operator-details-compose-response-classes-2026-09-28.json)
-includes the phase status and response-class counts. The benchmark used a disposable
-Compose project; cleanup left no benchmark project containers, and the post-run
-Docker volume inventory contained 229 volumes. The report records that the
-measurement harness included uncommitted diagnostic changes based on the listed
-commit. Keep #32 open until a 503 is captured with these response-shape counts or
-another measured source is found.
+includes all three runs' phase status and response-class counts. The first run's
+measurement harness contained uncommitted diagnostic changes based on the listed
+commit; the other two used the committed harness. Each disposable Compose project
+was removed, and the post-run Docker volume inventory contained 229 volumes. Keep
+#32 open until a 503 is captured with these response-shape counts or another
+measured source is found.
 
 A separate three-second `operator-smoke` compatibility run used the historical
 listing workload and owner role. Its burst recorded 533 authorized and 61 unavailable
