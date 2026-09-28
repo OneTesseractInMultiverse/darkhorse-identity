@@ -1,0 +1,623 @@
+{
+  "schema": 1,
+  "purpose": "Two interleaved repeats of an administrative-read pool sensitivity profile. Descriptive local evidence; not a production capacity claim or reason to change the deployment pool default.",
+  "date": "2026-09-27",
+  "source": {
+    "commit": "7913a4072c8dad56492b695779c9095a0d423957",
+    "sourceSha256": "8aad1b77324b2821e60705dc3685bf420c8505997a68203d1c41997383f43bdf",
+    "binarySha256": "8435ff3e7f87fb0361a0abfba94900e5efd1259dcb172762feb9e480b42da291",
+    "sourceDirty": false
+  },
+  "environment": {
+    "rust": "rustc 1.97.1 (8bab26f4f 2026-07-14)",
+    "node": "v24.19.0",
+    "database": "postgres (PostgreSQL) 18.6 - Percona Server for PostgreSQL 18.6.1",
+    "images": {
+      "database": "percona/percona-distribution-postgresql:18.6@sha256:dae47360e8137cafc1e8d66f9a1be348f1405e3cf51daa383b94e6c277e6b256",
+      "cache": "redis:8.10.1@sha256:298e5b3bc566bade82f46ad5511777a4a07a294097ce16ada2f6a42be5239df5",
+      "limiter": "redis:8.10.1@sha256:298e5b3bc566bade82f46ad5511777a4a07a294097ce16ada2f6a42be5239df5"
+    },
+    "host": {
+      "platform": "darwin",
+      "arch": "arm64",
+      "cpu": "Apple M5",
+      "logicalCpus": 10
+    },
+    "docker": {
+      "version": "29.6.2",
+      "arch": "aarch64",
+      "cpus": 10,
+      "memoryBytes": 8321515520
+    },
+    "topology": "One host release Rust process, Node TLS proxy and load generator; Docker Percona primary plus separate Redis cache/limiter containers on loopback. Chromium provisions real login/SSO credentials.",
+    "protections": {
+      "httpsVerification": true,
+      "clientAuthentication": "client_secret_basic",
+      "loginSharedRedisLimiter": true,
+      "introspectionSharedRedisLimiter": true,
+      "introspectionBudgets": {
+        "windowMs": 60000,
+        "global": 60000,
+        "caller": 6000,
+        "separateLocalPool": true,
+        "globalQueueCapacity": 16,
+        "globalUpdateConcurrency": 2,
+        "queueIncludedInDeadlineMs": 1000
+      },
+      "tokenRouteConcurrency": 16,
+      "positiveDecisionCache": false,
+      "computationCache": false,
+      "databaseRole": "darkhorse_runtime"
+    }
+  },
+  "workload": {
+    "profile": "operator-detail-baseline",
+    "sequence": [5, 10, 5, 10],
+    "fixedArrivalRatePerSecond": 200,
+    "durationSecondsPerFixedArrivalPhase": 10,
+    "httpClients": 8,
+    "additionalPrincipals": 1000,
+    "additionalUnassignedRoles": 64,
+    "concurrentCliActors": 2,
+    "cliReadsPerActor": 4,
+    "databasePoolConnections": "varied as listed per run; all other recorded settings and protections matched"
+  },
+  "runs": [
+    {
+      "run": "8ZOiC0",
+      "databasePoolConnections": 5,
+      "requestTraceSha256": "5ff936f2b20af6b3a5142ff019cf824fe428f0dc9edd4444b0a3faca8bbada6e",
+      "http503Total": 65,
+      "http503Statuses": {
+        "503": 65
+      },
+      "phases": [
+        {
+          "name": "warmup",
+          "attempts": 64,
+          "outcomes": {
+            "authorized": 45,
+            "healthy": 0,
+            "denied": 0,
+            "unavailable": 19,
+            "error": 0,
+            "transport_error": 0,
+            "violation": 0
+          },
+          "unavailableHttp503": 19,
+          "authorizedLatencyMs": {
+            "p95": 52.86,
+            "p99": 60.25
+          },
+          "generatorDrops": null
+        },
+        {
+          "name": "control_before",
+          "attempts": 2000,
+          "outcomes": {
+            "authorized": 1993,
+            "healthy": 0,
+            "denied": 0,
+            "unavailable": 7,
+            "error": 0,
+            "transport_error": 0,
+            "violation": 0
+          },
+          "unavailableHttp503": 7,
+          "authorizedLatencyMs": {
+            "p95": 19.94,
+            "p99": 38.45
+          },
+          "generatorDrops": {
+            "late": 0,
+            "full": 0,
+            "fraction": 0
+          }
+        },
+        {
+          "name": "detail_reads_overlap",
+          "attempts": 2000,
+          "outcomes": {
+            "authorized": 1997,
+            "healthy": 0,
+            "denied": 0,
+            "unavailable": 3,
+            "error": 0,
+            "transport_error": 0,
+            "violation": 0
+          },
+          "unavailableHttp503": 3,
+          "authorizedLatencyMs": {
+            "p95": 13.95,
+            "p99": 32.26
+          },
+          "generatorDrops": {
+            "late": 0,
+            "full": 0,
+            "fraction": 0
+          }
+        },
+        {
+          "name": "control_after",
+          "attempts": 2000,
+          "outcomes": {
+            "authorized": 1981,
+            "healthy": 0,
+            "denied": 0,
+            "unavailable": 19,
+            "error": 0,
+            "transport_error": 0,
+            "violation": 0
+          },
+          "unavailableHttp503": 19,
+          "authorizedLatencyMs": {
+            "p95": 16.88,
+            "p99": 55.66
+          },
+          "generatorDrops": {
+            "late": 0,
+            "full": 0,
+            "fraction": 0
+          }
+        },
+        {
+          "name": "concurrent_revocation",
+          "attempts": 2000,
+          "outcomes": {
+            "authorized": 1023,
+            "healthy": 0,
+            "denied": 975,
+            "unavailable": 2,
+            "error": 0,
+            "transport_error": 0,
+            "violation": 0
+          },
+          "unavailableHttp503": 2,
+          "authorizedLatencyMs": {
+            "p95": 11.73,
+            "p99": 19.23
+          },
+          "generatorDrops": {
+            "late": 0,
+            "full": 0,
+            "fraction": 0
+          }
+        },
+        {
+          "name": "post_commit_probes",
+          "attempts": 64,
+          "outcomes": {
+            "authorized": 0,
+            "healthy": 0,
+            "denied": 49,
+            "unavailable": 15,
+            "error": 0,
+            "transport_error": 0,
+            "violation": 0
+          },
+          "unavailableHttp503": 15,
+          "authorizedLatencyMs": null,
+          "generatorDrops": null
+        }
+      ],
+      "configuredReadPhaseDatabaseEnvelope": 9
+    },
+    {
+      "run": "yjdp32",
+      "databasePoolConnections": 10,
+      "requestTraceSha256": "68cc2407fe3a37cf76acabe5fca9ef1947b0d75a81a0d99707885620add50e9b",
+      "http503Total": 23,
+      "http503Statuses": {
+        "503": 23
+      },
+      "phases": [
+        {
+          "name": "warmup",
+          "attempts": 64,
+          "outcomes": {
+            "authorized": 58,
+            "healthy": 0,
+            "denied": 0,
+            "unavailable": 6,
+            "error": 0,
+            "transport_error": 0,
+            "violation": 0
+          },
+          "unavailableHttp503": 6,
+          "authorizedLatencyMs": {
+            "p95": 67.63,
+            "p99": 73.4
+          },
+          "generatorDrops": null
+        },
+        {
+          "name": "control_before",
+          "attempts": 2000,
+          "outcomes": {
+            "authorized": 2000,
+            "healthy": 0,
+            "denied": 0,
+            "unavailable": 0,
+            "error": 0,
+            "transport_error": 0,
+            "violation": 0
+          },
+          "unavailableHttp503": 0,
+          "authorizedLatencyMs": {
+            "p95": 14.5,
+            "p99": 23.86
+          },
+          "generatorDrops": {
+            "late": 0,
+            "full": 0,
+            "fraction": 0
+          }
+        },
+        {
+          "name": "detail_reads_overlap",
+          "attempts": 2000,
+          "outcomes": {
+            "authorized": 2000,
+            "healthy": 0,
+            "denied": 0,
+            "unavailable": 0,
+            "error": 0,
+            "transport_error": 0,
+            "violation": 0
+          },
+          "unavailableHttp503": 0,
+          "authorizedLatencyMs": {
+            "p95": 16.28,
+            "p99": 23.89
+          },
+          "generatorDrops": {
+            "late": 0,
+            "full": 0,
+            "fraction": 0
+          }
+        },
+        {
+          "name": "control_after",
+          "attempts": 2000,
+          "outcomes": {
+            "authorized": 2000,
+            "healthy": 0,
+            "denied": 0,
+            "unavailable": 0,
+            "error": 0,
+            "transport_error": 0,
+            "violation": 0
+          },
+          "unavailableHttp503": 0,
+          "authorizedLatencyMs": {
+            "p95": 13.01,
+            "p99": 19.29
+          },
+          "generatorDrops": {
+            "late": 0,
+            "full": 0,
+            "fraction": 0
+          }
+        },
+        {
+          "name": "concurrent_revocation",
+          "attempts": 2000,
+          "outcomes": {
+            "authorized": 1024,
+            "healthy": 0,
+            "denied": 972,
+            "unavailable": 4,
+            "error": 0,
+            "transport_error": 0,
+            "violation": 0
+          },
+          "unavailableHttp503": 4,
+          "authorizedLatencyMs": {
+            "p95": 14.91,
+            "p99": 20.67
+          },
+          "generatorDrops": {
+            "late": 0,
+            "full": 0,
+            "fraction": 0
+          }
+        },
+        {
+          "name": "post_commit_probes",
+          "attempts": 64,
+          "outcomes": {
+            "authorized": 0,
+            "healthy": 0,
+            "denied": 51,
+            "unavailable": 13,
+            "error": 0,
+            "transport_error": 0,
+            "violation": 0
+          },
+          "unavailableHttp503": 13,
+          "authorizedLatencyMs": null,
+          "generatorDrops": null
+        }
+      ],
+      "configuredReadPhaseDatabaseEnvelope": 14
+    },
+    {
+      "run": "DffYW8",
+      "databasePoolConnections": 5,
+      "requestTraceSha256": "56ece40da64716bb59e7bb106be889e3176002b1a54cbe52f5ec739d6d6b2e08",
+      "http503Total": 138,
+      "http503Statuses": {
+        "503": 138
+      },
+      "phases": [
+        {
+          "name": "warmup",
+          "attempts": 64,
+          "outcomes": {
+            "authorized": 45,
+            "healthy": 0,
+            "denied": 0,
+            "unavailable": 19,
+            "error": 0,
+            "transport_error": 0,
+            "violation": 0
+          },
+          "unavailableHttp503": 19,
+          "authorizedLatencyMs": {
+            "p95": 41.41,
+            "p99": 49.87
+          },
+          "generatorDrops": null
+        },
+        {
+          "name": "control_before",
+          "attempts": 2000,
+          "outcomes": {
+            "authorized": 1924,
+            "healthy": 0,
+            "denied": 0,
+            "unavailable": 76,
+            "error": 0,
+            "transport_error": 0,
+            "violation": 0
+          },
+          "unavailableHttp503": 76,
+          "authorizedLatencyMs": {
+            "p95": 33.49,
+            "p99": 106.23
+          },
+          "generatorDrops": {
+            "late": 0,
+            "full": 0,
+            "fraction": 0
+          }
+        },
+        {
+          "name": "detail_reads_overlap",
+          "attempts": 2000,
+          "outcomes": {
+            "authorized": 1981,
+            "healthy": 0,
+            "denied": 0,
+            "unavailable": 19,
+            "error": 0,
+            "transport_error": 0,
+            "violation": 0
+          },
+          "unavailableHttp503": 19,
+          "authorizedLatencyMs": {
+            "p95": 25.76,
+            "p99": 69.76
+          },
+          "generatorDrops": {
+            "late": 0,
+            "full": 0,
+            "fraction": 0
+          }
+        },
+        {
+          "name": "control_after",
+          "attempts": 2000,
+          "outcomes": {
+            "authorized": 1998,
+            "healthy": 0,
+            "denied": 0,
+            "unavailable": 2,
+            "error": 0,
+            "transport_error": 0,
+            "violation": 0
+          },
+          "unavailableHttp503": 2,
+          "authorizedLatencyMs": {
+            "p95": 15.89,
+            "p99": 27.36
+          },
+          "generatorDrops": {
+            "late": 0,
+            "full": 0,
+            "fraction": 0
+          }
+        },
+        {
+          "name": "concurrent_revocation",
+          "attempts": 2000,
+          "outcomes": {
+            "authorized": 1021,
+            "healthy": 0,
+            "denied": 975,
+            "unavailable": 4,
+            "error": 0,
+            "transport_error": 0,
+            "violation": 0
+          },
+          "unavailableHttp503": 4,
+          "authorizedLatencyMs": {
+            "p95": 22.52,
+            "p99": 34.98
+          },
+          "generatorDrops": {
+            "late": 0,
+            "full": 0,
+            "fraction": 0
+          }
+        },
+        {
+          "name": "post_commit_probes",
+          "attempts": 64,
+          "outcomes": {
+            "authorized": 0,
+            "healthy": 0,
+            "denied": 46,
+            "unavailable": 18,
+            "error": 0,
+            "transport_error": 0,
+            "violation": 0
+          },
+          "unavailableHttp503": 18,
+          "authorizedLatencyMs": null,
+          "generatorDrops": null
+        }
+      ],
+      "configuredReadPhaseDatabaseEnvelope": 9
+    },
+    {
+      "run": "FgrzD0",
+      "databasePoolConnections": 10,
+      "requestTraceSha256": "ba62bbb4322f348239221021ea718337175174d55f3718f9eeb6d1d0cf48e2e0",
+      "http503Total": 35,
+      "http503Statuses": {
+        "503": 35
+      },
+      "phases": [
+        {
+          "name": "warmup",
+          "attempts": 64,
+          "outcomes": {
+            "authorized": 55,
+            "healthy": 0,
+            "denied": 0,
+            "unavailable": 9,
+            "error": 0,
+            "transport_error": 0,
+            "violation": 0
+          },
+          "unavailableHttp503": 9,
+          "authorizedLatencyMs": {
+            "p95": 47.35,
+            "p99": 54.63
+          },
+          "generatorDrops": null
+        },
+        {
+          "name": "control_before",
+          "attempts": 2000,
+          "outcomes": {
+            "authorized": 1996,
+            "healthy": 0,
+            "denied": 0,
+            "unavailable": 4,
+            "error": 0,
+            "transport_error": 0,
+            "violation": 0
+          },
+          "unavailableHttp503": 4,
+          "authorizedLatencyMs": {
+            "p95": 21.5,
+            "p99": 31.49
+          },
+          "generatorDrops": {
+            "late": 0,
+            "full": 0,
+            "fraction": 0
+          }
+        },
+        {
+          "name": "detail_reads_overlap",
+          "attempts": 2000,
+          "outcomes": {
+            "authorized": 2000,
+            "healthy": 0,
+            "denied": 0,
+            "unavailable": 0,
+            "error": 0,
+            "transport_error": 0,
+            "violation": 0
+          },
+          "unavailableHttp503": 0,
+          "authorizedLatencyMs": {
+            "p95": 13.33,
+            "p99": 17.97
+          },
+          "generatorDrops": {
+            "late": 0,
+            "full": 0,
+            "fraction": 0
+          }
+        },
+        {
+          "name": "control_after",
+          "attempts": 2000,
+          "outcomes": {
+            "authorized": 1993,
+            "healthy": 0,
+            "denied": 0,
+            "unavailable": 7,
+            "error": 0,
+            "transport_error": 0,
+            "violation": 0
+          },
+          "unavailableHttp503": 7,
+          "authorizedLatencyMs": {
+            "p95": 20.73,
+            "p99": 40.65
+          },
+          "generatorDrops": {
+            "late": 0,
+            "full": 0,
+            "fraction": 0
+          }
+        },
+        {
+          "name": "concurrent_revocation",
+          "attempts": 2000,
+          "outcomes": {
+            "authorized": 1020,
+            "healthy": 0,
+            "denied": 980,
+            "unavailable": 0,
+            "error": 0,
+            "transport_error": 0,
+            "violation": 0
+          },
+          "unavailableHttp503": 0,
+          "authorizedLatencyMs": {
+            "p95": 12.04,
+            "p99": 22.01
+          },
+          "generatorDrops": {
+            "late": 0,
+            "full": 0,
+            "fraction": 0
+          }
+        },
+        {
+          "name": "post_commit_probes",
+          "attempts": 64,
+          "outcomes": {
+            "authorized": 0,
+            "healthy": 0,
+            "denied": 49,
+            "unavailable": 15,
+            "error": 0,
+            "transport_error": 0,
+            "violation": 0
+          },
+          "unavailableHttp503": 15,
+          "authorizedLatencyMs": null,
+          "generatorDrops": null
+        }
+      ],
+      "configuredReadPhaseDatabaseEnvelope": 14
+    }
+  ]
+}

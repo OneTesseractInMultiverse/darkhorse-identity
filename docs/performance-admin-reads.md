@@ -172,6 +172,50 @@ machine paths are omitted. Detailed resource-stage timings, cold and sustained l
 varied effective policy sizes, and Compose or Kubernetes runtime scheduling remain
 unmeasured.
 
+## September 27, 2026 database-pool sensitivity repeats
+
+Four further runs varied only the API database-pool maximum, in the sequence
+5, 10, 5, 10, on clean source commit `7913a4072c8dad56492b695779c9095a0d423957`.
+Each run used the same eight-client profile, with 200 scheduled introspection
+arrivals per second during each ten-second control/detail/revocation phase, two
+CLI readers, a 1,000-principal/64-role fixture, TLS verification, shared Redis
+admission, and the restricted `darkhorse_runtime` role. No positive authorization
+cache was enabled. Each fixed-arrival phase delivered all 2,000 scheduled requests
+without generator drops. The configured database connection envelope for the
+read phase rose from 9 to 14 connections when the API pool changed from 5 to 10;
+the four CLI connections are included in those maxima.
+
+| Phase                                      | Pool 5, run 1 | Pool 10, run 1 | Pool 5, run 2 | Pool 10, run 2 |
+| ------------------------------------------ | ------------- | -------------- | ------------- | -------------- |
+| Warmup, unavailable / 64                   | 19            | 6              | 19            | 9              |
+| Control before, unavailable / 2,000        | 7             | 0              | 76            | 4              |
+| CLI detail overlap, unavailable / 2,000    | 3             | 0              | 19            | 0              |
+| Control after, unavailable / 2,000         | 19            | 0              | 2             | 7              |
+| Concurrent revocation, unavailable / 2,000 | 2             | 4              | 4             | 0              |
+| Post-commit probes, unavailable / 64       | 15            | 13             | 18            | 15             |
+| Detail overlap authorized p95 / p99 (ms)   | 13.95 / 32.26 | 16.28 / 23.89  | 25.76 / 69.76 | 13.33 / 17.97  |
+
+Every unavailable sample in the four request traces was HTTP 503; the traces
+contained no 429s. The runs also reported zero transport errors, generator drops,
+or authorization violations. Pool 10 produced no unavailable outcomes in either
+detail-overlap phase, compared with 3 and 19 at pool 5. Across the three steady
+control/detail phases, pool 5 recorded 126 unavailable outcomes and pool 10
+recorded 11. The control phases varied substantially between repeats, and detail
+latency did not improve consistently across both matched pairs. Pool size therefore
+appears to contribute to some availability pressure in this local profile, but
+these results do not isolate its cause or establish a general latency/capacity
+gain. Startup and 64-request post-commit bursts still produced 503 responses at
+both pool sizes. No deployment default or security setting was changed.
+
+The aggregate [pool-sensitivity results](measurements/operator-details-pool-sensitivity-2026-09-27.json)
+retain the source and binary fingerprints, environment, per-phase outcomes,
+percentiles, trace digests, and pool setting. The raw local traces remain outside
+the repository. Attribution still needs bounded measurements for database-pool
+acquisition, limiter queue/deadline outcomes, Redis calls, and request-stage
+latency. Larger sustained profiles and deployment-runtime resource budgets also
+remain unmeasured; do not raise the pool limit without a fleet-wide connection
+budget.
+
 ## Security checks and remaining measurements
 
 Real PostgreSQL regressions verify that account reads can share a fence, avoid an
