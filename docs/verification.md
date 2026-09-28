@@ -669,7 +669,10 @@ proof and explicit confirmation, and applies the same validated catalog changes 
 the management API. Mutations are atomic with an independent append-only operator
 audit record; they do not create browser sessions or depend on the browser-session
 catalog audit permission. Delegated administrator permissions and the other
-remaining requirements in #26 are still open.
+remaining requirements in #26 are still open. The [authenticated authority
+matrix](authenticated-operator-authority.md), owned by #23, records this command's
+exclusive fence, pre/post-write and post-audit checks, required ledger, and current
+platform-admin-only boundary.
 
 Verification on **2026-09-28** passed `make ci`, including formatting, Clippy,
 frontend lint and type checks, architecture and workflow policies, API/i18n checks,
