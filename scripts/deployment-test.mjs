@@ -1068,6 +1068,7 @@ async function composeRuntimeBenchmark(client, user) {
         }
       : undefined;
   const databaseProfiles = [];
+  if (captureProfile) await captureProfile("control-before");
   const phases = [
     await composeRuntimePhase("control-before", client, expected, profile),
   ];
