@@ -290,6 +290,13 @@ public launcher entrypoint, without changing developer stacks or ambient cluster
 contexts. They exercise the current image, schema and runtime grants. See their
 prerequisites and remaining deployment limits in the linked guides.
 
+The Compose suite runs application-role assignment and removal through both
+`stack-catalog-exec` and `stack-catalog-run`. It verifies the paired user and
+policy revision changes, the runtime-role audit, rejection of a stale user
+revision without a grant change, and that application roles never grant
+platform-administrator membership. Success returns JSON with exit `0`; Make
+wraps the stale-revision failure as `2`.
+
 | Mode / scenario                                                                   | Required authority                                                                                                          | State and audit expectation                                                                                                                           | Exit / evidence                                                             |
 | --------------------------------------------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------- | --------------------------------------------------------------------------- |
 | Client-secret list/retire through all four catalog targets                        | Runtime database/limiter credentials and fresh administrator proof; retirement also needs revision, confirmation and reason | Inventory commits its audit before releasing metadata; retirement, revision and both audits commit together; stale/demoted calls fail                 | Native success `0`; Make wraps failure as `2`; Compose/Kubernetes fixtures  |

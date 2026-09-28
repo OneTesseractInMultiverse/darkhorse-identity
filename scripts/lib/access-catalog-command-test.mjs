@@ -2,12 +2,14 @@
 import assert from "node:assert/strict";
 import { randomUUID } from "node:crypto";
 import { accountResult } from "./container-account-test.mjs";
+import { applicationRoleCommands } from "./application-role-command-test.mjs";
 export async function accessCatalogCommands(
   invoke,
   sql,
   source,
   password,
   application,
+  exerciseComposeRoleAssignment = false,
 ) {
   let actor;
   let accountAttempts = 0;
@@ -21,6 +23,7 @@ INSERT INTO credentials(id,principal_id,kind) VALUES('${credential}','${actor}',
 INSERT INTO password_credentials(credential_id,verifier) SELECT '${credential}',pc.verifier FROM password_credentials pc JOIN credentials c ON c.id=pc.credential_id WHERE c.principal_id='${source}' AND NOT c.revoked;
 INSERT INTO platform_administrators(principal_id) VALUES('${actor}'); COMMIT;`);
     accountAttempts = 0;
+    return actor;
   };
   const invokeWithinBudget = async (...args) => {
     if (accountAttempts === 5) {
@@ -230,6 +233,18 @@ INSERT INTO scope_capabilities VALUES('${application}','${resource}','${scope}',
         )
       ).stdout.trim(),
       "1",
+    );
+  }
+
+  if (exerciseComposeRoleAssignment) {
+    const roleOperator = await rotateActor();
+    await applicationRoleCommands(
+      invoke,
+      sql,
+      roleOperator,
+      password,
+      application,
+      role,
     );
   }
 }

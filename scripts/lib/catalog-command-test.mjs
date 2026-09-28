@@ -101,7 +101,14 @@ COMMIT;`);
       "1",
     );
   }
-  await accessCatalogCommands(invoke, sql, source, password, app);
+  await accessCatalogCommands(
+    invoke,
+    sql,
+    source,
+    password,
+    app,
+    target.startsWith("stack-catalog-"),
+  );
   await clientCommands(invoke, sql, source, password, app);
   await clientSecretCommands(invoke, sql, source, password, app);
   await sql(
