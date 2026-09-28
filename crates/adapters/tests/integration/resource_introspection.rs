@@ -319,6 +319,111 @@ async fn late_old_cache_fill_cannot_restore_a_permission_after_a_newer_fill() {
     db.store.close().await;
 }
 
+#[cfg(feature = "redis-tests")]
+#[tokio::test]
+async fn redis_cache_outage_keeps_postgres_introspection_authoritative() {
+    let (db, secret, digest) = fixture().await;
+    let settings =
+        darkhorse_adapters::redis_configuration::load(envbind::MapEnvironment::from_pairs([
+            (
+                "DARKHORSE_REDIS_CACHE_URL",
+                std::env::var("DARKHORSE_REDIS_CACHE_URL").unwrap(),
+            ),
+            (
+                "DARKHORSE_REDIS_LIMITER_URL",
+                std::env::var("DARKHORSE_REDIS_LIMITER_URL").unwrap(),
+            ),
+            ("DARKHORSE_REDIS_INSECURE", "true".to_owned()),
+        ]))
+        .unwrap();
+    let cache = Arc::new(
+        darkhorse_adapters::redis_computation_cache::RedisComputationCache::from_settings(
+            &settings,
+            &[0x29; 32],
+        )
+        .unwrap(),
+    );
+    let store = db.store.clone().with_computation_cache(cache.clone());
+    let check = || probe(&secret, Some(digest));
+    let full = std::collections::BTreeSet::from([
+        CapabilityId::from_u128(0x70).unwrap(),
+        CapabilityId::from_u128(0x71).unwrap(),
+    ]);
+
+    assert_eq!(
+        store
+            .introspect_resource(check(), ISSUER)
+            .await
+            .unwrap()
+            .unwrap()
+            .capabilities,
+        full
+    );
+    assert_eq!(
+        store
+            .introspect_resource(check(), ISSUER)
+            .await
+            .unwrap()
+            .unwrap()
+            .capabilities,
+        full
+    );
+    assert_eq!(cache.outcomes().hit, 1);
+
+    redis_container("pause").await;
+    let while_unavailable = tokio::time::timeout(
+        std::time::Duration::from_secs(2),
+        store.introspect_resource(check(), ISSUER),
+    )
+    .await
+    .unwrap()
+    .unwrap()
+    .unwrap();
+    assert_eq!(while_unavailable.capabilities, full);
+
+    sqlx::query(
+        "DELETE FROM role_capabilities WHERE capability_id='00000000-0000-0000-0000-000000000071'",
+    )
+    .execute(&db.pool)
+    .await
+    .unwrap();
+    let reduced = std::collections::BTreeSet::from([CapabilityId::from_u128(0x70).unwrap()]);
+    let after_reduction = tokio::time::timeout(
+        std::time::Duration::from_secs(2),
+        store.introspect_resource(check(), ISSUER),
+    )
+    .await
+    .unwrap()
+    .unwrap()
+    .unwrap();
+    assert_eq!(after_reduction.capabilities, reduced);
+    let unavailable = cache.outcomes();
+    assert_eq!(unavailable.unavailable, 2);
+    assert_eq!(unavailable.store_failed, 0);
+
+    redis_container("unpause").await;
+    let recovered = store
+        .introspect_resource(check(), ISSUER)
+        .await
+        .unwrap()
+        .unwrap();
+    assert_eq!(recovered.capabilities, reduced);
+    assert!(cache.outcomes().stored >= 2);
+    db.store.close().await;
+}
+
+#[cfg(feature = "redis-tests")]
+async fn redis_container(operation: &str) {
+    let name = std::env::var("DARKHORSE_TEST_REDIS_CACHE_CONTAINER").unwrap();
+    assert!(name.starts_with("darkhorse-redis-test-") && name.ends_with("cache"));
+    let status = std::process::Command::new("docker")
+        .args([operation, &name])
+        .stdout(std::process::Stdio::null())
+        .status()
+        .unwrap();
+    assert!(status.success());
+}
+
 fn registry(db: &Database) -> Service<PostgresStore, OsResourceEntropy> {
     Service {
         store: db.store.clone(),

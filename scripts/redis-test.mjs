@@ -151,7 +151,13 @@ async function database(network, profiling) {
     url: `postgres://postgres:${secret}@127.0.0.1:${port}/postgres`,
   };
 }
-async function hostChecks(env, db, directory, benchmark) {
+async function hostChecks(
+  env,
+  db,
+  directory,
+  benchmark,
+  introspectionOnly = false,
+) {
   const profiling = benchmark?.profile.profiling === true;
   await command("cargo", [
     "build",
@@ -169,8 +175,43 @@ async function hostChecks(env, db, directory, benchmark) {
   env = { ...env, DARKHORSE_TEST_SERVER_PATH: executable };
   if (
     !benchmark &&
-    process.env.DARKHORSE_TEST_SKIP_REDIS_INTEGRATION !== "true"
+    (introspectionOnly ||
+      process.env.DARKHORSE_TEST_SKIP_REDIS_INTEGRATION !== "true")
   ) {
+    if (!introspectionOnly) {
+      await command(
+        "cargo",
+        [
+          "test",
+          "-p",
+          "darkhorse-adapters",
+          "--features",
+          "redis-tests",
+          "--test",
+          "redis",
+          "--locked",
+          "--offline",
+        ],
+        { env },
+      );
+      await command(
+        "cargo",
+        [
+          "test",
+          "-p",
+          "darkhorse-adapters",
+          "--features",
+          "redis-tests",
+          "--test",
+          "limiter",
+          "--locked",
+          "--offline",
+          "--",
+          "--nocapture",
+        ],
+        { env },
+      );
+    }
     await command(
       "cargo",
       [
@@ -178,28 +219,12 @@ async function hostChecks(env, db, directory, benchmark) {
         "-p",
         "darkhorse-adapters",
         "--features",
-        "redis-tests",
+        "postgres-tests,redis-tests",
         "--test",
-        "redis",
+        "postgres",
+        "redis_cache_outage_keeps_postgres_introspection_authoritative",
         "--locked",
         "--offline",
-      ],
-      { env },
-    );
-    await command(
-      "cargo",
-      [
-        "test",
-        "-p",
-        "darkhorse-adapters",
-        "--features",
-        "redis-tests",
-        "--test",
-        "limiter",
-        "--locked",
-        "--offline",
-        "--",
-        "--nocapture",
       ],
       { env },
     );
@@ -374,6 +399,7 @@ async function imageChecks(tag, env, cache, limiter, db) {
 
 async function main(args) {
   const benchmark = args.length === 1 && args[0] === "--benchmark";
+  const introspectionOnly = args.length === 1 && args[0] === "--introspection";
   let settings;
   if (benchmark) {
     const { benchmarkSettings } = await import("./lib/benchmark-settings.mjs");
@@ -387,9 +413,12 @@ async function main(args) {
       args[0] === "--image" &&
       args[1] &&
       !args[1].startsWith("-")
-    )
+    ) &&
+    !introspectionOnly
   )
-    throw new Error("Usage: redis-test.mjs [--image IMAGE | --benchmark]");
+    throw new Error(
+      "Usage: redis-test.mjs [--image IMAGE | --benchmark | --introspection]",
+    );
   await mkdir(".local", { recursive: true, mode: 0o700 });
   const directory = await mkdtemp(resolve(".local/redis-test-"));
   try {
@@ -441,9 +470,9 @@ async function main(args) {
       DARKHORSE_TEST_REDIS_LIMITER_CONTAINER: limiter.name,
     };
     const result =
-      args.length && !benchmark
+      args[0] === "--image"
         ? await imageChecks(args[1], env, cache, limiter, db)
-        : await hostChecks(env, db, directory, settings);
+        : await hostChecks(env, db, directory, settings, introspectionOnly);
     const status = JSON.parse(result.stdout);
     assert.equal(status.cache.connection, "reachable");
     assert.equal(status.limiter.connection, "reachable");
@@ -453,9 +482,11 @@ async function main(args) {
     console.log(
       benchmark
         ? "Release benchmark completed; reports saved under .local/benchmarks."
-        : args.length
-          ? "Packaged Redis diagnostics passed; login integration remains separate."
-          : "Redis infrastructure, shared enforcement and password login integration passed.",
+        : introspectionOnly
+          ? "PostgreSQL introspection remained authoritative during Redis cache outage and recovery."
+          : args.length
+            ? "Packaged Redis diagnostics passed; login integration remains separate."
+            : "Redis infrastructure, shared enforcement and password login integration passed.",
     );
   } finally {
     for (const proxy of proxies.reverse()) await proxy.close();

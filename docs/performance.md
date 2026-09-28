@@ -363,13 +363,36 @@ recomputes from primary state and retains only the reduced permission. These are
 security/failure-boundary checks, not performance results or operational metric
 export.
 
-`make test-postgres` passed 280 integration tests. `make test-redis` passed the
-8 Redis-adapter tests and 39 limiter/process tests; one worker fixture is
-intentionally invoked by its separate-process parent. `make ci` passed after
-these test changes. This does not complete cache qualification: real Redis
-outage behavior through the full PostgreSQL introspection path, eviction/restart
+At that earlier revision, `make test-postgres` passed 280 integration tests and
+`make test-redis` passed 8 Redis-adapter tests plus 39 limiter/process tests; one
+worker fixture was intentionally invoked by its separate-process parent. The
+following increment closes the full-path Redis-outage test gap. Eviction/restart
 races, cache-role metric export, local-cache comparison and larger repeated
 benchmarks remain open under [issue #11](https://github.com/OneTesseractInMultiverse/darkhorse-identity/issues/11).
+
+### PostgreSQL introspection during Redis cache outage — 2026-09-28
+
+`make test-redis` now runs one additional PostgreSQL integration case with the
+real Redis cache adapter attached. It warms a two-capability policy projection,
+pauses Redis, and verifies introspection still returns the authorized result
+from PostgreSQL. While Redis remains unavailable, it commits a capability
+reduction and confirms the next check returns only the reduced capability. After
+Redis resumes, the check still rejects the old cached revision and refreshes the
+projection from primary state. The test asserts bounded completion and the
+expected aggregate cache-outcome counters. It makes no latency or capacity
+claim.
+
+The full `make test-redis` run passed 8 Redis-adapter tests, 40 limiter/process
+tests (one process worker is intentionally invoked by its parent), and this
+additional PostgreSQL integration case. The focused
+`make test-redis-introspection` target runs the cross-boundary case with fresh
+disposable Redis and PostgreSQL services.
+
+This joins the Redis-outage and current-revision checks at the complete
+PostgreSQL introspection boundary. Cache-role metric export, local-cache
+comparison, larger policy populations, eviction/restart races and repeated
+performance measurements remain open under issue #11; caching stays disabled
+by default.
 
 ## Remaining qualification
 

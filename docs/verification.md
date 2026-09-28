@@ -31,23 +31,24 @@ Integration suites own disposable services and clean only their own resources.
 
 ## Command map
 
-| Command                       | Evidence                                                        | Prerequisites                               |
-| ----------------------------- | --------------------------------------------------------------- | ------------------------------------------- |
-| `make check`                  | Format, lint, types, architecture, isolated tests               | Installed locked dependencies               |
-| `make ci`                     | Fast checks plus release and static builds                      | Same toolchain                              |
-| `make test-postgres`          | SQL constraints, transactions, races, operator persistence      | Docker with Compose                         |
-| `make test-db-authority`      | Reviewed grants and denied database operations                  | Docker                                      |
-| `make test-redis`             | Shared budgets, continuity loss, TLS, uncertain writes, login   | Docker and OpenSSL                          |
-| `make test-cli`               | Real parser, pipes, terminal restoration, cancellation          | Python 3 and POSIX host                     |
-| `make test-operator-accounts` | Fresh operator authentication and shared budgets                | Database, Redis, and CLI test prerequisites |
-| `make test-account-launcher`  | Account/catalog input, literal selectors, deadlines and cleanup | Local process toolchain                     |
-| `make test-browser`           | Static console and protocol flows over verified HTTPS           | Pinned Chromium, Docker, OpenSSL            |
-| `make test-media`             | Browser and real S3 adapter paths                               | Browser prerequisites                       |
-| `make test-compose`           | Packaged HTTPS, roles, failure handling, isolated restore       | Built application image and Docker          |
-| `make test-kubernetes`        | Two replicas, policies, Jobs, isolation, runtime behavior       | kind, kubectl, built images                 |
-| `make test-release-tools`     | Git archives and release-tool failure handling                  | Git and Node                                |
-| `make source-package-check`   | Selected Git tree and archive contents                          | Git and Node                                |
-| `make audit-dependencies`     | Current Rust and JavaScript advisories                          | Network and pinned audit tools              |
+| Command                         | Evidence                                                                                   | Prerequisites                               |
+| ------------------------------- | ------------------------------------------------------------------------------------------ | ------------------------------------------- |
+| `make check`                    | Format, lint, types, architecture, isolated tests                                          | Installed locked dependencies               |
+| `make ci`                       | Fast checks plus release and static builds                                                 | Same toolchain                              |
+| `make test-postgres`            | SQL constraints, transactions, races, operator persistence                                 | Docker with Compose                         |
+| `make test-db-authority`        | Reviewed grants and denied database operations                                             | Docker                                      |
+| `make test-redis`               | Shared budgets, TLS, uncertain writes, login, PostgreSQL introspection during cache outage | Docker and OpenSSL                          |
+| `make test-redis-introspection` | Focused PostgreSQL introspection check across Redis outage and recovery                    | Docker and OpenSSL                          |
+| `make test-cli`                 | Real parser, pipes, terminal restoration, cancellation                                     | Python 3 and POSIX host                     |
+| `make test-operator-accounts`   | Fresh operator authentication and shared budgets                                           | Database, Redis, and CLI test prerequisites |
+| `make test-account-launcher`    | Account/catalog input, literal selectors, deadlines and cleanup                            | Local process toolchain                     |
+| `make test-browser`             | Static console and protocol flows over verified HTTPS                                      | Pinned Chromium, Docker, OpenSSL            |
+| `make test-media`               | Browser and real S3 adapter paths                                                          | Browser prerequisites                       |
+| `make test-compose`             | Packaged HTTPS, roles, failure handling, isolated restore                                  | Built application image and Docker          |
+| `make test-kubernetes`          | Two replicas, policies, Jobs, isolation, runtime behavior                                  | kind, kubectl, built images                 |
+| `make test-release-tools`       | Git archives and release-tool failure handling                                             | Git and Node                                |
+| `make source-package-check`     | Selected Git tree and archive contents                                                     | Git and Node                                |
+| `make audit-dependencies`       | Current Rust and JavaScript advisories                                                     | Network and pinned audit tools              |
 
 `make help` lists focused policy suites and benchmark targets. `make browser-install`
 installs the pinned browser. Integration prerequisites never become unit-test prerequisites.

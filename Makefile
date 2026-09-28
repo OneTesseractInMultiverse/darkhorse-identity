@@ -17,7 +17,7 @@ WEB := $(PNPM) --filter @darkhorse/console
 .PHONY: coverage-unit coverage-rust coverage-web coverage-postgres
 .PHONY: test-authorization test-property test-mutation
 .PHONY: db-setup db-up db-down db-migrate bootstrap test-postgres docker-build docker-smoke
-.PHONY: redis-setup redis-up redis-down redis-status test-redis docker-redis-smoke
+.PHONY: redis-setup redis-up redis-down redis-status test-redis test-redis-introspection docker-redis-smoke
 .PHONY: redis-acl-update limiter-fence limiter-activate limiter-status
 .PHONY: test-limiting test-mutation-limiting test-mutation-recovery coverage-core coverage-integration
 .PHONY: login-setup dev-login browser-install test-browser test-browser-focused
@@ -287,6 +287,9 @@ limiter-status: ## Limiter: inspect durable generation, recovery wait and counte
 
 test-redis: ## Test: disposable Redis processes and Rust infrastructure diagnostics
 	$(NODE) scripts/redis-test.mjs
+
+test-redis-introspection: ## Test: PostgreSQL introspection remains correct through Redis cache outage and recovery
+	$(NODE) scripts/redis-test.mjs --introspection
 
 dev-setup: https-setup ## Develop: prepare local CA without changing host trust
 
