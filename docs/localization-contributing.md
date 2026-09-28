@@ -91,7 +91,16 @@ literals while preserving ICU arguments and plural behavior. Use it through the
 existing formatter in tests. It lives under `tests/`, outside the production `src/`
 tree, and must never be imported into a release build or added to the production
 locale allowlist. This exercises expansion and catalog wiring without duplicating
-business logic or claiming a third supported language.
+business logic or claiming a third supported language. The test named
+“configures a layout-test locale as test catalog data and reuses the production
+formatter” in `apps/console/tests/unit/lib/i18n/pseudolocale.test.ts` is the
+executable example: it adds a `qps-ploc` entry to test-only catalog configuration,
+uses the production formatter with a generated English-based catalog, and asserts
+that the test tag is absent from the shipped locale allowlist. The test intentionally
+uses English plural rules; it tests visual expansion and catalog wiring, not a new
+language or its grammatical rules. To add a supported language, follow the
+production catalog and locale workflow above instead of copying route, identity,
+or authorization logic.
 
 ## Source and review provenance
 

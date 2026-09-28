@@ -1,5 +1,6 @@
 import { expect, it } from 'vitest';
 import { createFormatter } from '../../../../src/lib/i18n/format';
+import { locales } from '../../../../src/lib/i18n/locale';
 import { pseudolocalizeCatalog } from './pseudolocale';
 
 const contract = {
@@ -28,6 +29,22 @@ it('expands and accents catalog literals while keeping ICU arguments and plural 
 	expect(translate('en', 'items', { count: 0 }).text).toContain('⟦Nó fílés');
 	expect(translate('en', 'quoted').text).toContain('{');
 	expect(translate('en', 'quoted').text).toContain('}');
+});
+
+it('configures a layout-test locale as test catalog data and reuses the production formatter', () => {
+	const testLocale = {
+		tag: 'qps-ploc',
+		formattingLocale: 'en',
+		catalog: pseudolocalizeCatalog(contract, english, 'en')
+	} as const;
+	const testCatalogs = { [testLocale.tag]: testLocale.catalog };
+	const translate = createFormatter(contract, {
+		[testLocale.formattingLocale]: testCatalogs[testLocale.tag]
+	});
+
+	expect(locales).toEqual(['en', 'es']);
+	expect(locales).not.toContain(testLocale.tag);
+	expect(translate('en', 'hello', { name: 'Ada' }).text).toContain('Hélló');
 });
 
 it('uses the same catalog bounds and validation as production translation data', () => {
