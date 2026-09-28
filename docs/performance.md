@@ -346,6 +346,28 @@ The Redis runs made zero policy-projection SQL calls in these warmed rate phases
 
 Keep `DARKHORSE_AUTHORIZATION_CACHE_ENABLED` off by default. The adapter remains an opt-in experiment until local-cache comparison, operational cache metrics, outage/cold-burst measurements, larger policy populations and repeated production-shaped runs establish a clear benefit. These single-host diagnostic runs are not an SLO or production capacity claim.
 
+### Cache failure and stale-fill regressions — 2026-09-28
+
+Additional boundary tests exercise malformed Redis values, cache transport
+outage/recovery, and an old policy fill that completes after a newer fill. The
+Redis test confirms an invalid value is rejected and replaced with a signed
+projection; an unavailable cache produces a bounded result with no store lease,
+and becomes an ordinary miss after recovery. A restricted PostgreSQL test
+deliberately delays one pre-reduction fill, commits a permission reduction,
+stores the new projection from another concurrent invocation, then allows the old
+fill to overwrite it. The next introspection rejects that stale revision,
+recomputes from primary state and retains only the reduced permission. These are
+security/failure-boundary checks, not performance results or operational metric
+export.
+
+`make test-postgres` passed 280 integration tests. `make test-redis` passed the
+7 Redis-adapter tests and 39 limiter/process tests; one worker fixture is
+intentionally invoked by its separate-process parent. `make ci` passed after
+these test changes. This does not complete cache qualification: real Redis
+outage behavior through the full PostgreSQL introspection path, cold-burst
+coalescing, eviction/restart races, cache-role metric export, local-cache
+comparison and larger repeated benchmarks remain open under [issue #11](https://github.com/OneTesseractInMultiverse/darkhorse-identity/issues/11).
+
 ## Remaining qualification
 
 The harness establishes a repeatable uncached starting point. Issue #10 stays open for larger user/policy populations, genuinely cold database state, longer endurance and production arrival distributions, multi-host/production proxy measurements, SQL query plans and wire-protocol round-trip attribution, continuous lock-wait/CPU/memory sampling, longer WAL and pool-acquisition observations, and shared-limiter overhead comparisons. SSO samples currently cover one principal, not password-login saturation or a latency distribution.

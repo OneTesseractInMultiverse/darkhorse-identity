@@ -16,6 +16,7 @@ use std::{
         atomic::{AtomicUsize, Ordering},
     },
 };
+use tokio::sync::Notify;
 
 #[derive(Default)]
 struct MemoryComputationCache {
@@ -227,6 +228,93 @@ async fn cached_policy_rechecks_primary_revision_and_preserves_the_issuance_ceil
         );
     }
     assert_eq!(cache.lookups.load(Ordering::Relaxed), 5);
+    assert_eq!(cache.stores.load(Ordering::Relaxed), 3);
+    db.store.close().await;
+}
+
+#[derive(Default)]
+struct RacingComputationCache {
+    entries: Mutex<HashMap<(u128, [u8; 32]), ComputationCacheEntry>>,
+    stores: AtomicUsize,
+    first_store_started: Notify,
+    release_first_store: Notify,
+}
+
+impl AuthorizationComputationCache for RacingComputationCache {
+    fn lookup(
+        &self,
+        key: ComputationCacheKey,
+    ) -> ComputationCacheFuture<'_, ComputationCacheLookup> {
+        Box::pin(async move {
+            let index = (key.resource.as_u128(), key.token_digest);
+            match self.entries.lock().unwrap().get(&index).cloned() {
+                Some(entry) => ComputationCacheLookup::new(Some(entry), None),
+                None => ComputationCacheLookup::new(None, Some(Box::new(TestCacheLease))),
+            }
+        })
+    }
+
+    fn store(
+        &self,
+        key: ComputationCacheKey,
+        entry: ComputationCacheEntry,
+    ) -> ComputationCacheFuture<'_, ()> {
+        Box::pin(async move {
+            if self.stores.fetch_add(1, Ordering::Relaxed) == 0 {
+                self.first_store_started.notify_one();
+                self.release_first_store.notified().await;
+            }
+            self.entries
+                .lock()
+                .unwrap()
+                .insert((key.resource.as_u128(), key.token_digest), entry);
+        })
+    }
+}
+
+#[tokio::test]
+async fn late_old_cache_fill_cannot_restore_a_permission_after_a_newer_fill() {
+    let (db, secret, digest) = fixture().await;
+    let cache = Arc::new(RacingComputationCache::default());
+    let store = db.store.clone().with_computation_cache(cache.clone());
+    let older_probe = probe(&secret, Some(digest));
+    let first_store_started = cache.first_store_started.notified();
+    let older = {
+        let store = store.clone();
+        tokio::spawn(async move { store.introspect_resource(older_probe, ISSUER).await })
+    };
+    first_store_started.await;
+
+    sqlx::query(
+        "DELETE FROM role_capabilities WHERE capability_id='00000000-0000-0000-0000-000000000071'",
+    )
+    .execute(&db.pool)
+    .await
+    .unwrap();
+    let current = store
+        .introspect_resource(probe(&secret, Some(digest)), ISSUER)
+        .await
+        .unwrap()
+        .unwrap();
+    assert_eq!(
+        current.capabilities,
+        std::collections::BTreeSet::from([CapabilityId::from_u128(0x70).unwrap()])
+    );
+    assert_eq!(cache.stores.load(Ordering::Relaxed), 2);
+
+    cache.release_first_store.notify_one();
+    let stale_result = older.await.unwrap().unwrap().unwrap();
+    assert_eq!(stale_result.capabilities.len(), 2);
+
+    let rechecked = store
+        .introspect_resource(probe(&secret, Some(digest)), ISSUER)
+        .await
+        .unwrap()
+        .unwrap();
+    assert_eq!(
+        rechecked.capabilities,
+        std::collections::BTreeSet::from([CapabilityId::from_u128(0x70).unwrap()])
+    );
     assert_eq!(cache.stores.load(Ordering::Relaxed), 3);
     db.store.close().await;
 }
