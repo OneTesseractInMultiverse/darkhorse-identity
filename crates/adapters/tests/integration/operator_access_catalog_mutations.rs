@@ -309,6 +309,72 @@ async fn create_role_shares_policy_validation_and_commits_only_operator_audit() 
 }
 
 #[tokio::test]
+async fn access_catalog_role_definitions_never_grant_platform_admin_membership() {
+    let db = oidc::fixture().await;
+    let administrators: Vec<Uuid> = sqlx::query_scalar(
+        "SELECT principal_id FROM platform_administrators ORDER BY principal_id",
+    )
+    .fetch_all(&db.pool)
+    .await
+    .unwrap();
+    assert!(!administrators.is_empty());
+
+    let capability = write(
+        &db,
+        "one@example.com",
+        revision(&db).await,
+        Change::CreateCapability {
+            definition: darkhorse_domain::admin_catalog::PermissionDefinition::new(
+                "platform.admin",
+                "Platform administrator access",
+            )
+            .unwrap(),
+            application: None,
+        },
+    )
+    .await
+    .unwrap();
+    let darkhorse_application::admin_catalog::Target::Capability(capability) = capability.target
+    else {
+        panic!("created capability target")
+    };
+    let role = write(
+        &db,
+        "one@example.com",
+        revision(&db).await,
+        Change::CreateRole {
+            name: Label::new("Platform administrator").unwrap(),
+            application: None,
+        },
+    )
+    .await
+    .unwrap();
+    let darkhorse_application::admin_catalog::Target::Role(role) = role.target else {
+        panic!("created role target")
+    };
+    write(
+        &db,
+        "one@example.com",
+        revision(&db).await,
+        Change::RoleCapability {
+            role,
+            capability,
+            granted: true,
+        },
+    )
+    .await
+    .unwrap();
+
+    let after: Vec<Uuid> = sqlx::query_scalar(
+        "SELECT principal_id FROM platform_administrators ORDER BY principal_id",
+    )
+    .fetch_all(&db.pool)
+    .await
+    .unwrap();
+    assert_eq!(after, administrators);
+}
+
+#[tokio::test]
 async fn stale_revision_and_nonadministrator_requests_have_audit_but_no_policy_effect() {
     let db = oidc::fixture().await;
     let stale = revision(&db).await;

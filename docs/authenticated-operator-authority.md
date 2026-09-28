@@ -120,6 +120,11 @@ current authority is platform-admin membership, not application ownership. It
 does not implement narrower delegated management permissions or assignment
 operations.
 
+The real PostgreSQL suite creates a global role named `Platform administrator`,
+grants it a capability named `platform.admin`, and verifies the operation leaves
+the separate `platform_administrators` membership unchanged. Application policy
+labels and capabilities are data, not a route to platform-admin authority.
+
 Denial auditing is consequently not a complete log of process attempts. Account
 effects and a failed completion audit share the transaction that must roll back.
 This implementation does not add a second, independently committed denial log.

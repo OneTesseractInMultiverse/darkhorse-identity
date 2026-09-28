@@ -672,11 +672,13 @@ catalog audit permission. Delegated administrator permissions and the other
 remaining requirements in #26 are still open. The [authenticated authority
 matrix](authenticated-operator-authority.md), owned by #23, records this command's
 exclusive fence, pre/post-write and post-audit checks, required ledger, and current
-platform-admin-only boundary.
+platform-admin-only boundary. A real PostgreSQL regression gives a global role
+the label `Platform administrator` and capability key `platform.admin`, then
+verifies that platform-administrator membership does not change.
 
 Verification on **2026-09-28** passed `make ci`, including formatting, Clippy,
 frontend lint and type checks, architecture and workflow policies, API/i18n checks,
-isolated unit suites, and release builds. `make test-postgres` passed 288 scenarios,
+isolated unit suites, and release builds. `make test-postgres` passed 289 scenarios,
 including all shared catalog changes, stale revision and authority denial, and
 rollback when the required operator audit cannot be written. Runtime database
 authority checks passed for the new audit ledger and the migration boundary.
