@@ -33,6 +33,8 @@ import { operatorFixture } from "./lib/benchmark-operator-fixture.mjs";
 import { operatorOperations } from "./lib/benchmark-operator-model.mjs";
 import { runBenchmarkCommand } from "./lib/benchmark-command.mjs";
 import {
+  composeHttpAvailabilityResponseClass,
+  composeHttpAvailabilityResponseClasses,
   composeHttpStatusCounts,
   composeOperatorMeasurement,
 } from "./lib/compose-operator-measurement.mjs";
@@ -986,13 +988,23 @@ async function composeRuntimePhase(name, client, expected, settings) {
         body = {};
       }
       if (!Array.isArray(body.capabilities)) body.capabilities = [];
-      return { status: response.status, body };
+      return {
+        status: response.status,
+        body,
+        availabilityResponseClass: composeHttpAvailabilityResponseClass(
+          response.status,
+          body,
+        ),
+      };
     },
   });
   return {
     name,
     summary: arrivalSummary(name, plan, measured),
     statusCounts: composeHttpStatusCounts(measured.rows),
+    availabilityResponseClasses: composeHttpAvailabilityResponseClasses(
+      measured.rows,
+    ),
   };
 }
 

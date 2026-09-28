@@ -1,0 +1,391 @@
+{
+  "schema": 1,
+  "status": "completed",
+  "topology": "packaged-compose-api-and-percona-postgresql",
+  "databaseRole": "darkhorse_runtime",
+  "configuredPoolSizePerProcess": 5,
+  "httpPhases": [
+    {
+      "name": "control-before",
+      "offeredRatePerSecond": 200,
+      "scheduled": 1600,
+      "dispatched": 1600,
+      "outcomes": {
+        "authorized": 1600,
+        "denied": 0,
+        "unavailable": 0,
+        "error": 0,
+        "transport_error": 0,
+        "violation": 0,
+        "generator_late": 0,
+        "generator_full": 0
+      },
+      "httpStatuses": {
+        "200": 1600
+      },
+      "scheduledLatencyMs": {
+        "p50": 3.4675829999978305,
+        "p95": 4.630624999997963,
+        "p99": 6.983415999995486
+      },
+      "authorizedScheduledLatencyMs": {
+        "p50": 3.4675829999978305,
+        "p95": 4.630624999997963,
+        "p99": 6.983415999995486
+      },
+      "peakInFlight": 4,
+      "availabilityResponseClasses": {}
+    },
+    {
+      "name": "account-detail-overlap",
+      "offeredRatePerSecond": 200,
+      "scheduled": 1600,
+      "dispatched": 1600,
+      "outcomes": {
+        "authorized": 1600,
+        "denied": 0,
+        "unavailable": 0,
+        "error": 0,
+        "transport_error": 0,
+        "violation": 0,
+        "generator_late": 0,
+        "generator_full": 0
+      },
+      "httpStatuses": {
+        "200": 1600
+      },
+      "scheduledLatencyMs": {
+        "p50": 3.5754999999990105,
+        "p95": 5.739999999997963,
+        "p99": 8.392333000003418
+      },
+      "authorizedScheduledLatencyMs": {
+        "p50": 3.5754999999990105,
+        "p95": 5.739999999997963,
+        "p99": 8.392333000003418
+      },
+      "peakInFlight": 4,
+      "availabilityResponseClasses": {}
+    },
+    {
+      "name": "control-after",
+      "offeredRatePerSecond": 200,
+      "scheduled": 1600,
+      "dispatched": 1600,
+      "outcomes": {
+        "authorized": 1600,
+        "denied": 0,
+        "unavailable": 0,
+        "error": 0,
+        "transport_error": 0,
+        "violation": 0,
+        "generator_late": 0,
+        "generator_full": 0
+      },
+      "httpStatuses": {
+        "200": 1600
+      },
+      "scheduledLatencyMs": {
+        "p50": 4.078666000001249,
+        "p95": 6.8157910000009,
+        "p99": 7.680707999999868
+      },
+      "authorizedScheduledLatencyMs": {
+        "p50": 4.078666000001249,
+        "p95": 6.8157910000009,
+        "p99": 7.680707999999868
+      },
+      "peakInFlight": 3,
+      "availabilityResponseClasses": {}
+    }
+  ],
+  "operator": {
+    "expectedCommands": 8,
+    "recordedCommands": 8,
+    "outcomes": {
+      "read": 3,
+      "not_found": 1,
+      "denied": 4
+    },
+    "scheduledLatencyMs": {
+      "p50": 252.82545899999968,
+      "p95": 338.34529200000543,
+      "p99": 338.34529200000543
+    },
+    "executionLatencyMs": {
+      "p50": 252.65829200000007,
+      "p95": 338.0063749999972,
+      "p99": 338.0063749999972
+    },
+    "byOperation": {
+      "account.show": {
+        "commands": 1,
+        "executionLatencyMs": {
+          "p50": 338.0063749999972,
+          "p95": 338.0063749999972,
+          "p99": 338.0063749999972
+        }
+      },
+      "account.show.denied": {
+        "commands": 2,
+        "executionLatencyMs": {
+          "p50": 251.00774999999703,
+          "p95": 336.4578330000004,
+          "p99": 336.4578330000004
+        }
+      },
+      "application.show": {
+        "commands": 1,
+        "executionLatencyMs": {
+          "p50": 262.5581250000032,
+          "p95": 262.5581250000032,
+          "p99": 262.5581250000032
+        }
+      },
+      "application.show.denied": {
+        "commands": 1,
+        "executionLatencyMs": {
+          "p50": 263.9199579999986,
+          "p95": 263.9199579999986,
+          "p99": 263.9199579999986
+        }
+      },
+      "account.show.missing": {
+        "commands": 1,
+        "executionLatencyMs": {
+          "p50": 246.51195800000278,
+          "p95": 246.51195800000278,
+          "p99": 246.51195800000278
+        }
+      },
+      "client.show.denied": {
+        "commands": 1,
+        "executionLatencyMs": {
+          "p50": 246.07250000000204,
+          "p95": 246.07250000000204,
+          "p99": 246.07250000000204
+        }
+      },
+      "client.show": {
+        "commands": 1,
+        "executionLatencyMs": {
+          "p50": 252.65829200000007,
+          "p95": 252.65829200000007,
+          "p99": 252.65829200000007
+        }
+      }
+    }
+  },
+  "runtime": {
+    "samples": 35,
+    "maximumSampledConnections": 8,
+    "maximumSampledActiveConnections": 1,
+    "maximumSampledWaitingLocks": 0,
+    "samplesDuringOverlap": [
+      {
+        "runtimeConnections": 4,
+        "activeRuntimeConnections": 1,
+        "waitingLocks": 0
+      },
+      {
+        "runtimeConnections": 4,
+        "activeRuntimeConnections": 0,
+        "waitingLocks": 0
+      },
+      {
+        "runtimeConnections": 4,
+        "activeRuntimeConnections": 0,
+        "waitingLocks": 0
+      },
+      {
+        "runtimeConnections": 4,
+        "activeRuntimeConnections": 1,
+        "waitingLocks": 0
+      },
+      {
+        "runtimeConnections": 4,
+        "activeRuntimeConnections": 0,
+        "waitingLocks": 0
+      },
+      {
+        "runtimeConnections": 4,
+        "activeRuntimeConnections": 0,
+        "waitingLocks": 0
+      },
+      {
+        "runtimeConnections": 4,
+        "activeRuntimeConnections": 0,
+        "waitingLocks": 0
+      },
+      {
+        "runtimeConnections": 4,
+        "activeRuntimeConnections": 0,
+        "waitingLocks": 0
+      },
+      {
+        "runtimeConnections": 4,
+        "activeRuntimeConnections": 0,
+        "waitingLocks": 0
+      },
+      {
+        "runtimeConnections": 8,
+        "activeRuntimeConnections": 0,
+        "waitingLocks": 0
+      },
+      {
+        "runtimeConnections": 4,
+        "activeRuntimeConnections": 0,
+        "waitingLocks": 0
+      },
+      {
+        "runtimeConnections": 4,
+        "activeRuntimeConnections": 0,
+        "waitingLocks": 0
+      },
+      {
+        "runtimeConnections": 4,
+        "activeRuntimeConnections": 0,
+        "waitingLocks": 0
+      },
+      {
+        "runtimeConnections": 4,
+        "activeRuntimeConnections": 0,
+        "waitingLocks": 0
+      },
+      {
+        "runtimeConnections": 4,
+        "activeRuntimeConnections": 0,
+        "waitingLocks": 0
+      },
+      {
+        "runtimeConnections": 4,
+        "activeRuntimeConnections": 0,
+        "waitingLocks": 0
+      },
+      {
+        "runtimeConnections": 4,
+        "activeRuntimeConnections": 0,
+        "waitingLocks": 0
+      },
+      {
+        "runtimeConnections": 4,
+        "activeRuntimeConnections": 1,
+        "waitingLocks": 0
+      },
+      {
+        "runtimeConnections": 4,
+        "activeRuntimeConnections": 0,
+        "waitingLocks": 0
+      },
+      {
+        "runtimeConnections": 4,
+        "activeRuntimeConnections": 0,
+        "waitingLocks": 0
+      },
+      {
+        "runtimeConnections": 4,
+        "activeRuntimeConnections": 1,
+        "waitingLocks": 0
+      },
+      {
+        "runtimeConnections": 4,
+        "activeRuntimeConnections": 0,
+        "waitingLocks": 0
+      },
+      {
+        "runtimeConnections": 4,
+        "activeRuntimeConnections": 0,
+        "waitingLocks": 0
+      },
+      {
+        "runtimeConnections": 4,
+        "activeRuntimeConnections": 0,
+        "waitingLocks": 0
+      },
+      {
+        "runtimeConnections": 4,
+        "activeRuntimeConnections": 0,
+        "waitingLocks": 0
+      },
+      {
+        "runtimeConnections": 4,
+        "activeRuntimeConnections": 0,
+        "waitingLocks": 0
+      },
+      {
+        "runtimeConnections": 8,
+        "activeRuntimeConnections": 0,
+        "waitingLocks": 0
+      },
+      {
+        "runtimeConnections": 5,
+        "activeRuntimeConnections": 1,
+        "waitingLocks": 0
+      },
+      {
+        "runtimeConnections": 5,
+        "activeRuntimeConnections": 0,
+        "waitingLocks": 0
+      },
+      {
+        "runtimeConnections": 5,
+        "activeRuntimeConnections": 0,
+        "waitingLocks": 0
+      },
+      {
+        "runtimeConnections": 5,
+        "activeRuntimeConnections": 0,
+        "waitingLocks": 0
+      },
+      {
+        "runtimeConnections": 5,
+        "activeRuntimeConnections": 0,
+        "waitingLocks": 0
+      },
+      {
+        "runtimeConnections": 5,
+        "activeRuntimeConnections": 0,
+        "waitingLocks": 0
+      },
+      {
+        "runtimeConnections": 5,
+        "activeRuntimeConnections": 0,
+        "waitingLocks": 0
+      },
+      {
+        "runtimeConnections": 5,
+        "activeRuntimeConnections": 0,
+        "waitingLocks": 0
+      }
+    ],
+    "before": {
+      "runtimeConnections": 2,
+      "activeRuntimeConnections": 0,
+      "waitingLocks": 0,
+      "apiCpu": "0.02%",
+      "apiMemory": "3.43MiB / 512MiB",
+      "databaseCpu": "0.08%",
+      "databaseMemory": "49.22MiB / 512MiB"
+    },
+    "after": {
+      "runtimeConnections": 5,
+      "activeRuntimeConnections": 0,
+      "waitingLocks": 0,
+      "apiCpu": "0.02%",
+      "apiMemory": "4.621MiB / 512MiB",
+      "databaseCpu": "0.04%",
+      "databaseMemory": "62.24MiB / 512MiB"
+    }
+  },
+  "measurement": {
+    "date": "2026-09-28",
+    "command": "make benchmark-compose-operator-details-baseline",
+    "apiImageBuildVersion": "bb2a7ee60d5b50a8b248944136dc00d7393d6f82",
+    "benchmarkHarnessBaseCommit": "bb2a7ee60d5b50a8b248944136dc00d7393d6f82",
+    "harnessHadUncommittedChanges": true,
+    "offeredRatePerSecond": 200,
+    "phaseDurationMs": 8000,
+    "configuredClientBudgetPerMinute": 6000,
+    "responseClassesDescribe": "Allowlisted response-body contract shape only; they do not prove which component emitted the response."
+  }
+}

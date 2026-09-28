@@ -10,6 +10,12 @@ const operations = new Set([
   "client.show",
   "client.show.denied",
 ]);
+const availabilityResponseClassStatuses = {
+  expected_error_json_503: 503,
+  other_503_body: 503,
+  expected_error_json_429: 429,
+  other_429_body: 429,
+};
 
 function boundedArray(value, maximum, description) {
   if (!Array.isArray(value) || value.length > maximum)
@@ -46,6 +52,29 @@ function phase(value) {
       summary.attempts
   )
     throw new Error("Invalid Compose HTTP status observations.");
+  const availabilityResponseClasses = value.availabilityResponseClasses ?? {};
+  if (
+    !availabilityResponseClasses ||
+    typeof availabilityResponseClasses !== "object" ||
+    Array.isArray(availabilityResponseClasses) ||
+    Object.entries(availabilityResponseClasses).some(
+      ([name, count]) =>
+        availabilityResponseClassStatuses[name] === undefined ||
+        !Number.isSafeInteger(count) ||
+        count < 0 ||
+        count > summary.attempts,
+    ) ||
+    [429, 503].some(
+      (status) =>
+        Object.entries(availabilityResponseClasses)
+          .filter(
+            ([name]) => availabilityResponseClassStatuses[name] === status,
+          )
+          .reduce((total, [, count]) => total + count, 0) !==
+        (statusCounts[String(status)] ?? 0),
+    )
+  )
+    throw new Error("Invalid Compose HTTP availability response classes.");
   return {
     name: value.name,
     offeredRatePerSecond: summary.offeredRate,
@@ -78,6 +107,11 @@ function phase(value) {
     scheduledLatencyMs: summary.allScheduledLatencyMs ?? null,
     authorizedScheduledLatencyMs: summary.authorizedScheduledLatencyMs ?? null,
     peakInFlight: summary.peakInFlight,
+    availabilityResponseClasses: Object.fromEntries(
+      Object.entries(availabilityResponseClasses).sort(([left], [right]) =>
+        left.localeCompare(right),
+      ),
+    ),
   };
 }
 
@@ -234,4 +268,32 @@ export function composeHttpStatusCounts(rows) {
     counts[status] = (counts[status] ?? 0) + 1;
   }
   return counts;
+}
+
+export function composeHttpAvailabilityResponseClasses(rows) {
+  if (!Array.isArray(rows) || rows.length > 30000)
+    throw new Error("Invalid Compose HTTP availability rows.");
+  const counts = {};
+  for (const row of rows) {
+    if (row?.status !== 429 && row?.status !== 503) continue;
+    if (
+      availabilityResponseClassStatuses[row?.availabilityResponseClass] ===
+      undefined
+    )
+      throw new Error("Invalid Compose HTTP availability row.");
+    const name = row.availabilityResponseClass;
+    if (availabilityResponseClassStatuses[name] !== row.status)
+      throw new Error("Mismatched Compose HTTP availability response class.");
+    counts[name] = (counts[name] ?? 0) + 1;
+  }
+  return counts;
+}
+
+export function composeHttpAvailabilityResponseClass(status, body) {
+  if (status !== 429 && status !== 503) return undefined;
+  if (body?.error === "temporarily_unavailable")
+    return status === 503
+      ? "expected_error_json_503"
+      : "expected_error_json_429";
+  return status === 503 ? "other_503_body" : "other_429_body";
 }

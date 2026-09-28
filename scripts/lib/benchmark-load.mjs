@@ -1,5 +1,12 @@
 import { classify, validateLoad } from "./benchmark-model.mjs";
 
+const availabilityResponseClasses = new Set([
+  "expected_error_json_503",
+  "other_503_body",
+  "expected_error_json_429",
+  "other_429_body",
+]);
+
 export async function attempt(index, selection, perform, clock) {
   const startMs = clock();
   let response;
@@ -9,6 +16,11 @@ export async function attempt(index, selection, perform, clock) {
     response = { status: 0 };
   }
   const endMs = clock();
+  const availabilityResponseClass = availabilityResponseClasses.has(
+    response.availabilityResponseClass,
+  )
+    ? response.availabilityResponseClass
+    : undefined;
   return {
     index,
     client: selection.client,
@@ -17,6 +29,9 @@ export async function attempt(index, selection, perform, clock) {
     elapsedMs: endMs - startMs,
     status: response.status,
     outcome: classify(response, selection.expected),
+    ...(availabilityResponseClass === undefined
+      ? {}
+      : { availabilityResponseClass }),
   };
 }
 export async function runLoad({ count, concurrency, select, perform, clock }) {

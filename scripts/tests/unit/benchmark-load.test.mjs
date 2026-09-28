@@ -43,6 +43,32 @@ test("load runner bounds in-flight work, retains failures, and captures expectat
   await assert.rejects(runLoad({ count: 10, concurrency: 129 }), /bounds/);
 });
 
+test("load results retain only allowlisted availability response classes", async () => {
+  let tick = 0;
+  const results = await runLoad({
+    count: 2,
+    concurrency: 1,
+    clock: () => tick++,
+    select: () => ({
+      client: 0,
+      epoch: "steady",
+      expected: { active: true },
+    }),
+    perform: async (_, index) => ({
+      status: 503,
+      body: { error: "private-value" },
+      availabilityResponseClass:
+        index === 0 ? "expected_error_json_503" : "private-value",
+    }),
+  });
+  assert.equal(
+    results.rows[0].availabilityResponseClass,
+    "expected_error_json_503",
+  );
+  assert.equal("availabilityResponseClass" in results.rows[1], false);
+  assert.doesNotMatch(JSON.stringify(results), /private-value/);
+});
+
 test("all started workers settle before a selection failure leaves the load runner", async () => {
   let release;
   const held = new Promise((resolve) => {

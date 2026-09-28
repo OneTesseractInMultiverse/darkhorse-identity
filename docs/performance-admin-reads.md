@@ -197,6 +197,31 @@ each run; the before/after local volume lists showed no new volumes. The Compose
 runtime-role portion now has repeat evidence, while the intermittent 503 cause
 and Kubernetes scheduling remain open under #32.
 
+## September 28, 2026 response-shape diagnostic
+
+The Compose benchmark now counts two fixed response-body classes for each
+availability status: the expected JSON error field (`error=temporarily_unavailable`)
+and any other body. It discards all response text and arbitrary error fields. This
+records the body shape only; it cannot prove whether the API, edge proxy, or another
+component emitted a matching response.
+
+One unprofiled packaged Compose repeat offered 200 introspections per second for
+three eight-second phases. All 4,800 scheduled requests were dispatched and returned
+HTTP 200; there were no 429 or 503 responses to classify. Scheduled p95 latency was
+4.63 ms before the CLI reads, 5.74 ms during them, and 6.82 ms afterwards. The
+runtime-role fixture again recorded three reads, one not-found result, and four
+expected denials. Runtime sampling saw at most eight connections and no waiting
+locks. This clean repeat does not explain the intermittent 503s or change the
+capacity conclusion.
+
+The [machine-readable result](measurements/operator-details-compose-response-classes-2026-09-28.json)
+includes the phase status and response-class counts. The benchmark used a disposable
+Compose project; cleanup left no benchmark project containers, and the post-run
+Docker volume inventory contained 229 volumes. The report records that the
+measurement harness included uncommitted diagnostic changes based on the listed
+commit. Keep #32 open until a 503 is captured with these response-shape counts or
+another measured source is found.
+
 A separate three-second `operator-smoke` compatibility run used the historical
 listing workload and owner role. Its burst recorded 533 authorized and 61 unavailable
 responses from 594 dispatched requests, plus six late generator drops out of 600

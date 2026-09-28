@@ -1,6 +1,8 @@
 import assert from "node:assert/strict";
 import { test } from "node:test";
 import {
+  composeHttpAvailabilityResponseClass,
+  composeHttpAvailabilityResponseClasses,
   composeHttpStatusCounts,
   composeOperatorMeasurement,
 } from "../../lib/compose-operator-measurement.mjs";
@@ -23,6 +25,7 @@ function phase(name) {
       peakInFlight: 3,
     },
     statusCounts: { 200: 97, 503: 1 },
+    availabilityResponseClasses: { expected_error_json_503: 1 },
   };
 }
 
@@ -81,6 +84,9 @@ test("Compose summary preserves failures and reports actual bounded runtime samp
     200: 97,
     503: 1,
   });
+  assert.deepEqual(result.httpPhases[1].availabilityResponseClasses, {
+    expected_error_json_503: 1,
+  });
   assert.deepEqual(result.operator.outcomes, {
     read: 3,
     not_found: 1,
@@ -116,6 +122,57 @@ test("Compose status summary retains exact bounded HTTP codes and skips drops", 
         Array.from({ length: 30001 }, () => ({ status: 200 })),
       ),
     /HTTP status rows/,
+  );
+});
+
+test("Compose HTTP availability evidence keeps only allowlisted response classes", () => {
+  const secretBody = {
+    error: "temporarily_unavailable",
+    description: "private response detail",
+    token: "secret-token",
+  };
+  assert.equal(
+    composeHttpAvailabilityResponseClass(503, secretBody),
+    "expected_error_json_503",
+  );
+  assert.equal(
+    composeHttpAvailabilityResponseClass(429, secretBody),
+    "expected_error_json_429",
+  );
+  assert.equal(
+    composeHttpAvailabilityResponseClass(503, { error: "private-error" }),
+    "other_503_body",
+  );
+  assert.equal(
+    composeHttpAvailabilityResponseClass(200, secretBody),
+    undefined,
+  );
+  const counts = composeHttpAvailabilityResponseClasses([
+    { status: 503, availabilityResponseClass: "expected_error_json_503" },
+    { status: 503, availabilityResponseClass: "other_503_body" },
+    { status: 429, availabilityResponseClass: "expected_error_json_429" },
+    { status: 200 },
+    { status: null },
+  ]);
+  assert.deepEqual(counts, {
+    expected_error_json_429: 1,
+    expected_error_json_503: 1,
+    other_503_body: 1,
+  });
+  assert.doesNotMatch(JSON.stringify(counts), /private|secret-token/);
+  assert.throws(
+    () =>
+      composeHttpAvailabilityResponseClasses([
+        { status: 503, availabilityResponseClass: "private-error" },
+      ]),
+    /availability row/,
+  );
+  assert.throws(
+    () =>
+      composeHttpAvailabilityResponseClasses([
+        { status: 503, availabilityResponseClass: "expected_error_json_429" },
+      ]),
+    /Mismatched/,
   );
 });
 
