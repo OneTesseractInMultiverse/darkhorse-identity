@@ -20,6 +20,7 @@ pub enum Command {
     Account(PrincipalId),
     Accounts(darkhorse_domain::operator_directory::Request),
     Catalog(darkhorse_domain::operator_catalog::Request),
+    CatalogView(darkhorse_domain::operator_catalog::ViewRequest),
     CatalogShow(darkhorse_application::registration::ReadTarget),
     ApplicationMutation(darkhorse_domain::operator_applications::Operation),
     ClientSecret {
@@ -62,6 +63,7 @@ pub fn requires_confirmation(command: &Command) -> bool {
             | Command::Account(_)
             | Command::Accounts(_)
             | Command::Catalog(_)
+            | Command::CatalogView(_)
             | Command::CatalogShow(_)
             | Command::ClientSecret {
                 operation: darkhorse_domain::operator_client_secrets::Operation::List { .. },
@@ -105,4 +107,36 @@ pub(super) fn client_secret_identifier(
     let id = uuid::Uuid::parse_str(value).map_err(|_| "Invalid client secret identifier.")?;
     darkhorse_domain::identity::ClientSecretId::from_u128(id.as_u128())
         .map_err(|_| "Invalid client secret identifier.")
+}
+
+pub(super) fn resource_identifier(
+    value: &str,
+) -> Result<darkhorse_domain::identity::ResourceId, &'static str> {
+    let value = uuid::Uuid::parse_str(value).map_err(|_| "Invalid resource identifier.")?;
+    darkhorse_domain::identity::ResourceId::from_u128(value.as_u128())
+        .map_err(|_| "Invalid resource identifier.")
+}
+
+pub(super) fn scope_identifier(
+    value: &str,
+) -> Result<darkhorse_domain::identity::ScopeId, &'static str> {
+    let value = uuid::Uuid::parse_str(value).map_err(|_| "Invalid scope identifier.")?;
+    darkhorse_domain::identity::ScopeId::from_u128(value.as_u128())
+        .map_err(|_| "Invalid scope identifier.")
+}
+
+pub(super) fn role_identifier(
+    value: &str,
+) -> Result<darkhorse_domain::identity::RoleId, &'static str> {
+    let value = uuid::Uuid::parse_str(value).map_err(|_| "Invalid role identifier.")?;
+    darkhorse_domain::identity::RoleId::from_u128(value.as_u128())
+        .map_err(|_| "Invalid role identifier.")
+}
+
+pub(super) fn capability_identifier(
+    value: &str,
+) -> Result<darkhorse_domain::identity::CapabilityId, &'static str> {
+    let value = uuid::Uuid::parse_str(value).map_err(|_| "Invalid capability identifier.")?;
+    darkhorse_domain::identity::CapabilityId::from_u128(value.as_u128())
+        .map_err(|_| "Invalid capability identifier.")
 }

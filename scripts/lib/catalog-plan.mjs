@@ -39,7 +39,12 @@ export function catalogOptions(values, stdinIsTTY) {
     throw invalid();
   if (["resource", "scope", "role", "capability"].includes(target))
     return accessCatalogOptions(values, target, operation);
-  if (values.CATALOG_ALL_DEFINITIONS) throw invalid();
+  if (
+    values.CATALOG_ALL_DEFINITIONS ||
+    values.CATALOG_TARGET_ID ||
+    values.CATALOG_RESOURCE_ID
+  )
+    throw invalid();
   if (target === "client-secret") return clientSecretOptions(values, operation);
   if (operation === "retire" || values.CATALOG_SECRET_ID) throw invalid();
   if (target === "client" && ["create", "update"].includes(operation))

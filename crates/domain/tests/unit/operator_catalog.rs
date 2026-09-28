@@ -84,3 +84,44 @@ fn access_catalog_selection_and_status_are_explicit() {
         }
     }
 }
+
+#[test]
+fn catalog_detail_requests_keep_typed_targets_and_explicit_definition_scope() {
+    use crate::identity::{CapabilityId, ResourceId, RoleId, ScopeId};
+
+    let application = ApplicationId::from_u128(7).unwrap();
+    let resource = ResourceId::from_u128(8).unwrap();
+    let scope = ScopeId::from_u128(9).unwrap();
+    let role = RoleId::from_u128(10).unwrap();
+    let capability = CapabilityId::from_u128(11).unwrap();
+
+    for target in [
+        ViewTarget::Resource {
+            application,
+            id: resource,
+        },
+        ViewTarget::Scope {
+            application,
+            resource,
+            id: scope,
+        },
+        ViewTarget::Role {
+            id: role,
+            selection: Definitions::Application(application),
+        },
+        ViewTarget::Role {
+            id: role,
+            selection: Definitions::All,
+        },
+        ViewTarget::Capability {
+            id: capability,
+            selection: Definitions::Application(application),
+        },
+        ViewTarget::Capability {
+            id: capability,
+            selection: Definitions::All,
+        },
+    ] {
+        assert_eq!(ViewRequest::new(target).target(), target);
+    }
+}

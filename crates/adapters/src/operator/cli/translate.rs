@@ -18,6 +18,7 @@ pub(super) fn invocation(options: Options) -> Result<Invocation, Failure> {
         Command::Account(_)
             | Command::Accounts(_)
             | Command::Catalog(_)
+            | Command::CatalogView(_)
             | Command::CatalogShow(_)
             | Command::ApplicationMutation(_)
             | Command::ClientUpdate { .. }
@@ -44,22 +45,51 @@ pub(super) fn invocation(options: Options) -> Result<Invocation, Failure> {
 }
 fn operator(value: Operator) -> Result<Command, Failure> {
     Ok(match value {
-        Operator::Resource(ApplicationCatalog::List { application, query }) => catalog(
+        Operator::Resource(ResourceCatalog::List { application, query }) => catalog(
             darkhorse_domain::operator_catalog::Target::Resources(application),
             query,
         )?,
-        Operator::Scope(ApplicationCatalog::List { application, query }) => catalog(
+        Operator::Resource(ResourceCatalog::Show {
+            application,
+            resource,
+        }) => catalog_view(darkhorse_domain::operator_catalog::ViewTarget::Resource {
+            application,
+            id: resource,
+        }),
+        Operator::Scope(ScopeCatalog::List { application, query }) => catalog(
             darkhorse_domain::operator_catalog::Target::Scopes(application),
             query,
         )?,
-        Operator::Role(DefinitionCatalog::List { selection, query }) => catalog(
+        Operator::Scope(ScopeCatalog::Show {
+            application,
+            resource,
+            scope,
+        }) => catalog_view(darkhorse_domain::operator_catalog::ViewTarget::Scope {
+            application,
+            resource,
+            id: scope,
+        }),
+        Operator::Role(RoleCatalog::List { selection, query }) => catalog(
             darkhorse_domain::operator_catalog::Target::Roles(definitions(selection)),
             query,
         )?,
-        Operator::Capability(DefinitionCatalog::List { selection, query }) => catalog(
+        Operator::Role(RoleCatalog::Show { selection, role }) => {
+            catalog_view(darkhorse_domain::operator_catalog::ViewTarget::Role {
+                id: role,
+                selection: definitions(selection),
+            })
+        }
+        Operator::Capability(CapabilityCatalog::List { selection, query }) => catalog(
             darkhorse_domain::operator_catalog::Target::Capabilities(definitions(selection)),
             query,
         )?,
+        Operator::Capability(CapabilityCatalog::Show {
+            selection,
+            capability,
+        }) => catalog_view(darkhorse_domain::operator_catalog::ViewTarget::Capability {
+            id: capability,
+            selection: definitions(selection),
+        }),
         Operator::Client(Client::Secret(value)) => secret(value),
         Operator::Client(Client::Create {
             application,
@@ -212,6 +242,10 @@ fn catalog(
     )
     .map(Command::Catalog)
     .map_err(|_| Failure::usage())
+}
+
+fn catalog_view(target: darkhorse_domain::operator_catalog::ViewTarget) -> Command {
+    Command::CatalogView(darkhorse_domain::operator_catalog::ViewRequest::new(target))
 }
 
 fn secret(value: ClientSecret) -> Command {

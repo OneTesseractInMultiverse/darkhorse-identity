@@ -53,6 +53,7 @@ BEGIN
   'TRUNCATE operator_directory_audit',
   'TRUNCATE operator_catalog_audit',
   'TRUNCATE operator_catalog_detail_audit',
+  'TRUNCATE operator_access_detail_audit',
   'TRUNCATE operator_application_audit',
   'TRUNCATE operator_client_audit',
   'TRUNCATE operator_client_creation_audit',

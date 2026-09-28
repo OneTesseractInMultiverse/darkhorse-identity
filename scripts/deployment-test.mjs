@@ -768,6 +768,9 @@ async function archive() {
     }
   }
   const archive = await backup(stack);
+  const auditCountsQuery =
+    "SELECT (SELECT count(*) FROM principals),(SELECT count(*) FROM operator_catalog_audit),(SELECT count(*) FROM operator_catalog_detail_audit),(SELECT count(*) FROM operator_access_detail_audit),(SELECT count(*) FROM operator_application_audit),(SELECT count(*) FROM operator_client_audit),(SELECT count(*) FROM operator_client_secret_audit),(SELECT count(*) FROM operator_client_creation_audit)";
+  const auditCounts = (await sql(auditCountsQuery)).stdout.trim();
   const bytes = await readFile(join(archive, "database.dump"));
   const inventory = await compose(
     stack,
@@ -808,11 +811,11 @@ async function archive() {
       "-d",
       "quarantine",
       "-Atc",
-      "SELECT (SELECT count(*) FROM principals),(SELECT count(*) FROM operator_catalog_audit),(SELECT count(*) FROM operator_catalog_detail_audit),(SELECT count(*) FROM operator_application_audit),(SELECT count(*) FROM operator_client_audit),(SELECT count(*) FROM operator_client_secret_audit),(SELECT count(*) FROM operator_client_creation_audit)",
+      auditCountsQuery,
     ],
     captured,
   );
-  assert.equal(restored.stdout.trim(), "14|20|6|8|6|10");
+  assert.equal(restored.stdout.trim(), auditCounts);
   console.log(
     "Cache degradation, restrictive limiter restart/recovery, database outage, durable restart and quarantined archive restore passed.",
   );

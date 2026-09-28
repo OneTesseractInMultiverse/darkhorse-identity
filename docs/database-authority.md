@@ -197,3 +197,10 @@ Migration `0031` extends the existing `operator_catalog_audit` constraints for
 rows and append-only enforcement are preserved. Runtime keeps its existing explicit
 SELECT/INSERT grants; the nonowner deployment operator receives no new authority.
 Apply the migration with serving stopped before using the new commands.
+
+Migration `0038` adds `operator_access_detail_audit` for authenticated CLI detail
+reads of resources, scopes, roles and capabilities. Runtime receives SELECT/INSERT
+only so the operation can append and verify its audit before returning the result;
+the nonowner deployment operator receives no access. The ledger is append-only.
+Reapply the reviewed grant script with serving stopped after migration. See
+[access-catalog details](operator-access-catalog.md#inspect-one-definition).

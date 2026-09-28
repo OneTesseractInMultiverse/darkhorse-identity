@@ -52,6 +52,47 @@ changes a binding, assigns a principal, or returns effective-access decisions.
 Independent delegated management permissions remain unfinished; current platform
 administrators are the only supported actors.
 
+## Inspect one definition
+
+`show` reads one resource, scope, role, or capability together with its current
+catalog relationships. Resources and scopes require the application and parent
+identifiers. Roles and capabilities require the same explicit choice as listing:
+`--application UUID` restricts the result to one application, while
+`--all-definitions` explicitly requests all application bindings.
+
+```sh
+darkhorse-server --auth-stdin --output json operator resource show <application-uuid> <resource-uuid> < /private/path/authentication.json
+darkhorse-server --auth-stdin --output json operator scope show <application-uuid> <resource-uuid> <scope-uuid> < /private/path/authentication.json
+darkhorse-server --auth-stdin --output json operator role show --application <application-uuid> <role-uuid> < /private/path/authentication.json
+darkhorse-server --auth-stdin --output json operator capability show --all-definitions <capability-uuid> < /private/path/authentication.json
+```
+
+The result includes the selected record, its current application bindings and
+capability relationships, plus the primary policy revision observed in the same
+transaction. Application-scoped role results include capabilities bound to that
+application only. A role or capability that is not bound to the selected
+application returns the fixed not-found outcome. Principal assignments and
+effective access are not part of these detail views.
+
+Each relationship list is capped at 25 records. Larger views fail closed so the
+CLI never silently truncates a policy graph. Use the bounded catalog listings to
+inspect large sets. Capability detail includes its human meaning; capability
+references within other records contain only ID, key, and retired status. The read
+commits an append-only audit before output. It records the actor, selected
+identifiers, application scope, outcome, and time, but no returned names,
+descriptions, email addresses, or credential material. A denied audit insert or
+uncertain commit releases no detail response and is not retried.
+
+The Compose launchers accept the same detail selectors:
+
+```sh
+make stack-catalog-run STACK=trial CATALOG_TARGET=role CATALOG_OPERATION=show CATALOG_APPLICATION_ID=<application-uuid> CATALOG_TARGET_ID=<role-uuid> < /private/path/authentication.json
+make stack-catalog-exec STACK=trial CATALOG_TARGET=scope CATALOG_OPERATION=show CATALOG_APPLICATION_ID=<application-uuid> CATALOG_RESOURCE_ID=<resource-uuid> CATALOG_TARGET_ID=<scope-uuid> < /private/path/authentication.json
+```
+
+All identifiers are parsed as typed, nonzero UUIDs and passed literally. Detail
+commands reject listing filters and unrelated catalog selectors.
+
 ## Input, pages and output
 
 The protected JSON input contains `email` and `password`; `reason` is rejected for
@@ -138,10 +179,13 @@ make kube-catalog-exec KUBE_CONFIG=/absolute/path/identity.json KUBE_ACCESS=/abs
 ```
 
 Set `CATALOG_TARGET` to `resource`, `scope`, `role`, or `capability`.
-`CATALOG_OPERATION` must be `list` or omitted. Supply `CATALOG_APPLICATION_ID`,
+`CATALOG_OPERATION` is `list` (the default) or `show`. Listing supplies `CATALOG_APPLICATION_ID`,
 or, for roles/capabilities, explicitly set `CATALOG_ALL_DEFINITIONS=yes`.
 They are mutually exclusive. Optional `CATALOG_SEARCH`, `CATALOG_AFTER`,
 `CATALOG_LIMIT`, and capability-only `CATALOG_STATUS` mirror native selectors.
+For `show`, set `CATALOG_TARGET_ID`; scopes additionally require
+`CATALOG_RESOURCE_ID`. Resource/scope details require an application ID; role and
+capability details require either an application ID or all-definitions selection.
 
 Account selectors, client/secret IDs, mutation selectors and configuration inputs
 are rejected. Other catalog commands reject `CATALOG_ALL_DEFINITIONS` so an inherited

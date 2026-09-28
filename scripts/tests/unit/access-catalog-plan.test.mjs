@@ -26,7 +26,6 @@ test("access catalog selectors require explicit scope and bounded literal search
       "--search=$(touch nope)%_",
     ]);
     for (const change of [
-      { CATALOG_OPERATION: "show" },
       { CATALOG_CLIENT_ID: id },
       { CATALOG_SECRET_ID: id },
       { CATALOG_REVISION: "0" },
@@ -43,6 +42,96 @@ test("access catalog selectors require explicit scope and bounded literal search
         catalogOptions({ ...values, CATALOG_STATUS: "active" }, false),
       );
   }
+});
+
+test("access catalog detail selectors require exact target IDs and definition scope", () => {
+  for (const [target, values, args] of [
+    [
+      "resource",
+      {
+        CATALOG_APPLICATION_ID: id,
+        CATALOG_TARGET_ID: "00000000-0000-0000-0000-000000000002",
+      },
+      [id, "00000000-0000-0000-0000-000000000002"],
+    ],
+    [
+      "scope",
+      {
+        CATALOG_APPLICATION_ID: id,
+        CATALOG_RESOURCE_ID: "00000000-0000-0000-0000-000000000002",
+        CATALOG_TARGET_ID: "00000000-0000-0000-0000-000000000003",
+      },
+      [
+        id,
+        "00000000-0000-0000-0000-000000000002",
+        "00000000-0000-0000-0000-000000000003",
+      ],
+    ],
+    [
+      "role",
+      {
+        CATALOG_APPLICATION_ID: id,
+        CATALOG_TARGET_ID: "00000000-0000-0000-0000-000000000002",
+      },
+      ["--application", id, "00000000-0000-0000-0000-000000000002"],
+    ],
+    [
+      "capability",
+      {
+        CATALOG_ALL_DEFINITIONS: "yes",
+        CATALOG_TARGET_ID: "00000000-0000-0000-0000-000000000002",
+      },
+      ["--all-definitions", "00000000-0000-0000-0000-000000000002"],
+    ],
+  ]) {
+    assert.deepEqual(
+      catalogOptions(
+        { CATALOG_TARGET: target, CATALOG_OPERATION: "show", ...values },
+        false,
+      ),
+      ["--auth-stdin", "--output", "json", "operator", target, "show", ...args],
+    );
+  }
+  for (const values of [
+    { CATALOG_APPLICATION_ID: id },
+    { CATALOG_APPLICATION_ID: id, CATALOG_TARGET_ID: "invalid" },
+    {
+      CATALOG_APPLICATION_ID: id,
+      CATALOG_ALL_DEFINITIONS: "yes",
+      CATALOG_TARGET_ID: id,
+    },
+    { CATALOG_TARGET_ID: id, CATALOG_RESOURCE_ID: id },
+    { CATALOG_APPLICATION_ID: id, CATALOG_TARGET_ID: id, CATALOG_LIMIT: "1" },
+  ])
+    assert.throws(() =>
+      catalogOptions(
+        { CATALOG_TARGET: "role", CATALOG_OPERATION: "show", ...values },
+        false,
+      ),
+    );
+  assert.throws(() =>
+    catalogOptions(
+      {
+        CATALOG_TARGET: "resource",
+        CATALOG_OPERATION: "show",
+        CATALOG_APPLICATION_ID: id,
+        CATALOG_RESOURCE_ID: id,
+        CATALOG_TARGET_ID: id,
+      },
+      false,
+    ),
+  );
+  assert.throws(() =>
+    catalogOptions(
+      {
+        CATALOG_TARGET: "scope",
+        CATALOG_OPERATION: "show",
+        CATALOG_APPLICATION_ID: id,
+        CATALOG_TARGET_ID: id,
+      },
+      false,
+    ),
+  );
 });
 test("all definitions is explicit, mutually exclusive and rejected by unrelated commands", () => {
   for (const target of ["role", "capability"]) {

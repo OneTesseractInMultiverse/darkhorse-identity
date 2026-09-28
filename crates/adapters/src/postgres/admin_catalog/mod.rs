@@ -19,6 +19,10 @@ pub(super) async fn list_current(
 ) -> Result<Page, Error> {
     reads::list(tx, target, query).await
 }
+
+pub(super) async fn view_current(tx: &mut Tx<'_>, target: Target) -> Result<View, Error> {
+    reads::view(tx, target).await
+}
 impl CatalogStore for PostgresStore {
     async fn policy_map(
         &self,

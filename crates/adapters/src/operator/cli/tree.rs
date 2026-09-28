@@ -51,13 +51,13 @@ pub(super) enum Operator {
     #[command(subcommand)]
     Client(Client),
     #[command(subcommand)]
-    Resource(ApplicationCatalog),
+    Resource(ResourceCatalog),
     #[command(subcommand)]
-    Scope(ApplicationCatalog),
+    Scope(ScopeCatalog),
     #[command(subcommand)]
-    Role(DefinitionCatalog),
+    Role(RoleCatalog),
     #[command(subcommand)]
-    Capability(DefinitionCatalog),
+    Capability(CapabilityCatalog),
     #[command(subcommand)]
     Signing(Signing),
     #[command(subcommand)]
@@ -324,7 +324,7 @@ pub(super) struct SecretTarget {
 }
 
 #[derive(Subcommand)]
-pub(super) enum ApplicationCatalog {
+pub(super) enum ResourceCatalog {
     /// Read one page within the explicitly selected application.
     List {
         #[arg(value_parser=crate::operator::command::application_identifier)]
@@ -332,15 +332,65 @@ pub(super) enum ApplicationCatalog {
         #[command(flatten)]
         query: CatalogList,
     },
+    /// Inspect one resource and its exposed capabilities.
+    Show {
+        #[arg(value_parser=crate::operator::command::application_identifier)]
+        application: darkhorse_domain::identity::ApplicationId,
+        #[arg(value_parser=crate::operator::command::resource_identifier)]
+        resource: darkhorse_domain::identity::ResourceId,
+    },
 }
 #[derive(Subcommand)]
-pub(super) enum DefinitionCatalog {
+pub(super) enum ScopeCatalog {
+    /// Read application-bound definitions or explicitly select all definitions; neither implies a grant.
+    List {
+        #[arg(value_parser=crate::operator::command::application_identifier)]
+        application: darkhorse_domain::identity::ApplicationId,
+        #[command(flatten)]
+        query: CatalogList,
+    },
+    /// Inspect one scope and its included capabilities.
+    Show {
+        #[arg(value_parser=crate::operator::command::application_identifier)]
+        application: darkhorse_domain::identity::ApplicationId,
+        #[arg(value_parser=crate::operator::command::resource_identifier)]
+        resource: darkhorse_domain::identity::ResourceId,
+        #[arg(value_parser=crate::operator::command::scope_identifier)]
+        scope: darkhorse_domain::identity::ScopeId,
+    },
+}
+#[derive(Subcommand)]
+pub(super) enum RoleCatalog {
     /// Read application-bound definitions or explicitly select all definitions; neither implies a grant.
     List {
         #[command(flatten)]
         selection: DefinitionSelection,
         #[command(flatten)]
         query: CatalogList,
+    },
+    /// Inspect one role and its capabilities using an explicit definition scope.
+    Show {
+        #[command(flatten)]
+        selection: DefinitionSelection,
+        #[arg(value_parser=crate::operator::command::role_identifier)]
+        role: darkhorse_domain::identity::RoleId,
+    },
+}
+#[derive(Subcommand)]
+pub(super) enum CapabilityCatalog {
+    /// Read application-bound definitions or explicitly select all definitions; neither implies a grant.
+    List {
+        #[command(flatten)]
+        selection: DefinitionSelection,
+        #[command(flatten)]
+        query: CatalogList,
+    },
+    /// Inspect one capability and its application bindings using an explicit definition scope.
+    Show {
+        #[command(flatten)]
+        selection: DefinitionSelection,
+        #[arg(value_parser=crate::operator::command::capability_identifier)]
+        capability: darkhorse_domain::identity::CapabilityId,
     },
 }
 #[derive(Args)]

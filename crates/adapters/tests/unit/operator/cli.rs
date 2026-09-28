@@ -442,6 +442,113 @@ fn catalog_details_require_typed_targets_and_protected_json_without_list_selecto
 }
 
 #[test]
+fn access_catalog_details_require_typed_targets_and_explicit_definition_scope() {
+    use darkhorse_domain::{
+        identity::{ApplicationId, CapabilityId, ResourceId, RoleId, ScopeId},
+        operator_catalog::{Definitions, ViewTarget},
+    };
+    let app = "00000000-0000-0000-0000-000000000010";
+    let resource = "00000000-0000-0000-0000-000000000020";
+    let scope = "00000000-0000-0000-0000-000000000030";
+    let role = "00000000-0000-0000-0000-000000000040";
+    let capability = "00000000-0000-0000-0000-000000000050";
+    let cases = [
+        (
+            vec!["operator", "resource", "show", app, resource],
+            ViewTarget::Resource {
+                application: ApplicationId::from_u128(16).unwrap(),
+                id: ResourceId::from_u128(32).unwrap(),
+            },
+        ),
+        (
+            vec!["operator", "scope", "show", app, resource, scope],
+            ViewTarget::Scope {
+                application: ApplicationId::from_u128(16).unwrap(),
+                resource: ResourceId::from_u128(32).unwrap(),
+                id: ScopeId::from_u128(48).unwrap(),
+            },
+        ),
+        (
+            vec!["operator", "role", "show", "--application", app, role],
+            ViewTarget::Role {
+                id: RoleId::from_u128(64).unwrap(),
+                selection: Definitions::Application(ApplicationId::from_u128(16).unwrap()),
+            },
+        ),
+        (
+            vec!["operator", "role", "show", "--all-definitions", role],
+            ViewTarget::Role {
+                id: RoleId::from_u128(64).unwrap(),
+                selection: Definitions::All,
+            },
+        ),
+        (
+            vec![
+                "operator",
+                "capability",
+                "show",
+                "--application",
+                app,
+                capability,
+            ],
+            ViewTarget::Capability {
+                id: CapabilityId::from_u128(80).unwrap(),
+                selection: Definitions::Application(ApplicationId::from_u128(16).unwrap()),
+            },
+        ),
+        (
+            vec![
+                "operator",
+                "capability",
+                "show",
+                "--all-definitions",
+                capability,
+            ],
+            ViewTarget::Capability {
+                id: CapabilityId::from_u128(80).unwrap(),
+                selection: Definitions::All,
+            },
+        ),
+    ];
+    for (args, expected) in cases {
+        let command = run(&args).command;
+        assert!(matches!(
+            command,
+            Command::CatalogView(request) if request.target() == expected
+        ));
+        assert!(!crate::operator::command::requires_confirmation(&command));
+        let mut protected_json = vec!["--auth-stdin", "--output", "json"];
+        protected_json.extend(args);
+        assert!(parse(&protected_json).is_ok());
+    }
+    for args in [
+        vec!["operator", "role", "show", role],
+        vec!["operator", "capability", "show", capability],
+        vec![
+            "operator",
+            "role",
+            "show",
+            "--application",
+            app,
+            "--all-definitions",
+            role,
+        ],
+        vec!["operator", "resource", "show", app, resource, scope],
+        vec!["operator", "scope", "show", app, resource],
+        vec![
+            "operator",
+            "resource",
+            "show",
+            "00000000-0000-0000-0000-000000000000",
+            resource,
+        ],
+        vec!["operator", "scope", "show", app, resource, "invalid"],
+    ] {
+        assert!(parse(&args).is_err());
+    }
+}
+
+#[test]
 fn application_writes_require_complete_explicit_specs_and_scoped_revisions() {
     let owner = "00000000-0000-0000-0000-000000000001";
     let app = "00000000-0000-0000-0000-000000000010";

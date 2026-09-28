@@ -4,6 +4,7 @@ mod authenticated;
 mod cancellation;
 mod catalog;
 mod catalog_details;
+mod catalog_views;
 pub mod cli;
 mod client_secrets;
 mod clients;
@@ -49,6 +50,12 @@ pub async fn run(command: Command, auth_stdin: bool, locale: Locale) -> Result<O
         }
         Command::CatalogShow(target) => {
             cancellation::run(catalog_details::run(target, false, locale)).await
+        }
+        Command::CatalogView(target) if auth_stdin => {
+            catalog_views::run(target, true, locale).await
+        }
+        Command::CatalogView(target) => {
+            cancellation::run(catalog_views::run(target, false, locale)).await
         }
         Command::Catalog(request) if auth_stdin => catalog::run(request, true, locale).await,
         Command::Catalog(request) => cancellation::run(catalog::run(request, false, locale)).await,

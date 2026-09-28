@@ -18,7 +18,9 @@ async fn initialize_journal(db: &Database) {
 }
 #[tokio::test]
 async fn fresh_upgrade_and_noop_preserve_baseline_and_step_receipts() {
-    for version in [0, 22, 24, 25, 26, 27, 28, 29, 30, 31, 32, 33, 34, 35, 36] {
+    for version in [
+        0, 22, 24, 25, 26, 27, 28, 29, 30, 31, 32, 33, 34, 35, 36, 37,
+    ] {
         let db = Database::at_version(version).await;
         assert!(db.store.inspect_migration(id(1)).await.unwrap().is_none());
         let absent: bool =
@@ -30,7 +32,7 @@ async fn fresh_upgrade_and_noop_preserve_baseline_and_step_receipts() {
         db.store.migrate_operation(id(1)).await.unwrap();
         let record = db.store.inspect_migration(id(1)).await.unwrap().unwrap();
         assert!(record.completed_ms.is_some());
-        assert_eq!(record.steps.len(), 37);
+        assert_eq!(record.steps.len(), 38);
         assert_eq!(
             record.steps.iter().filter(|s| s.already_applied).count(),
             version as usize
@@ -41,7 +43,7 @@ async fn fresh_upgrade_and_noop_preserve_baseline_and_step_receipts() {
                 .iter()
                 .filter(|s| s.completed_ms.is_some())
                 .count(),
-            37 - version as usize
+            38 - version as usize
         );
         assert!(record.steps.iter().all(|s| s.current_matches));
         let before = history(&db).await;
@@ -151,7 +153,7 @@ async fn journal_failure_prevents_changes_and_completion_failure_keeps_steps() {
             assert!(record.completed_ms.is_none());
             assert!(record.steps[23].completed_ms.is_some());
             assert!(record.steps.iter().all(|s| s.current_matches));
-            assert_eq!(history(&db).await, 37);
+            assert_eq!(history(&db).await, 38);
         }
         db.pool.close().await;
     }
@@ -175,7 +177,7 @@ async fn concurrent_migrators_serialize_and_history_drift_does_not_rewrite_recei
             .filter(|s| s.completed_ms.is_some())
             .count();
     }
-    assert_eq!(applied, 15);
+    assert_eq!(applied, 16);
     sqlx::query("UPDATE _sqlx_migrations SET checksum='\\x00' WHERE version=24")
         .execute(&db.pool)
         .await
@@ -199,7 +201,7 @@ async fn concurrent_migrators_serialize_and_history_drift_does_not_rewrite_recei
 }
 #[tokio::test]
 async fn lost_intent_step_and_final_commit_replies_are_inspectable() {
-    for commit in 1..=16 {
+    for commit in 1..=17 {
         let db = Database::at_version(23).await;
         let (store, proxy) = super::limiter_activation::lost_nth_commit(&db.pool, commit).await;
         assert_eq!(store.migrate_operation(id(1)).await, Err(Error::Uncertain));
@@ -207,8 +209,8 @@ async fn lost_intent_step_and_final_commit_replies_are_inspectable() {
         let record = db.store.inspect_migration(id(1)).await.unwrap().unwrap();
         assert_eq!(record.steps[23].completed_ms.is_some(), commit >= 2);
         assert_eq!(record.steps[23].current_matches, commit >= 2);
-        assert_eq!(record.completed_ms.is_some(), commit == 16);
-        assert_eq!(history(&db).await, 23 + (commit - 1).min(14) as i64);
+        assert_eq!(record.completed_ms.is_some(), commit == 17);
+        assert_eq!(history(&db).await, 23 + (commit - 1).min(15) as i64);
         store.close().await;
         db.pool.close().await;
     }

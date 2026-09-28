@@ -144,6 +144,8 @@ async function catalogCommand(command, target, settings, input) {
       CATALOG_TARGET: "",
       CATALOG_OPERATION: "list",
       CATALOG_APPLICATION_ID: "",
+      CATALOG_TARGET_ID: "",
+      CATALOG_RESOURCE_ID: "",
       CATALOG_CLIENT_ID: "",
       CATALOG_SECRET_ID: "",
       CATALOG_SEARCH: "",
