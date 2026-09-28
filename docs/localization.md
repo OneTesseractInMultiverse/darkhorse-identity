@@ -213,16 +213,39 @@ The provisional localization differential is at most 36 KiB additional summed
 compressed JavaScript over an English-only build of the same application source.
 `make benchmark-i18n` measures and enforces that comparison when given a matching
 baseline build directory. The current total application bundle also has a separate
-measured ceiling enforced by `make build-web`: 224,509 gzip bytes measured, plus
-1 KiB headroom. This absolute cap catches overall bundle growth but does not stand
-in for the matched localization comparison. Neither budget is a performance
-improvement claim.
+measured ceiling enforced by `make build-web`. The recorded ceiling was calibrated
+from a 224,509-byte build with 1 KiB headroom; a current-source build on 2026-09-28
+measured 225,053 gzip bytes, 480 bytes below the unchanged 225,533-byte ceiling.
+This absolute cap catches overall bundle growth but does not stand in for the
+matched localization comparison. Neither budget is a performance improvement
+claim.
 Fixed catalog loading adds no HTTP/API query. Deployment configuration adds one
 small, credential-free GET per layout mount. Account language extends existing
 session/profile projections, with no additional SQL statement on those reads and
 no preference lookup added to introspection or authorization. Cold/warm browser and build
 observations are recorded separately; full multilingual web/email/OIDC/CLI and
 release qualification remain tracked in #36–#42.
+
+### Matched-source localization measurement — 2026-09-28
+
+The [current-source report](measurements/localization-matched-current-2026-09-28.json)
+measures commit `62d097ea3cae3dbffe4bb3e6f66c4d97f4a90a74`. The English-only
+baseline was built from that exact detached source revision after omitting only the
+Spanish catalog imports from the shared and administration localization contexts.
+Both builds used the same lockfile dependencies, Node 24.19.0, build identifier,
+Apple M5 host and Chromium 153.0.8010.12. The bilingual build contains 690,337 raw
+and 225,053 summed gzip JavaScript bytes; the English-only build contains 645,873
+raw and 211,114 gzip bytes. The 13,939-byte difference is within the 36,864-byte
+allowance, with 22,925 bytes of headroom.
+
+Five cold/warm navigation pairs per locale used the same loopback fixture and
+fixed anonymous session/branding responses. Median cold readiness was 89.0 ms for
+English-only, 89.0 ms for localized English and 72.3 ms for Spanish. Median warm
+readiness was 56.9 ms for English-only and 57.3 ms for each localized language.
+Warm root transfer was 656 bytes in both builds; cold root transfer increased by
+8,059 bytes. The first cold baseline sample was an outlier, and readiness includes
+two animation frames. These measurements qualify the bundle-size budget only; they
+do not show a speedup or production authentication, server-latency or capacity.
 
 ### Foundation measurements — 2026-09-26
 

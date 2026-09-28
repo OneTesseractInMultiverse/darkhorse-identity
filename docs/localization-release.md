@@ -20,16 +20,17 @@ personal data, raw service logs, or unredacted screenshots to public evidence.
 
 ## Required release checks
 
-- [ ] `make i18n-check` rejects missing/extra/duplicate keys, placeholder drift,
+- [x] `make i18n-check` rejects missing/extra/duplicate keys, placeholder drift,
       invalid plural syntax, unsafe catalog text, invalid UTF-8, links, and oversized
       catalog inputs.
-- [ ] `make test-i18n` exercises source-defined catalog failures, fallback,
+- [x] `make test-i18n` exercises source-defined catalog failures, fallback,
       persisted choices, interpolation and the test-only expansion pseudolocale.
-- [ ] `make check` and `make build-web` pass with no coverage gate lowered. The
+- [x] `make check` and `make build-web` pass with no coverage gate lowered. The
       web build enforces the recorded ceiling for total production JavaScript.
-- [ ] `make benchmark-i18n` confirms the localization-specific 36 KiB differential
+- [x] `make benchmark-i18n` confirms the localization-specific 36 KiB differential
       against an English-only build from matching application source and locked
-      dependencies. This comparison requires the explicit baseline build directory.
+      dependencies. The 2026-09-28 result is recorded in
+      [the matched-source measurement](measurements/localization-matched-current-2026-09-28.json).
 - [ ] Browser qualification covers both languages, keyboard-only operation, narrow
       viewports, text zoom, persisted selection, concurrent authorization transactions,
       success/failure flows, and security-sensitive confirmation wording.

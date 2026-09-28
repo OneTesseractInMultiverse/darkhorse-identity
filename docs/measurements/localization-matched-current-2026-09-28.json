@@ -1,0 +1,308 @@
+{
+  "schema": 1,
+  "date": "2026-09-28T02:17:32.135Z",
+  "scope": "Presentation only: loopback HTTP, gzip, static production builds, fake anonymous session/branding/presentation responses; no real authentication or server-latency claim.",
+  "node": "v24.19.0",
+  "browser": "153.0.8010.12",
+  "host": {
+    "platform": "darwin",
+    "arch": "arm64",
+    "cpu": "Apple M5"
+  },
+  "budgetAdditionalGzipBytes": 36864,
+  "assets": {
+    "baseline": {
+      "jsFiles": 45,
+      "bytes": 645873,
+      "gzip": 211114,
+      "sha256": "3a27356af0a67dd45c69d0c80e0df672d98c1a87c32fbde14e526796856fc4cc"
+    },
+    "localized": {
+      "jsFiles": 45,
+      "bytes": 690337,
+      "gzip": 225053,
+      "sha256": "5267dfda653c9b4eeacfa066c8f1117bc6683204117bb5692b3cd681c18a0f28"
+    }
+  },
+  "observations": [
+    {
+      "repeat": 0,
+      "variant": "baseline",
+      "locale": "en",
+      "cold": {
+        "readyMs": 164.79999995231628,
+        "transferBytes": 102623,
+        "requests": 23,
+        "language": "en"
+      },
+      "warm": {
+        "readyMs": 63.09999990463257,
+        "transferBytes": 656,
+        "requests": 23,
+        "language": "en"
+      }
+    },
+    {
+      "repeat": 0,
+      "variant": "localized",
+      "locale": "en",
+      "cold": {
+        "readyMs": 88.59999990463257,
+        "transferBytes": 110682,
+        "requests": 23,
+        "language": "en"
+      },
+      "warm": {
+        "readyMs": 57.300000071525574,
+        "transferBytes": 656,
+        "requests": 23,
+        "language": "en"
+      }
+    },
+    {
+      "repeat": 0,
+      "variant": "localized",
+      "locale": "es",
+      "cold": {
+        "readyMs": 75,
+        "transferBytes": 110682,
+        "requests": 23,
+        "language": "es"
+      },
+      "warm": {
+        "readyMs": 57.200000047683716,
+        "transferBytes": 656,
+        "requests": 23,
+        "language": "es"
+      }
+    },
+    {
+      "repeat": 1,
+      "variant": "localized",
+      "locale": "es",
+      "cold": {
+        "readyMs": 75.29999995231628,
+        "transferBytes": 110682,
+        "requests": 23,
+        "language": "es"
+      },
+      "warm": {
+        "readyMs": 57.700000047683716,
+        "transferBytes": 656,
+        "requests": 23,
+        "language": "es"
+      }
+    },
+    {
+      "repeat": 1,
+      "variant": "baseline",
+      "locale": "en",
+      "cold": {
+        "readyMs": 76.10000002384186,
+        "transferBytes": 102623,
+        "requests": 23,
+        "language": "en"
+      },
+      "warm": {
+        "readyMs": 56.90000009536743,
+        "transferBytes": 656,
+        "requests": 23,
+        "language": "en"
+      }
+    },
+    {
+      "repeat": 1,
+      "variant": "localized",
+      "locale": "en",
+      "cold": {
+        "readyMs": 92.29999995231628,
+        "transferBytes": 110682,
+        "requests": 23,
+        "language": "en"
+      },
+      "warm": {
+        "readyMs": 56.700000047683716,
+        "transferBytes": 656,
+        "requests": 23,
+        "language": "en"
+      }
+    },
+    {
+      "repeat": 2,
+      "variant": "baseline",
+      "locale": "en",
+      "cold": {
+        "readyMs": 89.29999995231628,
+        "transferBytes": 102623,
+        "requests": 23,
+        "language": "en"
+      },
+      "warm": {
+        "readyMs": 57.40000009536743,
+        "transferBytes": 656,
+        "requests": 23,
+        "language": "en"
+      }
+    },
+    {
+      "repeat": 2,
+      "variant": "localized",
+      "locale": "en",
+      "cold": {
+        "readyMs": 88.5,
+        "transferBytes": 110682,
+        "requests": 23,
+        "language": "en"
+      },
+      "warm": {
+        "readyMs": 57.700000047683716,
+        "transferBytes": 656,
+        "requests": 23,
+        "language": "en"
+      }
+    },
+    {
+      "repeat": 2,
+      "variant": "localized",
+      "locale": "es",
+      "cold": {
+        "readyMs": 70.90000009536743,
+        "transferBytes": 110682,
+        "requests": 23,
+        "language": "es"
+      },
+      "warm": {
+        "readyMs": 56.59999990463257,
+        "transferBytes": 656,
+        "requests": 23,
+        "language": "es"
+      }
+    },
+    {
+      "repeat": 3,
+      "variant": "localized",
+      "locale": "es",
+      "cold": {
+        "readyMs": 72,
+        "transferBytes": 110682,
+        "requests": 23,
+        "language": "es"
+      },
+      "warm": {
+        "readyMs": 58.199999928474426,
+        "transferBytes": 656,
+        "requests": 23,
+        "language": "es"
+      }
+    },
+    {
+      "repeat": 3,
+      "variant": "baseline",
+      "locale": "en",
+      "cold": {
+        "readyMs": 88.89999997615814,
+        "transferBytes": 102623,
+        "requests": 23,
+        "language": "en"
+      },
+      "warm": {
+        "readyMs": 56.89999997615814,
+        "transferBytes": 656,
+        "requests": 23,
+        "language": "en"
+      }
+    },
+    {
+      "repeat": 3,
+      "variant": "localized",
+      "locale": "en",
+      "cold": {
+        "readyMs": 89,
+        "transferBytes": 110682,
+        "requests": 23,
+        "language": "en"
+      },
+      "warm": {
+        "readyMs": 57.699999928474426,
+        "transferBytes": 656,
+        "requests": 23,
+        "language": "en"
+      }
+    },
+    {
+      "repeat": 4,
+      "variant": "baseline",
+      "locale": "en",
+      "cold": {
+        "readyMs": 89,
+        "transferBytes": 102623,
+        "requests": 23,
+        "language": "en"
+      },
+      "warm": {
+        "readyMs": 56.89999997615814,
+        "transferBytes": 656,
+        "requests": 23,
+        "language": "en"
+      }
+    },
+    {
+      "repeat": 4,
+      "variant": "localized",
+      "locale": "en",
+      "cold": {
+        "readyMs": 89,
+        "transferBytes": 110682,
+        "requests": 23,
+        "language": "en"
+      },
+      "warm": {
+        "readyMs": 56.799999952316284,
+        "transferBytes": 656,
+        "requests": 23,
+        "language": "en"
+      }
+    },
+    {
+      "repeat": 4,
+      "variant": "localized",
+      "locale": "es",
+      "cold": {
+        "readyMs": 72.29999995231628,
+        "transferBytes": 110682,
+        "requests": 23,
+        "language": "es"
+      },
+      "warm": {
+        "readyMs": 57.300000071525574,
+        "transferBytes": 656,
+        "requests": 23,
+        "language": "es"
+      }
+    }
+  ],
+  "sourceRevision": "62d097ea3cae3dbffe4bb3e6f66c4d97f4a90a74",
+  "baselineConstruction": "Detached checkout of the exact source revision with only the Spanish catalog imports removed from the two localization contexts. The same Node version, pnpm-lock.yaml dependencies, Vite build identifier, static application code, host and browser were used for both builds.",
+  "interpretation": {
+    "differentialGzipBytes": 13939,
+    "headroomBytes": 22925,
+    "coldTransferDeltaBytes": 8059,
+    "englishBaselineMedianReadyMs": {
+      "cold": 89.0,
+      "warm": 56.9
+    },
+    "localizedEnglishMedianReadyMs": {
+      "cold": 89.0,
+      "warm": 57.3
+    },
+    "localizedSpanishMedianReadyMs": {
+      "cold": 72.3,
+      "warm": 57.3
+    },
+    "warmTransferBytes": {
+      "baseline": 656,
+      "localized": 656
+    },
+    "limitations": "Five cold/warm navigation pairs per locale on one Apple M5 with fixed anonymous API responses. The readiness probe includes two animation frames. Cold timing varies and the sample does not establish a speedup, production latency, server cost or capacity."
+  }
+}
