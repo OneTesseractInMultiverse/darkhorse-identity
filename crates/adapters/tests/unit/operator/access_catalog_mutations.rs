@@ -12,6 +12,7 @@ fn success_output_is_bounded_to_commit_evidence_and_target_identity() {
         Written {
             target: Target::Role(RoleId::from_u128(4).unwrap()),
             policy_revision: 8,
+            principal_revision: None,
         },
     );
     assert_eq!(unchanged.data["completed"], true);
@@ -25,6 +26,7 @@ fn success_output_is_bounded_to_commit_evidence_and_target_identity() {
         Written {
             target: Target::Role(RoleId::from_u128(4).unwrap()),
             policy_revision: 9,
+            principal_revision: None,
         },
     );
     assert_eq!(changed.data["changed"], true);

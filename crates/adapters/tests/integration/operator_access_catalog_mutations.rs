@@ -238,6 +238,211 @@ async fn every_shared_access_catalog_change_uses_the_same_policy_writer() {
 }
 
 #[tokio::test]
+async fn operator_role_assignment_fences_both_revisions_and_never_changes_platform_authority() {
+    let db = oidc::fixture().await;
+    let app = ApplicationId::from_u128(16).unwrap();
+    let target = darkhorse_domain::identity::PrincipalId::from_u128(2).unwrap();
+    let role = darkhorse_domain::identity::RoleId::from_u128(900).unwrap();
+    insert_principal(&db, 2, false).await;
+    insert_password(&db, 2).await;
+    sqlx::query("INSERT INTO roles(id,name) VALUES($1,'Reporting reader')")
+        .bind(Uuid::from_u128(role.as_u128()))
+        .execute(&db.pool)
+        .await
+        .unwrap();
+    sqlx::query("INSERT INTO role_applications(application_id,role_id) VALUES($1,$2)")
+        .bind(Uuid::from_u128(app.as_u128()))
+        .bind(Uuid::from_u128(role.as_u128()))
+        .execute(&db.pool)
+        .await
+        .unwrap();
+    let first_policy_revision = revision(&db).await;
+    let assign = || Change::PrincipalRole {
+        principal: target,
+        application: app,
+        role,
+        assigned: true,
+        principal_revision: 0,
+    };
+    let assigned = write(&db, "one@example.com", first_policy_revision, assign())
+        .await
+        .unwrap();
+    assert!(matches!(
+        assigned.target,
+        darkhorse_application::admin_catalog::Target::PrincipalRole(p, a, r)
+            if p == target && a == app && r == role
+    ));
+    assert_eq!(assigned.principal_revision, Some(1));
+    let current_policy_revision = revision(&db).await;
+    assert!(current_policy_revision > first_policy_revision);
+    assert_eq!(
+        sqlx::query_scalar::<_, i64>("SELECT revision FROM principals WHERE id=$1")
+            .bind(Uuid::from_u128(target.as_u128()))
+            .fetch_one(&db.pool)
+            .await
+            .unwrap(),
+        1
+    );
+    assert_eq!(
+        sqlx::query_scalar::<_, i64>("SELECT count(*) FROM principal_roles WHERE principal_id=$1 AND application_id=$2 AND role_id=$3")
+            .bind(Uuid::from_u128(target.as_u128()))
+            .bind(Uuid::from_u128(app.as_u128()))
+            .bind(Uuid::from_u128(role.as_u128()))
+            .fetch_one(&db.pool)
+            .await
+            .unwrap(),
+        1
+    );
+    assert_eq!(
+        sqlx::query_scalar::<_, i64>(
+            "SELECT count(*) FROM platform_administrators WHERE principal_id=$1"
+        )
+        .bind(Uuid::from_u128(target.as_u128()))
+        .fetch_one(&db.pool)
+        .await
+        .unwrap(),
+        0
+    );
+    let assigned_audit: (String, i64, i64, bool, String) = sqlx::query_as("SELECT command,principal_expected_revision,principal_resulting_revision,requested_state,result FROM operator_access_catalog_audit WHERE command='principal.role'")
+        .fetch_one(&db.pool)
+        .await
+        .unwrap();
+    assert_eq!(
+        assigned_audit,
+        ("principal.role".into(), 0, 1, true, "changed".into())
+    );
+
+    let unchanged = write(
+        &db,
+        "one@example.com",
+        current_policy_revision,
+        Change::PrincipalRole {
+            principal: target,
+            application: app,
+            role,
+            assigned: true,
+            principal_revision: 1,
+        },
+    )
+    .await
+    .unwrap();
+    assert_eq!(unchanged.policy_revision, current_policy_revision);
+    assert_eq!(unchanged.principal_revision, Some(1));
+
+    assert!(matches!(
+        write(
+            &db,
+            "one@example.com",
+            current_policy_revision,
+            Change::PrincipalRole {
+                principal: target,
+                application: app,
+                role,
+                assigned: false,
+                principal_revision: 0,
+            },
+        )
+        .await,
+        Err(Error::Conflict)
+    ));
+    let remove = write(
+        &db,
+        "one@example.com",
+        current_policy_revision,
+        Change::PrincipalRole {
+            principal: target,
+            application: app,
+            role,
+            assigned: false,
+            principal_revision: 1,
+        },
+    )
+    .await
+    .unwrap();
+    assert_eq!(remove.principal_revision, Some(2));
+    assert_eq!(
+        sqlx::query_scalar::<_, i64>("SELECT count(*) FROM principal_roles WHERE principal_id=$1")
+            .bind(Uuid::from_u128(target.as_u128()))
+            .fetch_one(&db.pool)
+            .await
+            .unwrap(),
+        0
+    );
+    assert!(matches!(
+        write(
+            &db,
+            "one@example.com",
+            current_policy_revision,
+            Change::PrincipalRole {
+                principal: target,
+                application: app,
+                role,
+                assigned: true,
+                principal_revision: 2,
+            },
+        )
+        .await,
+        Err(Error::Conflict)
+    ));
+    let inactive_app = ApplicationId::from_u128(77).unwrap();
+    sqlx::query(
+        "INSERT INTO applications(id,name,owner_id,active) VALUES($1,'Inactive role app',$2,false)",
+    )
+    .bind(Uuid::from_u128(inactive_app.as_u128()))
+    .bind(Uuid::from_u128(1))
+    .execute(&db.pool)
+    .await
+    .unwrap();
+    sqlx::query("INSERT INTO role_applications(application_id,role_id) VALUES($1,$2)")
+        .bind(Uuid::from_u128(inactive_app.as_u128()))
+        .bind(Uuid::from_u128(role.as_u128()))
+        .execute(&db.pool)
+        .await
+        .unwrap();
+    let latest_policy_revision = revision(&db).await;
+    assert!(matches!(
+        write(
+            &db,
+            "one@example.com",
+            revision(&db).await,
+            Change::PrincipalRole {
+                principal: target,
+                application: inactive_app,
+                role,
+                assigned: true,
+                principal_revision: 2,
+            },
+        )
+        .await,
+        Err(Error::Invalid)
+    ));
+    assert_eq!(latest_policy_revision, revision(&db).await);
+    assert!(matches!(
+        write(
+            &db,
+            "one@example.com",
+            revision(&db).await,
+            Change::PrincipalRole {
+                principal: target,
+                application: ApplicationId::from_u128(78).unwrap(),
+                role,
+                assigned: false,
+                principal_revision: 2,
+            },
+        )
+        .await,
+        Err(Error::Invalid)
+    ));
+    assert_eq!(
+        sqlx::query_scalar::<_, i64>("SELECT count(*) FROM operator_access_catalog_audit WHERE command='principal.role' AND result='changed'")
+            .fetch_one(&db.pool)
+            .await
+            .unwrap(),
+        2
+    );
+}
+
+#[tokio::test]
 async fn create_role_shares_policy_validation_and_commits_only_operator_audit() {
     let db = oidc::fixture().await;
     let before = revision(&db).await;

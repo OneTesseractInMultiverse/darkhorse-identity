@@ -22,6 +22,7 @@ pub enum Target {
     Role(RoleId),
     Resource(ApplicationId, ResourceId),
     Scope(ApplicationId, ResourceId, ScopeId),
+    PrincipalRole(PrincipalId, ApplicationId, RoleId),
 }
 #[derive(Debug, Clone)]
 pub struct ClientSummary {
@@ -89,6 +90,7 @@ pub enum PolicyMapError {
 pub struct Written {
     pub target: Target,
     pub policy_revision: u64,
+    pub principal_revision: Option<u64>,
 }
 pub trait CatalogStore: Send + Sync {
     fn policy_map(

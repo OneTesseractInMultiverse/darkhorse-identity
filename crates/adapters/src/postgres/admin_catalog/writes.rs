@@ -9,12 +9,20 @@ use std::collections::BTreeSet;
 pub(super) struct Plan {
     target: Target,
     effect: Option<Effect>,
+    principal_revision: Option<u64>,
 }
 enum Effect {
     Capability(PermissionDefinition, Option<ApplicationId>),
     Role(Label, Option<ApplicationId>),
     Retire,
     Link(Link),
+    PrincipalRole {
+        principal: PrincipalId,
+        application: ApplicationId,
+        role: RoleId,
+        assigned: bool,
+        resulting_revision: u64,
+    },
 }
 struct Link {
     table: &'static str,
@@ -24,6 +32,7 @@ struct Link {
 }
 pub(super) async fn prepare(
     tx: &mut Tx<'_>,
+    expected_policy_revision: u64,
     change: &Change,
     new_id: Option<NonZeroU128>,
 ) -> Result<Plan, Error> {
@@ -42,6 +51,7 @@ pub(super) async fn prepare(
                         .map_err(storage)?,
                 ),
                 effect: Some(Effect::Capability(definition.clone(), *application)),
+                principal_revision: None,
             })
         }
         Change::CreateRole { name, application } => {
@@ -51,6 +61,7 @@ pub(super) async fn prepare(
                     RoleId::from_u128(new_id.ok_or(Error::Invalid)?.get()).map_err(storage)?,
                 ),
                 effect: Some(Effect::Role(name.clone(), *application)),
+                principal_revision: None,
             })
         }
         Change::RetireCapability(id) => {
@@ -58,6 +69,58 @@ pub(super) async fn prepare(
             Ok(Plan {
                 target: Target::Capability(*id),
                 effect: (!retired).then_some(Effect::Retire),
+                principal_revision: None,
+            })
+        }
+        Change::PrincipalRole {
+            principal,
+            application,
+            role,
+            assigned,
+            principal_revision,
+        } => {
+            let row = sqlx::query("SELECT p.revision,s.policy_revision,COALESCE((SELECT a.active FROM applications a JOIN role_applications r ON r.application_id=a.id WHERE a.id=$2 AND r.role_id=$3),false) AS application_active,EXISTS(SELECT 1 FROM role_applications r WHERE r.application_id=$2 AND r.role_id=$3) AS role_bound,EXISTS(SELECT 1 FROM principal_roles pr WHERE pr.principal_id=p.id AND pr.application_id=$2 AND pr.role_id=$3) AS assigned FROM principals p CROSS JOIN security_state s WHERE p.id=$1 AND s.singleton FOR UPDATE OF p")
+                .bind(uuid(principal.as_u128()))
+                .bind(uuid(application.as_u128()))
+                .bind(uuid(role.as_u128()))
+                .fetch_optional(&mut **tx)
+                .await
+                .map_err(storage)?
+                .ok_or(Error::NotFound)?;
+            let current_revision = number(&row, "revision")?;
+            let resulting_revision =
+                darkhorse_domain::admin_directory::revision(current_revision, *principal_revision)
+                    .map_err(directory_error)?;
+            let current_policy_revision = number(&row, "policy_revision")?;
+            let active = row.try_get("application_active").map_err(storage)?;
+            let role_bound: bool = row.try_get("role_bound").map_err(storage)?;
+            if !role_bound {
+                return Err(Error::Invalid);
+            }
+            let exists = row.try_get("assigned").map_err(storage)?;
+            let changed = darkhorse_domain::admin_directory::role_change(
+                current_policy_revision,
+                expected_policy_revision,
+                active,
+                exists,
+                *assigned,
+            )
+            .map_err(directory_error)?;
+            let resulting_revision = if changed {
+                resulting_revision
+            } else {
+                *principal_revision
+            };
+            Ok(Plan {
+                target: Target::PrincipalRole(*principal, *application, *role),
+                effect: changed.then_some(Effect::PrincipalRole {
+                    principal: *principal,
+                    application: *application,
+                    role: *role,
+                    assigned: *assigned,
+                    resulting_revision,
+                }),
+                principal_revision: Some(resulting_revision),
             })
         }
         _ => prepare_link(tx, change).await,
@@ -98,6 +161,7 @@ async fn prepare_link(tx: &mut Tx<'_>, change: &Change) -> Result<Plan, Error> {
     Ok(Plan {
         target,
         effect: (existing != link.insert).then_some(Effect::Link(link)),
+        principal_revision: None,
     })
 }
 async fn validate_references(tx: &mut Tx<'_>, change: &Change, view: &View) -> Result<(), Error> {
@@ -236,6 +300,7 @@ fn link(change: &Change) -> Result<(Target, Link), Error> {
             ],
             *included,
         ),
+        Change::PrincipalRole { .. } => return Err(Error::Invalid),
         _ => return Err(Error::Invalid),
     };
     Ok((
@@ -311,6 +376,7 @@ pub(super) async fn apply_untracked(tx: &mut Tx<'_>, plan: Plan) -> Result<Writt
     Ok(Written {
         target: plan.target,
         policy_revision: reads::revision(tx).await?,
+        principal_revision: plan.principal_revision,
     })
 }
 async fn persist(tx: &mut Tx<'_>, target: Target, effect: Effect) -> Result<(), Error> {
@@ -365,6 +431,39 @@ async fn persist(tx: &mut Tx<'_>, target: Target, effect: Effect) -> Result<(), 
                 .map_err(constraint)?;
         }
         Effect::Link(link) => persist_link(tx, link).await?,
+        Effect::PrincipalRole {
+            principal,
+            application,
+            role,
+            assigned,
+            resulting_revision,
+        } => {
+            let statement = if assigned {
+                "INSERT INTO principal_roles(principal_id,application_id,role_id) VALUES($1,$2,$3) ON CONFLICT DO NOTHING"
+            } else {
+                "DELETE FROM principal_roles WHERE principal_id=$1 AND application_id=$2 AND role_id=$3"
+            };
+            let affected = sqlx::query(statement)
+                .bind(uuid(principal.as_u128()))
+                .bind(uuid(application.as_u128()))
+                .bind(uuid(role.as_u128()))
+                .execute(&mut **tx)
+                .await
+                .map_err(constraint)?
+                .rows_affected();
+            if affected != 1 {
+                return Err(Error::Unavailable);
+            }
+            let updated = sqlx::query("UPDATE principals SET revision=$2 WHERE id=$1")
+                .bind(uuid(principal.as_u128()))
+                .bind(i64::try_from(resulting_revision).map_err(storage)?)
+                .execute(&mut **tx)
+                .await
+                .map_err(constraint)?;
+            if updated.rows_affected() != 1 {
+                return Err(Error::Unavailable);
+            }
+        }
     }
     Ok(())
 }
@@ -395,6 +494,7 @@ pub(super) fn target_id(target: Target) -> u128 {
         Target::Role(id) => id.as_u128(),
         Target::Resource(_, id) => id.as_u128(),
         Target::Scope(_, _, id) => id.as_u128(),
+        Target::PrincipalRole(principal, _, _) => principal.as_u128(),
     }
 }
 fn audit_values(change: &Change) -> (&'static str, Option<ApplicationId>, Option<u128>) {
@@ -461,5 +561,31 @@ fn audit_values(change: &Change) -> (&'static str, Option<ApplicationId>, Option
             Some(*application),
             Some(capability.as_u128()),
         ),
+        Change::PrincipalRole {
+            application,
+            role,
+            assigned,
+            ..
+        } => (
+            if *assigned {
+                "principal_role_assigned"
+            } else {
+                "principal_role_removed"
+            },
+            Some(*application),
+            Some(role.as_u128()),
+        ),
+    }
+}
+fn directory_error(error: darkhorse_domain::admin_directory::Error) -> Error {
+    use darkhorse_domain::admin_directory::Error as DirectoryError;
+    match error {
+        DirectoryError::Conflict => Error::Conflict,
+        DirectoryError::Invalid | DirectoryError::LastAdministrator => Error::Invalid,
+        DirectoryError::NotFound => Error::NotFound,
+        DirectoryError::Unauthorized => Error::Unauthorized,
+        DirectoryError::Forbidden => Error::Forbidden,
+        DirectoryError::RecentAuthentication => Error::RecentAuthenticationRequired,
+        DirectoryError::Unavailable => Error::Unavailable,
     }
 }

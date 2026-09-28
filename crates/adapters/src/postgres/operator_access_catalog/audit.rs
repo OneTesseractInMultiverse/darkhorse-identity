@@ -12,7 +12,7 @@ pub(super) async fn insert(
     let now = sessions::now(tx).await.map_err(storage)?;
     let values = values(request.change(), outcome);
     let result = result(outcome, request.policy_revision())?;
-    let inserted = sqlx::query("INSERT INTO operator_access_catalog_audit(operation_id,command,expected_revision,resulting_revision,target_id,application_id,related_id,requested_state,reason,actor_id,actor_credential_id,actor_epoch,authentication_observed_ms,result,occurred_ms) VALUES($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15)")
+    let inserted = sqlx::query("INSERT INTO operator_access_catalog_audit(operation_id,command,expected_revision,resulting_revision,target_id,application_id,related_id,requested_state,principal_expected_revision,principal_resulting_revision,reason,actor_id,actor_credential_id,actor_epoch,authentication_observed_ms,result,occurred_ms) VALUES($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16,$17)")
         .bind(uuid(operation.as_u128()))
         .bind(command(request.change()))
         .bind(i64::try_from(request.policy_revision()).map_err(storage)?)
@@ -21,6 +21,8 @@ pub(super) async fn insert(
         .bind(values.application)
         .bind(values.related)
         .bind(values.requested_state)
+        .bind(values.principal_expected_revision)
+        .bind(values.principal_resulting_revision)
         .bind(request.reason())
         .bind(actor.map(|a| uuid(a.credential.principal.as_u128())))
         .bind(actor.map(|a| uuid(a.credential.credential.as_u128())))
@@ -42,6 +44,8 @@ struct Values {
     application: Option<Uuid>,
     related: Option<Uuid>,
     requested_state: Option<bool>,
+    principal_expected_revision: Option<i64>,
+    principal_resulting_revision: Option<i64>,
 }
 
 fn values(change: &Change, outcome: &Result<Written, Error>) -> Values {
@@ -51,18 +55,24 @@ fn values(change: &Change, outcome: &Result<Written, Error>) -> Values {
             application: application.map(|id| uuid(id.as_u128())),
             related: None,
             requested_state: None,
+            principal_expected_revision: None,
+            principal_resulting_revision: None,
         },
         Change::RetireCapability(id) => Values {
             target: Some(uuid(id.as_u128())),
             application: None,
             related: None,
             requested_state: Some(true),
+            principal_expected_revision: None,
+            principal_resulting_revision: None,
         },
         Change::CreateRole { application, .. } => Values {
             target: None,
             application: application.map(|id| uuid(id.as_u128())),
             related: None,
             requested_state: None,
+            principal_expected_revision: None,
+            principal_resulting_revision: None,
         },
         Change::CapabilityBinding {
             application,
@@ -73,6 +83,8 @@ fn values(change: &Change, outcome: &Result<Written, Error>) -> Values {
             application: Some(uuid(application.as_u128())),
             related: None,
             requested_state: Some(*bound),
+            principal_expected_revision: None,
+            principal_resulting_revision: None,
         },
         Change::RoleBinding {
             application,
@@ -83,6 +95,8 @@ fn values(change: &Change, outcome: &Result<Written, Error>) -> Values {
             application: Some(uuid(application.as_u128())),
             related: None,
             requested_state: Some(*bound),
+            principal_expected_revision: None,
+            principal_resulting_revision: None,
         },
         Change::RoleCapability {
             role,
@@ -93,6 +107,8 @@ fn values(change: &Change, outcome: &Result<Written, Error>) -> Values {
             application: None,
             related: Some(uuid(capability.as_u128())),
             requested_state: Some(*granted),
+            principal_expected_revision: None,
+            principal_resulting_revision: None,
         },
         Change::ResourceCapability {
             application,
@@ -104,6 +120,8 @@ fn values(change: &Change, outcome: &Result<Written, Error>) -> Values {
             application: Some(uuid(application.as_u128())),
             related: Some(uuid(capability.as_u128())),
             requested_state: Some(*exposed),
+            principal_expected_revision: None,
+            principal_resulting_revision: None,
         },
         Change::ScopeCapability {
             application,
@@ -116,6 +134,26 @@ fn values(change: &Change, outcome: &Result<Written, Error>) -> Values {
             application: Some(uuid(application.as_u128())),
             related: Some(uuid(capability.as_u128())),
             requested_state: Some(*included),
+            principal_expected_revision: None,
+            principal_resulting_revision: None,
+        },
+        Change::PrincipalRole {
+            principal,
+            application,
+            role,
+            assigned,
+            principal_revision,
+        } => Values {
+            target: Some(uuid(principal.as_u128())),
+            application: Some(uuid(application.as_u128())),
+            related: Some(uuid(role.as_u128())),
+            requested_state: Some(*assigned),
+            principal_expected_revision: Some(*principal_revision as i64),
+            principal_resulting_revision: outcome
+                .as_ref()
+                .ok()
+                .and_then(|written| written.principal_revision)
+                .and_then(|revision| i64::try_from(revision).ok()),
         },
     };
     if let Ok(written) = outcome {
@@ -130,11 +168,13 @@ fn target_id(target: Target) -> u128 {
         Target::Role(id) => id.as_u128(),
         Target::Resource(_, id) => id.as_u128(),
         Target::Scope(_, _, id) => id.as_u128(),
+        Target::PrincipalRole(principal, _, _) => principal.as_u128(),
     }
 }
 
 fn command(change: &Change) -> &'static str {
     match change {
+        Change::PrincipalRole { .. } => "principal.role",
         Change::CreateCapability { .. } => "capability.create",
         Change::RetireCapability(_) => "capability.retire",
         Change::CreateRole { .. } => "role.create",

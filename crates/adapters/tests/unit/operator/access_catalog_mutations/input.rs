@@ -42,3 +42,30 @@ fn malformed_or_unbounded_input_fails_without_reflecting_credentials() {
     }
     assert!(read(Cursor::new(" ".repeat(32 * 1024 + 1))).is_err());
 }
+
+#[test]
+fn principal_role_input_requires_typed_ids_and_both_revisions() {
+    let body = format!(
+        "{{{AUTH},\"policy_revision\":\"7\",\"change\":{{\"operation\":\"principal_role\",\"principal_id\":\"00000000-0000-0000-0000-000000000001\",\"application_id\":\"00000000-0000-0000-0000-000000000007\",\"role_id\":\"00000000-0000-0000-0000-000000000008\",\"assigned\":true,\"principal_revision\":\"9\"}}}}"
+    );
+    let (request, _) = read(Cursor::new(body.clone())).unwrap();
+    assert_eq!(request.policy_revision(), 7);
+    assert_eq!(request.change().principal_revision(), Some(9));
+    assert!(matches!(
+        request.change(),
+        Change::PrincipalRole { principal, application, role, assigned: true, principal_revision: 9 }
+            if *principal == darkhorse_domain::identity::PrincipalId::from_u128(1).unwrap()
+                && *application == ApplicationId::from_u128(7).unwrap()
+                && *role == darkhorse_domain::identity::RoleId::from_u128(8).unwrap()
+    ));
+    for invalid in [
+        body.replace(
+            "\"principal_revision\":\"9\"",
+            "\"principal_revision\":9223372036854775808",
+        ),
+        body.replace("00000000-0000-0000-0000-000000000008", "invalid"),
+        body.replace("\"assigned\":true,", ""),
+    ] {
+        assert!(read(Cursor::new(invalid)).is_err());
+    }
+}

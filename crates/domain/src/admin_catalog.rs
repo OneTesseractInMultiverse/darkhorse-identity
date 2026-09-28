@@ -57,6 +57,13 @@ impl PermissionDefinition {
 }
 #[derive(Debug, Clone)]
 pub enum Change {
+    PrincipalRole {
+        principal: PrincipalId,
+        application: ApplicationId,
+        role: RoleId,
+        assigned: bool,
+        principal_revision: u64,
+    },
     CreateCapability {
         definition: PermissionDefinition,
         application: Option<ApplicationId>,
@@ -101,6 +108,14 @@ impl Change {
             self,
             Self::CreateCapability { .. } | Self::CreateRole { .. }
         )
+    }
+    pub fn principal_revision(&self) -> Option<u64> {
+        match self {
+            Self::PrincipalRole {
+                principal_revision, ..
+            } => Some(*principal_revision),
+            _ => None,
+        }
     }
 }
 pub fn role_binding_safe(

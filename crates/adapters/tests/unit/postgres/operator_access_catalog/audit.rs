@@ -22,11 +22,13 @@ fn catalog_audit_records_bounded_command_state_and_scoped_target_ids() {
     let written = Written {
         target: Target::Role(role),
         policy_revision: 9,
+        principal_revision: None,
     };
     assert_eq!(result(&Ok(written), 7), Ok("changed"));
     let unchanged = Written {
         target: Target::Role(role),
         policy_revision: 7,
+        principal_revision: None,
     };
     assert_eq!(result(&Ok(unchanged), 7), Ok("unchanged"));
 }

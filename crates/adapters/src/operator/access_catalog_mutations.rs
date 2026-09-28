@@ -43,13 +43,17 @@ async fn perform(
 
 fn output(operation: OperationId, expected_revision: u64, written: Written) -> Output {
     let id = uuid::Uuid::from_u128;
-    Output::record(serde_json::json!({
+    let mut data = serde_json::json!({
         "completed":true,
         "changed":written.policy_revision > expected_revision,
         "operation_id":id(operation.as_u128()).to_string(),
         "target":target(written.target),
         "policy_revision":written.policy_revision.to_string()
-    }))
+    });
+    if let Some(revision) = written.principal_revision {
+        data["principal_revision"] = revision.to_string().into();
+    }
+    Output::record(data)
 }
 
 fn target(target: darkhorse_application::admin_catalog::Target) -> serde_json::Value {
@@ -74,6 +78,12 @@ fn target(target: darkhorse_application::admin_catalog::Target) -> serde_json::V
             "application_id":uuid::Uuid::from_u128(application.as_u128()).to_string(),
             "resource_id":uuid::Uuid::from_u128(resource.as_u128()).to_string(),
             "id":uuid::Uuid::from_u128(scope.as_u128()).to_string()
+        }),
+        Target::PrincipalRole(principal, application, role) => serde_json::json!({
+            "kind":"principal_role",
+            "principal_id":uuid::Uuid::from_u128(principal.as_u128()).to_string(),
+            "application_id":uuid::Uuid::from_u128(application.as_u128()).to_string(),
+            "role_id":uuid::Uuid::from_u128(role.as_u128()).to_string()
         }),
     }
 }

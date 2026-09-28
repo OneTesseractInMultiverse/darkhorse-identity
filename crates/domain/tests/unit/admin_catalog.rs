@@ -133,3 +133,17 @@ fn catalog_growth_limits_allow_removal_and_noops_but_reject_retired_grants() {
         .needs_identifier()
     );
 }
+
+#[test]
+fn principal_role_changes_use_typed_scope_and_bounded_revisions() {
+    let change = Change::PrincipalRole {
+        principal: PrincipalId::from_u128(1).unwrap(),
+        application: ApplicationId::from_u128(2).unwrap(),
+        role: RoleId::from_u128(3).unwrap(),
+        assigned: true,
+        principal_revision: i64::MAX as u64,
+    };
+    assert_eq!(change.principal_revision(), Some(i64::MAX as u64));
+    assert!(!change.needs_identifier());
+    assert!(matches!(capacity(&change, 0, 0, false), Ok(())));
+}

@@ -205,3 +205,9 @@ only so the operation can append and verify its audit before returning the resul
 the nonowner deployment operator receives no access. The ledger is append-only.
 Reapply the reviewed grant script with serving stopped after migration. See
 [access-catalog details](operator-access-catalog.md#inspect-one-definition).
+
+Migration `0041` extends `operator_access_catalog_audit` for application-role
+assignment to a principal. It records the target, application, role, requested
+state and both expected/resulting revisions. Existing runtime SELECT/INSERT
+grants remain sufficient; no new platform-administrator membership privilege is
+granted. Apply migrations with serving stopped before using role assignment.

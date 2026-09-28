@@ -148,5 +148,11 @@ fn target(v: Target) -> Value {
         Target::Scope(app, res, id) => {
             json!({"kind":"scopes","id":reference(id.as_u128()),"application_id":reference(app.as_u128()),"resource_id":reference(res.as_u128())})
         }
+        Target::PrincipalRole(principal, application, role) => json!({
+            "kind":"principal_role",
+            "principal_id":reference(principal.as_u128()),
+            "application_id":reference(application.as_u128()),
+            "role_id":reference(role.as_u128())
+        }),
     }
 }

@@ -128,7 +128,10 @@ fn catalog_detail_requests_keep_typed_targets_and_explicit_definition_scope() {
 
 #[test]
 fn access_catalog_mutation_requires_a_bounded_revision_and_reason() {
-    use crate::{admin_catalog::Change, identity::CapabilityId};
+    use crate::{
+        admin_catalog::Change,
+        identity::{CapabilityId, PrincipalId, RoleId},
+    };
 
     let change = Change::RetireCapability(CapabilityId::from_u128(11).unwrap());
     let request = MutationRequest::new(9, change.clone(), "Remove deprecated permission").unwrap();
@@ -150,6 +153,35 @@ fn access_catalog_mutation_requires_a_bounded_revision_and_reason() {
     }
     assert_eq!(
         MutationRequest::new(i64::MAX as u64 + 1, change, "Bounded reason").err(),
+        Some(Error::Invalid)
+    );
+    assert!(
+        MutationRequest::new(
+            9,
+            Change::PrincipalRole {
+                principal: PrincipalId::from_u128(1).unwrap(),
+                application: ApplicationId::from_u128(2).unwrap(),
+                role: RoleId::from_u128(3).unwrap(),
+                assigned: true,
+                principal_revision: i64::MAX as u64,
+            },
+            "Grant the user role",
+        )
+        .is_ok()
+    );
+    assert_eq!(
+        MutationRequest::new(
+            9,
+            Change::PrincipalRole {
+                principal: PrincipalId::from_u128(1).unwrap(),
+                application: ApplicationId::from_u128(2).unwrap(),
+                role: RoleId::from_u128(3).unwrap(),
+                assigned: true,
+                principal_revision: i64::MAX as u64 + 1,
+            },
+            "Grant the user role",
+        )
+        .err(),
         Some(Error::Invalid)
     );
 }

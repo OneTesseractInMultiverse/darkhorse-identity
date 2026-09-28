@@ -33,7 +33,7 @@ pub(super) async fn operator_write(
     identifier: Option<NonZeroU128>,
 ) -> Result<Written, Error> {
     validate_operator_revision(tx, expected_revision).await?;
-    let plan = writes::prepare(tx, change, identifier).await?;
+    let plan = writes::prepare(tx, expected_revision, change, identifier).await?;
     writes::apply_untracked(tx, plan).await
 }
 
@@ -110,7 +110,7 @@ impl CatalogStore for PostgresStore {
         authority::actor(&mut tx, actor, true).await?;
         next_revision(reads::revision(&mut tx).await?, revision)?;
         let (principal, session) = sessions::owner(&mut tx, actor).await.map_err(storage)?;
-        let plan = writes::prepare(&mut tx, &change, identifier).await?;
+        let plan = writes::prepare(&mut tx, revision, &change, identifier).await?;
         let (_, now) = authority::actor(&mut tx, actor, true).await?;
         let written = writes::apply(&mut tx, plan, &change, principal, session, now).await?;
         tx.commit().await.map_err(constraint)?;

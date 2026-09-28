@@ -175,8 +175,8 @@ follow the shared [container execution contract](container-accounts.md).
 requires fresh password authentication by a current platform administrator,
 `--auth-stdin`, JSON output, `--yes`, an expected primary policy revision, and a
 reason. Application ownership is contact information and grants no authority.
-Delegated management permissions and principal assignments are separate work;
-this command does not add a CLI-specific authorization model.
+Delegated management permissions remain separate; the command uses the same
+current platform-administrator boundary as existing catalog writes.
 
 Put the complete request in a protected file and pass it only through stdin:
 
@@ -211,16 +211,17 @@ the catalog again and review the change before creating a new request.
 
 `change.operation` is one of:
 
-| Operation             | Required fields                                                          | Effect                                                                |
-| --------------------- | ------------------------------------------------------------------------ | --------------------------------------------------------------------- |
-| `create_capability`   | `key`, `meaning`, optional `application_id`                              | Create a shared capability, optionally binding it to one application. |
-| `retire_capability`   | `capability_id`                                                          | Retire a capability so it cannot be newly granted.                    |
-| `create_role`         | `name`, optional `application_id`                                        | Create a role, optionally binding it to one application.              |
-| `capability_binding`  | `application_id`, `capability_id`, `bound`                               | Add or remove an explicit application binding.                        |
-| `role_binding`        | `application_id`, `role_id`, `bound`                                     | Add or remove an explicit application binding.                        |
-| `role_capability`     | `role_id`, `capability_id`, `granted`                                    | Grant or remove a capability from a role.                             |
-| `resource_capability` | `application_id`, `resource_id`, `capability_id`, `exposed`              | Expose or remove a capability on an application resource.             |
-| `scope_capability`    | `application_id`, `resource_id`, `scope_id`, `capability_id`, `included` | Include or remove a resource capability from a delegation scope.      |
+| Operation             | Required fields                                                               | Effect                                                                |
+| --------------------- | ----------------------------------------------------------------------------- | --------------------------------------------------------------------- |
+| `create_capability`   | `key`, `meaning`, optional `application_id`                                   | Create a shared capability, optionally binding it to one application. |
+| `retire_capability`   | `capability_id`                                                               | Retire a capability so it cannot be newly granted.                    |
+| `create_role`         | `name`, optional `application_id`                                             | Create a role, optionally binding it to one application.              |
+| `capability_binding`  | `application_id`, `capability_id`, `bound`                                    | Add or remove an explicit application binding.                        |
+| `role_binding`        | `application_id`, `role_id`, `bound`                                          | Add or remove an explicit application binding.                        |
+| `role_capability`     | `role_id`, `capability_id`, `granted`                                         | Grant or remove a capability from a role.                             |
+| `resource_capability` | `application_id`, `resource_id`, `capability_id`, `exposed`                   | Expose or remove a capability on an application resource.             |
+| `scope_capability`    | `application_id`, `resource_id`, `scope_id`, `capability_id`, `included`      | Include or remove a resource capability from a delegation scope.      |
+| `principal_role`      | `principal_id`, `application_id`, `role_id`, `assigned`, `principal_revision` | Assign or remove one application role from a user.                    |
 
 All identifiers must be nonzero UUIDs and all referenced objects must satisfy the
 same existence, binding, capacity and cross-application checks as the management
@@ -228,9 +229,35 @@ API. A definition's existence alone grants no access. Role, resource and scope
 relationships continue to use the shared policy model in
 [authorization](authorization.md).
 
+For `principal_role`, `policy_revision` fences catalog state and
+`principal_revision` fences the selected user's account/access record. Read the
+user revision and current role assignment in the management console, and use the
+policy revision returned by a current catalog read. The application must be
+active when granting; the role must already be explicitly bound to that
+application. A successful change increments both revisions, so new authorization
+checks observe the grant or removal. A no-op keeps both revisions unchanged.
+This operation changes `principal_roles` only; it cannot grant
+platform-administrator membership, even when an application role or capability
+uses an administrator-like name.
+
+Example `change` body:
+
+```json
+{
+  "operation": "principal_role",
+  "principal_id": "00000000-0000-0000-0000-000000000061",
+  "application_id": "00000000-0000-0000-0000-000000000010",
+  "role_id": "00000000-0000-0000-0000-000000000062",
+  "assigned": true,
+  "principal_revision": "12"
+}
+```
+
 The successful JSON `data` contains `completed`, `changed`, `operation_id`,
 `target` and decimal-string `policy_revision`. `changed: false` means the requested
 binding or retirement was already in the desired state; it is still audited.
+For a `principal_role` mutation, `data` also returns the resulting decimal-string
+`principal_revision`.
 Responses, diagnostics and audit records omit passwords, capability meanings and
 role names. Fixed errors distinguish authentication denial, invalid policy,
 missing references and stale revisions without returning submitted values.
@@ -272,6 +299,13 @@ credential facts, result, time and database role. It does not store definition
 names, capability meanings, email or passwords. Apply the migration and refreshed
 reviewed grants with serving stopped under the
 [database authority contract](database-authority.md).
+
+Migration `0041` extends this ledger for `principal_role` changes. It records the
+target, application, role, requested state, expected/resulting user revision and
+expected/resulting policy revision. It needs no new grant: the runtime already
+has SELECT/INSERT access to this append-only ledger and cannot write platform
+administrator membership. Apply migrations with serving stopped before using
+the operation.
 
 A lost commit acknowledgement has an unknown outcome. The CLI returns a fixed
 uncertain result and never retries automatically. Check the operation ID in the

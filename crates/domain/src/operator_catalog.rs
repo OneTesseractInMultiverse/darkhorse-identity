@@ -71,7 +71,11 @@ pub struct MutationRequest {
 
 impl MutationRequest {
     pub fn new(policy_revision: u64, change: Change, reason: &str) -> Result<Self, Error> {
-        if policy_revision > i64::MAX as u64 {
+        if policy_revision > i64::MAX as u64
+            || change
+                .principal_revision()
+                .is_some_and(|revision| revision > i64::MAX as u64)
+        {
             return Err(Error::Invalid);
         }
         Ok(Self {

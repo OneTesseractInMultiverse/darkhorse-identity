@@ -92,6 +92,7 @@ impl CatalogStore for Fake {
         Ok(Written {
             target: target(),
             policy_revision: 8,
+            principal_revision: None,
         })
     }
 }

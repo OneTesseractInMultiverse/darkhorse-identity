@@ -14,6 +14,22 @@ fn catalog_query_and_counter_profiles_are_bounded_and_canonical() {
     assert!(input::target("capabilities", "00000000-0000-0000-0000-000000000001", None).is_ok());
     assert!(input::target("resources", "00000000-0000-0000-0000-000000000001", None).is_err());
 }
+
+#[test]
+fn user_role_assignments_remain_on_the_dedicated_directory_api() {
+    let mutation = serde_json::json!({
+        "policy_revision": "1",
+        "change": {
+            "operation": "principal_role",
+            "principal_id": "00000000-0000-0000-0000-000000000001",
+            "application_id": "00000000-0000-0000-0000-000000000002",
+            "role_id": "00000000-0000-0000-0000-000000000003",
+            "assigned": true,
+            "principal_revision": "0"
+        }
+    });
+    assert!(serde_json::from_value::<input::Mutation>(mutation).is_err());
+}
 use axum::{
     body::{Body, to_bytes},
     http::{Request, StatusCode},
@@ -114,6 +130,7 @@ impl Catalog for Fake {
         Ok(Written {
             target: Target::Role(RoleId::from_u128(1).unwrap()),
             policy_revision: 9007199254740994,
+            principal_revision: None,
         })
     }
 }

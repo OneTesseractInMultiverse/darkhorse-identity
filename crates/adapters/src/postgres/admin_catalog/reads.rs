@@ -186,6 +186,7 @@ async fn detail(tx: &mut Tx<'_>, target: Target) -> Result<Item, Error> {
             Some(res),
             List::Scopes(app),
         ),
+        Target::PrincipalRole(_, _, _) => return Err(Error::Invalid),
     };
     let row = sqlx::query(sql)
         .bind(uuid(id))
@@ -222,6 +223,7 @@ async fn grants(tx: &mut Tx<'_>, target: Target) -> Result<Vec<CapabilitySummary
         Target::Resource(_, id) => ("resource_capabilities", "resource_id", id.as_u128()),
         Target::Scope(_, _, id) => ("scope_capabilities", "scope_id", id.as_u128()),
         Target::Capability(_) => return Ok(vec![]),
+        Target::PrincipalRole(_, _, _) => return Ok(vec![]),
     };
     let sql = format!(
         "SELECT c.id,c.permission_key AS name,c.meaning,NOT c.retired AS active FROM capabilities c JOIN {table} g ON g.capability_id=c.id WHERE g.{key}=$1 ORDER BY c.id LIMIT 257"
