@@ -257,6 +257,62 @@ async fn cache_outage_is_a_bounded_non_storing_miss_and_recovers_after_unpause()
 }
 
 #[tokio::test]
+async fn concurrent_cold_cache_reads_share_a_completed_fill() {
+    let _serial = SERIAL.lock().await;
+    let resource = ResourceId::from_u128(uuid::Uuid::new_v4().as_u128()).unwrap();
+    let key = ComputationCacheKey {
+        resource,
+        token_digest: [0x43; 32],
+    };
+    let entry = ComputationCacheEntry {
+        policy_revision: 9,
+        context: ComputationCacheContext {
+            token_digest: key.token_digest,
+            resource,
+            principal: PrincipalId::from_u128(1).unwrap(),
+            client: ClientId::from_u128(2).unwrap(),
+            credential: CredentialId::from_u128(3).unwrap(),
+            principal_epoch: 4,
+            scopes: vec!["read".into()],
+            capability_ceiling: [CapabilityId::from_u128(5).unwrap()].into(),
+        },
+        payload: br#"{"projection":true}"#.to_vec(),
+    };
+    let cache = std::sync::Arc::new(
+        RedisComputationCache::from_settings(&configuration(vec![]), &[0x29; 32]).unwrap(),
+    );
+    let first = cache.lookup(key).await;
+    assert!(first.may_store());
+    assert_eq!(cache.outcomes().miss, 1);
+
+    let cache_reader = std::sync::Arc::clone(&cache);
+    let second = tokio::spawn(async move { cache_reader.lookup(key).await });
+    for _ in 0..1000 {
+        if cache.outcomes().miss == 2 {
+            break;
+        }
+        tokio::task::yield_now().await;
+    }
+    assert_eq!(cache.outcomes().miss, 2);
+
+    cache.store(key, entry.clone()).await;
+    drop(first);
+    let coalesced = tokio::time::timeout(Duration::from_secs(1), second)
+        .await
+        .unwrap()
+        .unwrap();
+    assert!(!coalesced.may_store());
+    assert!(coalesced.entry.is_some_and(|cached| {
+        cached.applies_to(entry.policy_revision, &entry.context) && cached.payload == entry.payload
+    }));
+    let outcomes = cache.outcomes();
+    assert_eq!(outcomes.miss, 2);
+    assert_eq!(outcomes.coalesced, 1);
+    assert_eq!(outcomes.coalesce_timeout, 0);
+    assert_eq!(outcomes.stored, 1);
+}
+
+#[tokio::test]
 async fn cache_eviction_and_limiter_memory_pressure_do_not_share_state() {
     let _serial = SERIAL.lock().await;
     let pool = infrastructure(vec![]);

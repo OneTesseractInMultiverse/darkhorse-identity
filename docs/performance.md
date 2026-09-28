@@ -349,10 +349,13 @@ Keep `DARKHORSE_AUTHORIZATION_CACHE_ENABLED` off by default. The adapter remains
 ### Cache failure and stale-fill regressions — 2026-09-28
 
 Additional boundary tests exercise malformed Redis values, cache transport
-outage/recovery, and an old policy fill that completes after a newer fill. The
-Redis test confirms an invalid value is rejected and replaced with a signed
-projection; an unavailable cache produces a bounded result with no store lease,
-and becomes an ordinary miss after recovery. A restricted PostgreSQL test
+outage/recovery, a concurrent cold burst, and an old policy fill that completes
+after a newer fill. The Redis tests confirm an invalid value is rejected and
+replaced with a signed projection; an unavailable cache produces a bounded
+result with no store lease and becomes an ordinary miss after recovery. A cold
+same-key reader waits for the first caller's completed fill and receives the
+verified entry; the test observes one store and one coalesced result. A
+restricted PostgreSQL test
 deliberately delays one pre-reduction fill, commits a permission reduction,
 stores the new projection from another concurrent invocation, then allows the old
 fill to overwrite it. The next introspection rejects that stale revision,
@@ -361,12 +364,12 @@ security/failure-boundary checks, not performance results or operational metric
 export.
 
 `make test-postgres` passed 280 integration tests. `make test-redis` passed the
-7 Redis-adapter tests and 39 limiter/process tests; one worker fixture is
+8 Redis-adapter tests and 39 limiter/process tests; one worker fixture is
 intentionally invoked by its separate-process parent. `make ci` passed after
 these test changes. This does not complete cache qualification: real Redis
-outage behavior through the full PostgreSQL introspection path, cold-burst
-coalescing, eviction/restart races, cache-role metric export, local-cache
-comparison and larger repeated benchmarks remain open under [issue #11](https://github.com/OneTesseractInMultiverse/darkhorse-identity/issues/11).
+outage behavior through the full PostgreSQL introspection path, eviction/restart
+races, cache-role metric export, local-cache comparison and larger repeated
+benchmarks remain open under [issue #11](https://github.com/OneTesseractInMultiverse/darkhorse-identity/issues/11).
 
 ## Remaining qualification
 
