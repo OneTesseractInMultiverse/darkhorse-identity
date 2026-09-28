@@ -14,9 +14,10 @@ const parent =
   "test separate_processes_share_one_budget_without_shared_connection_pools ... ok\n";
 const outageTest =
   "test resource_introspection::redis_cache_outage_keeps_postgres_introspection_authoritative ... ok\n";
-const result = (stdout, code = 0) => ({
+const result = (stdout, code = 0, stderr = "") => ({
   code,
   stdout,
+  stderr,
   interrupted: false,
   overflow: false,
 });
@@ -52,12 +53,9 @@ test("complete suites report actual counts and separately invoked worker handlin
   const redis = boundaryResult(
     "redis",
     result(
-      summary(5) +
-        worker +
-        parent +
-        summary(34, 1) +
-        outageTest +
-        summary(1, 0, 0, 289),
+      summary(5) + worker + parent + summary(34, 1) + summary(1, 0, 0, 289),
+      0,
+      outageTest,
     ),
   );
   assert.equal(redis.status, "passed");
@@ -179,7 +177,10 @@ const browserMarkers = browserPhases
 const browserComplete = "DARKHORSE_BROWSER_COMPLETED:1\n";
 test("browser qualification requires every native binary, ordered browser phases and completed teardown", () => {
   const raw = browserNative + browserMarkers + browserComplete;
-  const report = boundaryResult("browser", result(raw));
+  const report = boundaryResult(
+    "browser",
+    result(raw.replace(outageTest, ""), 0, outageTest),
+  );
   assert.equal(report.status, "passed");
   assert.equal(report.suites.length, 5);
   assert.equal(report.browser.status, "completed");
@@ -199,6 +200,8 @@ test("browser qualification requires every native binary, ordered browser phases
     raw.replace(summary(3), summary(0)),
     raw.replace(outageTest, "test some_other_test ... ok"),
     raw.replace(outageTest, `${outageTest}${outageTest}`),
+    raw.replace(worker, `${worker}${worker}`),
+    raw.replace(parent, `${parent}${parent}`),
     raw.replace(summary(1, 0, 0, 289), summary(1)),
     raw.replace(worker, ""),
     raw.replace(browserComplete, "DARKHORSE_BROWSER_COMPLETED:2\n"),

@@ -19,8 +19,9 @@ export function resourceIds(output) {
   return [...new Set(ids)];
 }
 export function boundaryResult(suite, result) {
+  const testOutput = `${result.stdout}\n${result.stderr ?? ""}`;
   const matches = [
-    ...result.stdout.matchAll(
+    ...testOutput.matchAll(
       /^test result: (ok|FAILED)\. (\d+) passed; (\d+) failed; (\d+) ignored; (\d+) measured; (\d+) filtered out; finished in [\d.]+s$/gm,
     ),
   ];
@@ -32,38 +33,37 @@ export function boundaryResult(suite, result) {
     filtered: Number(m[6]),
   }));
   const outageTests = [
-    ...result.stdout.matchAll(
+    ...testOutput.matchAll(
       /^test (?:[a-zA-Z0-9_]+::)*redis_cache_outage_keeps_postgres_introspection_authoritative \.\.\. ok$/gm,
     ),
   ];
-  const worker =
-    /^test multiprocess_worker \.\.\. ignored, executed by the separate-process parent scenario with disposable infrastructure$/m.test(
-      result.stdout,
-    ) &&
-    /^test separate_processes_share_one_budget_without_shared_connection_pools \.\.\. ok$/m.test(
-      result.stdout,
-    );
+  const workerRecords = [
+      ...testOutput.matchAll(
+        /^test multiprocess_worker \.\.\. ignored, executed by the separate-process parent scenario with disposable infrastructure$/gm,
+      ),
+    ],
+    parentRecords = [
+      ...testOutput.matchAll(
+        /^test separate_processes_share_one_budget_without_shared_connection_pools \.\.\. ok$/gm,
+      ),
+    ];
+  const worker = workerRecords.length === 1 && parentRecords.length === 1;
   const expectedSuites = { postgres: 1, redis: 3, browser: 5 }[suite];
   const isolatedOutage = suite !== "postgres" && outageTests.length === 1;
   const counts =
     matches.length === expectedSuites &&
     suites.length === expectedSuites &&
-    suites.every((s, i) => {
-      const workerSuite = suite !== "postgres" && i === 1;
-      const outageSuite = suite !== "postgres" && i === expectedSuites - 1;
-      return (
-        s.passed > 0 &&
-        s.failed === 0 &&
-        s.measured === 0 &&
-        (outageSuite
-          ? isolatedOutage &&
-            s.passed === 1 &&
-            s.ignored === 0 &&
-            s.filtered > 0
-          : s.filtered === 0) &&
-        s.ignored === (workerSuite ? 1 : 0)
-      );
-    });
+    suites.every((s) => s.passed > 0 && s.failed === 0 && s.measured === 0) &&
+    (suite === "postgres"
+      ? suites.every((s) => s.ignored === 0 && s.filtered === 0)
+      : isolatedOutage &&
+        suites.filter((s) => s.ignored === 1 && s.filtered === 0).length ===
+          1 &&
+        suites.filter((s) => s.ignored > 0).length === 1 &&
+        suites.filter((s) => s.filtered > 0).length === 1 &&
+        suites.filter(
+          (s) => s.passed === 1 && s.ignored === 0 && s.filtered > 0,
+        ).length === 1);
   const browser =
     suite === "browser" ? browserEvidence(result.stdout) : undefined;
   const passed =
@@ -86,9 +86,7 @@ export function boundaryResult(suite, result) {
         ? "executed by passing parent scenario"
         : "not applicable or not verified",
     failedTests: [
-      ...result.stdout.matchAll(
-        /^test ([a-zA-Z0-9_:]{1,200}) \.\.\. FAILED$/gm,
-      ),
+      ...testOutput.matchAll(/^test ([a-zA-Z0-9_:]{1,200}) \.\.\. FAILED$/gm),
     ]
       .slice(0, 100)
       .map((m) => m[1]),

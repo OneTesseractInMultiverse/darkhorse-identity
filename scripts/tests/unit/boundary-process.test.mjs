@@ -6,7 +6,7 @@ import { boundaryResult } from "../../lib/boundary-ci.mjs";
 const summary = (passed, ignored = 0, filtered = 0) =>
   `test result: ok. ${passed} passed; 0 failed; ${ignored} ignored; 0 measured; ${filtered} filtered out; finished in 1.00s\n`;
 
-test("private boundary evidence combines test records from stdout and stderr", async () => {
+test("private boundary evidence preserves Cargo and browser output streams", async () => {
   const outage =
     "test resource_introspection::redis_cache_outage_keeps_postgres_introspection_authoritative ... ok\n";
   const stderr =
@@ -19,6 +19,7 @@ test("private boundary evidence combines test records from stdout and stderr", a
 
   assert.equal(result.code, 0);
   assert.equal(result.overflow, false);
-  assert.ok(result.stdout.includes(outage));
+  assert.ok(!result.stdout.includes(outage));
+  assert.ok(result.stderr.includes(outage));
   assert.equal(boundaryResult("redis", result).status, "passed");
 });

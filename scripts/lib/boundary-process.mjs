@@ -7,9 +7,16 @@ export async function boundaryProcess(
   { env, signal, timeoutMs = 25 * 60_000, maxBytes = 2 * 1024 * 1024 } = {},
 ) {
   if (signal?.aborted)
-    return { code: null, stdout: "", interrupted: true, overflow: false };
+    return {
+      code: null,
+      stdout: "",
+      stderr: "",
+      interrupted: true,
+      overflow: false,
+    };
   let bytes = 0,
     stdout = "",
+    stderr = "",
     overflow = false,
     interrupted = false,
     stopping;
@@ -17,15 +24,13 @@ export async function boundaryProcess(
   function stop() {
     stopping ??= child?.stop();
   }
-  function capture(data) {
+  function capture(data, stream) {
     bytes += data.length;
     if (bytes > maxBytes) {
       overflow = true;
       stop();
     } else {
-      // Cargo and the browser runner can split test records across both streams.
-      // Keep one private, ordered parse buffer; only typed evidence is published.
-      stdout += data.toString();
+      stream(data.toString());
     }
   }
   function interrupt() {
@@ -37,8 +42,8 @@ export async function boundaryProcess(
     args,
     env,
     input: "",
-    stdout: capture,
-    stderr: capture,
+    stdout: (data) => capture(data, (text) => (stdout += text)),
+    stderr: (data) => capture(data, (text) => (stderr += text)),
   });
   signal?.addEventListener("abort", interrupt, { once: true });
   const timer = setTimeout(interrupt, timeoutMs);
@@ -46,7 +51,7 @@ export async function boundaryProcess(
   try {
     const result = await child.done.catch(() => ({ code: null }));
     await stopping;
-    return { code: result.code, stdout, interrupted, overflow };
+    return { code: result.code, stdout, stderr, interrupted, overflow };
   } finally {
     clearTimeout(timer);
     signal?.removeEventListener("abort", interrupt);
