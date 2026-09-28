@@ -332,6 +332,20 @@ The caller acquires the shared primary security fence **in a preceding statement
 
 For the small steady introspection fixture, combining the five policy reads removes four top-level statements per authorized check. Verify the actual count and performance using `make benchmark-profile-baseline`. Statement counts are not wire-protocol round-trip counts. Hold pool size and existing admission limits constant when comparing query changes. Vary only pool size in a separate controlled series. Larger policy populations, query plans and different topologies still need qualification before generalizing any measured gain.
 
+## September 27, 2026 Redis computation-cache trial
+
+`make benchmark-cache-comparison` ran four `profile-baseline` fixtures in the order bypass, Redis, Redis, bypass. All reports passed security assertions and used commit `54656c5`, source digest `f8ce55195f8b28c415b8586fe5577837b9a7bb524f752da1b55520146327e3ce`, the same Apple M5 / 10-core / 24-GiB host, five-connection PostgreSQL pool, restricted runtime role, and pinned Percona PostgreSQL 18.6 and Redis 8.10.1 images. Each report was clean-source; local reports are `run-oldbKD`, `run-xcSKJd`, `run-PWuis5`, and `run-umclIo` under ignored `.local/benchmarks/`.
+
+| Offered rate | Bypass authorized p95, median | Redis authorized p95, median | Bypass authorized/s, median | Redis authorized/s, median |
+| ------------ | ----------------------------: | ---------------------------: | --------------------------: | -------------------------: |
+| 200/s        |                      11.37 ms |                     11.21 ms |                      199.94 |                     199.95 |
+| 800/s        |                      36.22 ms |                     36.16 ms |                      387.86 |                     394.08 |
+| 1,600/s      |                      38.42 ms |                     39.17 ms |                      380.64 |                     378.61 |
+
+The Redis runs made zero policy-projection SQL calls in these warmed rate phases, compared with 2,000 calls at 200/s and roughly 3,800–3,900 calls at the higher rates. The query work is eliminated, but end-to-end results are effectively tied at 200/s and 800/s, then mixed at 1,600/s. At the two higher rates most attempts were already rejected as unavailable by existing bounded admission. This small local sample does not demonstrate a useful capacity or latency gain from Redis. No phase recorded an authorization violation, and the explicit post-commit revocation probes authorized zero checks in all four runs.
+
+Keep `DARKHORSE_AUTHORIZATION_CACHE_ENABLED` off by default. The adapter remains an opt-in experiment until local-cache comparison, operational cache metrics, outage/cold-burst measurements, larger policy populations and repeated production-shaped runs establish a clear benefit. These single-host diagnostic runs are not an SLO or production capacity claim.
+
 ## Remaining qualification
 
 The harness establishes a repeatable uncached starting point. Issue #10 stays open for larger user/policy populations, genuinely cold database state, longer endurance and production arrival distributions, multi-host/production proxy measurements, SQL query plans and wire-protocol round-trip attribution, continuous lock-wait/CPU/memory sampling, longer WAL and pool-acquisition observations, and shared-limiter overhead comparisons. SSO samples currently cover one principal, not password-login saturation or a latency distribution.
