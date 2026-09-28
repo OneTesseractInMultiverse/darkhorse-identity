@@ -1,0 +1,796 @@
+{
+  "schema": 1,
+  "recordedDate": "2026-09-28",
+  "issue": 32,
+  "sourceCommit": "2a54b548b697231633215f2cd50723d5878c063a",
+  "environment": {
+    "host": "Apple M5",
+    "docker": "29.6.2",
+    "containerPlatform": "linux/arm64",
+    "postgresql": "Percona Distribution for PostgreSQL 18.6.1",
+    "redis": "8.10.1"
+  },
+  "workload": {
+    "topology": "packaged-compose-api-and-percona-postgresql",
+    "databaseRole": "darkhorse_runtime",
+    "offeredRatePerSecond": 200,
+    "phaseDurationMs": 8000,
+    "requestsPerPhase": 1600,
+    "totalMeasuredRequestsPerRun": 4800,
+    "apiPoolLimit": 5,
+    "apiContainerLimit": {
+      "cpus": 2,
+      "memoryMiB": 512
+    },
+    "postgresContainerLimit": {
+      "cpus": 2,
+      "memoryMiB": 512
+    },
+    "cliProcesses": 2,
+    "cliOutcomes": {
+      "read": 3,
+      "not_found": 1,
+      "denied": 4
+    },
+    "authorizationCache": false,
+    "perClientAdmission": {
+      "limit": 6000,
+      "windowMs": 60000
+    }
+  },
+  "unprofiledRuns": [
+    {
+      "imageConfigDigest": "sha256:7f2ba5aebfca1b97220dc322e2af154868e9d3f41d405a7f45639fe4858294e9",
+      "phases": [
+        {
+          "name": "control-before",
+          "offeredRatePerSecond": 200,
+          "scheduled": 1600,
+          "dispatched": 1600,
+          "outcomes": {
+            "authorized": 1591,
+            "denied": 0,
+            "unavailable": 9,
+            "error": 0,
+            "transport_error": 0,
+            "violation": 0,
+            "generator_late": 0,
+            "generator_full": 0
+          },
+          "httpStatuses": {
+            "200": 1591,
+            "503": 9
+          },
+          "scheduledLatencyMs": {
+            "p50": 3.6957080000029237,
+            "p95": 5.297999999998865,
+            "p99": 52.46037500000239
+          },
+          "peakInFlight": 15
+        },
+        {
+          "name": "account-detail-overlap",
+          "offeredRatePerSecond": 200,
+          "scheduled": 1600,
+          "dispatched": 1600,
+          "outcomes": {
+            "authorized": 1600,
+            "denied": 0,
+            "unavailable": 0,
+            "error": 0,
+            "transport_error": 0,
+            "violation": 0,
+            "generator_late": 0,
+            "generator_full": 0
+          },
+          "httpStatuses": {
+            "200": 1600
+          },
+          "scheduledLatencyMs": {
+            "p50": 3.854250000003958,
+            "p95": 7.305791999999201,
+            "p99": 9.953792000000249
+          },
+          "peakInFlight": 5
+        },
+        {
+          "name": "control-after",
+          "offeredRatePerSecond": 200,
+          "scheduled": 1600,
+          "dispatched": 1600,
+          "outcomes": {
+            "authorized": 1600,
+            "denied": 0,
+            "unavailable": 0,
+            "error": 0,
+            "transport_error": 0,
+            "violation": 0,
+            "generator_late": 0,
+            "generator_full": 0
+          },
+          "httpStatuses": {
+            "200": 1600
+          },
+          "scheduledLatencyMs": {
+            "p50": 3.650207999999111,
+            "p95": 4.688167000000249,
+            "p99": 5.430082999999286
+          },
+          "peakInFlight": 2
+        }
+      ],
+      "operator": {
+        "outcomes": {
+          "read": 3,
+          "not_found": 1,
+          "denied": 4
+        },
+        "scheduledLatencyMs": {
+          "p50": 275.5385000000024,
+          "p95": 383.9320000000007,
+          "p99": 383.9320000000007
+        },
+        "executionLatencyMs": {
+          "p50": 273.88845800000126,
+          "p95": 383.7508749999979,
+          "p99": 383.7508749999979
+        }
+      },
+      "runtime": {
+        "samples": 34,
+        "maximumSampledConnections": 9,
+        "maximumSampledActiveConnections": 1,
+        "maximumSampledWaitingLocks": 0
+      }
+    },
+    {
+      "imageConfigDigest": "sha256:7f2ba5aebfca1b97220dc322e2af154868e9d3f41d405a7f45639fe4858294e9",
+      "phases": [
+        {
+          "name": "control-before",
+          "offeredRatePerSecond": 200,
+          "scheduled": 1600,
+          "dispatched": 1600,
+          "outcomes": {
+            "authorized": 1600,
+            "denied": 0,
+            "unavailable": 0,
+            "error": 0,
+            "transport_error": 0,
+            "violation": 0,
+            "generator_late": 0,
+            "generator_full": 0
+          },
+          "httpStatuses": {
+            "200": 1600
+          },
+          "scheduledLatencyMs": {
+            "p50": 3.638999999999214,
+            "p95": 4.775583000002371,
+            "p99": 6.316750000001775
+          },
+          "peakInFlight": 5
+        },
+        {
+          "name": "account-detail-overlap",
+          "offeredRatePerSecond": 200,
+          "scheduled": 1600,
+          "dispatched": 1600,
+          "outcomes": {
+            "authorized": 1600,
+            "denied": 0,
+            "unavailable": 0,
+            "error": 0,
+            "transport_error": 0,
+            "violation": 0,
+            "generator_late": 0,
+            "generator_full": 0
+          },
+          "httpStatuses": {
+            "200": 1600
+          },
+          "scheduledLatencyMs": {
+            "p50": 3.8202499999970314,
+            "p95": 6.90341599999374,
+            "p99": 9.624374999999418
+          },
+          "peakInFlight": 3
+        },
+        {
+          "name": "control-after",
+          "offeredRatePerSecond": 200,
+          "scheduled": 1600,
+          "dispatched": 1600,
+          "outcomes": {
+            "authorized": 1600,
+            "denied": 0,
+            "unavailable": 0,
+            "error": 0,
+            "transport_error": 0,
+            "violation": 0,
+            "generator_late": 0,
+            "generator_full": 0
+          },
+          "httpStatuses": {
+            "200": 1600
+          },
+          "scheduledLatencyMs": {
+            "p50": 3.613959000002069,
+            "p95": 4.69141700000182,
+            "p99": 6.780000000006112
+          },
+          "peakInFlight": 3
+        }
+      ],
+      "operator": {
+        "outcomes": {
+          "read": 3,
+          "not_found": 1,
+          "denied": 4
+        },
+        "scheduledLatencyMs": {
+          "p50": 269.481458000002,
+          "p95": 281.4760000000024,
+          "p99": 281.4760000000024
+        },
+        "executionLatencyMs": {
+          "p50": 268.6082499999975,
+          "p95": 281.39066699999967,
+          "p99": 281.39066699999967
+        }
+      },
+      "runtime": {
+        "samples": 35,
+        "maximumSampledConnections": 9,
+        "maximumSampledActiveConnections": 1,
+        "maximumSampledWaitingLocks": 0
+      }
+    }
+  ],
+  "profiledRuns": [
+    {
+      "buildFeature": "benchmark-profiling",
+      "imageConfigDigest": "sha256:d4e6674274a098ea3010e13942cc5fdddfcfd05177173f9306d46365e9846aa6",
+      "phases": [
+        {
+          "name": "control-before",
+          "offeredRatePerSecond": 200,
+          "scheduled": 1600,
+          "dispatched": 1600,
+          "outcomes": {
+            "authorized": 1600,
+            "denied": 0,
+            "unavailable": 0,
+            "error": 0,
+            "transport_error": 0,
+            "violation": 0,
+            "generator_late": 0,
+            "generator_full": 0
+          },
+          "httpStatuses": {
+            "200": 1600
+          },
+          "scheduledLatencyMs": {
+            "p50": 3.5976249999948777,
+            "p95": 4.8055419999946025,
+            "p99": 6.7271249999976135
+          },
+          "peakInFlight": 3
+        },
+        {
+          "name": "account-detail-overlap",
+          "offeredRatePerSecond": 200,
+          "scheduled": 1600,
+          "dispatched": 1600,
+          "outcomes": {
+            "authorized": 1599,
+            "denied": 0,
+            "unavailable": 1,
+            "error": 0,
+            "transport_error": 0,
+            "violation": 0,
+            "generator_late": 0,
+            "generator_full": 0
+          },
+          "httpStatuses": {
+            "200": 1599,
+            "503": 1
+          },
+          "scheduledLatencyMs": {
+            "p50": 3.880708999997296,
+            "p95": 7.406709000002593,
+            "p99": 13.559999999997672
+          },
+          "peakInFlight": 6
+        },
+        {
+          "name": "control-after",
+          "offeredRatePerSecond": 200,
+          "scheduled": 1600,
+          "dispatched": 1600,
+          "outcomes": {
+            "authorized": 1600,
+            "denied": 0,
+            "unavailable": 0,
+            "error": 0,
+            "transport_error": 0,
+            "violation": 0,
+            "generator_late": 0,
+            "generator_full": 0
+          },
+          "httpStatuses": {
+            "200": 1600
+          },
+          "scheduledLatencyMs": {
+            "p50": 3.6455000000059954,
+            "p95": 4.729750000005879,
+            "p99": 6.488583000005747
+          },
+          "peakInFlight": 3
+        }
+      ],
+      "postgresClientStages": [
+        {
+          "phase": "control-before",
+          "stages": [
+            {
+              "stage": "client_total",
+              "samples": 1600,
+              "errors": 0,
+              "cancelled": 0,
+              "maxUs": 49897
+            },
+            {
+              "stage": "client_pool_acquire",
+              "samples": 1600,
+              "errors": 0,
+              "cancelled": 0,
+              "maxUs": 46123
+            },
+            {
+              "stage": "client_begin",
+              "samples": 1600,
+              "errors": 0,
+              "cancelled": 0,
+              "maxUs": 374
+            },
+            {
+              "stage": "client_fence",
+              "samples": 1600,
+              "errors": 0,
+              "cancelled": 0,
+              "maxUs": 562
+            },
+            {
+              "stage": "client_authenticate",
+              "samples": 1600,
+              "errors": 0,
+              "cancelled": 0,
+              "maxUs": 967
+            },
+            {
+              "stage": "client_inspect",
+              "samples": 1600,
+              "errors": 0,
+              "cancelled": 0,
+              "maxUs": 2577
+            },
+            {
+              "stage": "client_commit",
+              "samples": 1600,
+              "errors": 0,
+              "cancelled": 0,
+              "maxUs": 1182
+            }
+          ]
+        },
+        {
+          "phase": "account-detail-overlap",
+          "stages": [
+            {
+              "stage": "client_total",
+              "samples": 1599,
+              "errors": 0,
+              "cancelled": 0,
+              "maxUs": 7838
+            },
+            {
+              "stage": "client_pool_acquire",
+              "samples": 1599,
+              "errors": 0,
+              "cancelled": 0,
+              "maxUs": 408
+            },
+            {
+              "stage": "client_begin",
+              "samples": 1599,
+              "errors": 0,
+              "cancelled": 0,
+              "maxUs": 799
+            },
+            {
+              "stage": "client_fence",
+              "samples": 1599,
+              "errors": 0,
+              "cancelled": 0,
+              "maxUs": 705
+            },
+            {
+              "stage": "client_authenticate",
+              "samples": 1599,
+              "errors": 0,
+              "cancelled": 0,
+              "maxUs": 2577
+            },
+            {
+              "stage": "client_inspect",
+              "samples": 1599,
+              "errors": 0,
+              "cancelled": 0,
+              "maxUs": 4112
+            },
+            {
+              "stage": "client_commit",
+              "samples": 1599,
+              "errors": 0,
+              "cancelled": 0,
+              "maxUs": 2036
+            }
+          ]
+        },
+        {
+          "phase": "control-after",
+          "stages": [
+            {
+              "stage": "client_total",
+              "samples": 1600,
+              "errors": 0,
+              "cancelled": 0,
+              "maxUs": 4621
+            },
+            {
+              "stage": "client_pool_acquire",
+              "samples": 1600,
+              "errors": 0,
+              "cancelled": 0,
+              "maxUs": 179
+            },
+            {
+              "stage": "client_begin",
+              "samples": 1600,
+              "errors": 0,
+              "cancelled": 0,
+              "maxUs": 193
+            },
+            {
+              "stage": "client_fence",
+              "samples": 1600,
+              "errors": 0,
+              "cancelled": 0,
+              "maxUs": 206
+            },
+            {
+              "stage": "client_authenticate",
+              "samples": 1600,
+              "errors": 0,
+              "cancelled": 0,
+              "maxUs": 344
+            },
+            {
+              "stage": "client_inspect",
+              "samples": 1600,
+              "errors": 0,
+              "cancelled": 0,
+              "maxUs": 2299
+            },
+            {
+              "stage": "client_commit",
+              "samples": 1600,
+              "errors": 0,
+              "cancelled": 0,
+              "maxUs": 1415
+            }
+          ]
+        }
+      ],
+      "operator": {
+        "outcomes": {
+          "read": 3,
+          "not_found": 1,
+          "denied": 4
+        },
+        "scheduledLatencyMs": {
+          "p50": 281.9328749999986,
+          "p95": 308.85245899999427,
+          "p99": 308.85245899999427
+        },
+        "executionLatencyMs": {
+          "p50": 280.4983340000035,
+          "p95": 308.69283399999404,
+          "p99": 308.69283399999404
+        }
+      },
+      "runtime": {
+        "samples": 34,
+        "maximumSampledConnections": 8,
+        "maximumSampledActiveConnections": 1,
+        "maximumSampledWaitingLocks": 0
+      }
+    },
+    {
+      "buildFeature": "benchmark-profiling",
+      "imageConfigDigest": "sha256:d4e6674274a098ea3010e13942cc5fdddfcfd05177173f9306d46365e9846aa6",
+      "phases": [
+        {
+          "name": "control-before",
+          "offeredRatePerSecond": 200,
+          "scheduled": 1600,
+          "dispatched": 1600,
+          "outcomes": {
+            "authorized": 1600,
+            "denied": 0,
+            "unavailable": 0,
+            "error": 0,
+            "transport_error": 0,
+            "violation": 0,
+            "generator_late": 0,
+            "generator_full": 0
+          },
+          "httpStatuses": {
+            "200": 1600
+          },
+          "scheduledLatencyMs": {
+            "p50": 3.607457999998587,
+            "p95": 4.608707999999751,
+            "p99": 5.760999999998603
+          },
+          "peakInFlight": 3
+        },
+        {
+          "name": "account-detail-overlap",
+          "offeredRatePerSecond": 200,
+          "scheduled": 1600,
+          "dispatched": 1600,
+          "outcomes": {
+            "authorized": 1600,
+            "denied": 0,
+            "unavailable": 0,
+            "error": 0,
+            "transport_error": 0,
+            "violation": 0,
+            "generator_late": 0,
+            "generator_full": 0
+          },
+          "httpStatuses": {
+            "200": 1600
+          },
+          "scheduledLatencyMs": {
+            "p50": 3.9005420000030426,
+            "p95": 6.9997090000033495,
+            "p99": 9.277709000001778
+          },
+          "peakInFlight": 4
+        },
+        {
+          "name": "control-after",
+          "offeredRatePerSecond": 200,
+          "scheduled": 1600,
+          "dispatched": 1600,
+          "outcomes": {
+            "authorized": 1600,
+            "denied": 0,
+            "unavailable": 0,
+            "error": 0,
+            "transport_error": 0,
+            "violation": 0,
+            "generator_late": 0,
+            "generator_full": 0
+          },
+          "httpStatuses": {
+            "200": 1600
+          },
+          "scheduledLatencyMs": {
+            "p50": 3.5334159999983967,
+            "p95": 4.604624999999942,
+            "p99": 5.823041000003286
+          },
+          "peakInFlight": 3
+        }
+      ],
+      "postgresClientStages": [
+        {
+          "phase": "control-before",
+          "stages": [
+            {
+              "stage": "client_total",
+              "samples": 1600,
+              "errors": 0,
+              "cancelled": 0,
+              "maxUs": 3112
+            },
+            {
+              "stage": "client_pool_acquire",
+              "samples": 1600,
+              "errors": 0,
+              "cancelled": 0,
+              "maxUs": 187
+            },
+            {
+              "stage": "client_begin",
+              "samples": 1600,
+              "errors": 0,
+              "cancelled": 0,
+              "maxUs": 157
+            },
+            {
+              "stage": "client_fence",
+              "samples": 1600,
+              "errors": 0,
+              "cancelled": 0,
+              "maxUs": 228
+            },
+            {
+              "stage": "client_authenticate",
+              "samples": 1600,
+              "errors": 0,
+              "cancelled": 0,
+              "maxUs": 344
+            },
+            {
+              "stage": "client_inspect",
+              "samples": 1600,
+              "errors": 0,
+              "cancelled": 0,
+              "maxUs": 2464
+            },
+            {
+              "stage": "client_commit",
+              "samples": 1600,
+              "errors": 0,
+              "cancelled": 0,
+              "maxUs": 915
+            }
+          ]
+        },
+        {
+          "phase": "account-detail-overlap",
+          "stages": [
+            {
+              "stage": "client_total",
+              "samples": 1600,
+              "errors": 0,
+              "cancelled": 0,
+              "maxUs": 10338
+            },
+            {
+              "stage": "client_pool_acquire",
+              "samples": 1600,
+              "errors": 0,
+              "cancelled": 0,
+              "maxUs": 911
+            },
+            {
+              "stage": "client_begin",
+              "samples": 1600,
+              "errors": 0,
+              "cancelled": 0,
+              "maxUs": 552
+            },
+            {
+              "stage": "client_fence",
+              "samples": 1600,
+              "errors": 0,
+              "cancelled": 0,
+              "maxUs": 341
+            },
+            {
+              "stage": "client_authenticate",
+              "samples": 1600,
+              "errors": 0,
+              "cancelled": 0,
+              "maxUs": 362
+            },
+            {
+              "stage": "client_inspect",
+              "samples": 1600,
+              "errors": 0,
+              "cancelled": 0,
+              "maxUs": 9041
+            },
+            {
+              "stage": "client_commit",
+              "samples": 1600,
+              "errors": 0,
+              "cancelled": 0,
+              "maxUs": 1945
+            }
+          ]
+        },
+        {
+          "phase": "control-after",
+          "stages": [
+            {
+              "stage": "client_total",
+              "samples": 1600,
+              "errors": 0,
+              "cancelled": 0,
+              "maxUs": 2808
+            },
+            {
+              "stage": "client_pool_acquire",
+              "samples": 1600,
+              "errors": 0,
+              "cancelled": 0,
+              "maxUs": 171
+            },
+            {
+              "stage": "client_begin",
+              "samples": 1600,
+              "errors": 0,
+              "cancelled": 0,
+              "maxUs": 110
+            },
+            {
+              "stage": "client_fence",
+              "samples": 1600,
+              "errors": 0,
+              "cancelled": 0,
+              "maxUs": 205
+            },
+            {
+              "stage": "client_authenticate",
+              "samples": 1600,
+              "errors": 0,
+              "cancelled": 0,
+              "maxUs": 201
+            },
+            {
+              "stage": "client_inspect",
+              "samples": 1600,
+              "errors": 0,
+              "cancelled": 0,
+              "maxUs": 1779
+            },
+            {
+              "stage": "client_commit",
+              "samples": 1600,
+              "errors": 0,
+              "cancelled": 0,
+              "maxUs": 903
+            }
+          ]
+        }
+      ],
+      "operator": {
+        "outcomes": {
+          "read": 3,
+          "not_found": 1,
+          "denied": 4
+        },
+        "scheduledLatencyMs": {
+          "p50": 276.24612499999785,
+          "p95": 308.5274999999965,
+          "p99": 308.5274999999965
+        },
+        "executionLatencyMs": {
+          "p50": 274.5428749999992,
+          "p95": 308.3497920000009,
+          "p99": 308.3497920000009
+        }
+      },
+      "runtime": {
+        "samples": 35,
+        "maximumSampledConnections": 8,
+        "maximumSampledActiveConnections": 1,
+        "maximumSampledWaitingLocks": 0
+      }
+    }
+  ],
+  "interpretation": [
+    "Each run offered 4,800 requests below the 6,000-per-minute caller budget. The first unprofiled run had nine HTTP 503 responses in control-before; its unprofiled repeat had none.",
+    "The first profiled run had one HTTP 503 in account-detail-overlap; its repeat had none. In the first profiled run, every PostgreSQL client stage recorded 1,599 successful samples and zero errors in that phase, matching the 1,599 successful HTTP responses. This places the missing request outside the instrumented PostgreSQL client path, but does not identify which earlier request/admission step rejected it.",
+    "Across successful measured phases, scheduled p95 ranged from 4.60 ms to 7.41 ms; overlap was slower than adjacent controls by about 2.1–2.6 ms in the clean repeats. Sampled runtime connections peaked at eight or nine, with no sampled active-lock wait.",
+    "These four short local runs do not establish capacity, production latency, an SLO, or a stable error rate. Profiling adds work. Keep the earlier ten-second 503 outcome visible; no security, admission, cache, or connection-pool setting was changed.",
+    "The Compose runtime-role measurement is complete for this local workload. Kubernetes scheduling and replicated deployment evidence remain deferred."
+  ]
+}

@@ -155,6 +155,48 @@ do not increase the connection pool based on these samples. The
 retain source and image fingerprints, exact HTTP status counts, scheduled latency,
 stage outcomes, limits, and the measurement caveats.
 
+## September 28, 2026 repeated Compose runtime-role measurements
+
+Four additional runs on source commit `2a54b548b697231633215f2cd50723d5878c063a`
+repeated the packaged Compose workload at 200 verified HTTPS introspections per
+second for eight seconds in each phase. Each run offered 4,800 requests, below
+the configured 6,000-per-minute caller allowance. Two used the ordinary image;
+two used the compile-time database profiler.
+
+| Run | Profile           | HTTP 503 responses by phase (before / overlap / after) | Scheduled p95 (ms, before / overlap / after) | PostgreSQL client-stage errors | Maximum sampled runtime connections |
+| --- | ----------------- | ------------------------------------------------------ | -------------------------------------------- | -----------------------------: | ----------------------------------: |
+| A   | Ordinary          | 9 / 0 / 0                                              | 5.30 / 7.31 / 4.69                           |               Not instrumented |                                   9 |
+| B   | Ordinary          | 0 / 0 / 0                                              | 4.78 / 6.90 / 4.69                           |               Not instrumented |                                   9 |
+| A   | Database profiler | 0 / 1 / 0                                              | 4.81 / 7.41 / 4.73                           |                              0 |                                   8 |
+| B   | Database profiler | 0 / 0 / 0                                              | 4.61 / 7.00 / 4.60                           |                              0 |                                   8 |
+
+Each phase scheduled and dispatched all 1,600 arrivals. The eight authenticated
+operator reads in every run produced three reads, one not-found result and four
+expected non-administrator denials; audit verification passed. No run sampled a
+waiting database lock. The profiled run with one 503 recorded 1,599 successful
+samples and zero errors for every PostgreSQL client stage in that phase, matching
+its 1,599 successful HTTP responses. The failed request therefore did not appear
+in the instrumented database-client path. The current profile does not distinguish
+global admission, caller admission, or other earlier request handling.
+
+The two ordinary runs and two profiled runs disagree on whether a 503 occurs, so
+these samples do not establish a stable error rate or explain the earlier
+ten-second run. The first ordinary repeat's 503s occurred before the CLI overlap;
+the profiled repeat's single 503 occurred during overlap. The configured
+per-client budget alone is not a sufficient explanation because the first
+ordinary eight-second run was below budget and still had 503s. In the two
+zero-503 repeats, overlap p95 was about 2.1–2.4 ms above adjacent control phases
+and returned to the control range afterward. This is a local observation, not
+evidence for a pool increase, a production SLO, or a useful capacity gain.
+
+[Machine-readable repeated results](measurements/operator-details-compose-repeats-2026-09-28.json)
+include source and image fingerprints, per-phase status counts, outcomes,
+percentiles, PostgreSQL stage sample/error counts, connection observations and
+limits. Temporary Compose projects and their named volumes were removed after
+each run; the before/after local volume lists showed no new volumes. The Compose
+runtime-role portion now has repeat evidence, while the intermittent 503 cause
+and Kubernetes scheduling remain open under #32.
+
 A separate three-second `operator-smoke` compatibility run used the historical
 listing workload and owner role. Its burst recorded 533 authorized and 61 unavailable
 responses from 594 dispatched requests, plus six late generator drops out of 600
