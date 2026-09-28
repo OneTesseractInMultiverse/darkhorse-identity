@@ -13,7 +13,7 @@ PYTHON ?= python3
 DARKHORSE_BUILD_VERSION ?= $(shell git rev-parse --verify HEAD 2>/dev/null || printf 'darkhorse-source')
 WEB := $(PNPM) --filter @darkhorse/console
 
-.PHONY: help doctor deps-install deps-check fmt fmt-check lint typecheck architecture-check check ci test test-unit test-unit-rust test-unit-web test-tooling test-example test-component test-unit-watch build build-api build-web dev-setup dev dev-api dev-web proxy-up https-setup https-check https-trust https-untrust clean
+.PHONY: help doctor deps-install deps-check fmt fmt-check lint typecheck architecture-check workflow-policy-check check ci test test-unit test-unit-rust test-unit-web test-tooling test-example test-component test-unit-watch build build-api build-web dev-setup dev dev-api dev-web proxy-up https-setup https-check https-trust https-untrust clean
 .PHONY: coverage-unit coverage-rust coverage-web coverage-postgres
 .PHONY: test-authorization test-property test-mutation
 .PHONY: db-setup db-up db-down db-migrate bootstrap test-postgres docker-build docker-smoke
@@ -93,7 +93,10 @@ typecheck: ## Check: strict TypeScript and Svelte diagnostics
 architecture-check: ## Check: inward crate dependencies and static frontend boundaries
 	$(NODE) scripts/architecture-check.mjs
 
-check: fmt-check lint typecheck architecture-check i18n-check api-inventory-check api-classification-check api-spec-check test-unit ## Check: complete fast verification; no services or certificate setup
+workflow-policy-check: ## Check: hosted CI permissions, credentials, timeouts, actions and artifacts
+	$(NODE) scripts/ci-workflow-policy-check.mjs
+
+check: fmt-check lint typecheck architecture-check workflow-policy-check i18n-check api-inventory-check api-classification-check api-spec-check test-unit ## Check: complete fast verification; no services or certificate setup
 
 ci: check build ## Check: fast verification plus release/static builds
 

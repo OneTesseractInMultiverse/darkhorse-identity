@@ -74,6 +74,15 @@ bounded jobs. Their [execution and evidence contract](hosted-boundary-tests.md)
 covers exact-owner cleanup, test counts, intentional worker handling and redacted
 reports. They preserve the service-free isolated test contract.
 
+`make workflow-policy-check` examines the committed workflow source and rejects
+privileged pull-request triggers, repository write permissions, secret references,
+persisted checkout credentials, mutable action tags, unbounded job or suite time,
+dependency caches, and artifact paths outside the two redacted report files.
+Source-defined tooling tests exercise those rejection cases. This guards the
+workflow's declared policy; it does not replace a failing-check exercise in a
+disposable pull request or verify repository-level fork and branch-protection
+settings.
+
 The workflow uses read-only repository permission, immutable official action
 commit references, no persisted checkout credentials, no dependency caches,
 and no repository secrets. Untrusted pull requests never use `pull_request_target`.
