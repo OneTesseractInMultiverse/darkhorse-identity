@@ -22,6 +22,7 @@ import {
   accountCommand,
   accountResult,
   directoryPage,
+  lostComposeAccountResponse,
 } from "./lib/container-account-test.mjs";
 import { httpsCall } from "./lib/deployment-client.mjs";
 import { validateIdToken, validateCallback } from "./lib/reference-client.mjs";
@@ -593,9 +594,11 @@ async function accounts(user) {
     user.principal,
     user.password,
   );
+  await fixtureRecovery();
+  await lostComposeAccountResponse(command, { STACK: name }, input, sql);
   await stoppedAccountChecks(settings, input, exec);
   console.log(
-    "Account and catalog launchers: runtime authentication, confirmation/revision/invariant failures, limiter refusal, running-container catalog reads and stopped-HTTP one-shot commands passed.",
+    "Account and catalog launchers: runtime authentication, confirmation/revision/invariant failures, limiter refusal, lost-response reconciliation, running-container catalog reads and stopped-HTTP one-shot commands passed.",
   );
 }
 async function runningAccountChecks(exec, user, input) {
