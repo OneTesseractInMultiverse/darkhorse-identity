@@ -183,8 +183,9 @@ and [revocation rules](https://www.postgresql.org/docs/18/sql-revoke.html), and
 OWASP's [logging protection guidance](https://cheatsheetseries.owasp.org/cheatsheets/Logging_Cheat_Sheet.html).
 
 Migration `0030` adds the [client-secret operation ledger](operator-client-secrets.md);
-migration `0036` adds the client-creation operation ledger used by the CLI's
-one-time secret delivery.
+migration `0036` adds the client-creation operation ledger used by one-time secret
+delivery; migration `0040` adds the separate rotation ledger. Apply migrations
+and refresh grants with serving stopped before using the new rotation command.
 Runtime receives explicit SELECT/INSERT and no update/delete/truncate privileges;
 the nonowner operator receives no access. Refresh grants after the migration with
 serving stopped. The commands select lifecycle columns only, while the broader

@@ -102,8 +102,8 @@ pub(in crate::operator) fn spanish(english: &str) -> Option<&'static str> {
         "Client creation unavailable; check configuration, database, limiter and audit availability." => {
             "Creación de cliente no disponible; revise la configuración, la base de datos, el limitador y la auditoría."
         }
-        "Client creation committed but the secret could not be delivered. Locate and retire the credential before creating a replacement." => {
-            "El cliente se creó, pero no se pudo entregar el secreto. Localice y retire la credencial antes de crear un reemplazo."
+        "The client credential change committed, but its secret could not be delivered and cannot be recovered. Inspect the operation audit and current client state; reconcile or retire the undelivered credential before another attempt." => {
+            "El cambio de credenciales del cliente se confirmó, pero no se pudo entregar el secreto y no es posible recuperarlo. Revise la auditoría y el estado actual del cliente; reconcilie o retire la credencial no entregada antes de otro intento."
         }
         "Client not found in the requested application." => {
             "No se encontró el cliente en la aplicación indicada."
@@ -116,6 +116,12 @@ pub(in crate::operator) fn spanish(english: &str) -> Option<&'static str> {
         }
         "Client secret operation unavailable; check configuration, database, limiter and audit availability." => {
             "Operación de secreto de cliente no disponible; revise la configuración, la base de datos, el limitador y la auditoría."
+        }
+        "Invalid client-secret rotation request." => {
+            "Solicitud de rotación de secreto de cliente no válida."
+        }
+        "Client-secret rotation unavailable; check configuration, database, limiter and audit availability." => {
+            "Rotación de secreto de cliente no disponible; revise la configuración, la base de datos, el limitador y la auditoría."
         }
         "Confirm this operator mutation by typing yes: " => {
             "Confirme esta modificación administrativa escribiendo yes: "
@@ -201,6 +207,9 @@ pub(in crate::operator) fn spanish(english: &str) -> Option<&'static str> {
         }
         "Outcome unknown; inspect the client secret audit and current inventory before deciding to retry." => {
             "Resultado desconocido; consulte la auditoría del secreto de cliente y el inventario actual antes de decidir si reintenta."
+        }
+        "Outcome unknown; inspect the rotation audit and current secret inventory before choosing a fresh rotation. The lost secret cannot be recovered." => {
+            "El resultado es incierto; consulte la auditoría de rotación y el inventario actual antes de realizar otra rotación. El secreto perdido no se puede recuperar."
         }
         "Password confirmation does not match." => "La confirmación de contraseña no coincide.",
         "Password: " => "Contraseña: ",
@@ -312,6 +321,9 @@ pub(in crate::operator) fn spanish(english: &str) -> Option<&'static str> {
         }
         "Permanently retire one scoped secret at an expected client revision." => {
             "Retirar permanentemente un secreto dentro de su ámbito en una revisión esperada del cliente."
+        }
+        "Rotate one scoped client secret and disclose the new value exactly once as JSON." => {
+            "Rotar un secreto de cliente dentro de su ámbito y mostrar el nuevo valor una sola vez como JSON."
         }
         "Read one page within the explicitly selected application." => {
             "Leer una página dentro de la aplicación seleccionada explícitamente."

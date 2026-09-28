@@ -411,6 +411,47 @@ test("client secret inventory and retirement preserve scope and reject conflicti
     id,
     "7",
   ]);
+  const rotate = {
+    ...base,
+    CATALOG_OPERATION: "rotate",
+    CATALOG_REVISION: "7",
+    CATALOG_OVERLAP_SECONDS: "30",
+    CATALOG_CONFIRM: "yes",
+    CATALOG_SECRET_STDOUT: "yes",
+  };
+  assert.deepEqual(catalogOptions(rotate, false), [
+    "--auth-stdin",
+    "--output",
+    "json",
+    "--yes",
+    "operator",
+    "client",
+    "secret",
+    "rotate",
+    id,
+    id,
+    "7",
+    "--overlap-seconds",
+    "30",
+    "--secret-stdout",
+  ]);
+  for (const bad of [
+    { CATALOG_SECRET_STDOUT: "no" },
+    { CATALOG_SECRET_STDOUT: "" },
+    { CATALOG_OVERLAP_SECONDS: "" },
+    { CATALOG_OVERLAP_SECONDS: "301" },
+    { CATALOG_OVERLAP_SECONDS: "01" },
+    { CATALOG_OVERLAP_SECONDS: "-1" },
+    { CATALOG_REVISION: "9223372036854775807" },
+    { CATALOG_SECRET_ID: id },
+    { CATALOG_AFTER: id },
+    { CATALOG_LIMIT: "1" },
+    { CATALOG_CONFIRM: "no" },
+  ])
+    assert.throws(
+      () => catalogOptions({ ...rotate, ...bad }, false),
+      UsageError,
+    );
   for (const bad of [
     { CATALOG_APPLICATION_ID: "" },
     { CATALOG_CLIENT_ID: "" },
@@ -437,6 +478,7 @@ test("client secret inventory and retirement preserve scope and reject conflicti
     { CATALOG_LIMIT: "26" },
     { CATALOG_AFTER: "bad" },
     { CATALOG_OPERATION: "create" },
+    { CATALOG_OPERATION: "rotate", CATALOG_OVERLAP_SECONDS: "30" },
   ])
     assert.throws(() => catalogOptions({ ...base, ...bad }, false), UsageError);
   for (const target of ["application", "client"])

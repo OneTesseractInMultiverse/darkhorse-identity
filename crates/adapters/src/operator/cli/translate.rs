@@ -25,15 +25,20 @@ pub(super) fn invocation(options: Options) -> Result<Invocation, Failure> {
             | Command::ClientUpdate { .. }
             | Command::ClientCreate { .. }
             | Command::ClientSecret { .. }
+            | Command::ClientSecretRotation { .. }
             | Command::Change { .. }
     );
     if (matches!(
         command,
-        Command::ClientUpdate { .. } | Command::ClientCreate { .. }
+        Command::ClientUpdate { .. }
+            | Command::ClientCreate { .. }
+            | Command::ClientSecretRotation { .. }
     ) && !options.auth_stdin)
         || (options.auth_stdin && !account)
         || (account && options.output == Format::Json && !options.auth_stdin)
         || (matches!(command, Command::ClientCreate { .. }) && options.output != Format::Json)
+        || (matches!(command, Command::ClientSecretRotation { .. })
+            && options.output != Format::Json)
         || (matches!(command, Command::AccessCatalogMutation)
             && (!options.auth_stdin || options.output != Format::Json))
     {
@@ -94,7 +99,7 @@ fn operator(value: Operator) -> Result<Command, Failure> {
             selection: definitions(selection),
         }),
         Operator::Access(AccessCatalog::Apply) => Command::AccessCatalogMutation,
-        Operator::Client(Client::Secret(value)) => secret(value),
+        Operator::Client(Client::Secret(value)) => secret(value)?,
         Operator::Client(Client::Create {
             application,
             secret_stdout,
@@ -252,26 +257,45 @@ fn catalog_view(target: darkhorse_domain::operator_catalog::ViewTarget) -> Comma
     Command::CatalogView(darkhorse_domain::operator_catalog::ViewRequest::new(target))
 }
 
-fn secret(value: ClientSecret) -> Command {
+fn secret(value: ClientSecret) -> Result<Command, Failure> {
     use darkhorse_domain::operator_client_secrets::{Operation, Target};
-    let (target, operation) = match value {
+    match value {
         ClientSecret::List {
             target,
             after,
             limit,
-        } => (target, Operation::List { after, limit }),
+        } => Ok(Command::ClientSecret {
+            target: Target {
+                application: target.application,
+                client: target.client,
+            },
+            operation: Operation::List { after, limit },
+        }),
         ClientSecret::Retire {
             target,
             secret,
             revision,
-        } => (target, Operation::Retire { secret, revision }),
-    };
-    Command::ClientSecret {
-        target: Target {
-            application: target.application,
-            client: target.client,
-        },
-        operation,
+        } => Ok(Command::ClientSecret {
+            target: Target {
+                application: target.application,
+                client: target.client,
+            },
+            operation: Operation::Retire { secret, revision },
+        }),
+        ClientSecret::Rotate {
+            target,
+            revision,
+            overlap_seconds,
+            secret_stdout,
+        } if secret_stdout => Ok(Command::ClientSecretRotation {
+            target: Target {
+                application: target.application,
+                client: target.client,
+            },
+            revision,
+            overlap_seconds,
+        }),
+        ClientSecret::Rotate { .. } => Err(Failure::usage()),
     }
 }
 

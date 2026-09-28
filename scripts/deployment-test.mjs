@@ -55,7 +55,7 @@ async function port() {
 }
 const captured = { capture: true };
 async function sql(statement, acceptFailure = false) {
-  return compose(
+  const result = await compose(
     stack,
     [
       "exec",
@@ -70,8 +70,20 @@ async function sql(statement, acceptFailure = false) {
       "-v",
       "ON_ERROR_STOP=1",
     ],
-    { input: statement, capture: true, acceptFailure },
+    { input: statement, capture: true, acceptFailure: true },
   );
+  if (result.code !== 0 && !acceptFailure) {
+    const diagnostic = result.stderr
+      .split("\n")
+      .find((line) => line.startsWith("ERROR:"))
+      ?.replace(/\b[\w.+-]+@[\w.-]+\.[A-Za-z]{2,}\b/g, "[email]")
+      .replace(/\b[a-fA-F0-9-]{32,}\b/g, "[identifier]")
+      .slice(0, 400);
+    throw new Error(
+      `Compose SQL fixture failed (${result.code})${diagnostic ? `: ${diagnostic}` : "."}`,
+    );
+  }
+  return result;
 }
 async function operation(command, args = [], options = {}) {
   return operator(stack, command, args, { ...captured, ...options });
@@ -787,7 +799,7 @@ async function archive() {
   }
   const archive = await backup(stack);
   const auditCountsQuery =
-    "SELECT (SELECT count(*) FROM principals),(SELECT count(*) FROM operator_catalog_audit),(SELECT count(*) FROM operator_catalog_detail_audit),(SELECT count(*) FROM operator_access_detail_audit),(SELECT count(*) FROM operator_application_audit),(SELECT count(*) FROM operator_client_audit),(SELECT count(*) FROM operator_client_secret_audit),(SELECT count(*) FROM operator_client_creation_audit)";
+    "SELECT (SELECT count(*) FROM principals),(SELECT count(*) FROM operator_catalog_audit),(SELECT count(*) FROM operator_catalog_detail_audit),(SELECT count(*) FROM operator_access_detail_audit),(SELECT count(*) FROM operator_application_audit),(SELECT count(*) FROM operator_client_audit),(SELECT count(*) FROM operator_client_secret_audit),(SELECT count(*) FROM operator_client_creation_audit),(SELECT count(*) FROM operator_client_secret_rotation_audit)";
   const lifecycleCountsQuery =
     "SELECT (SELECT count(*) FROM browser_sessions),(SELECT count(*) FROM session_audit),(SELECT count(*) FROM authorization_codes),(SELECT count(*) FROM access_tokens),(SELECT count(*) FROM refresh_families),(SELECT count(*) FROM oauth_consents),(SELECT count(*) FROM consent_audit),(SELECT count(*) FROM relying_party_sessions),(SELECT count(*) FROM token_audit)";
   const auditCounts = (await sql(auditCountsQuery)).stdout.trim();

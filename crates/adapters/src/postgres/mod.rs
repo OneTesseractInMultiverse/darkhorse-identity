@@ -145,6 +145,7 @@ mod operator_catalog;
 mod operator_catalog_details;
 mod operator_catalog_views;
 pub(crate) mod operator_client_creation;
+pub mod operator_client_rotation;
 mod operator_client_secrets;
 mod operator_clients;
 mod operator_mutations;

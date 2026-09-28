@@ -147,6 +147,18 @@ fn one_time_secrets_only_serialize_through_the_explicit_json_path() {
     let failure = render_failure(&failure, Format::Json).unwrap();
     let failure: serde_json::Value = serde_json::from_slice(&failure).unwrap();
     assert_eq!(failure["error"]["code"], "secret_delivery_failed");
+    assert!(
+        failure["error"]["message"]
+            .as_str()
+            .unwrap()
+            .contains("credential change committed")
+    );
+    assert!(
+        failure["error"]["message"]
+            .as_str()
+            .unwrap()
+            .contains("cannot be recovered")
+    );
     assert_eq!(failure["data"]["committed"], true);
     assert!(failure["data"].get("client_secret").is_none());
     assert!(!failure.to_string().contains(secret));

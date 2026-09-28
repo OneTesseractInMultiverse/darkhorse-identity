@@ -25,7 +25,7 @@ export function catalogOptions(values, stdinIsTTY) {
       "capability",
       "access",
     ].includes(target) ||
-    !["list", "show", "create", "update", "retire", "apply"].includes(
+    !["list", "show", "create", "update", "retire", "rotate", "apply"].includes(
       operation,
     ) ||
     [
@@ -40,6 +40,11 @@ export function catalogOptions(values, stdinIsTTY) {
     ].some((key) => Boolean(values[key]))
   )
     throw invalid();
+  if (
+    target !== "client-secret" &&
+    (values.CATALOG_OVERLAP_SECONDS || values.CATALOG_SECRET_STDOUT)
+  )
+    throw invalid();
   if (target === "access") return accessMutationOptions(values, operation);
   if (["resource", "scope", "role", "capability"].includes(target))
     return accessCatalogOptions(values, target, operation);
@@ -50,6 +55,7 @@ export function catalogOptions(values, stdinIsTTY) {
   )
     throw invalid();
   if (target === "client-secret") return clientSecretOptions(values, operation);
+  if (operation === "rotate") throw invalid();
   if (operation === "retire" || values.CATALOG_SECRET_ID) throw invalid();
   if (target === "client" && ["create", "update"].includes(operation))
     return clientUpdateOptions(values, operation);

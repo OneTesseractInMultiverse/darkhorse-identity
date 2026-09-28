@@ -512,6 +512,7 @@ mod operator_catalog_details;
 
 mod operator_applications;
 
+mod operator_client_rotation;
 mod operator_client_secrets;
 mod operator_clients;
 

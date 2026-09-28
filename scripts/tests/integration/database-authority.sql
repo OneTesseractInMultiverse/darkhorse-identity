@@ -58,6 +58,9 @@ BEGIN
   'TRUNCATE operator_client_audit',
   'TRUNCATE operator_client_creation_audit',
   'TRUNCATE operator_client_secret_audit',
+  'UPDATE operator_client_secret_rotation_audit SET result=result WHERE false',
+  'DELETE FROM operator_client_secret_rotation_audit WHERE false',
+  'TRUNCATE operator_client_secret_rotation_audit',
   'UPDATE operator_access_catalog_audit SET result=result WHERE false',
   'DELETE FROM operator_access_catalog_audit WHERE false',
   'TRUNCATE operator_access_catalog_audit',
@@ -106,6 +109,8 @@ INSERT INTO security_audit(event,principal_id,principal_revision,credential_epoc
  VALUES('account.revoked','00000000-0000-0000-0000-000000000123',0,0);
 INSERT INTO operator_access_catalog_audit(operation_id,command,expected_revision,reason,result,occurred_ms)
  VALUES('00000000-0000-0000-0000-000000000999','role.create',0,'runtime grant verification','denied',0);
+INSERT INTO operator_client_secret_rotation_audit(operation_id,application_id,client_id,expected_revision,overlap_seconds,reason,result,occurred_ms)
+ VALUES('00000000-0000-0000-0000-000000000998','00000000-0000-0000-0000-000000000001','00000000-0000-0000-0000-000000000002',0,0,'runtime grant verification','denied',0);
 DO $$ BEGIN
  IF NOT EXISTS(SELECT 1 FROM security_audit WHERE database_role='darkhorse_runtime'
    AND principal_id='00000000-0000-0000-0000-000000000123') THEN
@@ -114,6 +119,10 @@ DO $$ BEGIN
  IF NOT EXISTS(SELECT 1 FROM operator_access_catalog_audit WHERE database_role='darkhorse_runtime'
    AND operation_id='00000000-0000-0000-0000-000000000999' AND result='denied') THEN
   RAISE EXCEPTION 'operator access audit insert or role provenance failed';
+ END IF;
+ IF NOT EXISTS(SELECT 1 FROM operator_client_secret_rotation_audit WHERE database_role='darkhorse_runtime'
+   AND operation_id='00000000-0000-0000-0000-000000000998' AND result='denied') THEN
+  RAISE EXCEPTION 'client-secret rotation audit insert or role provenance failed';
  END IF;
 END $$;
 ROLLBACK;

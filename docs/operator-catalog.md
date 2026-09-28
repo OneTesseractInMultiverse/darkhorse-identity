@@ -12,8 +12,9 @@ This implements catalog inspection in [#26](https://github.com/OneTesseractInMul
 through the same command group and launchers. [Client creation and configuration updates](operator-clients.md)
 are also available. [Access-catalog operations](operator-access-catalog.md) adds
 explicit resource, scope, role and capability views plus revision-fenced catalog
-and binding changes. Client creation, secret rotation and delegated management
-permissions remain separate work. The reads described here never query
+and binding changes. Client creation and explicit one-time secret rotation are
+available in the [credential commands](operator-client-secrets.md); delegated
+management permissions remain separate work. The reads described here never query
 client credentials, including their nonsecret lifecycle metadata.
 
 ## Invocation and page contract
@@ -296,5 +297,9 @@ and [shared configuration reader](../crates/adapters/src/postgres/registration/r
 `operator client secret` subgroup and `CATALOG_TARGET=client-secret` in all four
 launchers. Inventory selects only bounded lifecycle metadata, including historical
 credentials. Retirement requires scoped identifiers, current revision, confirmation
-and reason, and shares the HTTP registration transaction rules. Neither ordinary
-client list/show nor configuration update acquires secret retrieval behavior.
+and reason, and shares the HTTP registration transaction rules. Rotation requires
+the current revision, bounded overlap, confirmation and explicit one-time JSON
+stdout delivery. It reuses the registration policy, exclusive mutation fence and
+append-only audit. Neither ordinary client list/show nor configuration update
+acquires secret retrieval behavior. Full Kubernetes cluster qualification of
+rotation remains outstanding.

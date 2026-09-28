@@ -99,7 +99,7 @@ impl Failure {
         }
         Self {
             code: "secret_delivery_failed",
-            message: "Client creation committed but the secret could not be delivered. Locate and retire the credential before creating a replacement.",
+            message: "The client credential change committed, but its secret could not be delivered and cannot be recovered. Inspect the operation audit and current client state; reconcile or retire the undelivered credential before another attempt.",
             exit: 74,
             data: Some(data),
         }

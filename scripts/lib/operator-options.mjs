@@ -44,6 +44,8 @@ export function hasCatalogSelectors(values) {
     "CATALOG_APPLICATION_ID",
     "CATALOG_CLIENT_ID",
     "CATALOG_SECRET_ID",
+    "CATALOG_OVERLAP_SECONDS",
+    "CATALOG_SECRET_STDOUT",
     "CATALOG_SEARCH",
     "CATALOG_STATUS",
     "CATALOG_AFTER",

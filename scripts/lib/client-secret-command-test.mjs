@@ -38,16 +38,63 @@ COMMIT;`);
     { id: secret, created_ms: 0, expires_ms: null, retired: false },
   ]);
   assert.equal(first.next, null);
+  const rotate = {
+    ...base,
+    CATALOG_OPERATION: "rotate",
+    CATALOG_REVISION: "0",
+    CATALOG_OVERLAP_SECONDS: "30",
+    CATALOG_CONFIRM: "yes",
+    CATALOG_SECRET_STDOUT: "yes",
+  };
+  const rotatedResponse = await invoke(
+    rotate,
+    JSON.stringify({ email, password, reason: "Rotate fixture credential" }),
+  );
+  const rotated = accountResult(rotatedResponse, 0);
+  assert.equal(rotated.revision, "1");
+  assert.equal(rotated.overlap_seconds, 30);
+  assert.equal(rotated.client_secret.length, 64);
+  assert.notEqual(rotated.secret_id, secret);
+  for (const hidden of [password, email, verifier])
+    assert.ok(
+      !rotatedResponse.stderr.includes(hidden),
+      "operator credentials and stored verifier stay out of diagnostics",
+    );
+  assert.equal(
+    (
+      await sql(
+        `SELECT count(*) FROM oauth_client_secrets WHERE id='${secret}' AND expires_ms IS NOT NULL AND NOT retired;`,
+      )
+    ).stdout.trim(),
+    "1",
+    "the previous secret honors the explicit overlap window",
+  );
+  assert.equal(
+    (
+      await sql(
+        `SELECT count(*) FROM operator_client_secret_rotation_audit WHERE client_id='${client}' AND result='written' AND overlap_seconds=30 AND database_role='darkhorse_runtime';`,
+      )
+    ).stdout.trim(),
+    "1",
+  );
+  const rotationAudit = (
+    await sql(
+      `SELECT row_to_json(a)::text FROM operator_client_secret_rotation_audit a WHERE client_id='${client}' AND reason LIKE '%credential%' AND result='written';`,
+    )
+  ).stdout.trim();
+  assert.ok(rotationAudit);
+  for (const hidden of [password, email, verifier, rotated.client_secret])
+    assert.ok(!rotationAudit.includes(hidden));
   const retire = {
     ...base,
     CATALOG_OPERATION: "retire",
     CATALOG_SECRET_ID: secret,
-    CATALOG_REVISION: "0",
+    CATALOG_REVISION: "1",
     CATALOG_CONFIRM: "yes",
   };
   const response = await invoke(retire, mutation);
   const changed = accountResult(response, 0);
-  assert.equal(changed.revision, "1");
+  assert.equal(changed.revision, "2");
   assert.equal(changed.secret_id, secret);
   assert.equal(changed.completed, true);
   for (const hidden of [password, email, verifier])
@@ -55,9 +102,19 @@ COMMIT;`);
       !response.stdout.includes(hidden) && !response.stderr.includes(hidden),
     );
   accountResult(await invoke(retire, mutation), 2, /changed/);
-  const current = accountResult(await invoke(base, read), 0);
-  assert.equal(current.revision, "1");
-  assert.equal(current.items[0].retired, true);
+  const current = JSON.parse(
+    (
+      await sql(
+        `SELECT coalesce(json_agg(json_build_object('id',id::text,'retired',retired) ORDER BY id)::text,'[]') FROM oauth_client_secrets WHERE client_id='${client}';`,
+      )
+    ).stdout.trim(),
+  );
+  assert.equal(current.length, 2);
+  assert.equal(current.find((item) => item.id === secret).retired, true);
+  assert.equal(
+    current.find((item) => item.id === rotated.secret_id).retired,
+    false,
+  );
   await sql(
     `DELETE FROM platform_administrators WHERE principal_id='${actor}';`,
   );
@@ -80,7 +137,7 @@ COMMIT;`);
         `SELECT count(*) FROM operator_client_secret_audit WHERE actor_id='${actor}' AND database_role='darkhorse_runtime';`,
       )
     ).stdout.trim(),
-    "5",
+    "4",
   );
   assert.equal(
     (
@@ -88,6 +145,6 @@ COMMIT;`);
         `SELECT count(*) FROM registration_audit WHERE actor_id='${actor}';`,
       )
     ).stdout.trim(),
-    "1",
+    "2",
   );
 }

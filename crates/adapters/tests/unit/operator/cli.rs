@@ -719,6 +719,121 @@ fn client_secret_inventory_and_retirement_are_scoped_and_have_distinct_confirmat
 }
 
 #[test]
+fn client_secret_rotation_requires_explicit_stdout_delivery_json_authentication_and_confirmation() {
+    let app = "00000000-0000-0000-0000-000000000001";
+    let client = "00000000-0000-0000-0000-000000000002";
+    let rotation = run(&[
+        "--auth-stdin",
+        "--output",
+        "json",
+        "--yes",
+        "operator",
+        "client",
+        "secret",
+        "rotate",
+        app,
+        client,
+        "7",
+        "--overlap-seconds",
+        "30",
+        "--secret-stdout",
+    ]);
+    assert!(crate::operator::command::requires_confirmation(
+        &rotation.command
+    ));
+    assert!(matches!(
+        rotation.command,
+        Command::ClientSecretRotation {
+            overlap_seconds: 30,
+            ..
+        }
+    ));
+    assert!(
+        crate::operator::confirmation::confirm(
+            &rotation.command,
+            false,
+            Format::Json,
+            true,
+            darkhorse_domain::localization::Locale::English,
+        )
+        .is_err()
+    );
+
+    for args in [
+        vec![
+            "--auth-stdin",
+            "--output",
+            "json",
+            "--yes",
+            "operator",
+            "client",
+            "secret",
+            "rotate",
+            app,
+            client,
+            "7",
+            "--overlap-seconds",
+            "30",
+        ],
+        vec![
+            "--auth-stdin",
+            "--output",
+            "human",
+            "--yes",
+            "operator",
+            "client",
+            "secret",
+            "rotate",
+            app,
+            client,
+            "7",
+            "--overlap-seconds",
+            "30",
+            "--secret-stdout",
+        ],
+        vec![
+            "--auth-stdin",
+            "--output",
+            "json",
+            "--yes",
+            "operator",
+            "client",
+            "secret",
+            "rotate",
+            app,
+            client,
+            "7",
+            "--overlap-seconds",
+            "301",
+            "--secret-stdout",
+        ],
+        vec![
+            "--auth-stdin",
+            "--output",
+            "json",
+            "--yes",
+            "operator",
+            "client",
+            "secret",
+            "rotate",
+            app,
+            client,
+            "7",
+            "--overlap-seconds",
+            "30",
+            "--secret-stdout",
+            "--after",
+            app,
+        ],
+    ] {
+        assert!(
+            parse(&args).is_err(),
+            "accepted invalid rotation arguments: {args:?}"
+        );
+    }
+}
+
+#[test]
 fn access_lists_require_explicit_scope_and_reject_irrelevant_selectors() {
     let app = "00000000-0000-0000-0000-000000000001";
     for kind in ["resource", "scope", "role", "capability"] {

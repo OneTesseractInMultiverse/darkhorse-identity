@@ -91,36 +91,37 @@ stdin and privilege boundaries. Language selection supplies no extra permissions
 `make test-cli` exercises real processes and terminal restoration in both languages;
 source-defined tests separately cover resolution, output bounds and JSON stability.
 
-| Canonical command                                                                                | Compatibility spelling                                |
-| ------------------------------------------------------------------------------------------------ | ----------------------------------------------------- |
-| `operator migrate`                                                                               | `migrate`                                             |
-| `operator migrate inspect OPERATION_ID`                                                          | None                                                  |
-| `operator bootstrap [--stdin]`                                                                   | `bootstrap [--stdin]`                                 |
-| `operator account list [--search PREFIX] [--status STATUS] [--after UUID] [--limit N]`           | None                                                  |
-| `operator application list [OPTIONS]`                                                            | None                                                  |
-| `operator client list APPLICATION_ID [OPTIONS]`                                                  | None                                                  |
-| `operator application show APPLICATION_ID`                                                       | None                                                  |
-| `operator client show APPLICATION_ID CLIENT_ID`                                                  | None                                                  |
-| `operator application create --name NAME --owner ID --status STATUS`                             | None                                                  |
-| `operator application update APPLICATION_ID REVISION --name NAME --owner ID --status STATUS`     | None                                                  |
-| `operator client update APPLICATION_ID CLIENT_ID REVISION`                                       | None                                                  |
-| `operator client secret list APPLICATION_ID CLIENT_ID [--after UUID] [--limit N]`                | None                                                  |
-| `operator client secret retire APPLICATION_ID CLIENT_ID SECRET_ID REVISION`                      | None                                                  |
-| `operator account show ID`                                                                       | `account ID`                                          |
-| `operator account deactivate ID REVISION`                                                        | `deactivate ID REVISION`                              |
-| `operator account reactivate ID REVISION`                                                        | `reactivate ID REVISION`                              |
-| `operator account revoke-all ID REVISION`                                                        | `revoke-all ID REVISION`                              |
-| `operator signing status`                                                                        | `signing-status`                                      |
-| `operator signing generate REVISION`                                                             | `signing-generate REVISION`                           |
-| `operator signing import --stdin REVISION`                                                       | `signing-import --stdin REVISION`                     |
-| `operator signing activate KID REVISION`                                                         | `signing-activate KID REVISION`                       |
-| `operator signing retire KID REVISION`                                                           | `signing-retire KID REVISION`                         |
-| `operator signing inspect OPERATION_ID`                                                          | None                                                  |
-| `operator limiter status/fence/activate`                                                         | `limiter-status`, `limiter-fence`, `limiter-activate` |
-| `operator limiter inspect OPERATION_ID`                                                          | None                                                  |
-| `operator redis status`                                                                          | `redis-status`                                        |
-| `operator resource list APPLICATION_ID` / `operator scope list APPLICATION_ID`                   | None                                                  |
-| `operator role list` / `operator capability list` with `--application ID` or `--all-definitions` | None                                                  |
+| Canonical command                                                                                     | Compatibility spelling                                |
+| ----------------------------------------------------------------------------------------------------- | ----------------------------------------------------- |
+| `operator migrate`                                                                                    | `migrate`                                             |
+| `operator migrate inspect OPERATION_ID`                                                               | None                                                  |
+| `operator bootstrap [--stdin]`                                                                        | `bootstrap [--stdin]`                                 |
+| `operator account list [--search PREFIX] [--status STATUS] [--after UUID] [--limit N]`                | None                                                  |
+| `operator application list [OPTIONS]`                                                                 | None                                                  |
+| `operator client list APPLICATION_ID [OPTIONS]`                                                       | None                                                  |
+| `operator application show APPLICATION_ID`                                                            | None                                                  |
+| `operator client show APPLICATION_ID CLIENT_ID`                                                       | None                                                  |
+| `operator application create --name NAME --owner ID --status STATUS`                                  | None                                                  |
+| `operator application update APPLICATION_ID REVISION --name NAME --owner ID --status STATUS`          | None                                                  |
+| `operator client update APPLICATION_ID CLIENT_ID REVISION`                                            | None                                                  |
+| `operator client secret list APPLICATION_ID CLIENT_ID [--after UUID] [--limit N]`                     | None                                                  |
+| `operator client secret retire APPLICATION_ID CLIENT_ID SECRET_ID REVISION`                           | None                                                  |
+| `operator client secret rotate APPLICATION_ID CLIENT_ID REVISION --overlap-seconds N --secret-stdout` | None                                                  |
+| `operator account show ID`                                                                            | `account ID`                                          |
+| `operator account deactivate ID REVISION`                                                             | `deactivate ID REVISION`                              |
+| `operator account reactivate ID REVISION`                                                             | `reactivate ID REVISION`                              |
+| `operator account revoke-all ID REVISION`                                                             | `revoke-all ID REVISION`                              |
+| `operator signing status`                                                                             | `signing-status`                                      |
+| `operator signing generate REVISION`                                                                  | `signing-generate REVISION`                           |
+| `operator signing import --stdin REVISION`                                                            | `signing-import --stdin REVISION`                     |
+| `operator signing activate KID REVISION`                                                              | `signing-activate KID REVISION`                       |
+| `operator signing retire KID REVISION`                                                                | `signing-retire KID REVISION`                         |
+| `operator signing inspect OPERATION_ID`                                                               | None                                                  |
+| `operator limiter status/fence/activate`                                                              | `limiter-status`, `limiter-fence`, `limiter-activate` |
+| `operator limiter inspect OPERATION_ID`                                                               | None                                                  |
+| `operator redis status`                                                                               | `redis-status`                                        |
+| `operator resource list APPLICATION_ID` / `operator scope list APPLICATION_ID`                        | None                                                  |
+| `operator role list` / `operator capability list` with `--application ID` or `--all-definitions`      | None                                                  |
 
 `ID` is a nonzero principal UUID, `KID` a public URL-safe unpadded 32-byte key ID,
 and `REVISION` a nonnegative integer no larger than PostgreSQL's signed bigint.
@@ -182,9 +183,11 @@ without that flag. Raw aliases do not bypass confirmation.
 
 `operator client secret list APPLICATION_ID CLIENT_ID` returns a bounded lifecycle
 page. `operator client secret retire APPLICATION_ID CLIENT_ID SECRET_ID REVISION`
-requires confirmation and reason. Both use fresh current-administrator authentication;
-JSON output requires `--auth-stdin`. See [credential operations](operator-client-secrets.md)
-for metadata, authority, terminal retirement and reconciliation.
+requires confirmation and reason. Rotation requires an expected revision, an
+explicit 0–300 second overlap and `--secret-stdout`; it releases the new secret
+only through its one-time JSON result. Mutations use fresh current-administrator
+authentication and protected JSON input. See [credential operations](operator-client-secrets.md)
+for the output-loss and reconciliation rules.
 
 ## Output and exit contract
 

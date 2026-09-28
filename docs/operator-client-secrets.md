@@ -1,15 +1,15 @@
 # Client-secret inventory and retirement
 
-The Rust CLI supports bounded credential inventory and explicit retirement for a
-confidential client. Both operations require a freshly authenticated platform
-administrator. Retirement also requires the current client revision, confirmation
-and an audit reason. Application ownership alone grants no administration.
+The Rust CLI supports bounded credential inventory, explicit retirement and
+revision-fenced rotation for a confidential client. These operations require a
+freshly authenticated platform administrator. Mutations also require the current
+client revision, confirmation and an audit reason. Application ownership alone
+grants no administration.
 
 These commands extend [issue #26](https://github.com/OneTesseractInMultiverse/darkhorse-identity/issues/26).
 Client creation with explicit one-time stdout delivery is documented in the
-[client operator guide](operator-clients.md#create-a-client). Secret rotation,
-protected-file delivery and recovery procedures beyond retiring and replacing a
-credential remain separate work. The existing
+[client operator guide](operator-clients.md#create-a-client). Protected-file
+delivery and full response-loss recovery remain separate work. The existing
 [HTTP registration API](registration.md) retains its documented operations.
 
 ## Inspect lifecycle metadata
@@ -84,9 +84,9 @@ applies.
 
 ## Authority and transaction boundary
 
-Both commands use the shared HTTP/CLI login attempt budget and password verifier.
+All commands use the shared HTTP/CLI login attempt budget and password verifier.
 They create no browser session. PostgreSQL remains authoritative; Redis does not
-cache a positive authentication or retirement decision. The process uses the
+cache a positive authentication or credential-change decision. The process uses the
 existing bounded runtime connections and deadlines.
 
 ```mermaid
@@ -106,6 +106,10 @@ sequenceDiagram
         P->>P: Retire credential, increment revision and append registration audit
         P->>P: Recheck authority and release successful savepoint
         P->>P: Append operator outcome audit
+    else Rotation: exclusive fence
+        P->>P: Check current revision and overlap bounds
+        P->>P: Rotate verifier, apply overlap and increment revision
+        P->>P: Append registration and rotation audits
     end
     P->>P: Final successful-result authority check
     P-->>C: Commit acknowledgement
@@ -118,8 +122,8 @@ occur after fence waits, after reading or mutating state, and after a successful
 result's audit insertion. In-flight work already holding the fence may finish
 before a waiting authority reduction.
 
-Retirement shares registration validation and actual credential/revision SQL with
-HTTP. Both paths require exactly one credential update and one revision increment.
+Retirement and rotation share registration validation and actual credential/revision
+SQL with HTTP. These paths require exactly one credential update and one revision increment.
 Suppressed writes, missing audit rows and persistence failures roll back the change.
 The CLI's savepoint allows supported denials, missing targets and revision conflicts
 to be audited without preserving partial mutation effects. Late authority loss
@@ -127,7 +131,8 @@ cannot release inventory or a successful retirement response.
 
 ## Audit, migration and reconciliation
 
-Migration `0030` adds `operator_client_secret_audit` and the inventory index.
+Migration `0030` adds `operator_client_secret_audit` and the inventory index;
+migration `0040` adds `operator_client_secret_rotation_audit`.
 Stop serving, apply migrations explicitly and refresh the reviewed
 [runtime grant policy](database-authority.md) before using these commands. Neither
 server startup nor a launcher applies schema changes. The runtime role receives
@@ -135,23 +140,66 @@ SELECT/INSERT on the ledger; the nonowner deployment operator receives no access
 Normal runtime token authentication still needs client-secret verifier access.
 The CLI's metadata-only projection does not remove that runtime requirement.
 
-Each successful page or retirement requires a committed operator audit. Retirement
-also requires the existing registration audit in the same transaction. The new
-ledger records operation, scoped target, cursor/page size or retirement reason and
-expected revision, verified authentication facts, result, resulting revision or
-returned count, time and database role. It excludes passwords, secret values,
-verifiers, client names and email addresses. Requested target identifiers lack
-foreign keys so a missing-target attempt can still be recorded. Database owners
-remain trusted; append-only grants are not tamper-proof storage.
+Each successful page, retirement or rotation requires a committed operator audit.
+Both mutations also require the existing registration audit in the same transaction.
+The ledgers record operation, scoped target, cursor/page size or mutation reason
+and expected revision, verified authentication facts, result, resulting revision,
+returned count or new secret ID, time and database role. They exclude passwords,
+secret values, verifiers, client names and email addresses. Requested target
+identifiers lack foreign keys so a missing-target attempt can still be recorded.
+Database owners remain trusted; append-only grants are not tamper-proof storage.
 
 A failed commit acknowledgement returns an unknown outcome and never triggers an
-automatic retry. A broken output stream can follow a committed retirement and
+automatic retry. A broken output stream can follow a committed mutation and
 returns exit `74`; it may also prevent delivery of the operation ID. Reconcile the
 primary audit and current inventory before retrying. Use the operation ID if
 received, otherwise the scoped identifiers, actor, expected revision and time.
 An absent row does not rule out an in-flight transaction. Admission or infrastructure
 failure can precede any audit record. This is manual reconciliation, not a durable
 intent/receipt protocol for secret delivery.
+
+## Rotate one credential
+
+Rotation creates a new random 256-bit client secret, stores only the existing
+purpose-separated verifier, increments the client revision once and applies an
+explicit overlap to the previously current secret. Use the revision from a fresh
+inventory or client detail read:
+
+```sh
+darkhorse-server --auth-stdin --output json --yes operator client secret rotate <application-uuid> <client-uuid> <revision> --overlap-seconds 60 --secret-stdout < /private/path/rotation.json
+```
+
+Protected input contains `email`, `password` and `reason`. Rotation requires
+`--auth-stdin`, `--output json`, `--yes`, an explicit `--overlap-seconds` from 0
+through 300, and `--secret-stdout`. The last flag is a deliberate opt-in to write
+the newly generated secret to stdout once. The secret is present only in the
+successful JSON response as `data.client_secret`; ordinary rendering, errors,
+audits, list/show responses and diagnostic output never include it. The secret
+uses the operating system random source and is zeroized in process-owned buffers
+after output handling. Protect stdout from terminal recording, shell capture and
+automation logs just as you protect the input file.
+
+The prior current secret remains valid until its stored `expires_ms` when overlap
+is nonzero. An overlap of zero ends its validity at the rotation transaction's
+database time. Any older secret already in an overlap period is retired as the
+new rotation takes effect. The bound prevents an operator from accidentally
+leaving old credentials valid indefinitely. This changes client authentication;
+it does not revoke already issued access tokens or refresh-token families.
+
+Successful output contains the scoped application/client IDs, operation ID,
+new secret ID, new revision and overlap in addition to the one-time secret. A
+stale revision, foreign client, denied administrator or failed audit cannot
+change credentials or release secret material. The rotation and registration
+audits commit with the credential update. Migration `0040` adds a separate
+append-only outcome ledger and runtime SELECT/INSERT grants.
+
+If stdout breaks after commit, the CLI reports `secret_delivery_failed` with
+`committed: true` and the returned secret ID/revision, but the secret itself
+cannot be recovered. Inspect the rotation audit and current client state. Do not
+repeat the same stale revision: choose a deliberate follow-up rotation after
+reconciling which credential can still authenticate. A lost commit acknowledgement
+is also uncertain and never retries automatically. Migration `0040` and reviewed
+runtime grants must be applied with serving stopped before deployment.
 
 ## Compose and Kubernetes launchers
 
@@ -160,6 +208,7 @@ All four catalog targets support `CATALOG_TARGET=client-secret`:
 
 ```sh
 make stack-catalog-run STACK=trial CATALOG_TARGET=client-secret CATALOG_APPLICATION_ID=<application-uuid> CATALOG_CLIENT_ID=<client-uuid> CATALOG_LIMIT=25 < /private/path/authentication.json
+make stack-catalog-run STACK=trial CATALOG_TARGET=client-secret CATALOG_OPERATION=rotate CATALOG_APPLICATION_ID=<application-uuid> CATALOG_CLIENT_ID=<client-uuid> CATALOG_REVISION=<revision> CATALOG_OVERLAP_SECONDS=60 CATALOG_CONFIRM=yes CATALOG_SECRET_STDOUT=yes < /private/path/rotation.json
 make kube-catalog-exec KUBE_CONFIG=/absolute/path/identity.json KUBE_ACCESS=/absolute/path/access.yaml KUBE_CONTEXT=reviewed-context ACCOUNT_POD=<reviewed-pod> CATALOG_TARGET=client-secret CATALOG_OPERATION=retire CATALOG_APPLICATION_ID=<application-uuid> CATALOG_CLIENT_ID=<client-uuid> CATALOG_SECRET_ID=<secret-uuid> CATALOG_REVISION=<revision> CATALOG_CONFIRM=yes < /private/path/retirement.json
 ```
 
@@ -168,8 +217,13 @@ Inventory defaults to `CATALOG_OPERATION=list`; optional selectors are
 `retire`, `CATALOG_SECRET_ID`, `CATALOG_REVISION` and `CATALOG_CONFIRM=yes`.
 Both require application and client IDs. Conflicting account, configuration, search
 and status selectors are rejected. Inventory rejects retirement selectors;
-retirement rejects pagination selectors. Credentials and reason travel through
-protected stdin, never arguments or workload specifications.
+retirement and rotation reject pagination selectors. Rotation also requires
+`CATALOG_OVERLAP_SECONDS` from 0 through 300, `CATALOG_CONFIRM=yes`, and
+`CATALOG_SECRET_STDOUT=yes`; the result is one-time JSON on stdout. Credentials
+and reason travel through protected stdin, never arguments or workload
+specifications. Use this only where stdout is protected from capture. Kubernetes
+launcher acceptance is covered by selector/process contract tests; full cluster
+qualification for rotation remains outstanding.
 
 The [container execution contract](container-accounts.md) defines reviewed targets,
 restricted runtime credentials, deadlines, cleanup and uncertain execution.

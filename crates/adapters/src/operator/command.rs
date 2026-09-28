@@ -28,6 +28,11 @@ pub enum Command {
         target: darkhorse_domain::operator_client_secrets::Target,
         operation: darkhorse_domain::operator_client_secrets::Operation,
     },
+    ClientSecretRotation {
+        target: darkhorse_domain::operator_client_secrets::Target,
+        revision: u64,
+        overlap_seconds: u16,
+    },
     ClientUpdate {
         application: darkhorse_domain::identity::ApplicationId,
         client: darkhorse_domain::identity::ClientId,

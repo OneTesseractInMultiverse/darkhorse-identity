@@ -39,6 +39,7 @@ pub mod operator_directory;
 pub mod operator_applications;
 pub mod operator_catalog;
 pub mod operator_client_creation;
+pub mod operator_client_rotation;
 pub mod operator_client_secrets;
 pub mod operator_clients;
 pub mod policy_map;

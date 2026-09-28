@@ -7,6 +7,7 @@ mod catalog;
 mod catalog_details;
 mod catalog_views;
 pub mod cli;
+mod client_secret_rotation;
 mod client_secrets;
 mod clients;
 pub mod command;
@@ -34,6 +35,14 @@ pub async fn run(command: Command, auth_stdin: bool, locale: Locale) -> Result<O
         Command::ClientSecret { target, operation } => {
             client_secrets::run(target, operation, auth_stdin, locale).await
         }
+        Command::ClientSecretRotation {
+            target,
+            revision,
+            overlap_seconds,
+        } if auth_stdin => {
+            client_secret_rotation::run(target, revision, overlap_seconds, locale).await
+        }
+        Command::ClientSecretRotation { .. } => Err(Failure::usage()),
         Command::ClientUpdate {
             application,
             client,

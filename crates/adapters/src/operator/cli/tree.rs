@@ -321,6 +321,18 @@ pub(super) enum ClientSecret {
         #[arg(value_parser=counter)]
         revision: u64,
     },
+    /// Rotate one scoped client secret and disclose the new value exactly once as JSON.
+    Rotate {
+        #[command(flatten)]
+        target: SecretTarget,
+        #[arg(value_parser=counter)]
+        revision: u64,
+        #[arg(long, value_parser=clap::value_parser!(u16).range(0..=300))]
+        overlap_seconds: u16,
+        /// Explicitly permit this command to write the new secret to stdout.
+        #[arg(long)]
+        secret_stdout: bool,
+    },
 }
 #[derive(Args)]
 pub(super) struct SecretTarget {
