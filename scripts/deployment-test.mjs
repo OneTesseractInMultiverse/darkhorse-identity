@@ -775,7 +775,20 @@ async function archive() {
   const archive = await backup(stack);
   const auditCountsQuery =
     "SELECT (SELECT count(*) FROM principals),(SELECT count(*) FROM operator_catalog_audit),(SELECT count(*) FROM operator_catalog_detail_audit),(SELECT count(*) FROM operator_access_detail_audit),(SELECT count(*) FROM operator_application_audit),(SELECT count(*) FROM operator_client_audit),(SELECT count(*) FROM operator_client_secret_audit),(SELECT count(*) FROM operator_client_creation_audit)";
+  const lifecycleCountsQuery =
+    "SELECT (SELECT count(*) FROM browser_sessions),(SELECT count(*) FROM session_audit),(SELECT count(*) FROM authorization_codes),(SELECT count(*) FROM access_tokens),(SELECT count(*) FROM refresh_families),(SELECT count(*) FROM oauth_consents),(SELECT count(*) FROM consent_audit),(SELECT count(*) FROM relying_party_sessions),(SELECT count(*) FROM token_audit)";
   const auditCounts = (await sql(auditCountsQuery)).stdout.trim();
+  const lifecycleCounts = (await sql(lifecycleCountsQuery)).stdout.trim();
+  const lifecycleRows = lifecycleCounts.split("|").map(Number);
+  assert.equal(lifecycleRows.length, 9);
+  assert.ok(lifecycleRows.every(Number.isSafeInteger));
+  for (const [table, index] of [
+    ["browser_sessions", 0],
+    ["session_audit", 1],
+    ["relying_party_sessions", 7],
+    ["token_audit", 8],
+  ])
+    assert.ok(lifecycleRows[index] > 0, `lifecycle fixture table ${table}`);
   const bytes = await readFile(join(archive, "database.dump"));
   const inventory = await compose(
     stack,
@@ -783,6 +796,17 @@ async function archive() {
     { input: bytes, capture: true },
   );
   assert.match(inventory.stdout, /browser_sessions/);
+  for (const table of [
+    "session_audit",
+    "authorization_codes",
+    "access_tokens",
+    "refresh_families",
+    "oauth_consents",
+    "consent_audit",
+    "relying_party_sessions",
+    "token_audit",
+  ])
+    assert.ok(inventory.stdout.includes(table), `archive table ${table}`);
   // Restore only to a separate quarantined database with no HTTP configuration.
   await compose(
     stack,
@@ -821,8 +845,25 @@ async function archive() {
     captured,
   );
   assert.equal(restored.stdout.trim(), auditCounts);
+  const restoredLifecycle = await compose(
+    stack,
+    [
+      "exec",
+      "-T",
+      "postgres",
+      "psql",
+      "-U",
+      "postgres",
+      "-d",
+      "quarantine",
+      "-Atc",
+      lifecycleCountsQuery,
+    ],
+    captured,
+  );
+  assert.equal(restoredLifecycle.stdout.trim(), lifecycleCounts);
   console.log(
-    "Cache degradation, restrictive limiter restart/recovery, database outage, durable restart and quarantined archive restore passed.",
+    "Cache degradation, restrictive limiter restart/recovery, database outage, durable restart and quarantined lifecycle/audit archive restore passed.",
   );
 }
 

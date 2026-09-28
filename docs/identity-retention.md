@@ -60,12 +60,25 @@ Principals, credentials, applications, OAuth clients and access-catalog records 
 5. Treat cancellation, shutdown, uncertain command outcomes and backup restoration as first-class cases. A later sweep must recompute eligibility against restored primary state; a partial batch must not remove its audit or replay dependencies.
 6. Add only aggregate, bounded backlog/age/deletion/failure metrics. Do not label metrics with principals, clients, identifiers, queries or credentials.
 
+The packaged Compose boundary test backs up a stopped identity stack, restores the
+archive only into a separate database with no HTTP configuration, and compares
+the source/restored table inventory and row counts for sessions, session audits,
+codes, access and refresh credentials, consents, relying-party session references
+and token audits. This checks that logical backup preserves the tested rows and
+their reference counts. It does not establish transactionally consistent
+point-in-time recovery, safe restoration into service, or preservation of
+revocations made after the archive. A restored database must remain quarantined
+until an independently reviewed recovery procedure reconciles credentials,
+signing material, limiter state and external objects. The periodic sweeps use
+restored primary-database time when run; their eligibility checks do not make
+serving a stale authorization snapshot safe.
+
 ## Retention work still open
 
 - How session audit keeps its immutable target and actor references if the browser-session row eventually becomes eligible for deletion.
 - How `sid` associations remain available through any future signed logout delivery, retry and terminal-failure window.
 - Which consent snapshots remain in the live table versus an approved immutable archive.
-- Backup/restore qualification and organization-specific retention for audit, consent and session references. Credential sweeps recompute eligibility against restored primary database time; stale metrics or pre-restore sweep state is never an authority.
+- Restore-to-service qualification and organization-specific retention for audit, consent and session references. The Compose fixture checks quarantine table presence and row counts only; credential sweeps recompute eligibility against restored primary database time, while stale metrics or pre-restore sweep state is never an authority.
 
 The authorization-request, legacy access-token and terminal authorization-code sweeps check primary database time while holding the shared primary-authority fence. A delay or failure in cleanup never extends a credential's protocol lifetime or grants access. Lock contention, statement failure and shutdown leave the batch retryable. Credential removal follows refresh-family dependencies; a family or token row that could still affect authorization blocks code deletion. The queries emit no per-record logs or metric labels.
 
