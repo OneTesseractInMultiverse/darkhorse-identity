@@ -20,6 +20,7 @@ WEB := $(PNPM) --filter @darkhorse/console
 .PHONY: redis-setup redis-up redis-down redis-status test-redis test-redis-introspection docker-redis-smoke
 .PHONY: redis-acl-update limiter-fence limiter-activate limiter-status
 .PHONY: test-limiting test-mutation-limiting test-mutation-recovery coverage-core coverage-integration
+.PHONY: test-development-process
 .PHONY: login-setup dev-login browser-install test-browser test-browser-focused
 .PHONY: test-registration test-refresh test-sessions test-catalog test-personal-keys
 .PHONY: api-inventory-generate api-inventory-check api-classification-generate api-classification-check api-spec-check api-reference-bundle api-docs-budget-check
@@ -96,7 +97,10 @@ architecture-check: ## Check: inward crate dependencies and static frontend boun
 workflow-policy-check: ## Check: hosted CI permissions, credentials, timeouts, actions and artifacts
 	$(NODE) scripts/ci-workflow-policy-check.mjs
 
-check: fmt-check lint typecheck architecture-check workflow-policy-check i18n-check api-inventory-check api-classification-check api-spec-check test-unit ## Check: complete fast verification; no services or certificate setup
+test-development-process: ## Test: occupied ports and owned process cleanup preserve unrelated listeners
+	$(NODE) scripts/development-process-safety-test.mjs
+
+check: fmt-check lint typecheck architecture-check workflow-policy-check i18n-check api-inventory-check api-classification-check api-spec-check test-development-process test-unit ## Check: complete fast verification; no services or certificate setup
 
 ci: check build ## Check: fast verification plus release/static builds
 

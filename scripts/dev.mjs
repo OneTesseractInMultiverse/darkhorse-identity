@@ -1,10 +1,10 @@
 import { access, mkdir } from "node:fs/promises";
-import { createServer } from "node:net";
 import { request } from "node:https";
 import { readFile } from "node:fs/promises";
 import { setTimeout as delay } from "node:timers/promises";
 import { startProcess, interruption } from "./lib/process.mjs";
 import { supervise } from "./lib/supervisor.mjs";
+import { requireFreePort } from "./lib/development-ports.mjs";
 
 const mode = process.argv[2] ?? "all";
 const caddy = process.env.CADDY ?? "caddy";
@@ -14,21 +14,6 @@ const specs = {
   web: { command: "pnpm", args: ["--filter", "@darkhorse/console", "dev"] },
   proxy: { command: caddy, args: ["run", "--config", "config/Caddyfile"] },
 };
-
-async function requireFreePort(port) {
-  const server = createServer();
-  await new Promise((resolve, reject) => {
-    server.once("error", () =>
-      reject(
-        new Error(
-          `Port ${port} is occupied. Stop its owner before starting development.`,
-        ),
-      ),
-    );
-    server.listen(port, "127.0.0.1", resolve);
-  });
-  await new Promise((resolve) => server.close(resolve));
-}
 
 async function prepare() {
   process.umask(0o077);

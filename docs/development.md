@@ -91,6 +91,13 @@ An internal service URL must never become a second issuer.
 
 `make dev` runs in the foreground with combined logs. Ctrl-C or termination stops only process groups started by that invocation. Missing tools, occupied ports, early child exits, and readiness timeouts produce errors and stop owned peers. No command kills a process for occupying a desired port. The proxy routes reserved API/OIDC paths to Rust before forwarding frontend paths. Unknown protocol routes return errors. Static fallback never masks them.
 
+`make test-development-process` checks this boundary with disposable loopback
+listeners and real child process groups: an occupied listener remains usable,
+owned descendants stop with their parent, and a separate listener stays alive.
+The isolated trust-script tests use stubbed host tools and temporary certificate
+files; they verify that untrust removes the trust setting without deleting the
+project CA. They never modify the machine's keychain.
+
 If a certificate warning appears, verify the displayed fingerprint and configure the intended client trust store. If port 3001, 5173, or 8443 is occupied, stop its owner or use another workspace session after stopping the first. If Caddy is missing, install the documented version or pass `CADDY=/absolute/path/caddy`.
 
 The Rust service reads these optional variables with validated defaults:

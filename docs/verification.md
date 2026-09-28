@@ -689,6 +689,20 @@ runtime role when browser-session audit writes are unavailable. See
 [operator access catalog](operator-access-catalog.md) for the command contract and
 migration `0039`.
 
+## Host-local process and HTTPS trust checks
+
+The #2 qualification increment adds `make test-development-process` to `make
+check` and `make ci`. On the supported macOS development host, the test used real
+loopback listeners and owned child process groups to verify that an occupied port
+is refused without disrupting its listener and that shutdown stops a spawned
+descendant while an unrelated listener remains available. Three source-defined
+trust-script tests stub the host tools and prove that trust uses the project CA,
+untrust removes its trust setting without deleting that CA, and missing or
+non-macOS trust setup fails before invoking trust tools. The tests do not modify
+the machine keychain. Full `make ci` passed, including the new process test and
+all existing isolated suites and builds. Hosted repository protection and test-PR
+qualification remain separate work under #2 and #34.
+
 ## Release interpretation
 
 Open requirements include complete coverage, privileged authentication assurance,
