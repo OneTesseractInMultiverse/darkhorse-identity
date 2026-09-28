@@ -188,3 +188,43 @@ Sustained administration, cold storage, varied effective policy sizes, cache
 alternatives and Compose/Kubernetes replica scheduling still need measurement.
 No connection limit, rate limit or security control was relaxed to obtain these
 results.
+
+## September 27, 2026 packaged Compose runtime smoke
+
+`make benchmark-compose-operator-details` prepares a fresh packaged Compose
+stack, provisions its disposable administrator and OIDC client, and then drives
+verified HTTPS introspection alongside two authenticated CLI readers executed
+inside the restricted `api` container. PostgreSQL audit queries confirm the
+runtime database role for each result. The command removes its project, network,
+named volumes, secrets, and certificates on exit. Its bounded, identifier-free
+report remains under the ignored `.local/benchmarks/` directory.
+
+This run used source commit `c12b702d83b4070fb30b215c83f3a02178b04bb3`,
+Docker image `sha256:926afb30adfca1e88f1e1d7f8d6e51e175ef85ebd210ad61c2416840973d233f`,
+Apple M5, Docker 29.6.2 (10 CPUs, 7.75 GiB), Percona PostgreSQL 18.6.1,
+Redis 8.10.1, and the deployment's 2-CPU/512-MiB service limits. The API and
+each CLI process use the configured five-connection maximum; no pool or rate
+limit was raised. A 1,000-principal/64-role synthetic population was installed
+before the measured phases, leaving the tested administrator's authority
+unchanged.
+
+Each of the three four-second HTTP phases offered 25 authenticated introspection
+requests per second. All 300 requests were authorized; there were no unavailable
+responses, errors, authority mismatches, or generator drops. Scheduled p95 was
+14.43 ms before the CLI reads, 13.41 ms during them, and 15.78 ms afterwards.
+The eight CLI outcomes were three reads, one not-found, and four expected
+non-administrator denials. Their execution p95 was 393.06 ms; with only eight
+commands, that percentile is the slowest sample, not a stable tail estimate.
+
+Sixteen serial PostgreSQL activity samples during the overlap observed at most
+six `darkhorse_runtime` connections and no waiting locks. They observed zero
+active connections at sample instants; short active statements between samples
+could be missed. This sampling is not a measured connection peak. Container CPU
+and memory values were captured only at phase boundaries and are not reported as
+peak usage. This one low-rate smoke demonstrates that the packaged runtime-role
+read path, audit, and HTTPS introspection can operate together under the tested
+container limits. It does not establish a performance gain, production capacity,
+or an explanation for the earlier unavailable responses. Repeated load, larger
+effective policy graphs, resource-stage timings, lock/pool wait attribution,
+and investigation of those unavailable outcomes remain open under
+[issue #32](https://github.com/OneTesseractInMultiverse/darkhorse-identity/issues/32).

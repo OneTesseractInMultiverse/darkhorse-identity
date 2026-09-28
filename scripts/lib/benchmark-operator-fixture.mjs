@@ -88,6 +88,12 @@ async function verifyReads(options, actors, ids, commands) {
       "Missing successful operator read audit.",
     );
   }
+  return {
+    readCommands: commands.filter((row) => row.result === "read").length,
+    notFoundCommands: commands.filter((row) => row.result === "not_found")
+      .length,
+    deniedCommands: commands.filter((row) => row.result === "denied").length,
+  };
 }
 async function population(options, ids, details) {
   if (!details) return { additionalPrincipals: 0, additionalBoundRoles: 0 };
@@ -146,8 +152,10 @@ export async function operatorFixture(options, app, details = false) {
         "Performance fixture revocation",
       );
     },
+    verifyReads: async (commands) =>
+      verifyReads(options, actors, ids, commands),
     verify: async (commands) => {
-      await verifyReads(options, actors, ids, commands);
+      const reads = await verifyReads(options, actors, ids, commands);
       assert.equal(
         await scalar(
           options,
@@ -157,11 +165,7 @@ export async function operatorFixture(options, app, details = false) {
         "Missing committed operator revocation audit.",
       );
       return {
-        readCommands: commands.filter((row) => row.result === "read").length,
-        notFoundCommands: commands.filter((row) => row.result === "not_found")
-          .length,
-        deniedCommands: commands.filter((row) => row.result === "denied")
-          .length,
+        ...reads,
         revocationCommands: 1,
       };
     },

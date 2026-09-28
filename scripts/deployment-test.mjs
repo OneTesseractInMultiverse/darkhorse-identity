@@ -2,7 +2,7 @@ import { catalogCommands } from "./lib/catalog-command-test.mjs";
 import assert from "node:assert/strict";
 import { randomBytes, createHash } from "node:crypto";
 import { createServer } from "node:net";
-import { readFile, rm, writeFile } from "node:fs/promises";
+import { mkdir, readFile, rm, writeFile } from "node:fs/promises";
 import { resolve, join } from "node:path";
 import { setTimeout as delay } from "node:timers/promises";
 import { run } from "./lib/command.mjs";
@@ -25,6 +25,12 @@ import {
 } from "./lib/container-account-test.mjs";
 import { httpsCall } from "./lib/deployment-client.mjs";
 import { validateIdToken, validateCallback } from "./lib/reference-client.mjs";
+import { arrivalPlan, arrivalSummary } from "./lib/benchmark-arrival-model.mjs";
+import { runArrivals } from "./lib/benchmark-arrival-load.mjs";
+import { operatorFixture } from "./lib/benchmark-operator-fixture.mjs";
+import { operatorOperations } from "./lib/benchmark-operator-model.mjs";
+import { runBenchmarkCommand } from "./lib/benchmark-command.mjs";
+import { composeOperatorMeasurement } from "./lib/compose-operator-measurement.mjs";
 process.chdir(resolve(import.meta.dirname, ".."));
 const name = `verify-${randomBytes(6).toString("hex")}`;
 let stack;
@@ -526,7 +532,15 @@ async function sso(origin, ca, principal, password) {
       },
       body: JSON.stringify({ email: "compose@example.com", password }),
     });
-  return { introspect, loginProbe, http };
+  return {
+    introspect,
+    loginProbe,
+    http,
+    benchmarkApplication: {
+      identity: { application_id: app.body.record.id },
+      client: client.body.record.id,
+    },
+  };
 }
 async function outages({ introspect, loginProbe, http }) {
   await compose(stack, ["stop", "cache"], captured);
@@ -803,6 +817,256 @@ async function archive() {
     "Cache degradation, restrictive limiter restart/recovery, database outage, durable restart and quarantined archive restore passed.",
   );
 }
+
+function benchmarkDatabase(options, args, runOptions = {}) {
+  if (args[0] !== "exec" || args[1] !== "compose-benchmark-postgres")
+    throw new Error("Unexpected Compose benchmark database command.");
+  const database = [...args.slice(2)];
+  const databaseFlag = database.indexOf("-d");
+  if (databaseFlag < 0 || database[databaseFlag + 1] !== "browser_test")
+    throw new Error("Unexpected Compose benchmark database selection.");
+  database[databaseFlag + 1] = "darkhorse";
+  return compose(options.stack, ["exec", "-T", "postgres", ...database], {
+    capture: true,
+    ...runOptions,
+  });
+}
+
+async function composeRuntimeConnections() {
+  return JSON.parse(
+    (
+      await sql(`SELECT json_build_object(
+        'connections', count(*)::int,
+        'active', count(*) FILTER (WHERE state='active')::int,
+        'waiting_locks', (SELECT count(*)::int FROM pg_locks WHERE NOT granted AND pid IN (
+          SELECT pid FROM pg_stat_activity WHERE datname='darkhorse' AND usename='darkhorse_runtime'
+        ))
+      )
+      FROM pg_stat_activity WHERE datname='darkhorse' AND usename='darkhorse_runtime';`)
+    ).stdout.trim(),
+  );
+}
+
+async function composeRuntimeObservation() {
+  const activity = await composeRuntimeConnections();
+  async function stats(service) {
+    const id = (
+      await compose(stack, ["ps", "-q", service], captured)
+    ).stdout.trim();
+    assert.match(id, /^[a-f0-9]{64}$/);
+    const row = JSON.parse(
+      (
+        await command(
+          "docker",
+          ["stats", "--no-stream", "--format", "{{json .}}", id],
+          captured,
+        )
+      ).stdout.trim(),
+    );
+    return { cpu: row.CPUPerc, memory: row.MemUsage };
+  }
+  const [api, database] = await Promise.all([stats("api"), stats("postgres")]);
+  return {
+    runtimeConnections: activity.connections,
+    activeRuntimeConnections: activity.active,
+    waitingLocks: activity.waiting_locks,
+    apiCpu: api.cpu,
+    apiMemory: api.memory,
+    databaseCpu: database.cpu,
+    databaseMemory: database.memory,
+  };
+}
+
+function introspectionSelection(expected) {
+  const body = { ...expected };
+  if (!Array.isArray(body.capabilities)) body.capabilities = [];
+  return {
+    client: "compose-runtime",
+    epoch: "steady",
+    expected: {
+      active: true,
+      iss: body.iss,
+      aud: body.aud,
+      sub: body.sub,
+      client_id: body.client_id,
+      scope: body.scope,
+      capabilities: body.capabilities,
+    },
+  };
+}
+
+async function composeRuntimePhase(name, client, expected) {
+  const settings = {
+    rate: 25,
+    durationMs: 4000,
+    maxInFlight: 32,
+    maxLatenessMs: 25,
+  };
+  const plan = arrivalPlan(settings);
+  const start = performance.now();
+  const measured = await runArrivals({
+    settings,
+    clock: () => performance.now() - start,
+    sleep: (duration) => delay(duration),
+    select: () => introspectionSelection(expected),
+    perform: async () => {
+      const response = await client.introspect();
+      let body;
+      try {
+        body = JSON.parse(response.text);
+      } catch {
+        body = {};
+      }
+      if (!Array.isArray(body.capabilities)) body.capabilities = [];
+      return { status: response.status, body };
+    },
+  });
+  return {
+    name,
+    summary: arrivalSummary(name, plan, measured),
+  };
+}
+
+async function composeRuntimeReadFixture(client, user) {
+  const fixture = await operatorFixture(
+    {
+      principal: user.principal,
+      password: user.password,
+      databaseRole: "darkhorse_runtime",
+      db: { name: "compose-benchmark-postgres" },
+      stack,
+      runSql: sql,
+      docker: (args, options) => benchmarkDatabase({ stack }, args, options),
+      benchmarkInvoke: (args, input, expectedExitCode = 0) =>
+        runBenchmarkCommand(
+          "docker",
+          [
+            ...stack.args,
+            "exec",
+            "-T",
+            "--user",
+            "10001:10001",
+            "api",
+            "/usr/local/bin/darkhorse-server",
+            ...args,
+          ],
+          {
+            env: stack.env,
+            input,
+            signal: abort.signal,
+            expectedExitCodes: [...new Set([0, expectedExitCode])],
+          },
+        ),
+    },
+    client.benchmarkApplication,
+    true,
+  );
+  return async (started, durationMs) => {
+    const commands = [];
+    async function lane(worker) {
+      for (const [index, operation] of operatorOperations(
+        true,
+        worker,
+      ).entries()) {
+        const scheduledMs = started + (index * durationMs) / 4;
+        while (performance.now() < scheduledMs)
+          await delay(Math.min(scheduledMs - performance.now(), 100));
+        const startMs = performance.now();
+        const result = await fixture.read(worker, operation);
+        const endMs = performance.now();
+        commands.push({
+          worker,
+          operation,
+          operationId: result.operationId,
+          result: result.result,
+          scheduledMs,
+          startMs,
+          endMs,
+        });
+      }
+    }
+    await Promise.all([lane(0), lane(1)]);
+    const outcomes = await fixture.verifyReads(commands);
+    assert.deepEqual(outcomes, {
+      readCommands: 3,
+      notFoundCommands: 1,
+      deniedCommands: 4,
+    });
+    return commands;
+  };
+}
+
+async function observeComposeOverlap(durationMs) {
+  const started = performance.now();
+  const observations = [];
+  while (performance.now() - started < durationMs) {
+    observations.push(await composeRuntimeConnections());
+    await delay(150);
+  }
+  return observations;
+}
+
+async function composeRuntimeBenchmark(client, user) {
+  await compose(
+    stack,
+    ["up", "--detach", "--wait", "--wait-timeout", "60", "api", "edge"],
+    captured,
+  );
+  await check(stack);
+  const initial = await client.introspect();
+  assert.equal(initial.status, 200);
+  const expected = JSON.parse(initial.text);
+  assert.equal(expected.active, true);
+  const measureReads = await composeRuntimeReadFixture(client, user);
+  const before = await composeRuntimeObservation();
+  const phases = [
+    await composeRuntimePhase("control-before", client, expected),
+  ];
+  const durationMs = 4000;
+  const started = performance.now();
+  const [overlap, commands, observations] = await Promise.all([
+    composeRuntimePhase("account-detail-overlap", client, expected),
+    measureReads(started, durationMs),
+    observeComposeOverlap(durationMs),
+  ]);
+  phases.push(overlap);
+  phases.push(await composeRuntimePhase("control-after", client, expected));
+  for (const current of phases) {
+    const outcomes = current.summary.outcomes;
+    assert.equal(
+      outcomes.error + outcomes.transport_error + outcomes.violation,
+      0,
+    );
+    assert.equal(outcomes.denied, 0);
+  }
+  assert.ok(observations.length > 0);
+  assert.ok(observations.every((row) => row.waiting_locks === 0));
+  assert.ok(observations.every((row) => row.connections <= 15));
+  const after = await composeRuntimeObservation();
+  const runtimeSamples = observations.map((row) => ({
+    runtimeConnections: row.connections,
+    activeRuntimeConnections: row.active,
+    waitingLocks: row.waiting_locks,
+  }));
+  const result = composeOperatorMeasurement({
+    phases,
+    commands,
+    observations: runtimeSamples,
+    before,
+    after,
+  });
+  const directory = resolve(".local/benchmarks");
+  await mkdir(directory, { recursive: true, mode: 0o700 });
+  const path = join(directory, `compose-operator-${Date.now()}.json`);
+  await writeFile(path, `${JSON.stringify(result, null, 2)}\n`, {
+    flag: "wx",
+    mode: 0o600,
+  });
+  console.log(
+    `Compose runtime measurement: ${path}; runtime-role detail reads=${result.operator.recordedCommands}, maximum sampled connections=${result.runtime.maximumSampledConnections}, waiting locks=${result.runtime.maximumSampledWaitingLocks}.`,
+  );
+}
+
 async function main() {
   const origin = `https://identity.localhost:${await port()}`;
   stack = await setupStack(
@@ -858,6 +1122,10 @@ async function main() {
   const ca = await readFile(join(stack.directory, "secrets/ca.pem"));
   await transport(origin, ca);
   const client = await sso(origin, ca, principal, password);
+  if (process.env.DARKHORSE_TEST_COMPOSE_PERFORMANCE_ONLY === "true") {
+    await composeRuntimeBenchmark(client, { principal, password });
+    return;
+  }
   await outages(client);
   await accounts({ principal, password });
   await archive();

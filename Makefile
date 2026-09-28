@@ -501,9 +501,12 @@ stack-limiter-activate: ## Compose: activate a waited generation with protected 
 test-compose: stack-edge-build ## Test: isolated packaged HTTPS stack, SSO, roles, outages and quarantined restore
 	DARKHORSE_TEST_IMAGE="$(IMAGE)" $(NODE) scripts/deployment-test.mjs
 
-.PHONY: stack-edge-build stack-signing-retire
+.PHONY: stack-edge-build stack-signing-retire benchmark-compose-operator-details
 stack-edge-build: ## Compose: build the pinned proxy image without privileged port capabilities
 	docker build --provenance=false --file deploy/edge.Dockerfile --tag darkhorse-edge:local deploy
+
+benchmark-compose-operator-details: docker-build stack-edge-build ## Performance: packaged Compose runtime reads during verified HTTPS introspection
+	DARKHORSE_TEST_IMAGE="$(IMAGE)" DARKHORSE_TEST_COMPOSE_PERFORMANCE_ONLY=true $(NODE) scripts/deployment-test.mjs
 
 KUBE_CONFIG ?=
 KUBE_ACCESS ?=
