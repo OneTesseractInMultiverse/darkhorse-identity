@@ -306,6 +306,7 @@ prerequisites and remaining deployment limits in the linked guides.
 | Kubernetes revoke-all across serving replicas                                     | Exec plus administrator password and observed revision                                                                      | Committed revocation immediately invalidates token checks on both replicas                                                                            | `0`. Kubernetes suite                                                       |
 | Local timeout / signal                                                            | Host process control                                                                                                        | Stop owned child/descendant processes, preserve unrelated process. No retry. Remote outcome uncertain                                                 | `124` / `143`. Process suite, other signal mapping unit tests               |
 | Compose response lost after a successful account mutation                         | Running Compose API, runtime credentials and fresh administrator authentication                                             | Fault wrapper discards the real successful response; query proves one revision change and exactly one runtime-role audit                              | Exit `1`, uncertainty diagnostic, no retry. Compose suite                   |
+| Compose API terminated during an account mutation                                 | Disposable runtime stack and a test-only audit trigger                                                                      | SIGKILL the API while its audit insert is paused inside the transaction; restart and verify the state/audit both rolled back                          | Nonzero. Compose suite                                                      |
 | Backup/migration during account run                                               | Deployment operations                                                                                                       | Reject maintenance during an active account command                                                                                                   | Nonzero. Compose suite                                                      |
 | Kubernetes one-shot list/show/deactivate/reactivate/revoke-all, zero serving Pods | Workload creation, exec, runtime secrets and administrator password                                                         | Expected revisions and runtime-role audit. No serving workload. Owned Pod removed                                                                     | JSON, `0`. Kubernetes suite                                                 |
 | One-shot Kubernetes authority loss / database network outage                      | Same deployment permissions, revoked actor or unavailable database                                                          | No target mutation. Fresh authority and required dependency checks reject access                                                                      | `1`. Kubernetes suite                                                       |
@@ -328,16 +329,19 @@ restoration qualification remains open. The native CLI's existing POSIX terminal
 suite alone does not establish remote PTY behavior.
 
 The broader account suite covers transaction/audit failures, actor reductions and
-lost commit responses at the database boundary. The Compose qualification also
-executes a real account mutation, discards its successful Docker response in a
-host-side fault wrapper, and reconciles the single committed revision and audit.
-This models an attachment response loss after the command returns; it does not
-simulate a network partition or kill the application container mid-transaction.
-Container-specific termination mid-transaction, interrupted output, simultaneous
-operators/SSO load, incompatible binary/schema versions, temporary-credential
-Kubernetes recovery, independent security review and release artifact
-qualification remain open. This increment does not complete #27 or establish
-production readiness.
+lost commit responses at the database boundary. Compose qualification now tests
+two separate failure points. One real account mutation commits, then a host-side
+fault wrapper discards Docker's successful response; the test reconciles exactly
+one revision change and audit. In another run, a temporary trigger pauses the
+account audit insert after the state update is prepared in the transaction. The
+test observes PostgreSQL in that pause, sends `SIGKILL` to the API container,
+restarts it, and verifies both the state change and audit rolled back. The trigger
+exists only in the disposable test database. These checks do not simulate a
+network partition or PostgreSQL host failure. Broader container termination
+points, interrupted output, simultaneous operators/SSO load, incompatible
+binary/schema versions, temporary-credential Kubernetes recovery, independent
+security review and release artifact qualification remain open. This increment
+does not complete #27 or establish production readiness.
 Full authored-code coverage remains open in #2.
 
 ## Native load baseline
