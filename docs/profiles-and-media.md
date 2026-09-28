@@ -80,6 +80,12 @@ storage details. An authentication failure clears the stale cookie.
 
 Two decoder jobs per process are admitted. Their permits stay with the blocking jobs even when the HTTP request is cancelled. Decoder allocation limits are not a hard process-memory or CPU-time isolation guarantee. Image fuzzing and workload-specific capacity tests remain necessary. Supported format features are restricted to PNG/JPEG.
 
+Source-defined unit fixtures exercise both PNG and JPEG decoding, exact and
+over-limit dimensions, empty/truncated input, mismatched media types, and removal
+of appended payload bytes when an image is re-encoded. These checks validate
+deterministic input boundaries; they do not replace codec fuzzing or hard resource
+isolation.
+
 Reads obtain the current authorized reference from PostgreSQL before accessing image bytes. A process-local cache retains at most 32 immutable images and 8 MiB of verified content. It caches bytes, not authorization decisions. Cold reads check stored size and SHA-256 integrity. The response uses `image/png`, `nosniff`, a restrictive image CSP, same-origin resource policy, and `no-store`. No bucket URLs, arbitrary redirects, or bearer image links are issued. The bucket must remain private.
 
 Removed/replaced assets and interrupted uploads are collected by a bounded sweep of 32 records. Pending uploads have a one-hour cleanup grace period. Terminal tombstones are revisited daily so a delayed remote write can be removed later. Failed deletion remains retryable. Metadata/audit retention is currently indefinite. Versioned buckets need a separately configured noncurrent-version lifecycle. Database and object-storage backups must be coordinated. Do not delete or restore one side independently during image publication.
