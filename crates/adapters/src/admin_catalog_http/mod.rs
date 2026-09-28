@@ -19,7 +19,7 @@ use darkhorse_application::{
 use darkhorse_domain::{identity::*, registration::RegistrationError as Error};
 use serde_json::{Value, json};
 use std::sync::Arc;
-mod input;
+pub(crate) mod input;
 mod output;
 /// Maximum serialized size of one complete policy-map snapshot.
 const MAX_POLICY_MAP_RESPONSE_BYTES: usize = 16 * 1024 * 1024;

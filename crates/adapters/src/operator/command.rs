@@ -22,6 +22,7 @@ pub enum Command {
     Catalog(darkhorse_domain::operator_catalog::Request),
     CatalogView(darkhorse_domain::operator_catalog::ViewRequest),
     CatalogShow(darkhorse_application::registration::ReadTarget),
+    AccessCatalogMutation,
     ApplicationMutation(darkhorse_domain::operator_applications::Operation),
     ClientSecret {
         target: darkhorse_domain::operator_client_secrets::Target,

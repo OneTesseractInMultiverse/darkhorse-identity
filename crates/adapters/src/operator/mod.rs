@@ -1,3 +1,4 @@
+mod access_catalog_mutations;
 mod accounts;
 mod applications;
 mod authenticated;
@@ -39,6 +40,8 @@ pub async fn run(command: Command, auth_stdin: bool, locale: Locale) -> Result<O
             revision,
         } => clients::run(application, client, revision).await,
         Command::ClientCreate { application } => clients::creation::run(application).await,
+        Command::AccessCatalogMutation if auth_stdin => access_catalog_mutations::run().await,
+        Command::AccessCatalogMutation => Err(Failure::usage()),
         Command::ApplicationMutation(operation) if auth_stdin => {
             applications::run(operation, true, locale).await
         }

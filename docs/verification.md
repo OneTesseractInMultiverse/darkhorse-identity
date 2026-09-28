@@ -660,6 +660,30 @@ measured 237/237 lines and 41/41 functions, with 397/419 regions (94.75%). These
 figures do not measure JavaScript, SQL, Lua, or every runtime path. They do not
 replace the whole-system coverage qualification in #2.
 
+## Authenticated access-catalog CLI increment
+
+The access-catalog CLI increment for [#26](https://github.com/OneTesseractInMultiverse/darkhorse-identity/issues/26)
+adds a revision-fenced `operator access apply` command for platform administrators.
+It accepts bounded protected JSON through standard input, requires fresh password
+proof and explicit confirmation, and applies the same validated catalog changes as
+the management API. Mutations are atomic with an independent append-only operator
+audit record; they do not create browser sessions or depend on the browser-session
+catalog audit permission. Delegated administrator permissions and the other
+remaining requirements in #26 are still open.
+
+Verification on **2026-09-28** passed `make ci`, including formatting, Clippy,
+frontend lint and type checks, architecture and workflow policies, API/i18n checks,
+isolated unit suites, and release builds. `make test-postgres` passed 288 scenarios,
+including all shared catalog changes, stale revision and authority denial, and
+rollback when the required operator audit cannot be written. Runtime database
+authority checks passed for the new audit ledger and the migration boundary.
+`make test-redis` passed eight Redis infrastructure tests, 41 limiter/operator
+scenarios, and the PostgreSQL introspection-through-cache-outage scenario. The new
+process test verifies that a real CLI invocation can commit with the restricted
+runtime role when browser-session audit writes are unavailable. See
+[operator access catalog](operator-access-catalog.md) for the command contract and
+migration `0039`.
+
 ## Release interpretation
 
 Open requirements include complete coverage, privileged authentication assurance,

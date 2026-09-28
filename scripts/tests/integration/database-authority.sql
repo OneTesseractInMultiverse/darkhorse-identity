@@ -58,6 +58,9 @@ BEGIN
   'TRUNCATE operator_client_audit',
   'TRUNCATE operator_client_creation_audit',
   'TRUNCATE operator_client_secret_audit',
+  'UPDATE operator_access_catalog_audit SET result=result WHERE false',
+  'DELETE FROM operator_access_catalog_audit WHERE false',
+  'TRUNCATE operator_access_catalog_audit',
   'ALTER TABLE security_audit DISABLE TRIGGER ALL',
   'DROP TABLE security_audit',
   'SELECT setval(''security_audit_id_seq'', 1)'
@@ -101,10 +104,16 @@ INSERT INTO principals(id,email,first_name,last_name)
  VALUES('00000000-0000-0000-0000-000000000123','authority@example.com','Authority','Fixture');
 INSERT INTO security_audit(event,principal_id,principal_revision,credential_epoch)
  VALUES('account.revoked','00000000-0000-0000-0000-000000000123',0,0);
+INSERT INTO operator_access_catalog_audit(operation_id,command,expected_revision,reason,result,occurred_ms)
+ VALUES('00000000-0000-0000-0000-000000000999','role.create',0,'runtime grant verification','denied',0);
 DO $$ BEGIN
  IF NOT EXISTS(SELECT 1 FROM security_audit WHERE database_role='darkhorse_runtime'
    AND principal_id='00000000-0000-0000-0000-000000000123') THEN
   RAISE EXCEPTION 'runtime audit insert or role provenance failed';
+ END IF;
+ IF NOT EXISTS(SELECT 1 FROM operator_access_catalog_audit WHERE database_role='darkhorse_runtime'
+   AND operation_id='00000000-0000-0000-0000-000000000999' AND result='denied') THEN
+  RAISE EXCEPTION 'operator access audit insert or role provenance failed';
  END IF;
 END $$;
 ROLLBACK;

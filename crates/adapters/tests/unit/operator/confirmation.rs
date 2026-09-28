@@ -19,6 +19,7 @@ fn every_mutation_requires_confirmation_including_stdin_and_legacy_operations() 
             kid: [0; 32],
             revision: 0,
         }),
+        Command::AccessCatalogMutation,
         Command::Change {
             id: darkhorse_domain::identity::PrincipalId::from_u128(1).unwrap(),
             revision: 0,
@@ -38,6 +39,7 @@ fn every_mutation_requires_confirmation_including_stdin_and_legacy_operations() 
     assert!(consumes_stdin(&Command::Bootstrap { stdin: true }));
     assert!(consumes_stdin(&Command::Signing(Operation::Import(0))));
     assert!(!consumes_stdin(&Command::Migrate));
+    assert!(requires_confirmation(&Command::AccessCatalogMutation));
 }
 #[test]
 fn explicit_confirmation_rejects_eof_partial_words_and_forged_lines() {

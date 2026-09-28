@@ -125,3 +125,31 @@ fn catalog_detail_requests_keep_typed_targets_and_explicit_definition_scope() {
         assert_eq!(ViewRequest::new(target).target(), target);
     }
 }
+
+#[test]
+fn access_catalog_mutation_requires_a_bounded_revision_and_reason() {
+    use crate::{admin_catalog::Change, identity::CapabilityId};
+
+    let change = Change::RetireCapability(CapabilityId::from_u128(11).unwrap());
+    let request = MutationRequest::new(9, change.clone(), "Remove deprecated permission").unwrap();
+    assert_eq!(request.policy_revision(), 9);
+    assert_eq!(request.reason(), "Remove deprecated permission");
+    assert!(matches!(request.change(), Change::RetireCapability(_)));
+
+    let too_long = "x".repeat(513);
+    for invalid in ["", " ", "line\nbreak", too_long.as_str()] {
+        assert_eq!(
+            MutationRequest::new(
+                9,
+                Change::RetireCapability(CapabilityId::from_u128(11).unwrap()),
+                invalid,
+            )
+            .err(),
+            Some(Error::Invalid)
+        );
+    }
+    assert_eq!(
+        MutationRequest::new(i64::MAX as u64 + 1, change, "Bounded reason").err(),
+        Some(Error::Invalid)
+    );
+}

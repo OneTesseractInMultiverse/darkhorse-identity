@@ -12,7 +12,7 @@ pub(super) struct Mutation {
 }
 #[derive(Deserialize)]
 #[serde(tag = "operation", rename_all = "snake_case", deny_unknown_fields)]
-pub(super) enum Input {
+pub(crate) enum Input {
     CreateCapability {
         key: String,
         meaning: String,
@@ -55,7 +55,7 @@ pub(super) enum Input {
     },
 }
 impl Input {
-    pub(super) fn change(self) -> Result<Change, Error> {
+    pub(crate) fn change(self) -> Result<Change, Error> {
         Ok(match self {
             Self::CreateCapability {
                 key,

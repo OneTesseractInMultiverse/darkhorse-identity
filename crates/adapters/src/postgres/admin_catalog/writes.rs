@@ -286,21 +286,27 @@ pub(super) async fn apply(
     session: SessionId,
     now: u64,
 ) -> Result<Written, Error> {
-    if let Some(effect) = plan.effect {
-        persist(tx, plan.target, effect).await?;
-        let revision = reads::revision(tx).await?;
+    let changed = plan.effect.is_some();
+    let written = apply_untracked(tx, plan).await?;
+    if changed {
         audit(
             tx,
             Audit {
                 actor,
                 session,
                 now,
-                revision,
-                target: plan.target,
+                revision: written.policy_revision,
+                target: written.target,
             },
             change,
         )
         .await?;
+    }
+    Ok(written)
+}
+pub(super) async fn apply_untracked(tx: &mut Tx<'_>, plan: Plan) -> Result<Written, Error> {
+    if let Some(effect) = plan.effect {
+        persist(tx, plan.target, effect).await?;
     }
     Ok(Written {
         target: plan.target,

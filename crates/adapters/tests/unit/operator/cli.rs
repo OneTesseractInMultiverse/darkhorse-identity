@@ -759,3 +759,29 @@ fn access_lists_require_explicit_scope_and_reject_irrelevant_selectors() {
         );
     }
 }
+
+#[test]
+fn access_mutation_requires_protected_json_and_confirmation() {
+    let command = run(&[
+        "--auth-stdin",
+        "--output",
+        "json",
+        "--yes",
+        "operator",
+        "access",
+        "apply",
+    ]);
+    assert_eq!(command.command, Command::AccessCatalogMutation);
+    assert!(command.auth_stdin);
+    assert!(command.confirmed);
+    assert!(crate::operator::command::requires_confirmation(
+        &command.command
+    ));
+    for args in [
+        vec!["operator", "access", "apply"],
+        vec!["--auth-stdin", "operator", "access", "apply"],
+        vec!["--output", "json", "operator", "access", "apply"],
+    ] {
+        assert!(parse(&args).is_err());
+    }
+}

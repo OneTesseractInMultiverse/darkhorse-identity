@@ -1,6 +1,6 @@
 //! Bounded catalog reads available to an authenticated platform administrator.
 use crate::{
-    admin_catalog::Query,
+    admin_catalog::{Change, Query},
     identity::{ApplicationId, CapabilityId, ResourceId, RoleId, ScopeId},
     operator_accounts::Error,
 };
@@ -60,6 +60,40 @@ pub enum ViewTarget {
 pub struct ViewRequest {
     target: ViewTarget,
 }
+
+/// A single fresh-authenticated access-catalog mutation at an expected policy revision.
+#[derive(Debug)]
+pub struct MutationRequest {
+    policy_revision: u64,
+    change: Change,
+    reason: String,
+}
+
+impl MutationRequest {
+    pub fn new(policy_revision: u64, change: Change, reason: &str) -> Result<Self, Error> {
+        if policy_revision > i64::MAX as u64 {
+            return Err(Error::Invalid);
+        }
+        Ok(Self {
+            policy_revision,
+            change,
+            reason: crate::operator_accounts::checked_reason(reason)?,
+        })
+    }
+
+    pub fn policy_revision(&self) -> u64 {
+        self.policy_revision
+    }
+
+    pub fn change(&self) -> &Change {
+        &self.change
+    }
+
+    pub fn reason(&self) -> &str {
+        &self.reason
+    }
+}
+
 impl ViewRequest {
     pub fn new(target: ViewTarget) -> Self {
         Self { target }

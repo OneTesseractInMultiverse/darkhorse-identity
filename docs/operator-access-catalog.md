@@ -1,10 +1,10 @@
-# Authenticated access-catalog listing
+# Authenticated access-catalog operations
 
 The Rust CLI lists protected resources, delegation scopes, roles, and capabilities
 through the same primary database queries as the management console. Each invocation
 requires a fresh password proof from a current platform administrator and a committed
 read audit before releasing its page. Application ownership does not confer this
-authority. These commands implement another part of
+authority. The read and mutation commands implement another part of
 [#26](https://github.com/OneTesseractInMultiverse/darkhorse-identity/issues/26).
 
 ## Selection and meaning
@@ -47,10 +47,11 @@ flowchart TD
 
 Inactive applications remain inspectable. A missing application produces a fixed
 not-found error after authentication. An existing application with no matching
-records returns an empty page. No command in this increment creates a definition,
-changes a binding, assigns a principal, or returns effective-access decisions.
-Independent delegated management permissions remain unfinished; current platform
-administrators are the only supported actors.
+records returns an empty page. List and show are read-only and do not change policy.
+`access apply` below can create definitions and change bindings, but does not assign
+principals or return effective-access decisions. Independent delegated management
+permissions remain unfinished; current platform administrators are the only
+supported actors.
 
 ## Inspect one definition
 
@@ -168,6 +169,116 @@ is an explicit new invocation with a new proof and audit; it is not recovery of 
 previous response. Process connections, timeouts, signals and limiter failures
 follow the shared [container execution contract](container-accounts.md).
 
+## Apply a policy change
+
+`operator access apply` applies one change supported by the management API. It
+requires fresh password authentication by a current platform administrator,
+`--auth-stdin`, JSON output, `--yes`, an expected primary policy revision, and a
+reason. Application ownership is contact information and grants no authority.
+Delegated management permissions and principal assignments are separate work;
+this command does not add a CLI-specific authorization model.
+
+Put the complete request in a protected file and pass it only through stdin:
+
+```json
+{
+  "authentication": {
+    "email": "admin@example.com",
+    "password": "read-from-a-password-manager",
+    "reason": "Grant the reporting role the read capability"
+  },
+  "policy_revision": "31",
+  "change": {
+    "operation": "role_capability",
+    "role_id": "00000000-0000-0000-0000-000000000041",
+    "capability_id": "00000000-0000-0000-0000-000000000052",
+    "granted": true
+  }
+}
+```
+
+Use a file with owner-only permissions (for example, `chmod 600`) and remove it
+after the operation. Avoid shell variables, command arguments, environment values,
+terminal transcripts and shared temporary directories for credentials. The input
+is capped at 32 KiB, rejects unknown fields, bounds the reason to 1–200 Unicode
+characters and 512 UTF-8 bytes, and zeroizes the password when the parsed request
+is dropped. The reason is retained in the audit and must not contain credentials.
+
+The expected revision is the decimal-string `policy_revision` from a current
+catalog read. The server checks it again under the exclusive primary security
+fence. If any policy change commits first, the command returns a conflict; read
+the catalog again and review the change before creating a new request.
+
+`change.operation` is one of:
+
+| Operation             | Required fields                                                          | Effect                                                                |
+| --------------------- | ------------------------------------------------------------------------ | --------------------------------------------------------------------- |
+| `create_capability`   | `key`, `meaning`, optional `application_id`                              | Create a shared capability, optionally binding it to one application. |
+| `retire_capability`   | `capability_id`                                                          | Retire a capability so it cannot be newly granted.                    |
+| `create_role`         | `name`, optional `application_id`                                        | Create a role, optionally binding it to one application.              |
+| `capability_binding`  | `application_id`, `capability_id`, `bound`                               | Add or remove an explicit application binding.                        |
+| `role_binding`        | `application_id`, `role_id`, `bound`                                     | Add or remove an explicit application binding.                        |
+| `role_capability`     | `role_id`, `capability_id`, `granted`                                    | Grant or remove a capability from a role.                             |
+| `resource_capability` | `application_id`, `resource_id`, `capability_id`, `exposed`              | Expose or remove a capability on an application resource.             |
+| `scope_capability`    | `application_id`, `resource_id`, `scope_id`, `capability_id`, `included` | Include or remove a resource capability from a delegation scope.      |
+
+All identifiers must be nonzero UUIDs and all referenced objects must satisfy the
+same existence, binding, capacity and cross-application checks as the management
+API. A definition's existence alone grants no access. Role, resource and scope
+relationships continue to use the shared policy model in
+[authorization](authorization.md).
+
+The successful JSON `data` contains `completed`, `changed`, `operation_id`,
+`target` and decimal-string `policy_revision`. `changed: false` means the requested
+binding or retirement was already in the desired state; it is still audited.
+Responses, diagnostics and audit records omit passwords, capability meanings and
+role names. Fixed errors distinguish authentication denial, invalid policy,
+missing references and stale revisions without returning submitted values.
+
+For a local Compose deployment, the existing one-shot catalog command can run
+while HTTP is stopped. It uses the account service and passes the file only to
+stdin:
+
+```sh
+make stack-catalog-run STACK=local CATALOG_TARGET=access CATALOG_OPERATION=apply CATALOG_CONFIRM=yes < /private/path/access-change.json
+```
+
+Use `stack-catalog-exec` when the API container is running. These launchers require
+`CATALOG_CONFIRM=yes` and reject catalog selectors that do not apply to a single
+access change. The native command inside the container is also:
+
+```sh
+darkhorse-server --auth-stdin --output json --yes operator access apply < /private/path/access-change.json
+```
+
+### Mutation authority and audit
+
+The CLI mutation shares the HTTP adapter's reference validation, capacity checks,
+role-binding safety rules, and persistence. It uses the existing password
+verification and shared login budget. PostgreSQL holds the exclusive shared
+security fence, checks the administrator proof and expected policy revision,
+applies the change under a savepoint, appends one operator audit, rechecks current
+authority, and commits. A permission reduction that commits before a new
+authorization check is visible to that check. No positive authority decision is
+cached in Redis.
+
+Migration `0039` adds the append-only `operator_access_catalog_audit` ledger.
+Runtime receives only SELECT/INSERT access; the nonowner deployment operator has
+no ledger access. Access-catalog CLI changes do not fabricate a browser session
+or write `catalog_admin_audit`. Audit failure or suppression rolls back the
+policy change and its revision. The ledger stores command, requested/resulting
+revision, target and related UUIDs, requested state, reason, verified actor and
+credential facts, result, time and database role. It does not store definition
+names, capability meanings, email or passwords. Apply the migration and refreshed
+reviewed grants with serving stopped under the
+[database authority contract](database-authority.md).
+
+A lost commit acknowledgement has an unknown outcome. The CLI returns a fixed
+uncertain result and never retries automatically. Check the operation ID in the
+primary audit and inspect the current target before deciding whether to submit a
+new operation. The `changed` field is emitted only after the audit and mutation
+commit. Closing stdout may still lose that response after a committed change.
+
 ## Compose and Kubernetes
 
 The existing `stack-catalog-exec`, `stack-catalog-run`, `kube-catalog-exec`, and
@@ -175,10 +286,11 @@ The existing `stack-catalog-exec`, `stack-catalog-run`, `kube-catalog-exec`, and
 
 ```sh
 make stack-catalog-run STACK=trial CATALOG_TARGET=resource CATALOG_APPLICATION_ID=<application-uuid> < /private/path/authentication.json
+make stack-catalog-run STACK=local CATALOG_TARGET=access CATALOG_OPERATION=apply CATALOG_CONFIRM=yes < /private/path/access-change.json
 make kube-catalog-exec KUBE_CONFIG=/absolute/path/identity.json KUBE_ACCESS=/absolute/path/access.yaml KUBE_CONTEXT=reviewed-context ACCOUNT_POD=<reviewed-pod> CATALOG_TARGET=capability CATALOG_ALL_DEFINITIONS=yes CATALOG_STATUS=inactive < /private/path/authentication.json
 ```
 
-Set `CATALOG_TARGET` to `resource`, `scope`, `role`, or `capability`.
+For reads, set `CATALOG_TARGET` to `resource`, `scope`, `role`, or `capability`.
 `CATALOG_OPERATION` is `list` (the default) or `show`. Listing supplies `CATALOG_APPLICATION_ID`,
 or, for roles/capabilities, explicitly set `CATALOG_ALL_DEFINITIONS=yes`.
 They are mutually exclusive. Optional `CATALOG_SEARCH`, `CATALOG_AFTER`,
@@ -187,9 +299,11 @@ For `show`, set `CATALOG_TARGET_ID`; scopes additionally require
 `CATALOG_RESOURCE_ID`. Resource/scope details require an application ID; role and
 capability details require either an application ID or all-definitions selection.
 
-Account selectors, client/secret IDs, mutation selectors and configuration inputs
-are rejected. Other catalog commands reject `CATALOG_ALL_DEFINITIONS` so an inherited
-setting cannot silently change the intended selection. Make preserves selector
+For access writes, set `CATALOG_TARGET=access`, `CATALOG_OPERATION=apply` and
+`CATALOG_CONFIRM=yes`; provide the revision, change and authentication only in the
+protected JSON stdin object. Account selectors, client/secret IDs, and catalog
+filters or target IDs are rejected for this operation. Read commands reject write
+selectors and unrelated `CATALOG_ALL_DEFINITIONS` settings. Make preserves selector
 values literally; authentication flows only through stdin. One-shot execution works
 with HTTP stopped. GNU Make reports failed recipes as `2`; direct native and Node
 launcher execution retain their documented statuses.

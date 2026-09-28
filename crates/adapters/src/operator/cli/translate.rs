@@ -20,6 +20,7 @@ pub(super) fn invocation(options: Options) -> Result<Invocation, Failure> {
             | Command::Catalog(_)
             | Command::CatalogView(_)
             | Command::CatalogShow(_)
+            | Command::AccessCatalogMutation
             | Command::ApplicationMutation(_)
             | Command::ClientUpdate { .. }
             | Command::ClientCreate { .. }
@@ -33,6 +34,8 @@ pub(super) fn invocation(options: Options) -> Result<Invocation, Failure> {
         || (options.auth_stdin && !account)
         || (account && options.output == Format::Json && !options.auth_stdin)
         || (matches!(command, Command::ClientCreate { .. }) && options.output != Format::Json)
+        || (matches!(command, Command::AccessCatalogMutation)
+            && (!options.auth_stdin || options.output != Format::Json))
     {
         return Err(Failure::usage());
     }
@@ -90,6 +93,7 @@ fn operator(value: Operator) -> Result<Command, Failure> {
             id: capability,
             selection: definitions(selection),
         }),
+        Operator::Access(AccessCatalog::Apply) => Command::AccessCatalogMutation,
         Operator::Client(Client::Secret(value)) => secret(value),
         Operator::Client(Client::Create {
             application,

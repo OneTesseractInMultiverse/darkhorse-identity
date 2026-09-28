@@ -23,8 +23,11 @@ export function catalogOptions(values, stdinIsTTY) {
       "scope",
       "role",
       "capability",
+      "access",
     ].includes(target) ||
-    !["list", "show", "create", "update", "retire"].includes(operation) ||
+    !["list", "show", "create", "update", "retire", "apply"].includes(
+      operation,
+    ) ||
     [
       "ACCOUNT_OPERATION",
       "ACCOUNT_ID",
@@ -37,6 +40,7 @@ export function catalogOptions(values, stdinIsTTY) {
     ].some((key) => Boolean(values[key]))
   )
     throw invalid();
+  if (target === "access") return accessMutationOptions(values, operation);
   if (["resource", "scope", "role", "capability"].includes(target))
     return accessCatalogOptions(values, target, operation);
   if (
@@ -72,6 +76,37 @@ export function catalogOptions(values, stdinIsTTY) {
     target,
     operation,
     ...selectors,
+  ];
+}
+function accessMutationOptions(values, operation) {
+  if (
+    operation !== "apply" ||
+    values.CATALOG_CONFIRM !== "yes" ||
+    [
+      "CATALOG_APPLICATION_ID",
+      "CATALOG_CLIENT_ID",
+      "CATALOG_SECRET_ID",
+      "CATALOG_ALL_DEFINITIONS",
+      "CATALOG_TARGET_ID",
+      "CATALOG_RESOURCE_ID",
+      "CATALOG_SEARCH",
+      "CATALOG_STATUS",
+      "CATALOG_AFTER",
+      "CATALOG_LIMIT",
+      "CATALOG_REVISION",
+      "CATALOG_NAME",
+      "CATALOG_OWNER_ID",
+    ].some((key) => Boolean(values[key]))
+  )
+    throw invalid();
+  return [
+    "--auth-stdin",
+    "--output",
+    "json",
+    "--yes",
+    "operator",
+    "access",
+    "apply",
   ];
 }
 function clientUpdateOptions(values, operation) {

@@ -10,9 +10,10 @@ administrative authority.
 This implements catalog inspection in [#26](https://github.com/OneTesseractInMultiverse/darkhorse-identity/issues/26).
 [Application create/update](operator-applications.md) supports owner and lifecycle changes
 through the same command group and launchers. [Client creation and configuration updates](operator-clients.md)
-are also available. [Access-catalog listing](operator-access-catalog.md) adds explicit
-resource, scope, role and capability views. Client creation, secret rotation and
-access-catalog writes remain separate work. The reads described here never query
+are also available. [Access-catalog operations](operator-access-catalog.md) adds
+explicit resource, scope, role and capability views plus revision-fenced catalog
+and binding changes. Client creation, secret rotation and delegated management
+permissions remain separate work. The reads described here never query
 client credentials, including their nonsecret lifecycle metadata.
 
 ## Invocation and page contract

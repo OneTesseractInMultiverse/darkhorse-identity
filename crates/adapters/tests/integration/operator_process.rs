@@ -531,6 +531,82 @@ async fn catalog_detail_cli_uses_runtime_grants_without_client_secret_table_acce
 }
 
 #[tokio::test]
+async fn access_catalog_cli_uses_runtime_audit_and_never_needs_browser_session_audit() {
+    let _serial = SERIAL.lock().await;
+    let f = Fixture::new().await;
+    f.activate().await;
+    restrict_database(&f).await;
+    let (principal, email) = actor(&f).await;
+    sqlx::query("REVOKE INSERT ON catalog_admin_audit FROM darkhorse_runtime")
+        .execute(&f.pool)
+        .await
+        .unwrap();
+    let revision: i64 = sqlx::query_scalar("SELECT policy_revision FROM security_state")
+        .fetch_one(&f.pool)
+        .await
+        .unwrap();
+    let input = json!({
+        "authentication": {
+            "email": email,
+            "password": PASSWORD,
+            "reason": "Provision the CLI test role"
+        },
+        "policy_revision": revision.to_string(),
+        "change": {
+            "operation": "create_role",
+            "name": "CLI process role"
+        }
+    });
+    let result = succeeds_with_input(&["operator", "access", "apply"], input);
+    assert_eq!(result["changed"], true);
+    assert_eq!(result["target"]["kind"], "role");
+    let role = Uuid::parse_str(result["target"]["id"].as_str().unwrap()).unwrap();
+    assert_eq!(
+        sqlx::query_scalar::<_, i64>(
+            "SELECT count(*) FROM roles WHERE id=$1 AND name='CLI process role'"
+        )
+        .bind(role)
+        .fetch_one(&f.pool)
+        .await
+        .unwrap(),
+        1
+    );
+    let audit: (Uuid, String, String, String) = sqlx::query_as(
+        "SELECT actor_id,command,result,database_role FROM operator_access_catalog_audit WHERE target_id=$1",
+    )
+    .bind(role)
+    .fetch_one(&f.pool)
+    .await
+    .unwrap();
+    assert_eq!(
+        audit,
+        (
+            principal,
+            "role.create".into(),
+            "changed".into(),
+            "darkhorse_runtime".into()
+        )
+    );
+    assert_eq!(
+        sqlx::query_scalar::<_, i64>("SELECT count(*) FROM catalog_admin_audit")
+            .fetch_one(&f.pool)
+            .await
+            .unwrap(),
+        0
+    );
+    let record: String = sqlx::query_scalar(
+        "SELECT row_to_json(a)::text FROM operator_access_catalog_audit a WHERE target_id=$1",
+    )
+    .bind(role)
+    .fetch_one(&f.pool)
+    .await
+    .unwrap();
+    assert!(!record.contains("CLI process role"));
+    assert!(!record.contains(&email));
+    assert!(!record.contains(PASSWORD));
+}
+
+#[tokio::test]
 async fn catalog_detail_cli_discloses_no_record_after_audit_time_credential_revocation() {
     let _serial = SERIAL.lock().await;
     let f = Fixture::new().await;

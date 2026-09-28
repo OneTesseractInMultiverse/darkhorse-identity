@@ -44,6 +44,66 @@ test("access catalog selectors require explicit scope and bounded literal search
   }
 });
 
+test("access catalog policy writes require explicit confirmation and protected stdin", () => {
+  const expected = [
+    "--auth-stdin",
+    "--output",
+    "json",
+    "--yes",
+    "operator",
+    "access",
+    "apply",
+  ];
+  assert.deepEqual(
+    catalogOptions(
+      {
+        CATALOG_TARGET: "access",
+        CATALOG_OPERATION: "apply",
+        CATALOG_CONFIRM: "yes",
+      },
+      false,
+    ),
+    expected,
+  );
+  assert.throws(
+    () =>
+      catalogOptions(
+        { CATALOG_TARGET: "access", CATALOG_OPERATION: "apply" },
+        false,
+      ),
+    /complete specification/,
+  );
+  assert.throws(
+    () =>
+      catalogOptions(
+        {
+          CATALOG_TARGET: "access",
+          CATALOG_OPERATION: "apply",
+          CATALOG_CONFIRM: "yes",
+        },
+        true,
+      ),
+    /protected stdin/,
+  );
+  for (const selector of [
+    { CATALOG_APPLICATION_ID: "00000000-0000-0000-0000-000000000001" },
+    { CATALOG_REVISION: "7" },
+    { CATALOG_SEARCH: "private search" },
+    { CATALOG_OPERATION: "list", CATALOG_CONFIRM: "yes" },
+  ])
+    assert.throws(() =>
+      catalogOptions(
+        {
+          CATALOG_TARGET: "access",
+          CATALOG_OPERATION: "apply",
+          CATALOG_CONFIRM: "yes",
+          ...selector,
+        },
+        false,
+      ),
+    );
+});
+
 test("access catalog detail selectors require exact target IDs and definition scope", () => {
   for (const [target, values, args] of [
     [

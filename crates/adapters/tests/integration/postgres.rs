@@ -517,3 +517,4 @@ mod operator_clients;
 
 mod introspection_authentication;
 mod operator_access_catalog;
+mod operator_access_catalog_mutations;

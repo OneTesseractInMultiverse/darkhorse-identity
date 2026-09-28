@@ -23,6 +23,26 @@ pub(super) async fn list_current(
 pub(super) async fn view_current(tx: &mut Tx<'_>, target: Target) -> Result<View, Error> {
     reads::view(tx, target).await
 }
+
+/// Apply a policy revision-fenced change without writing the browser-session audit.
+/// Operator callers must commit their own operator-specific audit in the same transaction.
+pub(super) async fn operator_write(
+    tx: &mut Tx<'_>,
+    expected_revision: u64,
+    change: &Change,
+    identifier: Option<NonZeroU128>,
+) -> Result<Written, Error> {
+    validate_operator_revision(tx, expected_revision).await?;
+    let plan = writes::prepare(tx, change, identifier).await?;
+    writes::apply_untracked(tx, plan).await
+}
+
+pub(super) async fn validate_operator_revision(
+    tx: &mut Tx<'_>,
+    expected_revision: u64,
+) -> Result<(), Error> {
+    next_revision(reads::revision(tx).await?, expected_revision).map(|_| ())
+}
 impl CatalogStore for PostgresStore {
     async fn policy_map(
         &self,

@@ -59,6 +59,8 @@ pub(super) enum Operator {
     #[command(subcommand)]
     Capability(CapabilityCatalog),
     #[command(subcommand)]
+    Access(AccessCatalog),
+    #[command(subcommand)]
     Signing(Signing),
     #[command(subcommand)]
     Limiter(Limiter),
@@ -138,6 +140,11 @@ pub(super) enum Limiter {
 #[derive(Subcommand)]
 pub(super) enum Redis {
     Status,
+}
+#[derive(Subcommand)]
+pub(super) enum AccessCatalog {
+    /// Apply one revision-fenced policy change from protected administrator JSON.
+    Apply,
 }
 // Hidden compatibility spellings retain the same validation, dispatch and confirmation policy.
 #[derive(Subcommand)]

@@ -139,6 +139,7 @@ mod signing_operations;
 
 pub mod migrations;
 
+mod operator_access_catalog;
 mod operator_applications;
 mod operator_catalog;
 mod operator_catalog_details;
