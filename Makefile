@@ -501,12 +501,20 @@ stack-limiter-activate: ## Compose: activate a waited generation with protected 
 test-compose: stack-edge-build ## Test: isolated packaged HTTPS stack, SSO, roles, outages and quarantined restore
 	DARKHORSE_TEST_IMAGE="$(IMAGE)" $(NODE) scripts/deployment-test.mjs
 
-.PHONY: stack-edge-build stack-signing-retire benchmark-compose-operator-details
+.PHONY: stack-edge-build stack-signing-retire benchmark-compose-operator-details benchmark-compose-operator-details-baseline benchmark-compose-operator-details-profile
 stack-edge-build: ## Compose: build the pinned proxy image without privileged port capabilities
 	docker build --provenance=false --file deploy/edge.Dockerfile --tag darkhorse-edge:local deploy
 
 benchmark-compose-operator-details: docker-build stack-edge-build ## Performance: packaged Compose runtime reads during verified HTTPS introspection
 	DARKHORSE_TEST_IMAGE="$(IMAGE)" DARKHORSE_TEST_COMPOSE_PERFORMANCE_ONLY=true $(NODE) scripts/deployment-test.mjs
+
+benchmark-compose-operator-details-baseline: docker-build stack-edge-build ## Performance: 200/s packaged Compose runtime-role comparison
+	DARKHORSE_TEST_IMAGE="$(IMAGE)" DARKHORSE_TEST_COMPOSE_PERFORMANCE_ONLY=true DARKHORSE_TEST_COMPOSE_PERFORMANCE_PROFILE=baseline $(NODE) scripts/deployment-test.mjs
+
+benchmark-compose-operator-details-profile: stack-edge-build ## Performance: attribute 200/s Compose database-stage timing with benchmark-only instrumentation
+	@set -e; trap 'docker image rm darkhorse:benchmark-profile >/dev/null 2>&1 || true' EXIT; \
+	docker build --build-arg DARKHORSE_BUILD_VERSION="$(DARKHORSE_BUILD_VERSION)" --build-arg DARKHORSE_BENCHMARK_PROFILING=true --tag darkhorse:benchmark-profile .; \
+	DARKHORSE_TEST_IMAGE=darkhorse:benchmark-profile DARKHORSE_TEST_COMPOSE_PERFORMANCE_ONLY=true DARKHORSE_TEST_COMPOSE_PERFORMANCE_PROFILE=baseline DARKHORSE_TEST_COMPOSE_CAPTURE_PROFILE=true $(NODE) scripts/deployment-test.mjs
 
 KUBE_CONFIG ?=
 KUBE_ACCESS ?=

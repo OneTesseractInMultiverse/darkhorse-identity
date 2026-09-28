@@ -1,4 +1,5 @@
 import { percentiles } from "./benchmark-model.mjs";
+import { composeOperatorDatabaseProfile } from "./compose-operator-profile.mjs";
 
 const operations = new Set([
   "account.show",
@@ -28,6 +29,23 @@ function phase(value) {
     !Number.isSafeInteger(summary.generatorDrops.full)
   )
     throw new Error("Invalid Compose HTTP phase summary.");
+  const statusCounts = value.statusCounts;
+  if (
+    !statusCounts ||
+    typeof statusCounts !== "object" ||
+    Array.isArray(statusCounts) ||
+    Object.keys(statusCounts).length > 60 ||
+    Object.entries(statusCounts).some(
+      ([status, count]) =>
+        !/^[1-5][0-9]{2}$/.test(status) ||
+        !Number.isSafeInteger(count) ||
+        count < 0 ||
+        count > summary.attempts,
+    ) ||
+    Object.values(statusCounts).reduce((total, count) => total + count, 0) !==
+      summary.attempts
+  )
+    throw new Error("Invalid Compose HTTP status observations.");
   return {
     name: value.name,
     offeredRatePerSecond: summary.offeredRate,
@@ -51,6 +69,11 @@ function phase(value) {
             ? summary.generatorDrops.full
             : (summary.outcomes[key] ?? 0),
       ]),
+    ),
+    httpStatuses: Object.fromEntries(
+      Object.entries(statusCounts).sort(([left], [right]) =>
+        left.localeCompare(right, undefined, { numeric: true }),
+      ),
     ),
     scheduledLatencyMs: summary.allScheduledLatencyMs ?? null,
     authorizedScheduledLatencyMs: summary.authorizedScheduledLatencyMs ?? null,
@@ -115,6 +138,7 @@ export function composeOperatorMeasurement({
   observations,
   before,
   after,
+  databaseProfiles,
 }) {
   const safePhases = boundedArray(phases, 3, "HTTP phase").map(phase);
   const safeCommands = boundedArray(commands, 8, "operator command").map(
@@ -138,6 +162,10 @@ export function composeOperatorMeasurement({
     ...(before === undefined ? {} : { before: observation(before) }),
     ...(after === undefined ? {} : { after: observation(after) }),
   };
+  const databaseProfile =
+    databaseProfiles === undefined
+      ? undefined
+      : composeOperatorDatabaseProfile(databaseProfiles);
   return {
     schema: 1,
     status:
@@ -176,6 +204,7 @@ export function composeOperatorMeasurement({
         ),
       ),
     },
+    ...(databaseProfile === undefined ? {} : { databaseProfile }),
     runtime: {
       samples: safeObservations.length,
       maximumSampledConnections: connections.length
@@ -191,4 +220,18 @@ export function composeOperatorMeasurement({
       ...boundary,
     },
   };
+}
+
+export function composeHttpStatusCounts(rows) {
+  if (!Array.isArray(rows) || rows.length > 30000)
+    throw new Error("Invalid Compose HTTP status rows.");
+  const counts = {};
+  for (const row of rows) {
+    if (row?.status === null) continue;
+    if (!Number.isInteger(row?.status) || row.status < 100 || row.status > 599)
+      throw new Error("Invalid Compose HTTP status row.");
+    const status = String(row.status);
+    counts[status] = (counts[status] ?? 0) + 1;
+  }
+  return counts;
 }

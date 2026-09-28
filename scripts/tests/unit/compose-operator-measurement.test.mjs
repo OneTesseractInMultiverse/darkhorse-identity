@@ -1,6 +1,9 @@
 import assert from "node:assert/strict";
 import { test } from "node:test";
-import { composeOperatorMeasurement } from "../../lib/compose-operator-measurement.mjs";
+import {
+  composeHttpStatusCounts,
+  composeOperatorMeasurement,
+} from "../../lib/compose-operator-measurement.mjs";
 
 function phase(name) {
   return {
@@ -19,6 +22,7 @@ function phase(name) {
       authorizedScheduledLatencyMs: { p50: 8, p95: 14, p99: 20 },
       peakInFlight: 3,
     },
+    statusCounts: { 200: 97, 503: 1 },
   };
 }
 
@@ -73,6 +77,10 @@ test("Compose summary preserves failures and reports actual bounded runtime samp
   assert.equal(result.httpPhases[1].outcomes.unavailable, 1);
   assert.equal(result.httpPhases[1].outcomes.generator_late, 1);
   assert.equal(result.httpPhases[1].outcomes.generator_full, 1);
+  assert.deepEqual(result.httpPhases[1].httpStatuses, {
+    200: 97,
+    503: 1,
+  });
   assert.deepEqual(result.operator.outcomes, {
     read: 3,
     not_found: 1,
@@ -86,6 +94,28 @@ test("Compose summary preserves failures and reports actual bounded runtime samp
   assert.doesNotMatch(
     serialized,
     /sensitive-operation-id|private@example|private-password/,
+  );
+});
+
+test("Compose status summary retains exact bounded HTTP codes and skips drops", () => {
+  assert.deepEqual(
+    composeHttpStatusCounts([
+      { status: 200 },
+      { status: 503 },
+      { status: null, outcome: "generator_late" },
+    ]),
+    { 200: 1, 503: 1 },
+  );
+  assert.throws(
+    () => composeHttpStatusCounts([{ status: 99 }]),
+    /HTTP status row/,
+  );
+  assert.throws(
+    () =>
+      composeHttpStatusCounts(
+        Array.from({ length: 30001 }, () => ({ status: 200 })),
+      ),
+    /HTTP status rows/,
   );
 });
 

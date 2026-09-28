@@ -4,7 +4,7 @@ use super::{
 };
 use std::{io::Write, sync::Mutex, time::Instant};
 
-const STAGES: [&str; 9] = [
+const STAGES: [&str; 16] = [
     "total",
     "pool_acquire",
     "begin",
@@ -14,8 +14,15 @@ const STAGES: [&str; 9] = [
     "policy_load",
     "decision",
     "commit",
+    "client_total",
+    "client_pool_acquire",
+    "client_begin",
+    "client_fence",
+    "client_authenticate",
+    "client_inspect",
+    "client_commit",
 ];
-static COUNTERS: Mutex<[Histogram; 9]> = Mutex::new([Histogram::EMPTY; 9]);
+static COUNTERS: Mutex<[Histogram; 16]> = Mutex::new([Histogram::EMPTY; 16]);
 
 pub(super) struct Timer {
     stage: Stage,
@@ -41,11 +48,11 @@ impl Drop for Timer {
         counters[self.stage as usize].record(elapsed_us, self.outcome);
     }
 }
-fn take() -> [Histogram; 9] {
+fn take() -> [Histogram; 16] {
     let mut counters = COUNTERS.lock().unwrap_or_else(|poison| poison.into_inner());
-    std::mem::replace(&mut *counters, [Histogram::EMPTY; 9])
+    std::mem::replace(&mut *counters, [Histogram::EMPTY; 16])
 }
-fn encode(counters: [Histogram; 9]) -> serde_json::Value {
+fn encode(counters: [Histogram; 16]) -> serde_json::Value {
     let stages: serde_json::Map<_, _> = STAGES
         .into_iter()
         .zip(counters)

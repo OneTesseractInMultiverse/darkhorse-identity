@@ -30,7 +30,12 @@ import { runArrivals } from "./lib/benchmark-arrival-load.mjs";
 import { operatorFixture } from "./lib/benchmark-operator-fixture.mjs";
 import { operatorOperations } from "./lib/benchmark-operator-model.mjs";
 import { runBenchmarkCommand } from "./lib/benchmark-command.mjs";
-import { composeOperatorMeasurement } from "./lib/compose-operator-measurement.mjs";
+import {
+  composeHttpStatusCounts,
+  composeOperatorMeasurement,
+} from "./lib/compose-operator-measurement.mjs";
+import { composeOperatorProfile } from "./lib/compose-operator-plan.mjs";
+import { parseComposeOperatorProfileLine } from "./lib/compose-operator-profile.mjs";
 process.chdir(resolve(import.meta.dirname, ".."));
 const name = `verify-${randomBytes(6).toString("hex")}`;
 let stack;
@@ -898,13 +903,7 @@ function introspectionSelection(expected) {
   };
 }
 
-async function composeRuntimePhase(name, client, expected) {
-  const settings = {
-    rate: 25,
-    durationMs: 4000,
-    maxInFlight: 32,
-    maxLatenessMs: 25,
-  };
+async function composeRuntimePhase(name, client, expected, settings) {
   const plan = arrivalPlan(settings);
   const start = performance.now();
   const measured = await runArrivals({
@@ -927,6 +926,7 @@ async function composeRuntimePhase(name, client, expected) {
   return {
     name,
     summary: arrivalSummary(name, plan, measured),
+    statusCounts: composeHttpStatusCounts(measured.rows),
   };
 }
 
@@ -1002,14 +1002,18 @@ async function composeRuntimeReadFixture(client, user) {
 async function observeComposeOverlap(durationMs) {
   const started = performance.now();
   const observations = [];
+  const intervalMs = Math.max(150, Math.ceil(durationMs / 64));
   while (performance.now() - started < durationMs) {
     observations.push(await composeRuntimeConnections());
-    await delay(150);
+    await delay(intervalMs);
   }
   return observations;
 }
 
 async function composeRuntimeBenchmark(client, user) {
+  const profile = composeOperatorProfile(
+    process.env.DARKHORSE_TEST_COMPOSE_PERFORMANCE_PROFILE ?? "smoke",
+  );
   await compose(
     stack,
     ["up", "--detach", "--wait", "--wait-timeout", "60", "api", "edge"],
@@ -1022,18 +1026,68 @@ async function composeRuntimeBenchmark(client, user) {
   assert.equal(expected.active, true);
   const measureReads = await composeRuntimeReadFixture(client, user);
   const before = await composeRuntimeObservation();
+  const captureProfile =
+    process.env.DARKHORSE_TEST_COMPOSE_CAPTURE_PROFILE === "true"
+      ? async (phase) => {
+          const current = await compose(
+            stack,
+            ["logs", "--no-color", "--tail", "100", "api"],
+            captured,
+          );
+          const existing = current.stdout
+            .split("\n")
+            .filter((line) => line.includes("DARKHORSE_PROFILE "));
+          await compose(
+            stack,
+            ["kill", "--signal", "SIGUSR1", "api"],
+            captured,
+          );
+          let reportLine;
+          for (let attempt = 0; attempt < 20; attempt += 1) {
+            await delay(50, undefined, { signal: abort.signal });
+            const logs = await compose(
+              stack,
+              ["logs", "--no-color", "--tail", "100", "api"],
+              captured,
+            );
+            const lines = logs.stdout
+              .split("\n")
+              .filter((line) => line.includes("DARKHORSE_PROFILE "));
+            if (lines.length === existing.length + 1) {
+              reportLine = lines.at(-1);
+              break;
+            }
+            if (lines.length > existing.length + 1)
+              throw new Error(
+                "Compose database profile emitted extra reports.",
+              );
+          }
+          if (!reportLine)
+            throw new Error("Compose database profile report was not emitted.");
+          return parseComposeOperatorProfileLine(reportLine, phase);
+        }
+      : undefined;
+  const databaseProfiles = [];
   const phases = [
-    await composeRuntimePhase("control-before", client, expected),
+    await composeRuntimePhase("control-before", client, expected, profile),
   ];
-  const durationMs = 4000;
+  if (captureProfile)
+    databaseProfiles.push(await captureProfile("control-before"));
+  const durationMs = profile.durationMs;
   const started = performance.now();
   const [overlap, commands, observations] = await Promise.all([
-    composeRuntimePhase("account-detail-overlap", client, expected),
+    composeRuntimePhase("account-detail-overlap", client, expected, profile),
     measureReads(started, durationMs),
     observeComposeOverlap(durationMs),
   ]);
   phases.push(overlap);
-  phases.push(await composeRuntimePhase("control-after", client, expected));
+  if (captureProfile)
+    databaseProfiles.push(await captureProfile("account-detail-overlap"));
+  phases.push(
+    await composeRuntimePhase("control-after", client, expected, profile),
+  );
+  if (captureProfile)
+    databaseProfiles.push(await captureProfile("control-after"));
   for (const current of phases) {
     const outcomes = current.summary.outcomes;
     assert.equal(
@@ -1057,6 +1111,7 @@ async function composeRuntimeBenchmark(client, user) {
     observations: runtimeSamples,
     before,
     after,
+    ...(captureProfile === undefined ? {} : { databaseProfiles }),
   });
   const directory = resolve(".local/benchmarks");
   await mkdir(directory, { recursive: true, mode: 0o700 });

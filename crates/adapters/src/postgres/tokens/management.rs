@@ -1,16 +1,35 @@
+use super::super::profiling::{self, Stage};
 use super::*;
+use sqlx::Acquire;
 impl TokenManagementStore for PostgresStore {
     async fn introspect(
         &self,
         input: Management,
         issuer: &str,
     ) -> Result<Option<ActiveToken>, Error> {
-        let mut tx = self.pool.begin().await.map_err(storage)?;
-        authority::lock(&mut tx).await.map_err(storage)?;
-        reads::client(&mut tx, input.client, input.secret).await?;
-        let active = inspect(&mut tx, input, issuer).await?;
-        tx.commit().await.map_err(storage)?;
-        Ok(active)
+        profiling::measure(Stage::ClientTotal, async {
+            let mut connection = profiling::measure(Stage::ClientPoolAcquire, self.pool.acquire())
+                .await
+                .map_err(storage)?;
+            let mut tx = profiling::measure(Stage::ClientBegin, connection.begin())
+                .await
+                .map_err(storage)?;
+            profiling::measure(Stage::ClientFence, authority::lock(&mut tx))
+                .await
+                .map_err(storage)?;
+            profiling::measure(
+                Stage::ClientAuthenticate,
+                reads::client(&mut tx, input.client, input.secret),
+            )
+            .await?;
+            let active =
+                profiling::measure(Stage::ClientInspect, inspect(&mut tx, input, issuer)).await?;
+            profiling::measure(Stage::ClientCommit, tx.commit())
+                .await
+                .map_err(storage)?;
+            Ok(active)
+        })
+        .await
     }
     async fn revoke(&self, input: Management, issuer: &str) -> Result<(), Error> {
         let mut tx = self.pool.begin().await.map_err(storage)?;

@@ -15,7 +15,12 @@ COPY Cargo.toml Cargo.lock rust-toolchain.toml ./
 COPY crates crates
 COPY apps/server apps/server
 COPY tools/reference tools/reference
-RUN cargo build --locked --release -p darkhorse-server
+ARG DARKHORSE_BENCHMARK_PROFILING=false
+RUN if [ "${DARKHORSE_BENCHMARK_PROFILING}" = "true" ]; then \
+      cargo build --locked --release -p darkhorse-server --features benchmark-profiling; \
+    else \
+      cargo build --locked --release -p darkhorse-server; \
+    fi
 
 FROM debian:bookworm-slim@sha256:88200866dfff7ea7f5cbcb6ec7c8a701889efe6fe859fe64d6990e4b07ea4171
 COPY --from=backend /etc/ssl/certs/ca-certificates.crt /etc/ssl/certs/ca-certificates.crt

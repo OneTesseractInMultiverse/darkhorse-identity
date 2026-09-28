@@ -12,6 +12,13 @@ pub(crate) enum Stage {
     PolicyLoad,
     Decision,
     Commit,
+    ClientTotal,
+    ClientPoolAcquire,
+    ClientBegin,
+    ClientFence,
+    ClientAuthenticate,
+    ClientInspect,
+    ClientCommit,
 }
 
 pub(crate) async fn measure<T, E>(
