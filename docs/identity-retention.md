@@ -104,6 +104,17 @@ confirms a later sweep deletes the row. This exercises recovery from an
 uncertain in-flight cleanup command; it does not simulate a database-host crash
 or replace backup/restore qualification.
 
+The access-token and authorization-code sweep tests use a separate 205-row
+expired fixture. They hold one candidate row open while a sweep deletes its
+100-row limit, then run two workers against the remaining backlog and verify
+each stays within its batch limit and the combined work removes each eligible
+row once. The same checks run for codes after token children have been removed.
+Injected token-delete failure rolls back the batch, while terminating a backend
+blocked during code deletion preserves the row for a later successful sweep.
+These tests validate row-level contention, retry and transaction recovery for
+the credential categories; they do not qualify a database-host crash or
+backup/restore to service.
+
 Credential cleanup emits fixed aggregate events such as
 `maintenance legacy_access_token_cleanup status=ok batches=... deleted=...`
 and `maintenance authorization_code_cleanup status=ok ...`. A failed category

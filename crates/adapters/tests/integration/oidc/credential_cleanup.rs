@@ -270,3 +270,218 @@ async fn cleanup_bounds_batches_and_retains_live_or_family_bound_credentials() {
     );
     db.store.close().await;
 }
+
+#[tokio::test]
+async fn credential_cleanup_workers_skip_busy_rows_and_delete_disjoint_bounded_batches() {
+    let db = fixture().await;
+    db.store.bind_provider(ISSUER, [1; 32]).await.unwrap();
+    let (session_digest, authenticated_ms) = historical_session(&db, 0x71, 900_000).await;
+    seed_expired_legacy_credentials(&db, session_digest, authenticated_ms, 205).await;
+
+    let mut token_blocker = db.pool.begin().await.unwrap();
+    let locked_token: Vec<u8> = sqlx::query_scalar(
+        "SELECT digest FROM access_tokens WHERE refresh_generation IS NULL ORDER BY expires_ms,digest LIMIT 1 FOR UPDATE",
+    )
+    .fetch_one(&mut *token_blocker)
+    .await
+    .unwrap();
+    let token_batch = db
+        .store
+        .prune_expired_credential_records(CredentialRecordCategory::LegacyAccessTokens)
+        .await
+        .unwrap();
+    assert_eq!(token_batch.deleted, 100);
+    assert!(token_batch.backlog_remaining);
+    assert_eq!(
+        sqlx::query_scalar::<_, i64>("SELECT count(*) FROM access_tokens WHERE digest=$1")
+            .bind(&locked_token)
+            .fetch_one(&db.pool)
+            .await
+            .unwrap(),
+        1,
+        "a locked token must remain available for a later sweep"
+    );
+    token_blocker.rollback().await.unwrap();
+
+    let first_store = db.store.clone();
+    let second_store = db.store.clone();
+    let (first_token_batch, second_token_batch) = tokio::join!(
+        first_store.prune_expired_credential_records(CredentialRecordCategory::LegacyAccessTokens),
+        second_store.prune_expired_credential_records(CredentialRecordCategory::LegacyAccessTokens),
+    );
+    let first_token_batch = first_token_batch.unwrap();
+    let second_token_batch = second_token_batch.unwrap();
+    assert!(first_token_batch.deleted <= 100);
+    assert!(second_token_batch.deleted <= 100);
+    assert_eq!(first_token_batch.deleted + second_token_batch.deleted, 105);
+    assert_eq!(
+        sqlx::query_scalar::<_, i64>("SELECT count(*) FROM access_tokens")
+            .fetch_one(&db.pool)
+            .await
+            .unwrap(),
+        0,
+        "overlapping sweeps must not leave duplicate or skipped token work"
+    );
+
+    let mut code_blocker = db.pool.begin().await.unwrap();
+    let locked_code: Vec<u8> = sqlx::query_scalar(
+        "SELECT digest FROM authorization_codes ORDER BY expires_ms,digest LIMIT 1 FOR UPDATE",
+    )
+    .fetch_one(&mut *code_blocker)
+    .await
+    .unwrap();
+    let code_batch = db
+        .store
+        .prune_expired_credential_records(CredentialRecordCategory::AuthorizationCodes)
+        .await
+        .unwrap();
+    assert_eq!(code_batch.deleted, 100);
+    assert!(code_batch.backlog_remaining);
+    assert_eq!(
+        sqlx::query_scalar::<_, i64>("SELECT count(*) FROM authorization_codes WHERE digest=$1")
+            .bind(&locked_code)
+            .fetch_one(&db.pool)
+            .await
+            .unwrap(),
+        1,
+        "a locked code must remain available for a later sweep"
+    );
+    code_blocker.rollback().await.unwrap();
+
+    let first_store = db.store.clone();
+    let second_store = db.store.clone();
+    let (first_code_batch, second_code_batch) = tokio::join!(
+        first_store.prune_expired_credential_records(CredentialRecordCategory::AuthorizationCodes),
+        second_store.prune_expired_credential_records(CredentialRecordCategory::AuthorizationCodes),
+    );
+    let first_code_batch = first_code_batch.unwrap();
+    let second_code_batch = second_code_batch.unwrap();
+    assert!(first_code_batch.deleted <= 100);
+    assert!(second_code_batch.deleted <= 100);
+    assert_eq!(first_code_batch.deleted + second_code_batch.deleted, 105);
+    assert_eq!(
+        sqlx::query_scalar::<_, i64>("SELECT count(*) FROM authorization_codes")
+            .fetch_one(&db.pool)
+            .await
+            .unwrap(),
+        0,
+        "overlapping sweeps must not leave duplicate or skipped code work"
+    );
+    db.store.close().await;
+}
+
+#[tokio::test]
+async fn failed_legacy_token_cleanup_rolls_back_and_can_be_retried() {
+    let db = fixture().await;
+    let (session_digest, authenticated_ms) = historical_session(&db, 0x81, 900_000).await;
+    seed_expired_legacy_credentials(&db, session_digest, authenticated_ms, 3).await;
+    sqlx::raw_sql("CREATE FUNCTION reject_legacy_token_delete() RETURNS trigger LANGUAGE plpgsql AS $$ BEGIN RAISE EXCEPTION 'injected cleanup failure'; END $$; CREATE TRIGGER reject_legacy_token_delete BEFORE DELETE ON access_tokens FOR EACH ROW EXECUTE FUNCTION reject_legacy_token_delete();")
+        .execute(&db.pool)
+        .await
+        .unwrap();
+
+    assert_eq!(
+        db.store
+            .prune_expired_credential_records(CredentialRecordCategory::LegacyAccessTokens)
+            .await,
+        Err(Error::Unavailable)
+    );
+    assert_eq!(
+        sqlx::query_scalar::<_, i64>("SELECT count(*) FROM access_tokens")
+            .fetch_one(&db.pool)
+            .await
+            .unwrap(),
+        3,
+        "a failed delete transaction must retain all rows"
+    );
+
+    sqlx::query("DROP TRIGGER reject_legacy_token_delete ON access_tokens")
+        .execute(&db.pool)
+        .await
+        .unwrap();
+    sqlx::query("DROP FUNCTION reject_legacy_token_delete()")
+        .execute(&db.pool)
+        .await
+        .unwrap();
+    let retried = db
+        .store
+        .prune_expired_credential_records(CredentialRecordCategory::LegacyAccessTokens)
+        .await
+        .unwrap();
+    assert_eq!(retried.deleted, 3);
+    assert!(!retried.backlog_remaining);
+    db.store.close().await;
+}
+
+#[tokio::test]
+async fn interrupted_authorization_code_cleanup_rolls_back_and_can_be_retried() {
+    let db = fixture().await;
+    let code_digest = seed_orphan_expired_code(&db, 0x91).await;
+    sqlx::raw_sql("CREATE FUNCTION block_expired_code_delete() RETURNS trigger LANGUAGE plpgsql AS $$ BEGIN PERFORM pg_advisory_xact_lock(314160,271829); RETURN OLD; END $$; CREATE TRIGGER block_expired_code_delete BEFORE DELETE ON authorization_codes FOR EACH ROW EXECUTE FUNCTION block_expired_code_delete();")
+        .execute(&db.pool)
+        .await
+        .unwrap();
+
+    let mut blocker = db.pool.begin().await.unwrap();
+    sqlx::query("SELECT pg_advisory_xact_lock(314160,271829)")
+        .execute(&mut *blocker)
+        .await
+        .unwrap();
+    let store = db.store.clone();
+    let operation = tokio::spawn(async move {
+        store
+            .prune_expired_credential_records(CredentialRecordCategory::AuthorizationCodes)
+            .await
+    });
+    let backend = tokio::time::timeout(std::time::Duration::from_secs(1), async {
+        loop {
+            let pid = sqlx::query_scalar::<_, i32>(
+                "SELECT pid FROM pg_stat_activity WHERE datname=current_database() AND pid<>pg_backend_pid() AND wait_event_type='Lock' AND query LIKE 'WITH expired AS MATERIALIZED%' ORDER BY query_start DESC LIMIT 1",
+            )
+            .fetch_optional(&db.pool)
+            .await
+            .unwrap();
+            if let Some(pid) = pid {
+                break pid;
+            }
+            tokio::time::sleep(std::time::Duration::from_millis(5)).await;
+        }
+    })
+    .await
+    .expect("cleanup reached the deliberately blocked code delete");
+    assert!(
+        sqlx::query_scalar::<_, bool>("SELECT pg_terminate_backend($1)")
+            .bind(backend)
+            .fetch_one(&db.pool)
+            .await
+            .unwrap()
+    );
+    assert_eq!(operation.await.unwrap(), Err(Error::Unavailable));
+    blocker.rollback().await.unwrap();
+    assert_eq!(
+        sqlx::query_scalar::<_, i64>("SELECT count(*) FROM authorization_codes WHERE digest=$1")
+            .bind(code_digest.as_slice())
+            .fetch_one(&db.pool)
+            .await
+            .unwrap(),
+        1,
+        "terminating the cleanup backend must roll back the code delete"
+    );
+
+    sqlx::query("DROP TRIGGER block_expired_code_delete ON authorization_codes")
+        .execute(&db.pool)
+        .await
+        .unwrap();
+    sqlx::query("DROP FUNCTION block_expired_code_delete()")
+        .execute(&db.pool)
+        .await
+        .unwrap();
+    let retried = db
+        .store
+        .prune_expired_credential_records(CredentialRecordCategory::AuthorizationCodes)
+        .await
+        .unwrap();
+    assert_eq!(retried.deleted, 1);
+    assert!(!retried.backlog_remaining);
+    db.store.close().await;
+}
