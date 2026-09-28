@@ -31,6 +31,11 @@ export function boundaryResult(suite, result) {
     measured: Number(m[5]),
     filtered: Number(m[6]),
   }));
+  const outageTests = [
+    ...result.stdout.matchAll(
+      /^test (?:[a-zA-Z0-9_]+::)*redis_cache_outage_keeps_postgres_introspection_authoritative \.\.\. ok$/gm,
+    ),
+  ];
   const worker =
     /^test multiprocess_worker \.\.\. ignored, executed by the separate-process parent scenario with disposable infrastructure$/m.test(
       result.stdout,
@@ -38,16 +43,28 @@ export function boundaryResult(suite, result) {
     /^test separate_processes_share_one_budget_without_shared_connection_pools \.\.\. ok$/m.test(
       result.stdout,
     );
+  const expectedSuites = { postgres: 1, redis: 3, browser: 5 }[suite];
+  const isolatedOutage =
+    suite !== "postgres" &&
+    outageTests.length === 1 &&
+    result.stdout.indexOf(outageTests[0][0]) <
+      result.stdout.lastIndexOf(matches.at(-1)?.[0] ?? "");
   const counts =
-    matches.length === { postgres: 1, redis: 2, browser: 4 }[suite] &&
-    suites.every(
-      (s, i) =>
+    matches.length === expectedSuites &&
+    suites.length === expectedSuites &&
+    suites.every((s, i) => {
+      const workerSuite = suite !== "postgres" && i === 1;
+      const outageSuite = suite !== "postgres" && i === expectedSuites - 1;
+      return (
         s.passed > 0 &&
         s.failed === 0 &&
         s.measured === 0 &&
-        s.filtered === 0 &&
-        s.ignored === (suite !== "postgres" && i === 1 ? 1 : 0),
-    );
+        (outageSuite
+          ? isolatedOutage && s.passed === 1 && s.ignored === 0 && s.filtered > 0
+          : s.filtered === 0) &&
+        s.ignored === (workerSuite ? 1 : 0)
+      );
+    });
   const browser =
     suite === "browser" ? browserEvidence(result.stdout) : undefined;
   const passed =

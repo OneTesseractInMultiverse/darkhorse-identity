@@ -12,6 +12,8 @@ const worker =
   "test multiprocess_worker ... ignored, executed by the separate-process parent scenario with disposable infrastructure\n";
 const parent =
   "test separate_processes_share_one_budget_without_shared_connection_pools ... ok\n";
+const outageTest =
+  "test resource_introspection::redis_cache_outage_keeps_postgres_introspection_authoritative ... ok\n";
 const result = (stdout, code = 0) => ({
   code,
   stdout,
@@ -49,7 +51,14 @@ test("complete suites report actual counts and separately invoked worker handlin
   ]);
   const redis = boundaryResult(
     "redis",
-    result(summary(5) + worker + parent + summary(34, 1)),
+    result(
+      summary(5) +
+        worker +
+        parent +
+        summary(34, 1) +
+        outageTest +
+        summary(1, 0, 0, 289),
+    ),
   );
   assert.equal(redis.status, "passed");
   assert.equal(redis.worker, "executed by passing parent scenario");
@@ -70,6 +79,18 @@ test("failed, incomplete, filtered and accidentally skipped execution cannot qua
     summary(5) + worker + summary(34, 1),
     summary(5) + worker + parent + summary(34, 2),
     summary(5) + parent + summary(34, 0),
+    summary(5) +
+      worker +
+      parent +
+      summary(34, 1) +
+      outageTest +
+      summary(1, 0, 0, 289).replace("1 passed", "0 passed"),
+    summary(5) +
+      worker +
+      parent +
+      summary(34, 1) +
+      outageTest.replace(" ... ok", " ... FAILED") +
+      summary(1, 0, 0, 289),
   ])
     assert.equal(boundaryResult("redis", result(output)).status, "failed");
   for (const extra of [
@@ -134,7 +155,14 @@ const browserPhases = [
   "page-security",
 ];
 const browserNative =
-  summary(5) + worker + parent + summary(39, 1) + summary(4) + summary(3);
+  summary(5) +
+  worker +
+  parent +
+  summary(39, 1) +
+  summary(4) +
+  summary(3) +
+  outageTest +
+  summary(1, 0, 0, 289);
 const browserMarkers = browserPhases
   .map(
     (phase) =>
@@ -146,7 +174,7 @@ test("browser qualification requires every native binary, ordered browser phases
   const raw = browserNative + browserMarkers + browserComplete;
   const report = boundaryResult("browser", result(raw));
   assert.equal(report.status, "passed");
-  assert.equal(report.suites.length, 4);
+  assert.equal(report.suites.length, 5);
   assert.equal(report.browser.status, "completed");
   assert.equal(report.worker, "executed by passing parent scenario");
   for (const stdout of [
@@ -162,6 +190,8 @@ test("browser qualification requires every native binary, ordered browser phases
     ),
     raw.replace(summary(4), summary(4, 0, 0, 1)),
     raw.replace(summary(3), summary(0)),
+    raw.replace(outageTest, "test some_other_test ... ok"),
+    raw.replace(summary(1, 0, 0, 289), summary(1)),
     raw.replace(worker, ""),
     raw.replace(browserComplete, "DARKHORSE_BROWSER_COMPLETED:2\n"),
     browserComplete + browserNative + browserMarkers,
