@@ -8,6 +8,10 @@ use darkhorse_domain::{
     identity::ClientId,
     oidc::{Error, Interaction, Prompt, Request},
 };
+
+#[path = "oidc/credential_cleanup.rs"]
+mod credential_cleanup;
+
 pub(super) async fn fixture() -> Database {
     fixture_at_version(i64::MAX).await
 }

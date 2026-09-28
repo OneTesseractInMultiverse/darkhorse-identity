@@ -118,9 +118,12 @@ including revoked families. A database batch deletes at most ten families and
 cascades their refresh/access rows. Each family is limited to 256 of each, so the
 maximum child work is bounded. Ordered root locks with `SKIP LOCKED` let concurrent
 workers skip busy families. Audit and authorization-code rows remain retained.
-Legacy access tokens, codes, consent and audit still need separate retention work.
+The scheduled maintenance pass now removes expired legacy access tokens and
+then authorization codes that have no access-token or refresh-family children.
+Refresh-generation access rows remain governed by family cleanup, including its
+24-hour post-expiry history window. Consent and audit have no generic cleanup.
 The [identity record lifecycle map](identity-retention.md) documents the
-dependencies and eligibility rules those cleanup slices must preserve.
+dependency order, transaction bounds and remaining retention work.
 
 Server processes with the provider active run periodic cleanup. Each minute they attempt
 at most ten batches, stopping early when a batch is not full. Transactions release

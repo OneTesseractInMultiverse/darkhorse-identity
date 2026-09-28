@@ -28,6 +28,70 @@ fn authorization_cleanup_failure_event(duration_ms: u64) -> String {
     )
 }
 
+fn credential_cleanup_name(category: oidc_maintenance::CredentialRecordCategory) -> &'static str {
+    match category {
+        oidc_maintenance::CredentialRecordCategory::LegacyAccessTokens => "legacy_access_token",
+        oidc_maintenance::CredentialRecordCategory::AuthorizationCodes => "authorization_code",
+    }
+}
+
+fn credential_cleanup_event(
+    category: oidc_maintenance::CredentialRecordCategory,
+    report: oidc_maintenance::CredentialRecordCleanupSweep,
+    duration_ms: u64,
+) -> Option<String> {
+    if report.deleted == 0 && !report.backlog_remaining {
+        return None;
+    }
+    let oldest_age_ms = report
+        .oldest_expired_age_ms
+        .map_or_else(|| "none".to_owned(), |age| age.to_string());
+    Some(format!(
+        "maintenance {}_cleanup status=ok batches={} deleted={} backlog_remaining={} oldest_expired_age_ms={oldest_age_ms} duration_ms={duration_ms}",
+        credential_cleanup_name(category),
+        report.batches,
+        report.deleted,
+        report.backlog_remaining
+    ))
+}
+
+fn credential_cleanup_failure_event(
+    category: oidc_maintenance::CredentialRecordCategory,
+    duration_ms: u64,
+) -> String {
+    format!(
+        "maintenance {}_cleanup status=failed error=unavailable duration_ms={duration_ms}; retrying next interval.",
+        credential_cleanup_name(category)
+    )
+}
+
+async fn run_credential_cleanup(
+    store: &PostgresStore,
+    category: oidc_maintenance::CredentialRecordCategory,
+) {
+    let started = Instant::now();
+    let result = match category {
+        oidc_maintenance::CredentialRecordCategory::LegacyAccessTokens => {
+            oidc_maintenance::sweep_expired_legacy_access_tokens(store).await
+        }
+        oidc_maintenance::CredentialRecordCategory::AuthorizationCodes => {
+            oidc_maintenance::sweep_expired_authorization_codes(store).await
+        }
+    };
+    let duration_ms = elapsed_millis(started);
+    match result {
+        Ok(report) => {
+            if let Some(event) = credential_cleanup_event(category, report, duration_ms) {
+                eprintln!("{event}");
+            }
+        }
+        Err(_) => eprintln!(
+            "{}",
+            credential_cleanup_failure_event(category, duration_ms)
+        ),
+    }
+}
+
 fn elapsed_millis(started: Instant) -> u64 {
     u64::try_from(started.elapsed().as_millis()).unwrap_or(u64::MAX)
 }
@@ -46,6 +110,16 @@ pub async fn run(store: Option<PostgresStore>) {
         if refresh::sweep(&store).await.is_err() {
             eprintln!("Refresh credential cleanup unavailable; retrying next interval.");
         }
+        run_credential_cleanup(
+            &store,
+            oidc_maintenance::CredentialRecordCategory::LegacyAccessTokens,
+        )
+        .await;
+        run_credential_cleanup(
+            &store,
+            oidc_maintenance::CredentialRecordCategory::AuthorizationCodes,
+        )
+        .await;
         let started = Instant::now();
         match oidc_maintenance::sweep_expired_authorization_requests(&store).await {
             Ok(report) => {

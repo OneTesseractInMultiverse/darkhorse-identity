@@ -143,9 +143,14 @@ Do not log credential bodies/cookies at a proxy. Static output has a hash-based
 script CSP. Rust adds frame restrictions, nosniff, no-referrer and no-store headers.
 The HMR server is a local development tool, never a production session server.
 
-Expiry is enforced without a cleanup job. Operators must plan bounded deletion of
-expired session rows, monitoring, backup/restore, session
-retention and pool sizing before a long-running deployment. Session audit and token/code foreign keys must be included in that retention design.
+Browser-session expiry is enforced without a session-row cleanup job. The
+maintenance worker bounds cleanup for authorization requests, expired legacy
+access tokens, terminal authorization codes and refresh families; it does not
+delete browser sessions, audit history, logout references or consent records.
+Operators must plan session retention, monitoring, backup/restore and pool sizing
+before a long-running deployment. Session audit and token/code foreign keys must
+be included in that retention design. See the [identity record lifecycle map](identity-retention.md)
+for implemented credential cleanup and the categories that remain retained.
 Session checks make
 primary database round trips and serialize concurrent checks for the same handle.
 Load qualification is still required. No high-throughput SLO is claimed yet.
