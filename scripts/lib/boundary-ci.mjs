@@ -60,7 +60,10 @@ export function boundaryResult(suite, result) {
         s.failed === 0 &&
         s.measured === 0 &&
         (outageSuite
-          ? isolatedOutage && s.passed === 1 && s.ignored === 0 && s.filtered > 0
+          ? isolatedOutage &&
+            s.passed === 1 &&
+            s.ignored === 0 &&
+            s.filtered > 0
           : s.filtered === 0) &&
         s.ignored === (workerSuite ? 1 : 0)
       );
