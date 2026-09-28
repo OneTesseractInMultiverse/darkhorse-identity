@@ -37,6 +37,7 @@ pub async fn run(command: Command, auth_stdin: bool, locale: Locale) -> Result<O
             client,
             revision,
         } => clients::run(application, client, revision).await,
+        Command::ClientCreate { application } => clients::creation::run(application).await,
         Command::ApplicationMutation(operation) if auth_stdin => {
             applications::run(operation, true, locale).await
         }

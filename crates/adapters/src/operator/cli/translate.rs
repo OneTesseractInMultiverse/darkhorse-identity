@@ -21,12 +21,17 @@ pub(super) fn invocation(options: Options) -> Result<Invocation, Failure> {
             | Command::CatalogShow(_)
             | Command::ApplicationMutation(_)
             | Command::ClientUpdate { .. }
+            | Command::ClientCreate { .. }
             | Command::ClientSecret { .. }
             | Command::Change { .. }
     );
-    if (matches!(command, Command::ClientUpdate { .. }) && !options.auth_stdin)
+    if (matches!(
+        command,
+        Command::ClientUpdate { .. } | Command::ClientCreate { .. }
+    ) && !options.auth_stdin)
         || (options.auth_stdin && !account)
         || (account && options.output == Format::Json && !options.auth_stdin)
+        || (matches!(command, Command::ClientCreate { .. }) && options.output != Format::Json)
     {
         return Err(Failure::usage());
     }
@@ -56,6 +61,11 @@ fn operator(value: Operator) -> Result<Command, Failure> {
             query,
         )?,
         Operator::Client(Client::Secret(value)) => secret(value),
+        Operator::Client(Client::Create {
+            application,
+            secret_stdout,
+        }) if secret_stdout => Command::ClientCreate { application },
+        Operator::Client(Client::Create { .. }) => return Err(Failure::usage()),
         Operator::Client(Client::Update {
             application,
             client,

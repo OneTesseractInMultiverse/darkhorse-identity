@@ -9,6 +9,7 @@ use darkhorse_domain::{
     operator_accounts::Error,
     operator_clients::{Request, Update},
 };
+pub(super) mod creation;
 mod input;
 pub(super) async fn run(
     application: ApplicationId,

@@ -87,6 +87,24 @@ pub(in crate::operator) fn spanish(english: &str) -> Option<&'static str> {
         "Client configuration input is too long." => {
             "La configuración del cliente es demasiado larga."
         }
+        "Register an OIDC client; the generated secret is disclosed once on JSON stdout." => {
+            "Registrar un cliente OIDC; el secreto generado se muestra una sola vez en la salida JSON."
+        }
+        "Explicitly permit this command to write the new secret to stdout." => {
+            "Autorizar explícitamente que este comando escriba el nuevo secreto en la salida estándar."
+        }
+        "Invalid client configuration or resource/scope allowance." => {
+            "La configuración del cliente o sus permisos de recursos y ámbitos no son válidos."
+        }
+        "The client could not be created because current state conflicts." => {
+            "No se pudo crear el cliente porque existe un conflicto con el estado actual."
+        }
+        "Client creation unavailable; check configuration, database, limiter and audit availability." => {
+            "Creación de cliente no disponible; revise la configuración, la base de datos, el limitador y la auditoría."
+        }
+        "Client creation committed but the secret could not be delivered. Locate and retire the credential before creating a replacement." => {
+            "El cliente se creó, pero no se pudo entregar el secreto. Localice y retire la credencial antes de crear un reemplazo."
+        }
         "Client not found in the requested application." => {
             "No se encontró el cliente en la aplicación indicada."
         }
@@ -125,9 +143,6 @@ pub(in crate::operator) fn spanish(english: &str) -> Option<&'static str> {
         "Invalid bootstrap input." => "Datos de inicialización no válidos.",
         "Invalid catalog continuation." => "Continuación del catálogo no válida.",
         "Invalid client configuration input." => "Datos de configuración del cliente no válidos.",
-        "Invalid client configuration or resource/scope allowance." => {
-            "Configuración del cliente o autorización de recursos y ámbitos no válida."
-        }
         "Invalid client identifier." => "Identificador de cliente no válido.",
         "Invalid client secret identifier." => "Identificador de secreto de cliente no válido.",
         "Invalid client secret operation." => "Operación de secreto de cliente no válida.",

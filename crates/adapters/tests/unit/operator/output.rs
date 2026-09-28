@@ -128,3 +128,50 @@ fn bounded_outputs_and_failed_writers_never_report_success() {
     assert_eq!(value["error"]["code"], "invalid_arguments");
     assert_eq!(Failure::from("Operation failed.").exit_code(), 1);
 }
+
+#[test]
+fn one_time_secrets_only_serialize_through_the_explicit_json_path() {
+    use zeroize::Zeroizing;
+    let secret = "fixture-only-secret-value";
+    let output = Output::one_time_secret(
+        serde_json::json!({"client_id":"00000000-0000-0000-0000-000000000001"}),
+        Zeroizing::new(secret.to_owned()),
+    );
+    let failure = render_in(
+        &output,
+        Format::Json,
+        darkhorse_domain::localization::Locale::English,
+    )
+    .unwrap_err();
+    assert_eq!(failure.exit_code(), 74);
+    let failure = render_failure(&failure, Format::Json).unwrap();
+    let failure: serde_json::Value = serde_json::from_slice(&failure).unwrap();
+    assert_eq!(failure["error"]["code"], "secret_delivery_failed");
+    assert_eq!(failure["data"]["committed"], true);
+    assert!(failure["data"].get("client_secret").is_none());
+    assert!(!failure.to_string().contains(secret));
+    assert_eq!(
+        render_in(
+            &output,
+            Format::Human,
+            darkhorse_domain::localization::Locale::English
+        )
+        .unwrap_err()
+        .exit_code(),
+        74
+    );
+    let bytes = sensitive_json(&output).unwrap();
+    let envelope: serde_json::Value = serde_json::from_slice(&bytes).unwrap();
+    assert_eq!(envelope["data"]["client_secret"], secret);
+    assert_eq!(
+        envelope["data"]["client_id"],
+        "00000000-0000-0000-0000-000000000001"
+    );
+    assert!(!output.data.to_string().contains(secret));
+    assert_eq!(
+        sensitive_json(&Output::record(serde_json::Value::Null))
+            .unwrap_err()
+            .exit_code(),
+        2
+    );
+}

@@ -31,6 +31,9 @@ pub enum Command {
         client: darkhorse_domain::identity::ClientId,
         revision: u64,
     },
+    ClientCreate {
+        application: darkhorse_domain::identity::ApplicationId,
+    },
     Change {
         id: PrincipalId,
         revision: u64,

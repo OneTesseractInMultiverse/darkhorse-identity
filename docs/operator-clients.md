@@ -8,9 +8,74 @@ alone grants no authority.
 
 This is a focused increment of
 [#26](https://github.com/OneTesseractInMultiverse/darkhorse-identity/issues/26).
-Client creation, secret issuance/rotation and recovery of secret delivery remain
-separate work. [Secret inventory and retirement](operator-client-secrets.md) are
-available through distinct commands. This command neither reads client secrets nor changes their verifiers.
+The CLI also supports [client creation with one-time secret delivery](#create-a-client).
+[Secret inventory and retirement](operator-client-secrets.md) remain separate
+commands. The update command neither reads client secrets nor changes their
+verifiers.
+
+## Create a client
+
+Client registration uses the existing OIDC registration policy. Review the
+application, resource and scope identifiers before building the protected input.
+Then run the command with `--secret-stdout` to acknowledge that the successful
+JSON response contains the generated credential:
+
+```sh
+darkhorse-server --auth-stdin --output json --yes operator client create <application-uuid> --secret-stdout < /private/path/client-input.json
+```
+
+The document uses the same `authentication` and complete `client` objects shown
+below for updates. The administrator password and a nonsecret audit `reason` go
+inside `authentication`; `refresh_tokens` must be explicit. Input is bounded to
+32 KiB, and unknown or duplicate fields are rejected. Creation requires a current
+platform administrator, fresh password verification, confirmation, a valid
+application and resource/scope allowance, and mandatory registration and operator
+audits in one PostgreSQL transaction.
+
+The operation generates a public client identifier and a 256-bit client secret
+using the operating system random generator. PostgreSQL stores only the
+domain-separated secret verifier. The secret is held in zeroizing memory and is
+returned only after the client and both audit records commit. The response's
+`data` object contains `completed`, `operation_id`, `application_id`, `client_id`,
+`secret_id`, decimal-string `revision` (`"0"`), and `client_secret`. `show`, `list`,
+audit records, failures and ordinary CLI output never contain the secret.
+
+`--secret-stdout` is mandatory and creation also requires `--output json`,
+`--auth-stdin` and `--yes`. The command never accepts secrets as arguments. Its
+stdout is nevertheless sensitive: a terminal can retain scrollback, and a shell,
+container runtime, CI system, or pipe can capture output. Send stdout directly to
+a trusted secret-management workflow with logging disabled. Do not redirect it to
+a general-purpose file or paste it into tickets, chat, or shell transcripts. A
+protected-file delivery mode is not provided.
+
+If output fails after commit, the CLI returns `secret_delivery_failed` on stderr.
+Its JSON `data` includes `committed: true`, the operation, application, client and
+secret identifiers, but never the secret value. Use the returned secret ID and
+client revision `0` to retire the credential, then register a replacement. If the
+database reports an uncertain commit instead, do not retry blindly; reconcile the
+application, client configuration and append-only audit state first. A partial
+stdout write can lose the only clear copy after commit. The secret is never
+retrievable from Darkhorse after issuance.
+
+```mermaid
+sequenceDiagram
+    participant C as Client create command
+    participant A as Shared administrator authentication
+    participant P as PostgreSQL primary
+    C->>C: Parse bounded config; require explicit secret stdout and confirmation
+    C->>A: Credentials, application and validated client spec
+    A->>A: Apply shared login budget and verify password
+    A->>P: Acquire exclusive security fence
+    P->>P: Check current actor and shared registration policy
+    P->>P: Generate client ID and secret after authority checks
+    P->>P: Store verifier, client bindings and registration audit
+    P->>P: Store operator audit and repeat authority check
+    P-->>C: Commit client and both audits
+    C->>C: Serialize one-time response through zeroizing JSON buffer
+```
+
+The [secret inventory and retirement guide](operator-client-secrets.md) documents
+the separate controls for inspecting and retiring client credentials.
 
 ## Invocation and complete input
 

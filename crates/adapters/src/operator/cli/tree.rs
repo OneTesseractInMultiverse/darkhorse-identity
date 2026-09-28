@@ -242,6 +242,14 @@ fn application_name(value: &str) -> Result<darkhorse_domain::registration::Label
 pub(super) enum Client {
     #[command(subcommand)]
     Secret(ClientSecret),
+    /// Register an OIDC client; the generated secret is disclosed once on JSON stdout.
+    Create {
+        #[arg(value_parser=crate::operator::command::application_identifier)]
+        application: darkhorse_domain::identity::ApplicationId,
+        /// Explicitly permit this command to write the new secret to stdout.
+        #[arg(long)]
+        secret_stdout: bool,
+    },
     /// Replace a scoped client's complete configuration from protected authentication/configuration JSON.
     Update {
         #[arg(value_parser=crate::operator::command::application_identifier)]

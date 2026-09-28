@@ -95,6 +95,76 @@ fn help_and_version_are_bounded_static_information() {
         assert!(!text.contains('\x1b'));
     }
 }
+
+#[test]
+fn client_creation_requires_protected_authentication_json_and_explicit_secret_stdout() {
+    let app = "00000000-0000-0000-0000-000000000001";
+    let args = [
+        "--auth-stdin",
+        "--output",
+        "json",
+        "--yes",
+        "operator",
+        "client",
+        "create",
+        app,
+        "--secret-stdout",
+    ];
+    let invocation = run(&args);
+    assert_eq!(
+        invocation.command,
+        Command::ClientCreate {
+            application: darkhorse_domain::identity::ApplicationId::from_u128(1).unwrap()
+        }
+    );
+    assert_eq!(invocation.format, Format::Json);
+    assert!(invocation.auth_stdin);
+    assert!(invocation.confirmed);
+    assert!(crate::operator::command::requires_confirmation(
+        &invocation.command
+    ));
+
+    for rejected in [
+        vec![
+            "--auth-stdin",
+            "--output",
+            "json",
+            "operator",
+            "client",
+            "create",
+            app,
+        ],
+        vec![
+            "--output",
+            "json",
+            "--yes",
+            "operator",
+            "client",
+            "create",
+            app,
+            "--secret-stdout",
+        ],
+        vec![
+            "--auth-stdin",
+            "--yes",
+            "operator",
+            "client",
+            "create",
+            app,
+            "--secret-stdout",
+        ],
+    ] {
+        assert_eq!(parse(&rejected).unwrap_err().exit_code(), 2);
+    }
+
+    let Plan::Display(help) =
+        parse(&["--locale", "es", "operator", "client", "create", "--help"]).unwrap()
+    else {
+        panic!("expected help")
+    };
+    assert!(help.contains("Registrar un cliente OIDC"));
+    assert!(help.contains("Autorizar explícitamente"));
+}
 #[test]
 fn errors_never_echo_supplied_values_and_arguments_are_bounded() {
     let secret = "marker-secret-\x1b[31m\nforged";

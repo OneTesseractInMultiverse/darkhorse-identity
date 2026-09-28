@@ -6,8 +6,10 @@ administrator. Retirement also requires the current client revision, confirmatio
 and an audit reason. Application ownership alone grants no administration.
 
 These commands extend [issue #26](https://github.com/OneTesseractInMultiverse/darkhorse-identity/issues/26).
-Client creation, secret issuance and rotation, protected one-time delivery and
-recovery from delivery failure remain separate work. The existing
+Client creation with explicit one-time stdout delivery is documented in the
+[client operator guide](operator-clients.md#create-a-client). Secret rotation,
+protected-file delivery and recovery procedures beyond retiring and replacing a
+credential remain separate work. The existing
 [HTTP registration API](registration.md) retains its documented operations.
 
 ## Inspect lifecycle metadata

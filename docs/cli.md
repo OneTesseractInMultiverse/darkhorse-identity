@@ -141,7 +141,9 @@ all-definition selection and return bounded resource, scope, role and capability
 Application `create` and `update` require a complete specification, confirmation
 and a protected reason. See [application writes](operator-applications.md).
 Client `update` requires a complete 32 KiB protected configuration document,
-`--auth-stdin` and `--yes` in every output mode. See [client updates](operator-clients.md).
+`--auth-stdin` and `--yes` in every output mode. Client creation additionally
+requires `--output json --secret-stdout`; its response contains the generated
+secret once. See [client creation and updates](operator-clients.md).
 
 ## Confirmations and compatibility
 

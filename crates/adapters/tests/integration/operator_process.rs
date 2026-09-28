@@ -1,4 +1,5 @@
 use super::{Fixture, SERIAL, variable};
+use darkhorse_adapters::registration::secret_digest;
 use darkhorse_adapters::{login_admission::SharedLoginAdmission, password::PasswordPreparation};
 use darkhorse_application::{
     authentication::{AuthError, LoginAdmission},
@@ -127,8 +128,11 @@ fn input(email: &str) -> Value {
     json!({"email":email,"password":PASSWORD,"reason":"Source-defined operator fixture"})
 }
 fn succeeds(args: &[&str], email: &str) -> Value {
-    let (code, value) = invoke(args, input(email));
-    assert_eq!(code, 0, "{value}");
+    succeeds_with_input(args, input(email))
+}
+fn succeeds_with_input(args: &[&str], input: Value) -> Value {
+    let (code, value) = invoke(args, input);
+    assert_eq!(code, 0, "{args:?}: {value}");
     value["data"].clone()
 }
 #[tokio::test]
@@ -887,6 +891,131 @@ async fn committed_client_update_with_closed_output_is_not_repeated() {
         .await
         .unwrap(),
         1
+    );
+}
+
+#[tokio::test]
+async fn client_creation_delivers_secret_only_on_explicit_json_stdout_and_commits_audit_atomically()
+{
+    let _serial = SERIAL.lock().await;
+    let f = Fixture::new().await;
+    f.activate().await;
+    restrict_database(&f).await;
+    let (owner, email) = actor(&f).await;
+    let (app, _) = client_fixture(&f, owner).await;
+    let args = [
+        "operator",
+        "client",
+        "create",
+        app.as_str(),
+        "--secret-stdout",
+    ];
+    let (code, response) = invoke(&args, client_input(&email));
+    assert_eq!(code, 0, "{response}");
+    let data = &response["data"];
+    let secret = data["client_secret"].as_str().expect("one-time secret");
+    assert_eq!(secret.len(), 64);
+    assert!(
+        secret
+            .bytes()
+            .all(|byte| byte.is_ascii_hexdigit() && !byte.is_ascii_uppercase())
+    );
+    assert_eq!(data["revision"], "0");
+    assert_ne!(data["client_id"], serde_json::Value::Null);
+    assert_ne!(data["secret_id"], serde_json::Value::Null);
+    for hidden in [
+        email.as_str(),
+        "Private client configuration",
+        "https://client.example",
+        PASSWORD,
+    ] {
+        assert!(!response.to_string().contains(hidden));
+    }
+    let client = Uuid::parse_str(data["client_id"].as_str().unwrap()).unwrap();
+    assert!(
+        sqlx::query_scalar::<_, bool>(
+            "SELECT EXISTS(SELECT 1 FROM oauth_client_secrets WHERE client_id=$1 AND verifier=$2)"
+        )
+        .bind(client)
+        .bind(secret_digest(secret).unwrap().as_slice())
+        .fetch_one(&f.pool)
+        .await
+        .unwrap()
+    );
+    let audit: String = sqlx::query_scalar(
+        "SELECT row_to_json(a)::text FROM operator_client_creation_audit a WHERE client_id=$1",
+    )
+    .bind(client)
+    .fetch_one(&f.pool)
+    .await
+    .unwrap();
+    assert!(audit.contains("written"));
+    assert!(!audit.contains(secret));
+    assert!(!audit.contains("verifier"));
+    assert!(!audit.contains("Private client configuration"));
+
+    let (lost_code, lost_response) = invoke_output("runtime", &args, client_input(&email), true);
+    assert_eq!(lost_code, 74);
+    assert_eq!(lost_response["error"]["code"], "secret_delivery_failed");
+    assert_eq!(lost_response["data"]["committed"], true);
+    assert!(lost_response["data"].get("client_secret").is_none());
+    let lost_client = lost_response["data"]["client_id"].as_str().unwrap();
+    let lost_secret = lost_response["data"]["secret_id"].as_str().unwrap();
+    let lost_audit: String = sqlx::query_scalar(
+        "SELECT row_to_json(a)::text FROM operator_client_creation_audit a WHERE client_id=$1",
+    )
+    .bind(Uuid::parse_str(lost_client).unwrap())
+    .fetch_one(&f.pool)
+    .await
+    .unwrap();
+    assert!(lost_audit.contains("written"));
+    succeeds(
+        &[
+            "operator",
+            "client",
+            "secret",
+            "retire",
+            app.as_str(),
+            lost_client,
+            lost_secret,
+            "0",
+        ],
+        &email,
+    );
+    assert!(
+        sqlx::query_scalar::<_, bool>("SELECT retired FROM oauth_client_secrets WHERE id=$1",)
+            .bind(Uuid::parse_str(lost_secret).unwrap())
+            .fetch_one(&f.pool)
+            .await
+            .unwrap()
+    );
+
+    sqlx::query("REVOKE INSERT ON operator_client_creation_audit FROM darkhorse_runtime")
+        .execute(&f.pool)
+        .await
+        .unwrap();
+    let before: i64 = sqlx::query_scalar("SELECT count(*) FROM oauth_clients")
+        .fetch_one(&f.pool)
+        .await
+        .unwrap();
+    let (failed, failure) = invoke(&args, client_input(&email));
+    assert_eq!(failed, 1);
+    assert_eq!(failure["ok"], false);
+    assert!(failure["data"].get("client_secret").is_none());
+    assert_eq!(
+        sqlx::query_scalar::<_, i64>("SELECT count(*) FROM oauth_clients")
+            .fetch_one(&f.pool)
+            .await
+            .unwrap(),
+        before
+    );
+    assert_eq!(
+        sqlx::query_scalar::<_, i64>("SELECT count(*) FROM operator_client_creation_audit WHERE actor_id=$1 AND result='written'")
+            .bind(owner)
+            .fetch_one(&f.pool)
+            .await
+            .unwrap(),
+        2
     );
 }
 

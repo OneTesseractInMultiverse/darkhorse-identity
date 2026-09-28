@@ -2,6 +2,7 @@ use darkhorse_domain::localization::Locale;
 use serde::Serialize;
 use serde_json::Value;
 use std::io::Write;
+use zeroize::Zeroizing;
 
 pub const OUTPUT_LIMIT: usize = 65_536;
 #[derive(Debug, Clone, Copy, PartialEq, Eq, clap::ValueEnum, Default)]
@@ -15,6 +16,7 @@ pub struct Output {
     pub data: Value,
     message: Option<String>,
     spanish: Option<String>,
+    one_time_secret: Option<Zeroizing<String>>,
 }
 impl Output {
     pub fn record(data: Value) -> Self {
@@ -22,6 +24,7 @@ impl Output {
             data,
             message: None,
             spanish: None,
+            one_time_secret: None,
         }
     }
     pub fn message(message: impl Into<String>, data: Value) -> Self {
@@ -29,6 +32,7 @@ impl Output {
             data,
             message: Some(message.into()),
             spanish: None,
+            one_time_secret: None,
         }
     }
     pub fn localized_message(english: String, spanish: String, data: Value) -> Self {
@@ -36,6 +40,15 @@ impl Output {
             data,
             message: Some(english),
             spanish: Some(spanish),
+            one_time_secret: None,
+        }
+    }
+    pub(crate) fn one_time_secret(data: Value, secret: Zeroizing<String>) -> Self {
+        Self {
+            data,
+            message: None,
+            spanish: None,
+            one_time_secret: Some(secret),
         }
     }
 }
@@ -79,6 +92,18 @@ impl Failure {
             data: None,
         }
     }
+    fn secret_delivery(mut data: Value) -> Self {
+        if let Some(fields) = data.as_object_mut() {
+            fields.remove("completed");
+            fields.insert("committed".into(), true.into());
+        }
+        Self {
+            code: "secret_delivery_failed",
+            message: "Client creation committed but the secret could not be delivered. Locate and retire the credential before creating a replacement.",
+            exit: 74,
+            data: Some(data),
+        }
+    }
     pub fn exit_code(&self) -> u8 {
         self.exit
     }
@@ -110,6 +135,51 @@ impl Write for Bounded {
         Ok(())
     }
 }
+struct SensitiveBounded(Zeroizing<Vec<u8>>);
+impl Write for SensitiveBounded {
+    fn write(&mut self, bytes: &[u8]) -> std::io::Result<usize> {
+        if bytes.len() > OUTPUT_LIMIT.saturating_sub(self.0.len()) {
+            return Err(std::io::ErrorKind::FileTooLarge.into());
+        }
+        self.0.extend_from_slice(bytes);
+        Ok(bytes.len())
+    }
+    fn flush(&mut self) -> std::io::Result<()> {
+        Ok(())
+    }
+}
+#[derive(Serialize)]
+struct SensitiveData<'a> {
+    #[serde(flatten)]
+    metadata: &'a Value,
+    client_secret: &'a str,
+}
+#[derive(Serialize)]
+struct SensitiveEnvelope<'a> {
+    schema_version: u8,
+    ok: bool,
+    data: SensitiveData<'a>,
+}
+pub(super) fn sensitive_json(output: &Output) -> Result<Zeroizing<Vec<u8>>, Failure> {
+    let Some(secret) = output.one_time_secret.as_deref() else {
+        return Err(Failure::usage());
+    };
+    let mut bytes = SensitiveBounded(Zeroizing::new(Vec::new()));
+    serde_json::to_writer(
+        &mut bytes,
+        &SensitiveEnvelope {
+            schema_version: 1,
+            ok: true,
+            data: SensitiveData {
+                metadata: &output.data,
+                client_secret: secret,
+            },
+        },
+    )
+    .map_err(|_| Failure::output())?;
+    bytes.write_all(b"\n").map_err(|_| Failure::output())?;
+    Ok(bytes.0)
+}
 fn json(value: &impl Serialize) -> Result<Vec<u8>, Failure> {
     let mut bytes = Bounded(Vec::new());
     serde_json::to_writer(&mut bytes, value).map_err(|_| Failure::output())?;
@@ -135,6 +205,10 @@ pub fn render(output: &Output, format: Format) -> Result<Vec<u8>, Failure> {
     render_in(output, format, Locale::English)
 }
 pub fn render_in(output: &Output, format: Format, locale: Locale) -> Result<Vec<u8>, Failure> {
+    if output.one_time_secret.is_some() {
+        // Secret-bearing output is emitted only through the zeroizing JSON writer.
+        return Err(Failure::secret_delivery(output.data.clone()));
+    }
     match format {
         Format::Json => json(&serde_json::json!({"schema_version":1,"ok":true,"data":output.data})),
         Format::Human => match if locale == Locale::Spanish {
@@ -182,6 +256,15 @@ pub fn emit(output: &Output, format: Format) -> Result<(), Failure> {
     emit_in(output, format, Locale::English)
 }
 pub fn emit_in(output: &Output, format: Format, locale: Locale) -> Result<(), Failure> {
+    if output.one_time_secret.is_some() {
+        if format != Format::Json {
+            return Err(Failure::secret_delivery(output.data.clone()));
+        }
+        let bytes =
+            sensitive_json(output).map_err(|_| Failure::secret_delivery(output.data.clone()))?;
+        return write_bytes(&mut std::io::stdout().lock(), &bytes)
+            .map_err(|_| Failure::secret_delivery(output.data.clone()));
+    }
     write_bytes(
         &mut std::io::stdout().lock(),
         &render_in(output, format, locale)?,
