@@ -133,3 +133,49 @@ fn invalid_projection_identifiers_epochs_and_bindings_fail_closed() {
         assert!(matches!(policy(&projection), Err(Error::Unavailable)));
     }
 }
+
+#[test]
+fn cached_projection_requires_bounded_valid_data_for_the_requested_resource() {
+    let projection = fixture();
+    let payload = serde_json::to_vec(&projection).unwrap();
+    assert!(
+        cached(
+            &payload,
+            PrincipalId::from_u128(1).unwrap(),
+            ClientId::from_u128(2).unwrap(),
+            ResourceId::from_u128(4).unwrap(),
+            &["openid".into(), "operate".into()],
+        )
+        .is_some()
+    );
+    assert!(
+        cached(
+            &payload,
+            PrincipalId::from_u128(1).unwrap(),
+            ClientId::from_u128(2).unwrap(),
+            ResourceId::from_u128(5).unwrap(),
+            &["openid".into(), "operate".into()],
+        )
+        .is_none()
+    );
+    assert!(
+        cached(
+            b"malformed",
+            PrincipalId::from_u128(1).unwrap(),
+            ClientId::from_u128(2).unwrap(),
+            ResourceId::from_u128(4).unwrap(),
+            &["openid".into(), "operate".into()],
+        )
+        .is_none()
+    );
+    assert!(
+        cached(
+            &vec![0; MAX_CACHE_BYTES + 1],
+            PrincipalId::from_u128(1).unwrap(),
+            ClientId::from_u128(2).unwrap(),
+            ResourceId::from_u128(4).unwrap(),
+            &["openid".into(), "operate".into()],
+        )
+        .is_none()
+    );
+}

@@ -359,10 +359,11 @@ test-resource-introspection: ## Test: isolated resource credential lifecycle, tr
 
 BENCH_PROFILE ?= smoke
 BENCH_POOL_SIZE ?= 5
+BENCH_AUTHORIZATION_CACHE_ENABLED ?= false
 .PHONY: benchmark benchmark-baseline
 
 benchmark: build-web ## Performance: release HTTPS SSO/introspection baseline; disposable Docker services
-	BENCH_PROFILE="$(BENCH_PROFILE)" BENCH_POOL_SIZE="$(BENCH_POOL_SIZE)" $(NODE) scripts/redis-test.mjs --benchmark
+	BENCH_PROFILE="$(BENCH_PROFILE)" BENCH_POOL_SIZE="$(BENCH_POOL_SIZE)" BENCH_AUTHORIZATION_CACHE_ENABLED="$(BENCH_AUTHORIZATION_CACHE_ENABLED)" $(NODE) scripts/redis-test.mjs --benchmark
 
 benchmark-baseline: ## Performance: larger bounded baseline with eight resource clients
 	$(MAKE) benchmark BENCH_PROFILE=baseline
@@ -382,6 +383,14 @@ benchmark-profile: ## Performance: paced smoke with opt-in Rust stage/pool and P
 
 benchmark-profile-baseline: ## Performance: paced baseline with opt-in stage and SQL profiling
 	$(MAKE) benchmark BENCH_PROFILE=profile-baseline
+
+.PHONY: benchmark-cache-comparison
+
+benchmark-cache-comparison: build-web ## Performance: matched, alternating authorization-cache bypass and Redis runs
+	@set -eu; for enabled in false true true false; do \
+		echo "Running matched authorization-computation benchmark with Redis cache=$$enabled"; \
+		DARKHORSE_TEST_SKIP_REDIS_INTEGRATION=true BENCH_PROFILE=profile-baseline BENCH_POOL_SIZE="$(BENCH_POOL_SIZE)" BENCH_AUTHORIZATION_CACHE_ENABLED="$$enabled" $(NODE) scripts/redis-test.mjs --benchmark; \
+	done
 
 .PHONY: benchmark-admission-comparison
 

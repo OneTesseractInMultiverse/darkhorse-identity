@@ -19,6 +19,7 @@ export async function metadata({
   profileSnapshot,
   poolSize,
   databaseRole,
+  authorizationCacheEnabled = false,
 }) {
   const capture = async (program, args) =>
     (await command(program, args, { capture: true })).stdout.trim();
@@ -123,7 +124,7 @@ export async function metadata({
       tokenRouteConcurrency: 16,
       databasePoolConnections: poolSize,
       positiveDecisionCache: false,
-      computationCache: false,
+      computationCache: authorizationCacheEnabled,
       databaseRole,
     },
     unmeasured: [

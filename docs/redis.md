@@ -4,8 +4,9 @@ Darkhorse separates cache storage from shared attempt limiting. `RedisLimiter`
 implements the application-owned `AttemptLimiter` port. HTTP password login and
 authenticated account commands share its deployment and account budgets.
 PostgreSQL controls enforcement generations. Redis performs atomic counter updates.
-Authorization computation caching remains planned. No positive authorization
-decision comes from Redis.
+An opt-in, revision-fenced resource-policy projection cache is being qualified.
+No positive authorization decision comes from Redis; the feature defaults off
+until equivalent-security performance comparisons establish a useful gain.
 
 ## Local workflow
 
@@ -87,23 +88,50 @@ PostgreSQL phase. Recovery never resets counters in an active generation.
 
 Redis Open Source **8.10.1** is pinned by image digest. **redis-rs 1.7.0** has default features disabled. Active features are `tokio-rustls-comp`, `tls-rustls-webpki-roots` and `script`. Connection-manager retries, cluster and sentinel are disabled. The script's SHA-1 identifier is a Redis cache key, not an authentication primitive. [Client documentation](https://docs.rs/redis/1.7.0/redis/)
 
-| Variable                              | Default / requirement                                               |
-| ------------------------------------- | ------------------------------------------------------------------- |
-| `DARKHORSE_REDIS_CACHE_URL`           | Required authenticated URL                                          |
-| `DARKHORSE_REDIS_LIMITER_URL`         | Required authenticated URL                                          |
-| `DARKHORSE_REDIS_CACHE_CONNECTIONS`   | 2, range 1–16                                                       |
-| `DARKHORSE_REDIS_LIMITER_CONNECTIONS` | 4, range 1–16. Bounds concurrent limiter calls per instance         |
-| `DARKHORSE_REDIS_TIMEOUT_MS`          | 250 ms, range 10–1000 ms, per Redis operation                       |
-| `DARKHORSE_REDIS_INSECURE`            | false. Local setup explicitly activates plaintext                   |
-| `DARKHORSE_REDIS_CACHE_CA_PEM`        | Optional PEM trust bundle, at most 16 KiB, only with `rediss://`    |
-| `DARKHORSE_REDIS_LIMITER_CA_PEM`      | Optional PEM trust bundle, at most 16 KiB, only with `rediss://`    |
-| `DARKHORSE_REDIS_LIMITER_ADMIN_URL`   | Operator-only URL for activation. Not read by runtime configuration |
+| Variable                                | Default / requirement                                                |
+| --------------------------------------- | -------------------------------------------------------------------- |
+| `DARKHORSE_REDIS_CACHE_URL`             | Required authenticated URL                                           |
+| `DARKHORSE_REDIS_LIMITER_URL`           | Required authenticated URL                                           |
+| `DARKHORSE_REDIS_CACHE_CONNECTIONS`     | 2, range 1–16                                                        |
+| `DARKHORSE_REDIS_LIMITER_CONNECTIONS`   | 4, range 1–16. Bounds concurrent limiter calls per instance          |
+| `DARKHORSE_REDIS_TIMEOUT_MS`            | 250 ms, range 10–1000 ms, per Redis operation                        |
+| `DARKHORSE_AUTHORIZATION_CACHE_ENABLED` | false. Opt-in policy-projection cache; leave off until qualification |
+| `DARKHORSE_REDIS_INSECURE`              | false. Local setup explicitly activates plaintext                    |
+| `DARKHORSE_REDIS_CACHE_CA_PEM`          | Optional PEM trust bundle, at most 16 KiB, only with `rediss://`     |
+| `DARKHORSE_REDIS_LIMITER_CA_PEM`        | Optional PEM trust bundle, at most 16 KiB, only with `rediss://`     |
+| `DARKHORSE_REDIS_LIMITER_ADMIN_URL`     | Operator-only URL for activation. Not read by runtime configuration  |
 
 Configuration uses envbind. URLs are bounded to 4096 bytes and require named, nondefault ACL users, explicit distinct passwords and database zero. Query strings, fragments and encoded socket hosts are rejected. TLS verifies certificates and hostnames. An explicit private trust bundle replaces public roots for that connection. There is no insecure TLS verification option, and the development plaintext switch never downgrades `rediss://`. Client-certificate authentication is not implemented.
 
 Separate lazy pools reject immediately when their slots are occupied. Each operation's deadline includes connection establishment. Connections idle for at least 30 seconds are dropped before sending the next operation, ahead of the supplied Redis server's 60-second idle timeout. This adds no liveness round trip to warm requests and never retries an uncertain operation. An external proxy/server may still close a younger connection. Its failed operation is rejected and clears that slot for a later request. The limiter adds an immediate-admission semaphore and a one-second deadline around all PostgreSQL/Redis work. There is no unbounded request queue. Size total connections across replicas against server budgets. Capacity or dependency failures reduce availability. They never authorize an attempt.
 
-The cache runtime user has diagnostic permissions only. The limiter runtime user can inspect Redis and execute the counter script's hash/time operations on exactly `darkhorse:limiter:v1`. It cannot delete the hash, flush the database, initialize a generation, modify ACLs or configure Redis. Operator credentials are supplied only to activation. Redis command ACLs do not enforce script identity: runtime credentials remain security-sensitive and trusted application code must use the reviewed adapter. The image entrypoint prepares the private ACL file and delegates privilege dropping to the official Redis entrypoint.
+The cache runtime user can run `GETRANGE` and `SET` only on keys under
+`darkhorse:authorization:v1:*`. The limiter runtime user can inspect Redis and
+execute the counter script's hash/time operations on exactly
+`darkhorse:limiter:v1`. Neither runtime role can delete keys, flush the database,
+modify ACLs or configure Redis. Operator credentials are supplied only to
+activation. Redis command ACLs do not enforce script identity: runtime
+credentials remain security-sensitive and trusted application code must use the
+reviewed adapter. The image entrypoint prepares the private ACL file and
+delegates privilege dropping to the official Redis entrypoint.
+
+When enabled, resource introspection reads a signed, size-limited projection
+before opening its PostgreSQL transaction. It then obtains the current global
+policy revision under the primary shared fence and rechecks the token, caller,
+resource, credential, scopes and issuance ceiling in PostgreSQL. A cache entry is
+used only when its MAC, schema, complete context and revision match; expiry,
+credential ceilings and effective capabilities are evaluated again on every
+request. Projection fills are written after the transaction commits and expire
+after 60 seconds. The MAC key is derived with a dedicated context from the
+existing login-limit key, so all replicas sharing this cache must share that
+deployment key. A key rotation naturally turns old entries into misses.
+
+Redis reads and writes use an at-most-50 ms deadline; cold fills coalesce through
+32 bounded local shards with a 10 ms wait ceiling. Saturation, timeout, malformed
+or unauthenticated data, eviction and restart fall back to PostgreSQL without
+retrying Redis. The cache uses the disposable 64 MiB LRU service. It remains
+disabled by default until matched cache-bypass, local-cache and Redis-cache
+measurements demonstrate a useful gain under the same security controls.
 
 `redis-status` reports connection health and `shared_enforcement: not_checked`. `limiter-status` separately reports the durable phase, wait deadline and validated counter count. These are observations at the time of the command, not reusable admission decisions. Each `RedisLimiter` exposes aggregate completed-call counts for allowed, limited and unavailable outcomes, without identity labels. A future metrics endpoint can export them. Cancelled futures do not produce completed-call outcome counters. CLI errors redact URLs and credentials.
 
@@ -131,7 +159,8 @@ do not complete production qualification. See [verification](verification.md).
 ## Source reference
 
 [application admission](../crates/application/src/shared_limiting.rs),
-[Redis adapter](../crates/adapters/src/redis_limiter/mod.rs),
+[Redis limiter adapter](../crates/adapters/src/redis_limiter/mod.rs),
+[authorization computation cache](../crates/adapters/src/redis_computation_cache/mod.rs),
 [atomic script](../crates/adapters/src/redis_limiter/atomic.lua).
 
 ## Introspection attempt admission

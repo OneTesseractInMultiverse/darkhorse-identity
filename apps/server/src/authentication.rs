@@ -6,6 +6,7 @@ use darkhorse_adapters::{
 };
 use darkhorse_adapters::{provider_http, signing::configuration as provider_configuration};
 use darkhorse_application::{authentication::Service, signing::SigningStore};
+use std::sync::Arc;
 
 pub type Media = darkhorse_application::media::Service<
     PostgresStore,
@@ -63,6 +64,17 @@ pub async fn runtime(
         .await
         .map_err(|_| "Authentication database unavailable.")?
         .with_default_locale(settings.default_locale);
+    let store = if redis.authorization_cache_enabled() {
+        let cache =
+            darkhorse_adapters::redis_computation_cache::RedisComputationCache::from_settings(
+                &redis,
+                &authentication.key,
+            )
+            .map_err(|_| "Cannot initialize authorization cache adapter.")?;
+        store.with_computation_cache(Arc::new(cache))
+    } else {
+        store
+    };
     store
         .bind_login_key(authentication.key_digest())
         .await

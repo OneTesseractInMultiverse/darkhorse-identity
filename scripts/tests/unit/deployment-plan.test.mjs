@@ -55,6 +55,10 @@ test("dedicated file credentials preserve role and TLS separation", () => {
   assert.match(files["limiter-admin-url"], /^rediss:\/\/operator:/);
   assert.ok(!files["cache-acl"].includes(secrets[3]));
   assert.ok(files["cache-acl"].includes("user default off"));
+  assert.ok(
+    files["cache-acl"].includes("~darkhorse:authorization:v1:* +getrange +set"),
+  );
+  assert.ok(!files["cache-acl"].includes("+evalsha"));
   assert.throws(() => secretFiles(Array(8).fill(secrets[0])));
   assert.throws(() => secretFiles(["bad"]));
 });

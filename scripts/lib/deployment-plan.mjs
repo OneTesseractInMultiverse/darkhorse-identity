@@ -71,7 +71,7 @@ export function secretFiles(values) {
     "cache-url": `rediss://darkhorse-cache:${cache}@cache:6379/0`,
     "limiter-url": `rediss://darkhorse-limiter:${limiter}@limiter:6379/0`,
     "limiter-admin-url": `rediss://operator:${limiterAdmin}@limiter:6379/0`,
-    "cache-acl": `user default off\nuser darkhorse-cache on #${hash(cache)} -@all +ping +info +client|setinfo +client|setname\n`,
+    "cache-acl": `user default off\nuser darkhorse-cache on #${hash(cache)} -@all +ping +info +client|setinfo +client|setname ~darkhorse:authorization:v1:* +getrange +set\n`,
     "limiter-acl": `user default off\nuser darkhorse-limiter on #${hash(limiter)} -@all +ping +info +client|setinfo +client|setname ~darkhorse:limiter:v1 +evalsha +script|load +time +hget +hmget +hlen +hset +hscan +hdel\nuser operator on #${hash(limiterAdmin)} ~* &* +@all\n`,
     "wrap-key": wrap,
   };

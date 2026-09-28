@@ -24,6 +24,18 @@ fn target() -> Target {
         resource: ResourceId::from_u128(2).unwrap(),
     }
 }
+fn cache_context() -> ComputationCacheContext {
+    ComputationCacheContext {
+        token_digest: [1; 32],
+        resource: ResourceId::from_u128(2).unwrap(),
+        principal: PrincipalId::from_u128(3).unwrap(),
+        client: ClientId::from_u128(4).unwrap(),
+        credential: CredentialId::from_u128(5).unwrap(),
+        principal_epoch: 6,
+        scopes: vec!["openid".into(), "read".into()],
+        capability_ceiling: [CapabilityId::from_u128(7).unwrap()].into(),
+    }
+}
 fn record() -> Record {
     Record {
         target: target(),
@@ -144,4 +156,47 @@ fn reads_return_metadata_through_the_store_without_generating_a_secret() {
         );
         assert_eq!(*fake.calls.lock().unwrap(), vec!["read"]);
     }
+}
+
+#[test]
+fn cached_computation_requires_the_same_revision_and_complete_authority_context() {
+    let entry = ComputationCacheEntry {
+        policy_revision: 9,
+        context: cache_context(),
+        payload: vec![1, 2, 3],
+    };
+    assert!(entry.applies_to(9, &cache_context()));
+    assert!(!entry.applies_to(10, &cache_context()));
+
+    let mut changed = cache_context();
+    changed.token_digest[0] = 2;
+    assert!(!entry.applies_to(9, &changed));
+
+    let mut changed = cache_context();
+    changed.resource = ResourceId::from_u128(8).unwrap();
+    assert!(!entry.applies_to(9, &changed));
+
+    let mut changed = cache_context();
+    changed.principal = PrincipalId::from_u128(8).unwrap();
+    assert!(!entry.applies_to(9, &changed));
+
+    let mut changed = cache_context();
+    changed.client = ClientId::from_u128(8).unwrap();
+    assert!(!entry.applies_to(9, &changed));
+
+    let mut changed = cache_context();
+    changed.credential = CredentialId::from_u128(8).unwrap();
+    assert!(!entry.applies_to(9, &changed));
+
+    let mut changed = cache_context();
+    changed.principal_epoch += 1;
+    assert!(!entry.applies_to(9, &changed));
+
+    let mut changed = cache_context();
+    changed.scopes.reverse();
+    assert!(!entry.applies_to(9, &changed));
+
+    let mut changed = cache_context();
+    changed.capability_ceiling = [CapabilityId::from_u128(8).unwrap()].into();
+    assert!(!entry.applies_to(9, &changed));
 }

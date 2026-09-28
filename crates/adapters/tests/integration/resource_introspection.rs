@@ -9,6 +9,50 @@ use darkhorse_application::{
     tokens::{CodeStore, TokenStore},
 };
 use darkhorse_domain::identity::*;
+use std::{
+    collections::HashMap,
+    sync::{
+        Arc, Mutex,
+        atomic::{AtomicUsize, Ordering},
+    },
+};
+
+#[derive(Default)]
+struct MemoryComputationCache {
+    entries: Mutex<HashMap<(u128, [u8; 32]), ComputationCacheEntry>>,
+    lookups: AtomicUsize,
+    stores: AtomicUsize,
+}
+struct TestCacheLease;
+impl ComputationCacheLease for TestCacheLease {}
+impl AuthorizationComputationCache for MemoryComputationCache {
+    fn lookup(
+        &self,
+        key: ComputationCacheKey,
+    ) -> ComputationCacheFuture<'_, ComputationCacheLookup> {
+        Box::pin(async move {
+            self.lookups.fetch_add(1, Ordering::Relaxed);
+            let index = (key.resource.as_u128(), key.token_digest);
+            match self.entries.lock().unwrap().get(&index).cloned() {
+                Some(entry) => ComputationCacheLookup::new(Some(entry), None),
+                None => ComputationCacheLookup::new(None, Some(Box::new(TestCacheLease))),
+            }
+        })
+    }
+    fn store(
+        &self,
+        key: ComputationCacheKey,
+        entry: ComputationCacheEntry,
+    ) -> ComputationCacheFuture<'_, ()> {
+        Box::pin(async move {
+            self.entries
+                .lock()
+                .unwrap()
+                .insert((key.resource.as_u128(), key.token_digest), entry);
+            self.stores.fetch_add(1, Ordering::Relaxed);
+        })
+    }
+}
 fn target() -> Target {
     Target {
         application: ApplicationId::from_u128(0x10).unwrap(),
@@ -90,6 +134,100 @@ async fn only_the_resource_credential_sees_current_capabilities_within_the_token
             .unwrap()
             .is_none()
     );
+    db.store.close().await;
+}
+
+#[tokio::test]
+async fn cached_policy_rechecks_primary_revision_and_preserves_the_issuance_ceiling() {
+    let (db, signer) = setup().await;
+    super::resource_tokens::policy(&db).await;
+    let registered = registry(&db)
+        .write(
+            [1; 32],
+            Command {
+                target: target(),
+                change: Change::Register,
+            },
+        )
+        .await
+        .unwrap();
+    let secret = registered.secret.unwrap();
+    super::resource_tokens::approve(&db, [3; 32]).await;
+    sqlx::query(
+        "DELETE FROM role_capabilities WHERE capability_id='00000000-0000-0000-0000-000000000071'",
+    )
+    .execute(&db.pool)
+    .await
+    .unwrap();
+    let code = db
+        .store
+        .issue(
+            [3; 32],
+            Some([1; 32]),
+            material::generate(Purpose::Code).unwrap(),
+        )
+        .await
+        .unwrap();
+    sqlx::query("INSERT INTO role_capabilities VALUES('00000000-0000-0000-0000-000000000080','00000000-0000-0000-0000-000000000071')")
+        .execute(&db.pool)
+        .await
+        .unwrap();
+    let token = db
+        .store
+        .redeem(input(&code), material::pair().unwrap(), ISSUER, &signer)
+        .await
+        .unwrap();
+    let digest = material::digest(&token.access, Purpose::Access).unwrap();
+    let cache = Arc::new(MemoryComputationCache::default());
+    let store = db.store.clone().with_computation_cache(cache.clone());
+    let check = || probe(&secret, Some(digest));
+    let read = std::collections::BTreeSet::from([CapabilityId::from_u128(0x70).unwrap()]);
+
+    for _ in 0..2 {
+        assert_eq!(
+            store
+                .introspect_resource(check(), ISSUER)
+                .await
+                .unwrap()
+                .unwrap()
+                .capabilities,
+            read
+        );
+    }
+    assert_eq!(cache.stores.load(Ordering::Relaxed), 1);
+
+    sqlx::query(
+        "DELETE FROM role_capabilities WHERE capability_id='00000000-0000-0000-0000-000000000071'",
+    )
+    .execute(&db.pool)
+    .await
+    .unwrap();
+    assert_eq!(
+        store
+            .introspect_resource(check(), ISSUER)
+            .await
+            .unwrap()
+            .unwrap()
+            .capabilities,
+        read
+    );
+    sqlx::query("INSERT INTO role_capabilities VALUES('00000000-0000-0000-0000-000000000080','00000000-0000-0000-0000-000000000071')")
+        .execute(&db.pool)
+        .await
+        .unwrap();
+    for _ in 0..2 {
+        assert_eq!(
+            store
+                .introspect_resource(check(), ISSUER)
+                .await
+                .unwrap()
+                .unwrap()
+                .capabilities,
+            read
+        );
+    }
+    assert_eq!(cache.lookups.load(Ordering::Relaxed), 5);
+    assert_eq!(cache.stores.load(Ordering::Relaxed), 3);
     db.store.close().await;
 }
 
@@ -456,7 +594,7 @@ async fn concurrent_permission_changes_and_resource_rotation_are_observed_after_
         let check = tokio::spawn(async move { store.introspect_resource(input, ISSUER).await });
         let mut waiting = false;
         for _ in 0..100 {
-            waiting=sqlx::query_scalar::<_,bool>("SELECT EXISTS(SELECT 1 FROM pg_stat_activity WHERE datname=current_database() AND wait_event_type='Lock' AND query LIKE 'SELECT singleton FROM security_state%')").fetch_one(&db.pool).await.unwrap();
+            waiting=sqlx::query_scalar::<_,bool>("SELECT EXISTS(SELECT 1 FROM pg_stat_activity WHERE datname=current_database() AND wait_event_type='Lock' AND query LIKE '%security_state%FOR SHARE%')").fetch_one(&db.pool).await.unwrap();
             if waiting {
                 break;
             }

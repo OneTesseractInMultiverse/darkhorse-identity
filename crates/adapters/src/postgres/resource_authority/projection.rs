@@ -1,9 +1,12 @@
 //! Decode a bounded adapter projection into framework-free policy inputs.
 use super::*;
+use serde::{Deserialize, Serialize};
 const MAX_CAPABILITIES: usize = 256;
 const MAX_ROLES: usize = 64;
+pub(super) const MAX_CACHE_BYTES: usize = 48 * 1024;
 
-#[derive(sqlx::FromRow)]
+#[derive(sqlx::FromRow, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
 pub(super) struct Projection {
     resource_id: Uuid,
     application_id: Uuid,
@@ -112,6 +115,23 @@ pub(super) fn assemble(
         scopes: selected,
         exposed,
     })
+}
+
+pub(super) fn cached(
+    payload: &[u8],
+    principal: PrincipalId,
+    client: ClientId,
+    resource: ResourceId,
+    names: &[String],
+) -> Option<Policy> {
+    if payload.is_empty() || payload.len() > MAX_CACHE_BYTES {
+        return None;
+    }
+    let row = serde_json::from_slice::<Projection>(payload).ok()?;
+    if row.resource_id.as_u128() != resource.as_u128() {
+        return None;
+    }
+    assemble(&row, principal, client, names).ok()
 }
 fn role((id, caps): &(Uuid, Vec<Uuid>), application: ApplicationId) -> Result<Role, Error> {
     Ok(Role {

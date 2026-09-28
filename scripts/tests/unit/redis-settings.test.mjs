@@ -51,6 +51,9 @@ test("only the limiter runtime can run bounded counter commands on its exact key
   assert.ok(
     !files[".local/redis-cache.acl"].split("\n")[1].includes("+evalsha"),
   );
+  const cache = files[".local/redis-cache.acl"].split("\n")[1];
+  assert.match(cache, /~darkhorse:authorization:v1:\* \+getrange \+set/);
+  assert.ok(!cache.includes("~*") && !cache.includes("+del"));
 });
 test("separate credentials produce restricted ACLs and explicit development endpoints", () => {
   const files = contents(secrets);

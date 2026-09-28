@@ -42,11 +42,11 @@ export function contents(secrets, ports = [63791, 63792]) {
 }
 function acl(user, secret, operator) {
   const hash = (value) => createHash("sha256").update(value).digest("hex");
-  const counters =
+  const commands =
     user === "darkhorse-limiter"
       ? " ~darkhorse:limiter:v1 +evalsha +script|load +time +hget +hmget +hlen +hset +hscan +hdel"
-      : "";
-  return `user default off\nuser ${user} on #${hash(secret)} -@all +ping +info +client|setinfo +client|setname${counters}\nuser operator on #${hash(operator)} ~* &* +@all\n`;
+      : " ~darkhorse:authorization:v1:* +getrange +set";
+  return `user default off\nuser ${user} on #${hash(secret)} -@all +ping +info +client|setinfo +client|setname${commands}\nuser operator on #${hash(operator)} ~* &* +@all\n`;
 }
 export function parseEnvironment(text) {
   if (text.length > 16384)

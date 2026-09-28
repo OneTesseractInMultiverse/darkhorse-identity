@@ -6,16 +6,16 @@ The existing [development portal](development.md) remains a separate workflow wi
 
 ## Topology and authority
 
-| Service    | Exposure and state                                                         | Authority                                                              |
-| ---------- | -------------------------------------------------------------------------- | ---------------------------------------------------------------------- |
-| `edge`     | Only published port. Bound to `127.0.0.1`. HTTPS with canonical hostname   | Proxy only, no application/database credentials                        |
-| `api`      | Static frontend and API on private port 3001                               | Nonowner database login and runtime Redis credentials                  |
-| `postgres` | TLS only over private database network. Named persistent volume            | Separate superuser, schema owner, runtime and operator logins          |
-| `cache`    | Separate internal network. TLS. Disposable memory. Eviction allowed        | Diagnostic-only runtime ACL until cache implementation is qualified    |
-| `limiter`  | Separate internal network. TLS. Persistent AOF. No eviction                | Bounded runtime script/hash ACL. Independent recovery credential       |
-| `operator` | Explicit one-shot container. No HTTP listener or published port            | Nonowner operator login and limiter recovery credential                |
-| `account`  | Explicit one-shot authenticated account command. No HTTP or published port | Runtime database and limiter credentials. Fresh administrator password |
-| `migrator` | Explicit one-shot container. Database network only                         | Schema-owner login and public CA only                                  |
+| Service    | Exposure and state                                                         | Authority                                                                      |
+| ---------- | -------------------------------------------------------------------------- | ------------------------------------------------------------------------------ |
+| `edge`     | Only published port. Bound to `127.0.0.1`. HTTPS with canonical hostname   | Proxy only, no application/database credentials                                |
+| `api`      | Static frontend and API on private port 3001                               | Nonowner database login and runtime Redis credentials                          |
+| `postgres` | TLS only over private database network. Named persistent volume            | Separate superuser, schema owner, runtime and operator logins                  |
+| `cache`    | Separate internal network. TLS. Disposable memory. Eviction allowed        | Scoped policy-projection cache ACL; feature defaults off pending qualification |
+| `limiter`  | Separate internal network. TLS. Persistent AOF. No eviction                | Bounded runtime script/hash ACL. Independent recovery credential               |
+| `operator` | Explicit one-shot container. No HTTP listener or published port            | Nonowner operator login and limiter recovery credential                        |
+| `account`  | Explicit one-shot authenticated account command. No HTTP or published port | Runtime database and limiter credentials. Fresh administrator password         |
+| `migrator` | Explicit one-shot container. Database network only                         | Schema-owner login and public CA only                                          |
 
 Infrastructure images are pinned by digest. Setup resolves the locally built application and proxy to immutable image IDs and records them in a private manifest. The proxy image removes the upstream executable's port-binding capability so it can run with all capabilities dropped. Application/proxy/cache containers use nonroot users, read-only root filesystems, bounded writable temporary mounts, and no new privileges. PostgreSQL and limiter entrypoints initialize volume ownership before dropping to their database users. Every service has memory, CPU, and process limits. The database/cache/limiter networks are marked internal. No Docker socket or repository tree is mounted.
 
@@ -117,7 +117,7 @@ Stack directories are owner-only (`0700`), manifests and host CA keys are `0600`
 
 - `make stack-status STACK=trial` shows service state. API `/health/live` only proves the process responds. It remains live during a database outage. The edge check verifies local HTTPS and upstream liveness.
 - `make stack-check STACK=trial` separately verifies canonical discovery over trusted HTTPS, PostgreSQL-backed signing inventory, and the currently active limiter generation. It is a point-in-time operator observation, not a replacement for request-time authorization or continuous monitoring.
-- Cache loss does not disable login or authorize stale permissions. Cache capacity is currently reserved for later qualified computation caching. This stack introduces no positive authorization cache.
+- `DARKHORSE_AUTHORIZATION_CACHE_ENABLED` defaults to `false`. When explicitly enabled, Redis may cache only a signed, versioned policy projection; PostgreSQL still supplies the current revision, token state and final authorization inputs on every check. Cache failure falls back to PostgreSQL. The performance benefit and production topology remain unqualified, so keep it disabled until matched measurements support enabling it.
 - Limiter restart or lost continuity rejects sign-in. Repair the service, fence, wait the full deadline, then explicitly activate. Persistent AOF alone is not continuity proof. Automatic failover/recovery is unsupported. Existing token checks still follow their own authoritative-state contracts.
 - Database failure rejects authorization checks. A healthy liveness endpoint must not be interpreted as permission to continue accepting credentials.
 - `make stack-stop STACK=trial` stops ingress and then the API, retaining dependencies. Rust handles termination gracefully. Docker permits 20 seconds for API drain before forced termination. This does not establish uninterrupted service or safe automatic retries for uncertain writes.

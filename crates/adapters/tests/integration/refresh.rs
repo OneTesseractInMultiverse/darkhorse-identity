@@ -589,7 +589,7 @@ async fn refresh_waiting_on_committing_revocation_uses_the_new_security_state() 
             .refresh(request, material::pair().unwrap(), ISSUER)
             .await
     });
-    waiting(&db, "SELECT singleton FROM security_state%").await;
+    waiting(&db, "%security_state%FOR SHARE%").await;
     writer.commit().await.unwrap();
     assert!(matches!(operation.await.unwrap(), Err(Error::InvalidGrant)));
     assert_eq!(

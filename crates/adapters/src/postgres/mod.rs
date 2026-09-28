@@ -1,4 +1,5 @@
 use crate::database_configuration::DatabaseSettings;
+use darkhorse_application::resource_servers::AuthorizationComputationCache;
 use darkhorse_application::{
     bootstrap::{BootstrapError, BootstrapStore, NewAdministrator},
     directory::{AccountRecord, DirectoryFailure, DirectoryStore},
@@ -11,7 +12,7 @@ use sqlx::{
     ConnectOptions, PgPool,
     postgres::{PgConnectOptions, PgPoolOptions, PgSslMode},
 };
-use std::{str::FromStr, time::Duration};
+use std::{str::FromStr, sync::Arc, time::Duration};
 
 static MIGRATOR: sqlx::migrate::Migrator = sqlx::migrate!("./migrations");
 mod admin_catalog;
@@ -29,6 +30,7 @@ mod signing;
 pub struct PostgresStore {
     pool: PgPool,
     default_locale: darkhorse_domain::localization::Locale,
+    computation_cache: Option<Arc<dyn AuthorizationComputationCache>>,
 }
 
 impl PostgresStore {
@@ -36,10 +38,15 @@ impl PostgresStore {
         Self {
             pool,
             default_locale: darkhorse_domain::localization::Locale::English,
+            computation_cache: None,
         }
     }
     pub fn with_default_locale(mut self, locale: darkhorse_domain::localization::Locale) -> Self {
         self.default_locale = locale;
+        self
+    }
+    pub fn with_computation_cache(mut self, cache: Arc<dyn AuthorizationComputationCache>) -> Self {
+        self.computation_cache = Some(cache);
         self
     }
     pub async fn connect(settings: DatabaseSettings) -> Result<Self, DirectoryFailure> {

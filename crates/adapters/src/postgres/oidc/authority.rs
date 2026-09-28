@@ -1,8 +1,12 @@
 use super::*;
 use darkhorse_domain::authentication::{SessionFacts, session_live};
-pub(in crate::postgres) async fn lock(tx: &mut Tx<'_>) -> Result<(), Error> {
-    sqlx::query("SELECT singleton FROM security_state WHERE singleton AND NOT pg_is_in_recovery() FOR SHARE").fetch_one(&mut **tx).await.map_err(storage)?;
-    Ok(())
+pub(in crate::postgres) async fn lock(tx: &mut Tx<'_>) -> Result<u64, Error> {
+    sqlx::query_scalar::<_, i64>("SELECT policy_revision FROM security_state WHERE singleton AND NOT pg_is_in_recovery() FOR SHARE")
+        .fetch_one(&mut **tx)
+        .await
+        .map_err(storage)?
+        .try_into()
+        .map_err(storage)
 }
 pub(in crate::postgres) async fn now(tx: &mut Tx<'_>) -> Result<u64, Error> {
     sqlx::query_scalar::<_, i64>("SELECT floor(extract(epoch FROM clock_timestamp())*1000)::bigint")

@@ -1,14 +1,17 @@
 use darkhorse_adapters::{
+    redis_computation_cache::RedisComputationCache,
     redis_configuration,
     redis_infrastructure::{ProbeFailure, RedisInfrastructure},
 };
+use darkhorse_application::resource_servers::*;
+use darkhorse_domain::identity::*;
 use redis::aio::MultiplexedConnection;
 use std::time::Duration;
 static SERIAL: tokio::sync::Mutex<()> = tokio::sync::Mutex::const_new(());
 fn variable(name: &str) -> String {
     std::env::var(name).expect("use make test-redis for disposable infrastructure")
 }
-fn infrastructure(overrides: Vec<(&str, String)>) -> RedisInfrastructure {
+fn configuration(overrides: Vec<(&str, String)>) -> redis_configuration::RedisSettings {
     let mut values = vec![
         (
             "DARKHORSE_REDIS_CACHE_URL",
@@ -21,10 +24,10 @@ fn infrastructure(overrides: Vec<(&str, String)>) -> RedisInfrastructure {
         ("DARKHORSE_REDIS_INSECURE", "true".to_owned()),
     ];
     values.extend(overrides);
-    RedisInfrastructure::new(
-        redis_configuration::load(envbind::MapEnvironment::from_pairs(values)).unwrap(),
-    )
-    .unwrap()
+    redis_configuration::load(envbind::MapEnvironment::from_pairs(values)).unwrap()
+}
+fn infrastructure(overrides: Vec<(&str, String)>) -> RedisInfrastructure {
+    RedisInfrastructure::new(configuration(overrides)).unwrap()
 }
 async fn connection(name: &str) -> MultiplexedConnection {
     redis::Client::open(variable(name))
@@ -124,6 +127,50 @@ async fn authentication_permission_and_policy_failures_are_independent_and_redac
     let unsafe_state = pool.inspect().await;
     configure(&mut admin, "maxmemory-policy", "noeviction").await;
     assert_eq!(unsafe_state.limiter, Err(ProbeFailure::UnsafeConfiguration));
+}
+
+#[tokio::test]
+async fn policy_cache_uses_only_its_scoped_runtime_commands_and_returns_a_verified_entry() {
+    let resource = ResourceId::from_u128(uuid::Uuid::new_v4().as_u128()).unwrap();
+    let key = ComputationCacheKey {
+        resource,
+        token_digest: [0x41; 32],
+    };
+    let context = ComputationCacheContext {
+        token_digest: key.token_digest,
+        resource,
+        principal: PrincipalId::from_u128(1).unwrap(),
+        client: ClientId::from_u128(2).unwrap(),
+        credential: CredentialId::from_u128(3).unwrap(),
+        principal_epoch: 4,
+        scopes: vec!["read".into()],
+        capability_ceiling: [CapabilityId::from_u128(5).unwrap()].into(),
+    };
+    let cache = RedisComputationCache::from_settings(&configuration(vec![]), &[0x29; 32]).unwrap();
+    let missing = cache.lookup(key).await;
+    assert!(missing.entry.is_none());
+    assert!(missing.may_store());
+    cache
+        .store(
+            key,
+            ComputationCacheEntry {
+                policy_revision: 7,
+                context,
+                payload: br#"{"projection":true}"#.to_vec(),
+            },
+        )
+        .await;
+    drop(missing);
+
+    let hit = cache.lookup(key).await;
+    assert!(!hit.may_store());
+    let entry = hit.entry.as_ref().unwrap();
+    assert!(entry.applies_to(7, &entry.context));
+    assert_eq!(entry.payload, br#"{"projection":true}"#);
+    let outcomes = cache.outcomes();
+    assert_eq!(outcomes.hit, 1);
+    assert_eq!(outcomes.miss, 1);
+    assert_eq!(outcomes.stored, 1);
 }
 
 #[tokio::test]

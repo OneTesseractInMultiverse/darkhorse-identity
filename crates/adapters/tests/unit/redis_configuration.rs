@@ -21,6 +21,13 @@ fn requires_distinct_authenticated_roles_and_verified_tls_by_default() {
     assert_eq!(good.cache.connections, 2);
     assert_eq!(good.limiter.connections, 4);
     assert_eq!(good.cache.timeout_ms, 250);
+    assert!(!good.authorization_cache_enabled());
+    assert!(
+        settings(&[("DARKHORSE_AUTHORIZATION_CACHE_ENABLED", "true")])
+            .unwrap()
+            .authorization_cache_enabled()
+    );
+    assert!(settings(&[("DARKHORSE_AUTHORIZATION_CACHE_ENABLED", "invalid")]).is_err());
     for url in [
         "invalid",
         "rediss://cache:%FF@localhost:63791/0",

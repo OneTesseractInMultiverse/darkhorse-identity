@@ -1,6 +1,7 @@
 //! Validated, explicit Redis settings; parsing does not connect or read files.
 use envbind::{Binder, BoolVar, Environment, ParameterSource, StringVar, U16Var};
 
+#[derive(Clone)]
 pub struct Endpoint {
     pub(crate) url: url::Url,
     pub(crate) connections: u16,
@@ -10,6 +11,12 @@ pub struct Endpoint {
 pub struct RedisSettings {
     pub(crate) cache: Endpoint,
     pub(crate) limiter: Endpoint,
+    pub(crate) authorization_cache_enabled: bool,
+}
+impl RedisSettings {
+    pub fn authorization_cache_enabled(&self) -> bool {
+        self.authorization_cache_enabled
+    }
 }
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub struct RedisConfigurationError;
@@ -22,6 +29,7 @@ struct Raw {
     insecure: bool,
     cache_ca: String,
     limiter_ca: String,
+    authorization_cache_enabled: bool,
 }
 impl ParameterSource for Raw {
     fn bind<E: Environment>(binder: &Binder<E>) -> Result<Self, envbind::BindError> {
@@ -44,6 +52,8 @@ impl ParameterSource for Raw {
                     .default("")
                     .max_bytes(16384),
             )?,
+            authorization_cache_enabled: binder
+                .bind(&BoolVar::new("DARKHORSE_AUTHORIZATION_CACHE_ENABLED").default(false))?,
         })
     }
 }
@@ -75,7 +85,11 @@ fn validate(raw: Raw) -> Result<RedisSettings, RedisConfigurationError> {
     {
         return Err(RedisConfigurationError);
     }
-    Ok(RedisSettings { cache, limiter })
+    Ok(RedisSettings {
+        cache,
+        limiter,
+        authorization_cache_enabled: raw.authorization_cache_enabled,
+    })
 }
 fn endpoint(
     raw: &str,

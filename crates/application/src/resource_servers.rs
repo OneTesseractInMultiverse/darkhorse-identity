@@ -3,7 +3,7 @@ use crate::tokens::ActiveToken;
 use darkhorse_domain::{
     authorization::CapabilitySet, identity::*, registration::RegistrationError, tokens::Error,
 };
-use std::future::Future;
+use std::{future::Future, pin::Pin};
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub struct Target {
@@ -116,6 +116,90 @@ pub struct Probe {
     pub secret: [u8; 32],
     pub token: Option<[u8; 32]>,
 }
+
+/// Lookup identity for an immutable policy computation tied to one opaque token.
+/// The digest is never a bearer credential and must not be logged.
+#[derive(Clone, Copy)]
+pub struct ComputationCacheKey {
+    pub resource: ResourceId,
+    pub token_digest: [u8; 32],
+}
+
+/// Full authority context captured with a cached policy projection.
+/// A cache hit is usable only when every field and the primary revision match.
+#[derive(Clone)]
+pub struct ComputationCacheContext {
+    pub token_digest: [u8; 32],
+    pub resource: ResourceId,
+    pub principal: PrincipalId,
+    pub client: ClientId,
+    pub credential: CredentialId,
+    pub principal_epoch: u64,
+    pub scopes: Vec<String>,
+    pub capability_ceiling: CapabilitySet,
+}
+
+/// Opaque adapter payload containing a bounded policy projection, never a decision.
+#[derive(Clone)]
+pub struct ComputationCacheEntry {
+    pub policy_revision: u64,
+    pub context: ComputationCacheContext,
+    pub payload: Vec<u8>,
+}
+
+impl ComputationCacheEntry {
+    pub fn applies_to(&self, current_revision: u64, current: &ComputationCacheContext) -> bool {
+        self.policy_revision == current_revision
+            && self.context.token_digest == current.token_digest
+            && self.context.resource == current.resource
+            && self.context.principal == current.principal
+            && self.context.client == current.client
+            && self.context.credential == current.credential
+            && self.context.principal_epoch == current.principal_epoch
+            && self.context.scopes == current.scopes
+            && self.context.capability_ceiling == current.capability_ceiling
+    }
+}
+
+/// A bounded local miss-coalescing lease retained until a fill has completed.
+pub trait ComputationCacheLease: Send {}
+
+pub struct ComputationCacheLookup {
+    pub entry: Option<ComputationCacheEntry>,
+    _lease: Option<Box<dyn ComputationCacheLease>>,
+}
+
+impl ComputationCacheLookup {
+    pub fn new(
+        entry: Option<ComputationCacheEntry>,
+        lease: Option<Box<dyn ComputationCacheLease>>,
+    ) -> Self {
+        Self {
+            entry,
+            _lease: lease,
+        }
+    }
+
+    pub fn may_store(&self) -> bool {
+        self._lease.is_some()
+    }
+}
+
+pub type ComputationCacheFuture<'a, T> = Pin<Box<dyn Future<Output = T> + Send + 'a>>;
+
+/// Resource-policy cache port. Failures are misses; PostgreSQL remains authoritative.
+pub trait AuthorizationComputationCache: Send + Sync {
+    fn lookup(
+        &self,
+        key: ComputationCacheKey,
+    ) -> ComputationCacheFuture<'_, ComputationCacheLookup>;
+    fn store(
+        &self,
+        key: ComputationCacheKey,
+        entry: ComputationCacheEntry,
+    ) -> ComputationCacheFuture<'_, ()>;
+}
+
 pub struct ActiveResourceToken {
     pub token: ActiveToken,
     pub resource: ResourceId,

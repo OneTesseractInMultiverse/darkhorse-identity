@@ -1,6 +1,6 @@
-# Performance baseline
+# Performance baseline and cache qualification
 
-[Issue #10](https://github.com/OneTesseractInMultiverse/darkhorse-identity/issues/10) tracks performance qualification before authorization computation caching. The initial harness measures the complete HTTPS introspection request against a release Rust server. It provisions credentials through real browser login, consent, PKCE code exchange and independent ID-token verification.
+[Issue #10](https://github.com/OneTesseractInMultiverse/darkhorse-identity/issues/10) tracks performance baselines. [Issue #11](https://github.com/OneTesseractInMultiverse/darkhorse-identity/issues/11) tracks authorization-computation cache qualification. The harness measures the complete HTTPS introspection request against a release Rust server. It provisions credentials through real browser login, consent, PKCE code exchange and independent ID-token verification.
 
 ## Reproduce
 
@@ -15,12 +15,13 @@ make benchmark-arrivals # paced traffic: four clients, two seconds per arrival p
 make benchmark-arrivals-baseline # eight clients, ten seconds per arrival phase
 make benchmark-profile # same paced smoke with diagnostic instrumentation
 make benchmark-profile-baseline # same paced baseline with diagnostic instrumentation
+make benchmark-cache-comparison # four interleaved profile runs with cache bypass / Redis cache
 make benchmark-admission-comparison # same paced workload, alternating one and two shared-budget update lanes
 ```
 
 These commands build the static console and release server with locked dependencies. They create disposable Percona PostgreSQL and separate Redis limiter/cache containers, a temporary TLS certificate, a Rust server and Chromium. They require neither existing local settings nor host certificate trust. The existing development database, credentials and volumes are untouched. Owned processes, containers, anonymous volumes and temporary secrets are cleaned up on exit. The browser fixture advances only disposable recovery/key-publication setup timestamps. Runtime authorization and limiting remain active.
 
-The client verifies the temporary CA and localhost name. The TLS endpoint is the test harness's Node TLS proxy, with one Rust backend over loopback. This is a single-host measurement, including the host/container database boundary, with different networking from the packaged Compose and Kubernetes fixtures. Database and Redis links are plaintext over isolated local test infrastructure. The PostgreSQL pool defaults to five connections and can be varied explicitly for controlled comparisons. The token-route admission limit remains 16 concurrent requests per server process. No positive decisions or authorization computations are cached. Redis shared login limiting is active. Required [shared introspection admission](introspection-admission.md) adds a deployment budget before credential verification and a caller budget afterward. Reports record the configured limits. Historical measurements below predate this control unless explicitly stated; they cannot establish current throughput.
+The client verifies the temporary CA and localhost name. The TLS endpoint is the test harness's Node TLS proxy, with one Rust backend over loopback. This is a single-host measurement, including the host/container database boundary, with different networking from the packaged Compose and Kubernetes fixtures. Database and Redis links are plaintext over isolated local test infrastructure. The PostgreSQL pool defaults to five connections and can be varied explicitly for controlled comparisons. The token-route admission limit remains 16 concurrent requests per server process. Normal runs leave the authorization computation cache disabled. The interleaved comparison explicitly turns it on for two runs; it caches a signed, versioned policy projection only. Every request still checks current PostgreSQL token and policy state and evaluates the final decision. These runs compare bypass with Redis and do not qualify an in-process cache, a multi-host topology or production performance. Redis shared login limiting is active. Required [shared introspection admission](introspection-admission.md) adds a deployment budget before credential verification and a caller budget afterward. Reports record the configured limits. Historical measurements below predate this control unless explicitly stated; they cannot establish current throughput.
 
 Use the same revision, profile, hardware, Docker resource allocation and idle-host conditions for comparisons. Do not run other load tests alongside the benchmark. Repeat runs to assess variability. The runner bounds workers and total attempts. It has no production-target URL option.
 

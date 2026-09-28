@@ -1,7 +1,10 @@
 use super::super::profiling::{self, Stage};
 use super::super::resource_authority::{self, StoredGrant};
 use super::*;
-use darkhorse_application::resource_servers::{ActiveResourceToken, Probe, ResourceTokenStore};
+use darkhorse_application::resource_servers::{
+    ActiveResourceToken, ComputationCacheContext, ComputationCacheEntry, ComputationCacheKey,
+    ComputationCacheLookup, Probe, ResourceTokenStore,
+};
 use darkhorse_domain::registration::secret_live;
 use sqlx::Acquire;
 pub(in crate::postgres) struct Authentication {
@@ -12,6 +15,11 @@ struct Access {
     grant: StoredGrant,
     scope: String,
     scopes: Vec<String>,
+}
+struct Inspection {
+    active: Result<ActiveResourceToken, Error>,
+    cache_fill: Option<ComputationCacheEntry>,
+    refresh_cache: bool,
 }
 impl ResourceTokenStore for PostgresStore {
     async fn introspect_resource(
@@ -27,24 +35,53 @@ async fn introspect(
     input: Probe,
     issuer: &str,
 ) -> Result<Option<ActiveResourceToken>, Error> {
+    let cache_key = input.token.map(|token_digest| ComputationCacheKey {
+        resource: input.resource,
+        token_digest,
+    });
+    let mut cache_lookup = match (&store.computation_cache, cache_key) {
+        (Some(cache), Some(key)) => Some(cache.lookup(key).await),
+        _ => None,
+    };
+    let cached_entry = cache_lookup.as_mut().and_then(|lookup| lookup.entry.take());
     let mut connection = profiling::measure(Stage::PoolAcquire, store.pool.acquire())
         .await
         .map_err(storage)?;
     let mut tx = profiling::measure(Stage::Begin, connection.begin())
         .await
         .map_err(storage)?;
-    profiling::measure(Stage::Fence, authority::lock(&mut tx))
+    let policy_revision = profiling::measure(Stage::Fence, authority::lock(&mut tx))
         .await
         .map_err(storage)?;
     let authentication =
         profiling::measure(Stage::Authenticate, authenticate(&mut tx, &input)).await?;
-    let result = profiling::measure(Stage::Inspect, inspect(&mut tx, &input, issuer)).await;
+    let inspection = profiling::measure(
+        Stage::Inspect,
+        inspect(&mut tx, &input, issuer, policy_revision, cached_entry),
+    )
+    .await;
     let now = authority::now(&mut tx).await.map_err(storage)?;
     valid_authentication(&authentication, now)?;
+    let (result, cache_fill, refresh_cache) = match inspection {
+        Ok(inspection) => (
+            inspection.active,
+            inspection.cache_fill,
+            inspection.refresh_cache,
+        ),
+        Err(error) => (Err(error), None, false),
+    };
     let active = inactive(result)?;
     profiling::measure(Stage::Commit, tx.commit())
         .await
         .map_err(storage)?;
+    if let (Some(cache), Some(key), Some(entry)) = (&store.computation_cache, cache_key, cache_fill)
+        && (refresh_cache
+            || cache_lookup
+                .as_ref()
+                .is_some_and(ComputationCacheLookup::may_store))
+    {
+        cache.store(key, entry).await;
+    }
     Ok(active)
 }
 
@@ -79,7 +116,9 @@ async fn inspect(
     tx: &mut Tx<'_>,
     input: &Probe,
     issuer: &str,
-) -> Result<ActiveResourceToken, Error> {
+    policy_revision: u64,
+    cached_entry: Option<ComputationCacheEntry>,
+) -> Result<Inspection, Error> {
     let token = input.token.ok_or(Error::InvalidToken)?;
     let digest:Vec<u8>=sqlx::query_scalar("SELECT t.code_digest FROM access_tokens t WHERE t.digest=$1 AND t.resource_id=$2 AND t.audience='urn:darkhorse:resource:'||$2::uuid::text AND EXISTS(SELECT 1 FROM provider_state WHERE issuer=$3)")
         .bind(token.as_slice()).bind(Uuid::from_u128(input.resource.as_u128())).bind(issuer).fetch_optional(&mut **tx).await.map_err(storage)?.ok_or(Error::InvalidToken)?;
@@ -88,20 +127,72 @@ async fn inspect(
         .bind(token.as_slice()).fetch_optional(&mut **tx).await.map_err(storage)?.ok_or(Error::InvalidToken)?;
     let stored = decode(&row, &code)?;
     reads::current_scopes(tx, &code, &stored.scopes).await?;
-    let policy = profiling::measure(
+    let token_digest = token;
+    let context = ComputationCacheContext {
+        token_digest,
+        resource: stored.grant.resource,
+        principal: code.principal,
+        client: code.client,
+        credential: stored.grant.credential,
+        principal_epoch: stored.grant.epoch,
+        scopes: stored.scopes.clone(),
+        capability_ceiling: stored.grant.ceiling.clone(),
+    };
+    let audience = code.audience().ok_or(Error::InvalidToken)?;
+    let cached = cached_entry
+        .as_ref()
+        .filter(|entry| entry.applies_to(policy_revision, &context));
+    let (policy, cache_payload, refresh_cache) = match cached {
+        Some(entry) => match resource_authority::cached_projection(
+            &entry.payload,
+            code.principal,
+            code.client,
+            stored.grant.resource,
+            &stored.scopes,
+        ) {
+            Some(policy) => (policy, None, false),
+            None => {
+                let (policy, payload) = load_policy(tx, &code, &stored, &audience).await?;
+                (policy, payload, true)
+            }
+        },
+        None => {
+            let (policy, payload) = load_policy(tx, &code, &stored, &audience).await?;
+            (policy, payload, cached_entry.is_some())
+        }
+    };
+    let now = authority::now(tx).await.map_err(storage)?;
+    let active = profiling::compute(Stage::Decision, || active(&code, stored, &policy, now));
+    let cache_fill = cache_payload.map(|payload| ComputationCacheEntry {
+        policy_revision,
+        context,
+        payload,
+    });
+    Ok(Inspection {
+        active,
+        cache_fill,
+        refresh_cache,
+    })
+}
+
+async fn load_policy(
+    tx: &mut Tx<'_>,
+    code: &CodeRecord,
+    stored: &Access,
+    audience: &str,
+) -> Result<(resource_authority::Policy, Option<Vec<u8>>), Error> {
+    profiling::measure(
         Stage::PolicyLoad,
-        resource_authority::load(
+        resource_authority::load_with_projection(
             tx,
             code.principal,
             code.client,
-            &code.audience().ok_or(Error::InvalidToken)?,
+            audience,
             &stored.scopes,
             Some(&stored.grant.ceiling),
         ),
     )
-    .await?;
-    let now = authority::now(tx).await.map_err(storage)?;
-    profiling::compute(Stage::Decision, || active(&code, stored, &policy, now))
+    .await
 }
 fn decode(row: &PgRow, code: &CodeRecord) -> Result<Access, Error> {
     let scope: String = row.try_get("scope").map_err(storage)?;

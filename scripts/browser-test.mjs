@@ -85,6 +85,7 @@ export async function verifyBrowser(
     restrictedDatabase = false,
     cleanupMonitoring = false,
     poolSize = 5,
+    authorizationCacheEnabled = false,
     signal,
   } = {},
 ) {
@@ -103,6 +104,7 @@ export async function verifyBrowser(
     DARKHORSE_PUBLIC_ORIGIN: origin,
     DARKHORSE_LOGIN_ENABLED: "true",
     DARKHORSE_DEFAULT_LOCALE: exercise === exerciseBrowser ? "es" : "en",
+    DARKHORSE_AUTHORIZATION_CACHE_ENABLED: String(authorizationCacheEnabled),
     DARKHORSE_PROVIDER_ENABLED: "true",
     DARKHORSE_SIGNING_WRAP_KEY: randomBytes(32).toString("hex"),
     DARKHORSE_LOGIN_LIMIT_KEY: randomBytes(32).toString("hex"),
@@ -247,6 +249,7 @@ export async function verifyBrowser(
       executable,
       poolSize,
       databaseRole: restrictedDatabase ? "darkhorse_runtime" : "postgres",
+      authorizationCacheEnabled,
       cleanupEvents,
     });
   } finally {

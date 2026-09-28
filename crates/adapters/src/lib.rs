@@ -18,6 +18,7 @@ pub mod registration_http;
 pub mod session_secret;
 pub mod signing;
 
+pub mod redis_computation_cache;
 pub mod redis_configuration;
 
 pub mod provider_http;
