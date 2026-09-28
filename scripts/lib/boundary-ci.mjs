@@ -44,11 +44,7 @@ export function boundaryResult(suite, result) {
       result.stdout,
     );
   const expectedSuites = { postgres: 1, redis: 3, browser: 5 }[suite];
-  const isolatedOutage =
-    suite !== "postgres" &&
-    outageTests.length === 1 &&
-    result.stdout.indexOf(outageTests[0][0]) <
-      result.stdout.lastIndexOf(matches.at(-1)?.[0] ?? "");
+  const isolatedOutage = suite !== "postgres" && outageTests.length === 1;
   const counts =
     matches.length === expectedSuites &&
     suites.length === expectedSuites &&

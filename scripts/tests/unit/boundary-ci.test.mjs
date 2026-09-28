@@ -91,6 +91,13 @@ test("failed, incomplete, filtered and accidentally skipped execution cannot qua
       summary(34, 1) +
       outageTest.replace(" ... ok", " ... FAILED") +
       summary(1, 0, 0, 289),
+    summary(5) +
+      worker +
+      parent +
+      summary(34, 1) +
+      outageTest +
+      outageTest +
+      summary(1, 0, 0, 289),
   ])
     assert.equal(boundaryResult("redis", result(output)).status, "failed");
   for (const extra of [
@@ -191,6 +198,7 @@ test("browser qualification requires every native binary, ordered browser phases
     raw.replace(summary(4), summary(4, 0, 0, 1)),
     raw.replace(summary(3), summary(0)),
     raw.replace(outageTest, "test some_other_test ... ok"),
+    raw.replace(outageTest, `${outageTest}${outageTest}`),
     raw.replace(summary(1, 0, 0, 289), summary(1)),
     raw.replace(worker, ""),
     raw.replace(browserComplete, "DARKHORSE_BROWSER_COMPLETED:2\n"),

@@ -17,12 +17,16 @@ export async function boundaryProcess(
   function stop() {
     stopping ??= child?.stop();
   }
-  function capture(data, keep) {
+  function capture(data) {
     bytes += data.length;
     if (bytes > maxBytes) {
       overflow = true;
       stop();
-    } else if (keep) stdout += data.toString();
+    } else {
+      // Cargo and the browser runner can split test records across both streams.
+      // Keep one private, ordered parse buffer; only typed evidence is published.
+      stdout += data.toString();
+    }
   }
   function interrupt() {
     interrupted = true;
@@ -33,8 +37,8 @@ export async function boundaryProcess(
     args,
     env,
     input: "",
-    stdout: (data) => capture(data, true),
-    stderr: (data) => capture(data, false),
+    stdout: capture,
+    stderr: capture,
   });
   signal?.addEventListener("abort", interrupt, { once: true });
   const timer = setTimeout(interrupt, timeoutMs);
