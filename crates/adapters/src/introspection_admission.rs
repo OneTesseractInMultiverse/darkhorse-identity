@@ -141,8 +141,16 @@ impl Budgets for SharedBudgets {
         let duration =
             std::time::Duration::from_millis(darkhorse_domain::limiter_recovery::OPERATION_MS);
         let result = tokio::time::timeout(duration, async {
-            let _guard = self.global_queue.lock().await?;
-            self.consume(None).await
+            let _guard = crate::benchmark_profiling::measure(
+                crate::benchmark_profiling::Stage::AdmissionGlobalQueue,
+                self.global_queue.lock(),
+            )
+            .await?;
+            crate::benchmark_profiling::measure(
+                crate::benchmark_profiling::Stage::AdmissionGlobalCounter,
+                self.consume(None),
+            )
+            .await
         })
         .await
         .map_err(|_| Error::Unavailable)?;
@@ -152,7 +160,11 @@ impl Budgets for SharedBudgets {
         result
     }
     async fn caller(&self, caller: Caller) -> Result<(), Error> {
-        self.consume(Some(caller)).await
+        crate::benchmark_profiling::measure(
+            crate::benchmark_profiling::Stage::AdmissionCallerCounter,
+            self.consume(Some(caller)),
+        )
+        .await
     }
 }
 fn attempt(key: &[u8; 32], policy: Policy, caller: Option<Caller>) -> Result<Attempt, Error> {

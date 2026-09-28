@@ -2,7 +2,18 @@
 use std::future::Future;
 
 #[derive(Clone, Copy)]
+#[repr(usize)]
 pub(crate) enum Stage {
+    ServiceSlot,
+    ServiceHandler,
+    AdmissionGlobal,
+    AdmissionGlobalQueue,
+    AdmissionGlobalCounter,
+    AdmissionAuthenticated,
+    AdmissionCallerAuthentication,
+    AdmissionCallerCounter,
+    LimiterSlot,
+    LimiterOperation,
     Total,
     PoolAcquire,
     Begin,
@@ -20,6 +31,8 @@ pub(crate) enum Stage {
     ClientInspect,
     ClientCommit,
 }
+#[cfg(feature = "benchmark-profiling")]
+pub(crate) const STAGE_COUNT: usize = Stage::ClientCommit as usize + 1;
 
 pub(crate) async fn measure<T, E>(
     stage: Stage,

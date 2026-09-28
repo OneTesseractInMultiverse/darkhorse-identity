@@ -98,7 +98,7 @@ async fn dispatch(
 
 async fn serve() -> Result<(), &'static str> {
     #[cfg(feature = "benchmark-profiling")]
-    let _profiler = darkhorse_adapters::postgres::profiling::install_signal_reporter()
+    let _profiler = darkhorse_adapters::benchmark_profiling::install_signal_reporter()
         .map_err(|_| "Cannot install benchmark profiling signal handler.")?;
     let settings =
         configuration::load(darkhorse_adapters::deployment_environment::DeploymentEnvironment)

@@ -42,5 +42,5 @@ impl Histogram {
     }
 }
 #[cfg(test)]
-#[path = "../../../tests/unit/postgres/profiling/histogram.rs"]
+#[path = "../../tests/unit/benchmark_profiling/histogram.rs"]
 mod tests;

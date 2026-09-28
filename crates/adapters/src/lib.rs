@@ -4,6 +4,7 @@ pub mod admin_catalog_http;
 pub mod admin_directory_http;
 pub mod authentication_configuration;
 pub mod authentication_http;
+pub mod benchmark_profiling;
 pub mod configuration;
 pub mod database_configuration;
 pub mod directory_query;

@@ -1,0 +1,1573 @@
+{
+  "schema": 1,
+  "date": "2026-09-28",
+  "source": {
+    "baseCommit": "9e13eee78506ab29145917f66ef8f2a73d25fb11",
+    "adapterRuntimePatchSha256": "3354ab88be0eca2f45c3fbf0503a02837ce0889fbc4858aa0fb932e4cc605871",
+    "measurementHarnessPatchSha256": "0bd40f24c5316f3f9ab7706b92a6fa35999dc0a1e9f7af6b7341d810aed89a3f",
+    "dockerImageConfigDigest": "sha256:69f3036d148166d84cbb1b25bea73bc3c81c934dd7e8fb9478cd35c679baf97",
+    "benchmarkProfilingFeature": true
+  },
+  "host": {
+    "processor": "Apple M5",
+    "dockerEngine": "29.6.2",
+    "dockerDesktopCpus": 10,
+    "dockerDesktopMemoryBytes": 8321515520,
+    "compose": "5.3.1"
+  },
+  "images": {
+    "postgres": "percona/percona-distribution-postgresql:18.6@sha256:dae47360e8137cafc1e8d66f9a1be348f1405e3cf51daa383b94e6c277e6b256",
+    "redis": "redis:8.10.1@sha256:298e5b3bc566bade82f46ad5511777a4a07a294097ce16ada2f6a42be5239df5"
+  },
+  "topology": {
+    "deployment": "isolated packaged Compose stack",
+    "databaseRole": "darkhorse_runtime",
+    "apiAndDatabaseLimit": {
+      "cpus": 2,
+      "memoryMiB": 512
+    },
+    "apiPoolMaximum": 5,
+    "operatorPoolMaximumPerProcess": 2,
+    "observedConnectionCeiling": 9,
+    "redisLimiterConnections": 5,
+    "fixedArrivalRatePerSecond": 200,
+    "phaseDurationMs": 8000,
+    "requestsPerPhase": 1600,
+    "phasesPerRun": 3,
+    "requestsPerRun": 4800,
+    "callerBudgetPerMinute": 6000,
+    "driverMaxInFlight": 32,
+    "profilePhases": [
+      "control-before",
+      "account-detail-overlap",
+      "control-after"
+    ],
+    "operatorLanes": 2,
+    "operatorCommandsPerRun": 8,
+    "poolOrAdmissionLimitsChanged": false
+  },
+  "runs": [
+    {
+      "id": "1790612659225",
+      "phases": [
+        {
+          "name": "control-before",
+          "scheduled": 1600,
+          "dispatched": 1600,
+          "httpStatuses": {
+            "200": 1600
+          },
+          "outcomes": {
+            "authorized": 1600,
+            "denied": 0,
+            "unavailable": 0,
+            "error": 0,
+            "transport_error": 0,
+            "violation": 0,
+            "generator_late": 0,
+            "generator_full": 0
+          },
+          "scheduledLatencyMs": {
+            "p50": 3.9914999999964493,
+            "p95": 5.259500000000116,
+            "p99": 6.374958000000333
+          },
+          "peakInFlight": 4,
+          "stageProfile": {
+            "service_slot": {
+              "ok": 1600,
+              "error": 0,
+              "cancelled": 0,
+              "sumUs": 3,
+              "maxUs": 1
+            },
+            "service_handler": {
+              "ok": 1600,
+              "error": 0,
+              "cancelled": 0,
+              "sumUs": 4220455,
+              "maxUs": 52612
+            },
+            "admission_global": {
+              "ok": 1600,
+              "error": 0,
+              "cancelled": 0,
+              "sumUs": 1373748,
+              "maxUs": 3426
+            },
+            "admission_global_queue": {
+              "ok": 1600,
+              "error": 0,
+              "cancelled": 0,
+              "sumUs": 37,
+              "maxUs": 10
+            },
+            "admission_global_counter": {
+              "ok": 1600,
+              "error": 0,
+              "cancelled": 0,
+              "sumUs": 1369977,
+              "maxUs": 3424
+            },
+            "admission_authenticated": {
+              "ok": 1600,
+              "error": 0,
+              "cancelled": 0,
+              "sumUs": 1826622,
+              "maxUs": 48143
+            },
+            "admission_caller_authentication": {
+              "ok": 1600,
+              "error": 0,
+              "cancelled": 0,
+              "sumUs": 579709,
+              "maxUs": 47484
+            },
+            "admission_caller_counter": {
+              "ok": 1600,
+              "error": 0,
+              "cancelled": 0,
+              "sumUs": 1243937,
+              "maxUs": 2973
+            },
+            "limiter_slot": {
+              "ok": 3200,
+              "error": 0,
+              "cancelled": 0,
+              "sumUs": 5,
+              "maxUs": 2
+            },
+            "limiter_operation": {
+              "ok": 3200,
+              "error": 0,
+              "cancelled": 0,
+              "sumUs": 2608983,
+              "maxUs": 3422
+            },
+            "client_total": {
+              "ok": 1600,
+              "error": 0,
+              "cancelled": 0,
+              "sumUs": 987818,
+              "maxUs": 3071
+            },
+            "client_pool_acquire": {
+              "ok": 1600,
+              "error": 0,
+              "cancelled": 0,
+              "sumUs": 59324,
+              "maxUs": 276
+            },
+            "client_fence": {
+              "ok": 1600,
+              "error": 0,
+              "cancelled": 0,
+              "sumUs": 69026,
+              "maxUs": 228
+            },
+            "client_authenticate": {
+              "ok": 1600,
+              "error": 0,
+              "cancelled": 0,
+              "sumUs": 76861,
+              "maxUs": 268
+            },
+            "client_inspect": {
+              "ok": 1600,
+              "error": 0,
+              "cancelled": 0,
+              "sumUs": 512057,
+              "maxUs": 2219
+            },
+            "client_commit": {
+              "ok": 1600,
+              "error": 0,
+              "cancelled": 0,
+              "sumUs": 206350,
+              "maxUs": 888
+            }
+          }
+        },
+        {
+          "name": "account-detail-overlap",
+          "scheduled": 1600,
+          "dispatched": 1600,
+          "httpStatuses": {
+            "200": 1600
+          },
+          "outcomes": {
+            "authorized": 1600,
+            "denied": 0,
+            "unavailable": 0,
+            "error": 0,
+            "transport_error": 0,
+            "violation": 0,
+            "generator_late": 0,
+            "generator_full": 0
+          },
+          "scheduledLatencyMs": {
+            "p50": 4.388542000000598,
+            "p95": 8.567583999996714,
+            "p99": 11.454124999996566
+          },
+          "peakInFlight": 5,
+          "stageProfile": {
+            "service_slot": {
+              "ok": 1600,
+              "error": 0,
+              "cancelled": 0,
+              "sumUs": 6,
+              "maxUs": 4
+            },
+            "service_handler": {
+              "ok": 1600,
+              "error": 0,
+              "cancelled": 0,
+              "sumUs": 5515730,
+              "maxUs": 54483
+            },
+            "admission_global": {
+              "ok": 1600,
+              "error": 0,
+              "cancelled": 0,
+              "sumUs": 1785206,
+              "maxUs": 10334
+            },
+            "admission_global_queue": {
+              "ok": 1600,
+              "error": 0,
+              "cancelled": 0,
+              "sumUs": 59,
+              "maxUs": 10
+            },
+            "admission_global_counter": {
+              "ok": 1600,
+              "error": 0,
+              "cancelled": 0,
+              "sumUs": 1780889,
+              "maxUs": 10330
+            },
+            "admission_authenticated": {
+              "ok": 1600,
+              "error": 0,
+              "cancelled": 0,
+              "sumUs": 2316821,
+              "maxUs": 49607
+            },
+            "admission_caller_authentication": {
+              "ok": 1600,
+              "error": 0,
+              "cancelled": 0,
+              "sumUs": 735325,
+              "maxUs": 48913
+            },
+            "admission_caller_counter": {
+              "ok": 1600,
+              "error": 0,
+              "cancelled": 0,
+              "sumUs": 1577958,
+              "maxUs": 8302
+            },
+            "limiter_slot": {
+              "ok": 3200,
+              "error": 0,
+              "cancelled": 0,
+              "sumUs": 0,
+              "maxUs": 0
+            },
+            "limiter_operation": {
+              "ok": 3200,
+              "error": 0,
+              "cancelled": 0,
+              "sumUs": 3352756,
+              "maxUs": 10327
+            },
+            "client_total": {
+              "ok": 1600,
+              "error": 0,
+              "cancelled": 0,
+              "sumUs": 1372182,
+              "maxUs": 4141
+            },
+            "client_pool_acquire": {
+              "ok": 1600,
+              "error": 0,
+              "cancelled": 0,
+              "sumUs": 86732,
+              "maxUs": 1333
+            },
+            "client_fence": {
+              "ok": 1600,
+              "error": 0,
+              "cancelled": 0,
+              "sumUs": 96665,
+              "maxUs": 451
+            },
+            "client_authenticate": {
+              "ok": 1600,
+              "error": 0,
+              "cancelled": 0,
+              "sumUs": 103674,
+              "maxUs": 635
+            },
+            "client_inspect": {
+              "ok": 1600,
+              "error": 0,
+              "cancelled": 0,
+              "sumUs": 707649,
+              "maxUs": 2315
+            },
+            "client_commit": {
+              "ok": 1600,
+              "error": 0,
+              "cancelled": 0,
+              "sumUs": 292310,
+              "maxUs": 2337
+            }
+          }
+        },
+        {
+          "name": "control-after",
+          "scheduled": 1600,
+          "dispatched": 1600,
+          "httpStatuses": {
+            "200": 1600
+          },
+          "outcomes": {
+            "authorized": 1600,
+            "denied": 0,
+            "unavailable": 0,
+            "error": 0,
+            "transport_error": 0,
+            "violation": 0,
+            "generator_late": 0,
+            "generator_full": 0
+          },
+          "scheduledLatencyMs": {
+            "p50": 4.075541999998677,
+            "p95": 5.3957919999957085,
+            "p99": 6.588416999999026
+          },
+          "peakInFlight": 2,
+          "stageProfile": {
+            "service_slot": {
+              "ok": 1600,
+              "error": 0,
+              "cancelled": 0,
+              "sumUs": 0,
+              "maxUs": 0
+            },
+            "service_handler": {
+              "ok": 1600,
+              "error": 0,
+              "cancelled": 0,
+              "sumUs": 4283104,
+              "maxUs": 8860
+            },
+            "admission_global": {
+              "ok": 1600,
+              "error": 0,
+              "cancelled": 0,
+              "sumUs": 1424460,
+              "maxUs": 4490
+            },
+            "admission_global_queue": {
+              "ok": 1600,
+              "error": 0,
+              "cancelled": 0,
+              "sumUs": 44,
+              "maxUs": 7
+            },
+            "admission_global_counter": {
+              "ok": 1600,
+              "error": 0,
+              "cancelled": 0,
+              "sumUs": 1420536,
+              "maxUs": 4484
+            },
+            "admission_authenticated": {
+              "ok": 1600,
+              "error": 0,
+              "cancelled": 0,
+              "sumUs": 1801858,
+              "maxUs": 4512
+            },
+            "admission_caller_authentication": {
+              "ok": 1600,
+              "error": 0,
+              "cancelled": 0,
+              "sumUs": 505209,
+              "maxUs": 1367
+            },
+            "admission_caller_counter": {
+              "ok": 1600,
+              "error": 0,
+              "cancelled": 0,
+              "sumUs": 1293508,
+              "maxUs": 3140
+            },
+            "limiter_slot": {
+              "ok": 3200,
+              "error": 0,
+              "cancelled": 0,
+              "sumUs": 16,
+              "maxUs": 8
+            },
+            "limiter_operation": {
+              "ok": 3200,
+              "error": 0,
+              "cancelled": 0,
+              "sumUs": 2708895,
+              "maxUs": 4478
+            },
+            "client_total": {
+              "ok": 1600,
+              "error": 0,
+              "cancelled": 0,
+              "sumUs": 1022299,
+              "maxUs": 2778
+            },
+            "client_pool_acquire": {
+              "ok": 1600,
+              "error": 0,
+              "cancelled": 0,
+              "sumUs": 64282,
+              "maxUs": 169
+            },
+            "client_fence": {
+              "ok": 1600,
+              "error": 0,
+              "cancelled": 0,
+              "sumUs": 74030,
+              "maxUs": 185
+            },
+            "client_authenticate": {
+              "ok": 1600,
+              "error": 0,
+              "cancelled": 0,
+              "sumUs": 79152,
+              "maxUs": 343
+            },
+            "client_inspect": {
+              "ok": 1600,
+              "error": 0,
+              "cancelled": 0,
+              "sumUs": 524717,
+              "maxUs": 1445
+            },
+            "client_commit": {
+              "ok": 1600,
+              "error": 0,
+              "cancelled": 0,
+              "sumUs": 213411,
+              "maxUs": 1419
+            }
+          }
+        }
+      ],
+      "operator": {
+        "expectedCommands": 8,
+        "recordedCommands": 8,
+        "outcomes": {
+          "read": 3,
+          "not_found": 1,
+          "denied": 4
+        },
+        "scheduledLatencyMs": {
+          "p50": 299.65933300000324,
+          "p95": 349.989333000005,
+          "p99": 349.989333000005
+        },
+        "executionLatencyMs": {
+          "p50": 299.4057079999984,
+          "p95": 349.81812500000524,
+          "p99": 349.81812500000524
+        },
+        "byOperation": {
+          "account.show.denied": {
+            "commands": 2,
+            "executionLatencyMs": {
+              "p50": 302.1888749999998,
+              "p95": 329.8557909999945,
+              "p99": 329.8557909999945
+            }
+          },
+          "account.show": {
+            "commands": 1,
+            "executionLatencyMs": {
+              "p50": 349.81812500000524,
+              "p95": 349.81812500000524,
+              "p99": 349.81812500000524
+            }
+          },
+          "application.show": {
+            "commands": 1,
+            "executionLatencyMs": {
+              "p50": 280.5682919999963,
+              "p95": 280.5682919999963,
+              "p99": 280.5682919999963
+            }
+          },
+          "application.show.denied": {
+            "commands": 1,
+            "executionLatencyMs": {
+              "p50": 283.00512499999604,
+              "p95": 283.00512499999604,
+              "p99": 283.00512499999604
+            }
+          },
+          "account.show.missing": {
+            "commands": 1,
+            "executionLatencyMs": {
+              "p50": 299.4057079999984,
+              "p95": 299.4057079999984,
+              "p99": 299.4057079999984
+            }
+          },
+          "client.show.denied": {
+            "commands": 1,
+            "executionLatencyMs": {
+              "p50": 292.5420840000006,
+              "p95": 292.5420840000006,
+              "p99": 292.5420840000006
+            }
+          },
+          "client.show": {
+            "commands": 1,
+            "executionLatencyMs": {
+              "p50": 307.89345799999865,
+              "p95": 307.89345799999865,
+              "p99": 307.89345799999865
+            }
+          }
+        }
+      },
+      "runtime": {
+        "sampleCount": 34,
+        "maximumSampledConnections": 9,
+        "maximumSampledActiveConnections": 1,
+        "maximumSampledWaitingLocks": 0
+      }
+    },
+    {
+      "id": "1790612791264",
+      "phases": [
+        {
+          "name": "control-before",
+          "scheduled": 1600,
+          "dispatched": 1600,
+          "httpStatuses": {
+            "200": 1600
+          },
+          "outcomes": {
+            "authorized": 1600,
+            "denied": 0,
+            "unavailable": 0,
+            "error": 0,
+            "transport_error": 0,
+            "violation": 0,
+            "generator_late": 0,
+            "generator_full": 0
+          },
+          "scheduledLatencyMs": {
+            "p50": 4.195666999999958,
+            "p95": 5.6049999999959255,
+            "p99": 8.326874999998836
+          },
+          "peakInFlight": 5,
+          "stageProfile": {
+            "service_slot": {
+              "ok": 1600,
+              "error": 0,
+              "cancelled": 0,
+              "sumUs": 7,
+              "maxUs": 7
+            },
+            "service_handler": {
+              "ok": 1600,
+              "error": 0,
+              "cancelled": 0,
+              "sumUs": 4570280,
+              "maxUs": 55598
+            },
+            "admission_global": {
+              "ok": 1600,
+              "error": 0,
+              "cancelled": 0,
+              "sumUs": 1465633,
+              "maxUs": 10675
+            },
+            "admission_global_queue": {
+              "ok": 1600,
+              "error": 0,
+              "cancelled": 0,
+              "sumUs": 1516,
+              "maxUs": 1461
+            },
+            "admission_global_counter": {
+              "ok": 1600,
+              "error": 0,
+              "cancelled": 0,
+              "sumUs": 1460196,
+              "maxUs": 10670
+            },
+            "admission_authenticated": {
+              "ok": 1600,
+              "error": 0,
+              "cancelled": 0,
+              "sumUs": 1925086,
+              "maxUs": 49114
+            },
+            "admission_caller_authentication": {
+              "ok": 1600,
+              "error": 0,
+              "cancelled": 0,
+              "sumUs": 591933,
+              "maxUs": 47481
+            },
+            "admission_caller_counter": {
+              "ok": 1600,
+              "error": 0,
+              "cancelled": 0,
+              "sumUs": 1329933,
+              "maxUs": 13620
+            },
+            "limiter_slot": {
+              "ok": 3200,
+              "error": 0,
+              "cancelled": 0,
+              "sumUs": 5,
+              "maxUs": 5
+            },
+            "limiter_operation": {
+              "ok": 3200,
+              "error": 0,
+              "cancelled": 0,
+              "sumUs": 2784712,
+              "maxUs": 13619
+            },
+            "client_total": {
+              "ok": 1600,
+              "error": 0,
+              "cancelled": 0,
+              "sumUs": 1142723,
+              "maxUs": 51551
+            },
+            "client_pool_acquire": {
+              "ok": 1600,
+              "error": 0,
+              "cancelled": 0,
+              "sumUs": 156555,
+              "maxUs": 45741
+            },
+            "client_fence": {
+              "ok": 1600,
+              "error": 0,
+              "cancelled": 0,
+              "sumUs": 76470,
+              "maxUs": 565
+            },
+            "client_authenticate": {
+              "ok": 1600,
+              "error": 0,
+              "cancelled": 0,
+              "sumUs": 82964,
+              "maxUs": 1031
+            },
+            "client_inspect": {
+              "ok": 1600,
+              "error": 0,
+              "cancelled": 0,
+              "sumUs": 541921,
+              "maxUs": 3851
+            },
+            "client_commit": {
+              "ok": 1600,
+              "error": 0,
+              "cancelled": 0,
+              "sumUs": 217550,
+              "maxUs": 3825
+            }
+          }
+        },
+        {
+          "name": "account-detail-overlap",
+          "scheduled": 1600,
+          "dispatched": 1600,
+          "httpStatuses": {
+            "200": 1600
+          },
+          "outcomes": {
+            "authorized": 1600,
+            "denied": 0,
+            "unavailable": 0,
+            "error": 0,
+            "transport_error": 0,
+            "violation": 0,
+            "generator_late": 0,
+            "generator_full": 0
+          },
+          "scheduledLatencyMs": {
+            "p50": 4.589375000003201,
+            "p95": 8.821250000000873,
+            "p99": 12.060333000001265
+          },
+          "peakInFlight": 4,
+          "stageProfile": {
+            "service_slot": {
+              "ok": 1600,
+              "error": 0,
+              "cancelled": 0,
+              "sumUs": 0,
+              "maxUs": 0
+            },
+            "service_handler": {
+              "ok": 1600,
+              "error": 0,
+              "cancelled": 0,
+              "sumUs": 5757381,
+              "maxUs": 15867
+            },
+            "admission_global": {
+              "ok": 1600,
+              "error": 0,
+              "cancelled": 0,
+              "sumUs": 1851418,
+              "maxUs": 4312
+            },
+            "admission_global_queue": {
+              "ok": 1600,
+              "error": 0,
+              "cancelled": 0,
+              "sumUs": 376,
+              "maxUs": 251
+            },
+            "admission_global_counter": {
+              "ok": 1600,
+              "error": 0,
+              "cancelled": 0,
+              "sumUs": 1846494,
+              "maxUs": 4307
+            },
+            "admission_authenticated": {
+              "ok": 1600,
+              "error": 0,
+              "cancelled": 0,
+              "sumUs": 2386305,
+              "maxUs": 12143
+            },
+            "admission_caller_authentication": {
+              "ok": 1600,
+              "error": 0,
+              "cancelled": 0,
+              "sumUs": 714159,
+              "maxUs": 6727
+            },
+            "admission_caller_counter": {
+              "ok": 1600,
+              "error": 0,
+              "cancelled": 0,
+              "sumUs": 1668461,
+              "maxUs": 11263
+            },
+            "limiter_slot": {
+              "ok": 3200,
+              "error": 0,
+              "cancelled": 0,
+              "sumUs": 24,
+              "maxUs": 16
+            },
+            "limiter_operation": {
+              "ok": 3200,
+              "error": 0,
+              "cancelled": 0,
+              "sumUs": 3508205,
+              "maxUs": 11261
+            },
+            "client_total": {
+              "ok": 1600,
+              "error": 0,
+              "cancelled": 0,
+              "sumUs": 1475273,
+              "maxUs": 12796
+            },
+            "client_pool_acquire": {
+              "ok": 1600,
+              "error": 0,
+              "cancelled": 0,
+              "sumUs": 91190,
+              "maxUs": 391
+            },
+            "client_fence": {
+              "ok": 1600,
+              "error": 0,
+              "cancelled": 0,
+              "sumUs": 117210,
+              "maxUs": 11237
+            },
+            "client_authenticate": {
+              "ok": 1600,
+              "error": 0,
+              "cancelled": 0,
+              "sumUs": 110995,
+              "maxUs": 492
+            },
+            "client_inspect": {
+              "ok": 1600,
+              "error": 0,
+              "cancelled": 0,
+              "sumUs": 751727,
+              "maxUs": 5964
+            },
+            "client_commit": {
+              "ok": 1600,
+              "error": 0,
+              "cancelled": 0,
+              "sumUs": 313625,
+              "maxUs": 1886
+            }
+          }
+        },
+        {
+          "name": "control-after",
+          "scheduled": 1600,
+          "dispatched": 1600,
+          "httpStatuses": {
+            "200": 1600
+          },
+          "outcomes": {
+            "authorized": 1600,
+            "denied": 0,
+            "unavailable": 0,
+            "error": 0,
+            "transport_error": 0,
+            "violation": 0,
+            "generator_late": 0,
+            "generator_full": 0
+          },
+          "scheduledLatencyMs": {
+            "p50": 4.154666999995243,
+            "p95": 5.462666999999783,
+            "p99": 7.718457999995735
+          },
+          "peakInFlight": 3,
+          "stageProfile": {
+            "service_slot": {
+              "ok": 1600,
+              "error": 0,
+              "cancelled": 0,
+              "sumUs": 0,
+              "maxUs": 0
+            },
+            "service_handler": {
+              "ok": 1600,
+              "error": 0,
+              "cancelled": 0,
+              "sumUs": 4370800,
+              "maxUs": 9585
+            },
+            "admission_global": {
+              "ok": 1600,
+              "error": 0,
+              "cancelled": 0,
+              "sumUs": 1456383,
+              "maxUs": 4086
+            },
+            "admission_global_queue": {
+              "ok": 1600,
+              "error": 0,
+              "cancelled": 0,
+              "sumUs": 121,
+              "maxUs": 34
+            },
+            "admission_global_counter": {
+              "ok": 1600,
+              "error": 0,
+              "cancelled": 0,
+              "sumUs": 1452253,
+              "maxUs": 4084
+            },
+            "admission_authenticated": {
+              "ok": 1600,
+              "error": 0,
+              "cancelled": 0,
+              "sumUs": 1839553,
+              "maxUs": 3789
+            },
+            "admission_caller_authentication": {
+              "ok": 1600,
+              "error": 0,
+              "cancelled": 0,
+              "sumUs": 529081,
+              "maxUs": 1383
+            },
+            "admission_caller_counter": {
+              "ok": 1600,
+              "error": 0,
+              "cancelled": 0,
+              "sumUs": 1307288,
+              "maxUs": 2858
+            },
+            "limiter_slot": {
+              "ok": 3200,
+              "error": 0,
+              "cancelled": 0,
+              "sumUs": 1,
+              "maxUs": 1
+            },
+            "limiter_operation": {
+              "ok": 3200,
+              "error": 0,
+              "cancelled": 0,
+              "sumUs": 2754061,
+              "maxUs": 4083
+            },
+            "client_total": {
+              "ok": 1600,
+              "error": 0,
+              "cancelled": 0,
+              "sumUs": 1038954,
+              "maxUs": 3284
+            },
+            "client_pool_acquire": {
+              "ok": 1600,
+              "error": 0,
+              "cancelled": 0,
+              "sumUs": 65728,
+              "maxUs": 173
+            },
+            "client_fence": {
+              "ok": 1600,
+              "error": 0,
+              "cancelled": 0,
+              "sumUs": 75271,
+              "maxUs": 174
+            },
+            "client_authenticate": {
+              "ok": 1600,
+              "error": 0,
+              "cancelled": 0,
+              "sumUs": 80776,
+              "maxUs": 227
+            },
+            "client_inspect": {
+              "ok": 1600,
+              "error": 0,
+              "cancelled": 0,
+              "sumUs": 531472,
+              "maxUs": 2167
+            },
+            "client_commit": {
+              "ok": 1600,
+              "error": 0,
+              "cancelled": 0,
+              "sumUs": 218119,
+              "maxUs": 1056
+            }
+          }
+        }
+      ],
+      "operator": {
+        "expectedCommands": 8,
+        "recordedCommands": 8,
+        "outcomes": {
+          "read": 3,
+          "not_found": 1,
+          "denied": 4
+        },
+        "scheduledLatencyMs": {
+          "p50": 297.9592499999999,
+          "p95": 326.5929160000014,
+          "p99": 326.5929160000014
+        },
+        "executionLatencyMs": {
+          "p50": 296.1498750000028,
+          "p95": 326.3085410000058,
+          "p99": 326.3085410000058
+        },
+        "byOperation": {
+          "account.show.denied": {
+            "commands": 2,
+            "executionLatencyMs": {
+              "p50": 288.56870800000615,
+              "p95": 315.69629200000054,
+              "p99": 315.69629200000054
+            }
+          },
+          "account.show": {
+            "commands": 1,
+            "executionLatencyMs": {
+              "p50": 326.3085410000058,
+              "p95": 326.3085410000058,
+              "p99": 326.3085410000058
+            }
+          },
+          "application.show": {
+            "commands": 1,
+            "executionLatencyMs": {
+              "p50": 313.341416999996,
+              "p95": 313.341416999996,
+              "p99": 313.341416999996
+            }
+          },
+          "application.show.denied": {
+            "commands": 1,
+            "executionLatencyMs": {
+              "p50": 314.8511660000004,
+              "p95": 314.8511660000004,
+              "p99": 314.8511660000004
+            }
+          },
+          "account.show.missing": {
+            "commands": 1,
+            "executionLatencyMs": {
+              "p50": 291.104499999994,
+              "p95": 291.104499999994,
+              "p99": 291.104499999994
+            }
+          },
+          "client.show.denied": {
+            "commands": 1,
+            "executionLatencyMs": {
+              "p50": 280.84858299999905,
+              "p95": 280.84858299999905,
+              "p99": 280.84858299999905
+            }
+          },
+          "client.show": {
+            "commands": 1,
+            "executionLatencyMs": {
+              "p50": 296.1498750000028,
+              "p95": 296.1498750000028,
+              "p99": 296.1498750000028
+            }
+          }
+        }
+      },
+      "runtime": {
+        "sampleCount": 34,
+        "maximumSampledConnections": 9,
+        "maximumSampledActiveConnections": 1,
+        "maximumSampledWaitingLocks": 0
+      }
+    },
+    {
+      "id": "1790612901486",
+      "phases": [
+        {
+          "name": "control-before",
+          "scheduled": 1600,
+          "dispatched": 1600,
+          "httpStatuses": {
+            "200": 1600
+          },
+          "outcomes": {
+            "authorized": 1600,
+            "denied": 0,
+            "unavailable": 0,
+            "error": 0,
+            "transport_error": 0,
+            "violation": 0,
+            "generator_late": 0,
+            "generator_full": 0
+          },
+          "scheduledLatencyMs": {
+            "p50": 4.000124999998661,
+            "p95": 5.204624999998487,
+            "p99": 5.898874999998952
+          },
+          "peakInFlight": 3,
+          "stageProfile": {
+            "service_slot": {
+              "ok": 1600,
+              "error": 0,
+              "cancelled": 0,
+              "sumUs": 1,
+              "maxUs": 1
+            },
+            "service_handler": {
+              "ok": 1600,
+              "error": 0,
+              "cancelled": 0,
+              "sumUs": 4057639,
+              "maxUs": 50123
+            },
+            "admission_global": {
+              "ok": 1600,
+              "error": 0,
+              "cancelled": 0,
+              "sumUs": 1349765,
+              "maxUs": 2419
+            },
+            "admission_global_queue": {
+              "ok": 1600,
+              "error": 0,
+              "cancelled": 0,
+              "sumUs": 22,
+              "maxUs": 2
+            },
+            "admission_global_counter": {
+              "ok": 1600,
+              "error": 0,
+              "cancelled": 0,
+              "sumUs": 1346145,
+              "maxUs": 2415
+            },
+            "admission_authenticated": {
+              "ok": 1600,
+              "error": 0,
+              "cancelled": 0,
+              "sumUs": 1744931,
+              "maxUs": 47738
+            },
+            "admission_caller_authentication": {
+              "ok": 1600,
+              "error": 0,
+              "cancelled": 0,
+              "sumUs": 510111,
+              "maxUs": 46315
+            },
+            "admission_caller_counter": {
+              "ok": 1600,
+              "error": 0,
+              "cancelled": 0,
+              "sumUs": 1231751,
+              "maxUs": 2007
+            },
+            "limiter_slot": {
+              "ok": 3200,
+              "error": 0,
+              "cancelled": 0,
+              "sumUs": 20,
+              "maxUs": 8
+            },
+            "limiter_operation": {
+              "ok": 3200,
+              "error": 0,
+              "cancelled": 0,
+              "sumUs": 2573071,
+              "maxUs": 2412
+            },
+            "client_total": {
+              "ok": 1600,
+              "error": 0,
+              "cancelled": 0,
+              "sumUs": 931111,
+              "maxUs": 1952
+            },
+            "client_pool_acquire": {
+              "ok": 1600,
+              "error": 0,
+              "cancelled": 0,
+              "sumUs": 56633,
+              "maxUs": 168
+            },
+            "client_fence": {
+              "ok": 1600,
+              "error": 0,
+              "cancelled": 0,
+              "sumUs": 62340,
+              "maxUs": 334
+            },
+            "client_authenticate": {
+              "ok": 1600,
+              "error": 0,
+              "cancelled": 0,
+              "sumUs": 64994,
+              "maxUs": 293
+            },
+            "client_inspect": {
+              "ok": 1600,
+              "error": 0,
+              "cancelled": 0,
+              "sumUs": 486731,
+              "maxUs": 1063
+            },
+            "client_commit": {
+              "ok": 1600,
+              "error": 0,
+              "cancelled": 0,
+              "sumUs": 199564,
+              "maxUs": 982
+            }
+          }
+        },
+        {
+          "name": "account-detail-overlap",
+          "scheduled": 1600,
+          "dispatched": 1600,
+          "httpStatuses": {
+            "200": 1600
+          },
+          "outcomes": {
+            "authorized": 1600,
+            "denied": 0,
+            "unavailable": 0,
+            "error": 0,
+            "transport_error": 0,
+            "violation": 0,
+            "generator_late": 0,
+            "generator_full": 0
+          },
+          "scheduledLatencyMs": {
+            "p50": 4.452334000001429,
+            "p95": 8.672708999998576,
+            "p99": 13.29950000000099
+          },
+          "peakInFlight": 7,
+          "stageProfile": {
+            "service_slot": {
+              "ok": 1600,
+              "error": 0,
+              "cancelled": 0,
+              "sumUs": 24,
+              "maxUs": 24
+            },
+            "service_handler": {
+              "ok": 1600,
+              "error": 0,
+              "cancelled": 0,
+              "sumUs": 5680758,
+              "maxUs": 73086
+            },
+            "admission_global": {
+              "ok": 1600,
+              "error": 0,
+              "cancelled": 0,
+              "sumUs": 1823248,
+              "maxUs": 10563
+            },
+            "admission_global_queue": {
+              "ok": 1600,
+              "error": 0,
+              "cancelled": 0,
+              "sumUs": 3695,
+              "maxUs": 1561
+            },
+            "admission_global_counter": {
+              "ok": 1600,
+              "error": 0,
+              "cancelled": 0,
+              "sumUs": 1815335,
+              "maxUs": 10557
+            },
+            "admission_authenticated": {
+              "ok": 1600,
+              "error": 0,
+              "cancelled": 0,
+              "sumUs": 2294616,
+              "maxUs": 14854
+            },
+            "admission_caller_authentication": {
+              "ok": 1600,
+              "error": 0,
+              "cancelled": 0,
+              "sumUs": 683586,
+              "maxUs": 10389
+            },
+            "admission_caller_counter": {
+              "ok": 1600,
+              "error": 0,
+              "cancelled": 0,
+              "sumUs": 1607551,
+              "maxUs": 8121
+            },
+            "limiter_slot": {
+              "ok": 3200,
+              "error": 0,
+              "cancelled": 0,
+              "sumUs": 2,
+              "maxUs": 1
+            },
+            "limiter_operation": {
+              "ok": 3200,
+              "error": 0,
+              "cancelled": 0,
+              "sumUs": 3416812,
+              "maxUs": 10555
+            },
+            "client_total": {
+              "ok": 1600,
+              "error": 0,
+              "cancelled": 0,
+              "sumUs": 1520387,
+              "maxUs": 60942
+            },
+            "client_pool_acquire": {
+              "ok": 1600,
+              "error": 0,
+              "cancelled": 0,
+              "sumUs": 188781,
+              "maxUs": 54598
+            },
+            "client_fence": {
+              "ok": 1600,
+              "error": 0,
+              "cancelled": 0,
+              "sumUs": 99873,
+              "maxUs": 952
+            },
+            "client_authenticate": {
+              "ok": 1600,
+              "error": 0,
+              "cancelled": 0,
+              "sumUs": 107004,
+              "maxUs": 1690
+            },
+            "client_inspect": {
+              "ok": 1600,
+              "error": 0,
+              "cancelled": 0,
+              "sumUs": 725392,
+              "maxUs": 10939
+            },
+            "client_commit": {
+              "ok": 1600,
+              "error": 0,
+              "cancelled": 0,
+              "sumUs": 310464,
+              "maxUs": 3809
+            }
+          }
+        },
+        {
+          "name": "control-after",
+          "scheduled": 1600,
+          "dispatched": 1600,
+          "httpStatuses": {
+            "200": 1600
+          },
+          "outcomes": {
+            "authorized": 1600,
+            "denied": 0,
+            "unavailable": 0,
+            "error": 0,
+            "transport_error": 0,
+            "violation": 0,
+            "generator_late": 0,
+            "generator_full": 0
+          },
+          "scheduledLatencyMs": {
+            "p50": 4.062458000000333,
+            "p95": 5.50370799999655,
+            "p99": 6.904457999997248
+          },
+          "peakInFlight": 2,
+          "stageProfile": {
+            "service_slot": {
+              "ok": 1600,
+              "error": 0,
+              "cancelled": 0,
+              "sumUs": 8,
+              "maxUs": 8
+            },
+            "service_handler": {
+              "ok": 1600,
+              "error": 0,
+              "cancelled": 0,
+              "sumUs": 4232994,
+              "maxUs": 7805
+            },
+            "admission_global": {
+              "ok": 1600,
+              "error": 0,
+              "cancelled": 0,
+              "sumUs": 1404990,
+              "maxUs": 3244
+            },
+            "admission_global_queue": {
+              "ok": 1600,
+              "error": 0,
+              "cancelled": 0,
+              "sumUs": 48,
+              "maxUs": 9
+            },
+            "admission_global_counter": {
+              "ok": 1600,
+              "error": 0,
+              "cancelled": 0,
+              "sumUs": 1401217,
+              "maxUs": 3241
+            },
+            "admission_authenticated": {
+              "ok": 1600,
+              "error": 0,
+              "cancelled": 0,
+              "sumUs": 1790036,
+              "maxUs": 3702
+            },
+            "admission_caller_authentication": {
+              "ok": 1600,
+              "error": 0,
+              "cancelled": 0,
+              "sumUs": 501450,
+              "maxUs": 1333
+            },
+            "admission_caller_counter": {
+              "ok": 1600,
+              "error": 0,
+              "cancelled": 0,
+              "sumUs": 1285556,
+              "maxUs": 2844
+            },
+            "limiter_slot": {
+              "ok": 3200,
+              "error": 0,
+              "cancelled": 0,
+              "sumUs": 0,
+              "maxUs": 0
+            },
+            "limiter_operation": {
+              "ok": 3200,
+              "error": 0,
+              "cancelled": 0,
+              "sumUs": 2681732,
+              "maxUs": 3238
+            },
+            "client_total": {
+              "ok": 1600,
+              "error": 0,
+              "cancelled": 0,
+              "sumUs": 1004105,
+              "maxUs": 3246
+            },
+            "client_pool_acquire": {
+              "ok": 1600,
+              "error": 0,
+              "cancelled": 0,
+              "sumUs": 62473,
+              "maxUs": 191
+            },
+            "client_fence": {
+              "ok": 1600,
+              "error": 0,
+              "cancelled": 0,
+              "sumUs": 71081,
+              "maxUs": 177
+            },
+            "client_authenticate": {
+              "ok": 1600,
+              "error": 0,
+              "cancelled": 0,
+              "sumUs": 76844,
+              "maxUs": 243
+            },
+            "client_inspect": {
+              "ok": 1600,
+              "error": 0,
+              "cancelled": 0,
+              "sumUs": 518903,
+              "maxUs": 2167
+            },
+            "client_commit": {
+              "ok": 1600,
+              "error": 0,
+              "cancelled": 0,
+              "sumUs": 209871,
+              "maxUs": 948
+            }
+          }
+        }
+      ],
+      "operator": {
+        "expectedCommands": 8,
+        "recordedCommands": 8,
+        "outcomes": {
+          "read": 3,
+          "not_found": 1,
+          "denied": 4
+        },
+        "scheduledLatencyMs": {
+          "p50": 289.4016249999986,
+          "p95": 347.6731660000005,
+          "p99": 347.6731660000005
+        },
+        "executionLatencyMs": {
+          "p50": 289.1751249999943,
+          "p95": 347.51183299999684,
+          "p99": 347.51183299999684
+        },
+        "byOperation": {
+          "account.show.denied": {
+            "commands": 2,
+            "executionLatencyMs": {
+              "p50": 285.4625420000011,
+              "p95": 339.13437500000146,
+              "p99": 339.13437500000146
+            }
+          },
+          "account.show": {
+            "commands": 1,
+            "executionLatencyMs": {
+              "p50": 347.51183299999684,
+              "p95": 347.51183299999684,
+              "p99": 347.51183299999684
+            }
+          },
+          "application.show": {
+            "commands": 1,
+            "executionLatencyMs": {
+              "p50": 287.0374579999989,
+              "p95": 287.0374579999989,
+              "p99": 287.0374579999989
+            }
+          },
+          "application.show.denied": {
+            "commands": 1,
+            "executionLatencyMs": {
+              "p50": 295.6644159999996,
+              "p95": 295.6644159999996,
+              "p99": 295.6644159999996
+            }
+          },
+          "account.show.missing": {
+            "commands": 1,
+            "executionLatencyMs": {
+              "p50": 293.95141599999624,
+              "p95": 293.95141599999624,
+              "p99": 293.95141599999624
+            }
+          },
+          "client.show.denied": {
+            "commands": 1,
+            "executionLatencyMs": {
+              "p50": 274.83704099999886,
+              "p95": 274.83704099999886,
+              "p99": 274.83704099999886
+            }
+          },
+          "client.show": {
+            "commands": 1,
+            "executionLatencyMs": {
+              "p50": 289.1751249999943,
+              "p95": 289.1751249999943,
+              "p99": 289.1751249999943
+            }
+          }
+        }
+      },
+      "runtime": {
+        "sampleCount": 34,
+        "maximumSampledConnections": 9,
+        "maximumSampledActiveConnections": 1,
+        "maximumSampledWaitingLocks": 0
+      }
+    }
+  ],
+  "interpretation": [
+    "All 14,400 scheduled HTTPS requests were dispatched and returned HTTP 200 across three independent profiled repeats; no 429, 503, transport error, authorization violation, or generator drop occurred.",
+    "Every profiled stage reported zero errors and cancellations. The service gate admitted every request. Global queue, global counter, caller authentication, caller counter, limiter operation, and client-token PostgreSQL stages completed for all 1,600 phase requests.",
+    "During the account-detail overlap, scheduled HTTPS p95 was 8.57\u20138.82 ms, versus 5.20\u20135.60 ms before and 5.40\u20135.50 ms after. These are short local profiles with instrumentation enabled and only three ordered phases; they do not establish a production SLO or causal CLI-only impact.",
+    "The global limiter queue wait had a maximum of 1.561 ms across all phases/repeats; its counter operation maximum was 10.67 ms. Neither failed in these observations.",
+    "The intermittent 503 cause was not reproduced, so the new stage instrumentation cannot attribute the earlier failures. These clean repeats are evidence about these runs only, not proof the failure is resolved.",
+    "Serial PostgreSQL samples observed at most nine runtime connections and zero waiting locks. Sampling can miss short-lived peaks and does not establish continuous pool pressure.",
+    "The committed summary excludes per-request identifiers, identities, credentials, tokens, host paths, and raw timestamps. Raw local reports remain under ignored .local/."
+  ],
+  "limitations": [
+    "Benchmark-only instrumentation adds fixed-cardinality timing collection and is absent from normal release builds.",
+    "One Mac host and local Docker scheduling; no external load generator, sustained run, or Kubernetes topology.",
+    "The 4,800-request run stays below the configured 6,000-per-minute caller budget in a fresh isolated limiter store; it does not qualify long-lived shared deployments under other traffic.",
+    "No pool, rate, cache, or security setting was raised or weakened.",
+    "The three repeats do not explain earlier HTTP 503 responses or establish a throughput/capacity target."
+  ]
+}

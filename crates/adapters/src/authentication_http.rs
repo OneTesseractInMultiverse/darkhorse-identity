@@ -96,10 +96,23 @@ async fn guard(State(boundary): State<Arc<Boundary>>, request: Request, next: Ne
         )
             .into_response();
     }
-    let Ok(_permit) = boundary.slots.try_acquire() else {
+    let permit =
+        crate::benchmark_profiling::compute(crate::benchmark_profiling::Stage::ServiceSlot, || {
+            boundary.slots.try_acquire()
+        });
+    let Ok(_permit) = permit else {
         return error(AuthError::Unavailable);
     };
-    match tokio::time::timeout(Duration::from_secs(10), next.run(request)).await {
+    match crate::benchmark_profiling::measure(
+        crate::benchmark_profiling::Stage::ServiceHandler,
+        async {
+            tokio::time::timeout(Duration::from_secs(10), next.run(request))
+                .await
+                .map_err(|_| ())
+        },
+    )
+    .await
+    {
         Ok(response) => response,
         Err(_) => error(AuthError::Unavailable),
     }

@@ -1,5 +1,6 @@
-use super::super::profiling::{self, Stage};
 use super::*;
+use crate::benchmark_profiling as profiling;
+use crate::benchmark_profiling::Stage;
 use sqlx::Acquire;
 impl TokenManagementStore for PostgresStore {
     async fn introspect(

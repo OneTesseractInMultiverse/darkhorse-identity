@@ -60,12 +60,18 @@ impl AttemptLimiter for RedisLimiter {
 }
 impl RedisLimiter {
     async fn bounded_consume(&self, attempt: &Attempt) -> Result<Admission, LimiterUnavailable> {
-        let _slot = self.slots.try_acquire().map_err(unavailable)?;
+        let _slot = crate::benchmark_profiling::compute(
+            crate::benchmark_profiling::Stage::LimiterSlot,
+            || self.slots.try_acquire().map_err(unavailable),
+        )?;
         let started = Instant::now();
         let duration = Duration::from_millis(OPERATION_MS);
         let result = tokio::time::timeout(
             duration,
-            shared_limiting::consume(&self.authority, &self.counters, attempt),
+            crate::benchmark_profiling::measure(
+                crate::benchmark_profiling::Stage::LimiterOperation,
+                shared_limiting::consume(&self.authority, &self.counters, attempt),
+            ),
         )
         .await
         .map_err(unavailable)?;

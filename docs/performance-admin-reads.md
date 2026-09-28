@@ -292,11 +292,11 @@ both pool sizes. No deployment default or security setting was changed.
 The aggregate [pool-sensitivity results](measurements/operator-details-pool-sensitivity-2026-09-27.json)
 retain the source and binary fingerprints, environment, per-phase outcomes,
 percentiles, trace digests, and pool setting. The raw local traces remain outside
-the repository. Attribution still needs bounded measurements for database-pool
-acquisition, limiter queue/deadline outcomes, Redis calls, and request-stage
-latency. Larger sustained profiles and deployment-runtime resource budgets also
-remain unmeasured; do not raise the pool limit without a fleet-wide connection
-budget.
+the repository. A later instrumented Compose profile measures the service gate,
+global/caller admission, limiter operation, and token database stages; see the
+September 28 section below. Its clean repeats do not identify the earlier 503s.
+Larger sustained profiles and deployment-runtime resource budgets also remain
+unmeasured; do not raise the pool limit without a fleet-wide connection budget.
 
 ## Security checks and remaining measurements
 
@@ -351,6 +351,42 @@ peak usage. This one low-rate smoke demonstrates that the packaged runtime-role
 read path, audit, and HTTPS introspection can operate together under the tested
 container limits. It does not establish a performance gain, production capacity,
 or an explanation for the earlier unavailable responses. Repeated load, larger
-effective policy graphs, resource-stage timings, lock/pool wait attribution,
-and investigation of those unavailable outcomes remain open under
+effective policy graphs, broader lock/pool wait attribution, and investigation
+of those unavailable outcomes remain open under
 [issue #32](https://github.com/OneTesseractInMultiverse/darkhorse-identity/issues/32).
+
+## September 28, 2026 Compose admission-stage profiling
+
+Three additional repeats ran `make benchmark-compose-operator-details-profile`
+against isolated packaged Compose stacks. Each repeat used the restricted
+`darkhorse_runtime` role, the 2-CPU/512-MiB API and database limits, a five-
+connection API pool, two CLI detail-read workers, and 200 verified HTTPS
+introspection arrivals per second for three eight-second phases. Each run
+offered 4,800 requests, below the fresh limiter's 6,000/minute per-caller
+budget. No limit, credential, cache, or authorization rule changed.
+
+The benchmark-only profile brackets the 16-request service gate, global
+admission queue/counter, authenticated caller check and budget, limiter slot and
+operation, and the existing PostgreSQL token stages. Counters contain fixed
+stage names and aggregate timing/outcome histograms only; no identity, token,
+query, or credential values. The feature is absent from ordinary release
+builds. The [machine-readable results](measurements/operator-details-compose-admission-2026-09-28.json)
+retain each phase and measured stage for all three repeats.
+
+All 14,400 scheduled requests were dispatched and returned HTTP 200. There were
+no 429/503 responses, errors, authorization mismatches, or generator drops, and
+all instrumented stages completed without error or cancellation. During the CLI
+detail overlap, scheduled HTTPS p95 ranged from 8.57 to 8.82 ms, compared with
+5.20 to 5.60 ms before and 5.40 to 5.50 ms afterwards. The global queue's
+maximum wait was 1.561 ms; its counter operation's maximum was 10.67 ms. The
+largest observed token database-pool acquisition was 54.6 ms, with no database
+stage failure. These maxima are individual observations, not percentile or
+capacity guarantees.
+
+Serial PostgreSQL observations saw up to nine runtime connections and no
+waiting locks, but they can miss short-lived peaks. The 503s from earlier
+unprofiled runs did not recur, so these stages do not attribute those events or
+show that they are resolved. The repeats are local, instrumented samples from
+one host and ordered phases; they do not establish a service-level objective or
+production capacity. The adapter source, profiler harness, image configuration,
+host versions, and test limits are recorded with the summarized measurements.

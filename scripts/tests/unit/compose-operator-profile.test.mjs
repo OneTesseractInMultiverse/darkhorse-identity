@@ -26,10 +26,20 @@ function histogram() {
 
 function report() {
   return {
-    schema: 1,
+    schema: 2,
     upper_us: upperUs,
     stages: Object.fromEntries(
       [
+        "service_slot",
+        "service_handler",
+        "admission_global",
+        "admission_global_queue",
+        "admission_global_counter",
+        "admission_authenticated",
+        "admission_caller_authentication",
+        "admission_caller_counter",
+        "limiter_slot",
+        "limiter_operation",
         "total",
         "pool_acquire",
         "begin",

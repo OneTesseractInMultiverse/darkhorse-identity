@@ -141,14 +141,24 @@ async fn introspect<
     headers: HeaderMap,
     body: Bytes,
 ) -> Response {
-    if let Err(error) = e.admission.before().await {
+    if let Err(error) = crate::benchmark_profiling::measure(
+        crate::benchmark_profiling::Stage::AdmissionGlobal,
+        e.admission.before(),
+    )
+    .await
+    {
         return failure(error);
     }
     let input = match input::introspection(&headers, &body) {
         Ok(input) => input,
         Err(error) => return failure(error),
     };
-    if let Err(error) = e.admission.authenticated(input.credentials()).await {
+    if let Err(error) = crate::benchmark_profiling::measure(
+        crate::benchmark_profiling::Stage::AdmissionAuthenticated,
+        e.admission.authenticated(input.credentials()),
+    )
+    .await
+    {
         return failure(error);
     }
     match input {

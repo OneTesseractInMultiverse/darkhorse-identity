@@ -1,6 +1,7 @@
-use super::super::profiling::{self, Stage};
 use super::super::resource_authority::{self, StoredGrant};
 use super::*;
+use crate::benchmark_profiling as profiling;
+use crate::benchmark_profiling::Stage;
 use darkhorse_application::resource_servers::{
     ActiveResourceToken, ComputationCacheContext, ComputationCacheEntry, ComputationCacheKey,
     ComputationCacheLookup, Probe, ResourceTokenStore,

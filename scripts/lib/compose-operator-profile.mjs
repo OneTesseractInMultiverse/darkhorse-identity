@@ -3,6 +3,16 @@ const UPPER_US = [
   100_000, 250_000, 500_000, 1_000_000, 2_500_000, 5_000_000, 10_000_000,
 ];
 const STAGES = [
+  "service_slot",
+  "service_handler",
+  "admission_global",
+  "admission_global_queue",
+  "admission_global_counter",
+  "admission_authenticated",
+  "admission_caller_authentication",
+  "admission_caller_counter",
+  "limiter_slot",
+  "limiter_operation",
   "total",
   "pool_acquire",
   "begin",
@@ -78,7 +88,7 @@ export function composeOperatorDatabaseProfile(records) {
     if (
       !PHASES.has(record?.phase) ||
       seen.has(record.phase) ||
-      record?.report?.schema !== 1 ||
+      record?.report?.schema !== 2 ||
       JSON.stringify(record.report.upper_us) !== JSON.stringify(UPPER_US) ||
       !record.report.stages ||
       Object.keys(record.report.stages).length !== STAGES.length ||

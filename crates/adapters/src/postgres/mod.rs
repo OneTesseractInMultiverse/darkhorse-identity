@@ -120,8 +120,6 @@ mod resource_authority;
 
 mod resource_servers;
 
-pub mod profiling;
-
 mod email_verification;
 
 mod email_queue;
