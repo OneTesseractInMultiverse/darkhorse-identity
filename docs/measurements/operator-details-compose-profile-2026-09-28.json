@@ -1,0 +1,354 @@
+{
+  "schema": 1,
+  "recordedDate": "2026-09-28",
+  "issue": 32,
+  "workload": {
+    "endpoint": "OIDC client-token introspection over verified HTTPS",
+    "databaseRole": "darkhorse_runtime",
+    "cliOverlap": {
+      "processes": 2,
+      "outcomes": {
+        "read": 3,
+        "not_found": 1,
+        "denied": 4
+      }
+    },
+    "apiPoolSize": 5,
+    "apiContainerLimit": {
+      "cpus": 2,
+      "memoryMiB": 512
+    },
+    "postgresContainerLimit": {
+      "cpus": 2,
+      "memoryMiB": 512
+    },
+    "authorizationCache": false,
+    "perClientAdmission": {
+      "limit": 6000,
+      "windowMs": 60000
+    }
+  },
+  "environment": {
+    "host": "Apple M5",
+    "docker": {
+      "version": "29.6.2",
+      "cpus": 10,
+      "memoryBytes": 8321515520
+    },
+    "containerPlatform": "linux/arm64",
+    "postgresql": "Percona Distribution for PostgreSQL 18.6.1",
+    "redis": "8.10.1"
+  },
+  "unprofiledTenSecondRun": {
+    "sourceCommit": "32490d9a31f2d88bef8beafdcc8e650c7fe198cb",
+    "imageDigest": "sha256:cf2c68494c7cf9b7229353be0b9e151ed6bde191910714fd53d80b43030f5bfb",
+    "binarySha256": "150dd39582815667d51b153bcbd43b5ca3255bb5eb6d3f31ee10d7ab2807d3c6",
+    "phaseDurationMs": 10000,
+    "phases": [
+      {
+        "name": "control-before",
+        "offeredRatePerSecond": 200,
+        "scheduled": 2000,
+        "dispatched": 2000,
+        "httpStatuses": {
+          "200": 2000
+        },
+        "scheduledLatencyMs": {
+          "p50": 3.7553750000006403,
+          "p95": 5.0856669999993755,
+          "p99": 7.018833999998606
+        },
+        "peakInFlight": 5
+      },
+      {
+        "name": "account-detail-overlap",
+        "offeredRatePerSecond": 200,
+        "scheduled": 2000,
+        "dispatched": 2000,
+        "httpStatuses": {
+          "200": 2000
+        },
+        "scheduledLatencyMs": {
+          "p50": 4.149666999997862,
+          "p95": 7.640791999998328,
+          "p99": 10.691874999996799
+        },
+        "peakInFlight": 4
+      },
+      {
+        "name": "control-after",
+        "offeredRatePerSecond": 200,
+        "scheduled": 2000,
+        "dispatched": 2000,
+        "httpStatuses": {
+          "200": 1993,
+          "503": 7
+        },
+        "scheduledLatencyMs": {
+          "p50": 4.530624999999418,
+          "p95": 7.720416999996814,
+          "p99": 23.21183399999427
+        },
+        "peakInFlight": 17
+      }
+    ]
+  },
+  "profiledEightSecondRun": {
+    "sourceCommit": "826ef66698f6c43b34ef6ac0fa77c875d87c7d8b",
+    "imageDigest": "sha256:3f5ec6dad742c56319a11c302329f717402294996b3a3e70d6690a3d2a54c349",
+    "binarySha256": "45a1213d8de70b468bceea84435b6628eaef6c2885589d1f6fda66a58f14f704",
+    "buildFeature": "benchmark-profiling",
+    "phaseDurationMs": 8000,
+    "phases": [
+      {
+        "name": "control-before",
+        "offeredRatePerSecond": 200,
+        "scheduled": 1600,
+        "dispatched": 1600,
+        "httpStatuses": {
+          "200": 1600
+        },
+        "scheduledLatencyMs": {
+          "p50": 3.622749999998632,
+          "p95": 4.771624999997584,
+          "p99": 6.753332999996928
+        },
+        "peakInFlight": 4
+      },
+      {
+        "name": "account-detail-overlap",
+        "offeredRatePerSecond": 200,
+        "scheduled": 1600,
+        "dispatched": 1600,
+        "httpStatuses": {
+          "200": 1600
+        },
+        "scheduledLatencyMs": {
+          "p50": 3.898916999998619,
+          "p95": 6.861832999995386,
+          "p99": 9.083999999995285
+        },
+        "peakInFlight": 4
+      },
+      {
+        "name": "control-after",
+        "offeredRatePerSecond": 200,
+        "scheduled": 1600,
+        "dispatched": 1600,
+        "httpStatuses": {
+          "200": 1600
+        },
+        "scheduledLatencyMs": {
+          "p50": 3.6365829999995185,
+          "p95": 4.8666250000023865,
+          "p99": 5.9817499999990105
+        },
+        "peakInFlight": 3
+      }
+    ],
+    "postgresqlClientStages": [
+      {
+        "phase": "control-before",
+        "stages": {
+          "client_total": {
+            "ok": 1600,
+            "error": 0,
+            "cancelled": 0,
+            "samples": 1600,
+            "sumUs": 895988,
+            "maxUs": 7564
+          },
+          "client_pool_acquire": {
+            "ok": 1600,
+            "error": 0,
+            "cancelled": 0,
+            "samples": 1600,
+            "sumUs": 55464,
+            "maxUs": 264
+          },
+          "client_begin": {
+            "ok": 1600,
+            "error": 0,
+            "cancelled": 0,
+            "samples": 1600,
+            "sumUs": 51941,
+            "maxUs": 144
+          },
+          "client_fence": {
+            "ok": 1600,
+            "error": 0,
+            "cancelled": 0,
+            "samples": 1600,
+            "sumUs": 60078,
+            "maxUs": 465
+          },
+          "client_authenticate": {
+            "ok": 1600,
+            "error": 0,
+            "cancelled": 0,
+            "samples": 1600,
+            "sumUs": 62460,
+            "maxUs": 281
+          },
+          "client_inspect": {
+            "ok": 1600,
+            "error": 0,
+            "cancelled": 0,
+            "samples": 1600,
+            "sumUs": 453634,
+            "maxUs": 1546
+          },
+          "client_commit": {
+            "ok": 1600,
+            "error": 0,
+            "cancelled": 0,
+            "samples": 1600,
+            "sumUs": 204692,
+            "maxUs": 7077
+          }
+        }
+      },
+      {
+        "phase": "account-detail-overlap",
+        "stages": {
+          "client_total": {
+            "ok": 1600,
+            "error": 0,
+            "cancelled": 0,
+            "samples": 1600,
+            "sumUs": 1177944,
+            "maxUs": 7602
+          },
+          "client_pool_acquire": {
+            "ok": 1600,
+            "error": 0,
+            "cancelled": 0,
+            "samples": 1600,
+            "sumUs": 72467,
+            "maxUs": 661
+          },
+          "client_begin": {
+            "ok": 1600,
+            "error": 0,
+            "cancelled": 0,
+            "samples": 1600,
+            "sumUs": 66502,
+            "maxUs": 468
+          },
+          "client_fence": {
+            "ok": 1600,
+            "error": 0,
+            "cancelled": 0,
+            "samples": 1600,
+            "sumUs": 80166,
+            "maxUs": 339
+          },
+          "client_authenticate": {
+            "ok": 1600,
+            "error": 0,
+            "cancelled": 0,
+            "samples": 1600,
+            "sumUs": 85763,
+            "maxUs": 493
+          },
+          "client_inspect": {
+            "ok": 1600,
+            "error": 0,
+            "cancelled": 0,
+            "samples": 1600,
+            "sumUs": 613817,
+            "maxUs": 4334
+          },
+          "client_commit": {
+            "ok": 1600,
+            "error": 0,
+            "cancelled": 0,
+            "samples": 1600,
+            "sumUs": 250238,
+            "maxUs": 1694
+          }
+        }
+      },
+      {
+        "phase": "control-after",
+        "stages": {
+          "client_total": {
+            "ok": 1600,
+            "error": 0,
+            "cancelled": 0,
+            "samples": 1600,
+            "sumUs": 923338,
+            "maxUs": 6990
+          },
+          "client_pool_acquire": {
+            "ok": 1600,
+            "error": 0,
+            "cancelled": 0,
+            "samples": 1600,
+            "sumUs": 57419,
+            "maxUs": 283
+          },
+          "client_begin": {
+            "ok": 1600,
+            "error": 0,
+            "cancelled": 0,
+            "samples": 1600,
+            "sumUs": 53079,
+            "maxUs": 167
+          },
+          "client_fence": {
+            "ok": 1600,
+            "error": 0,
+            "cancelled": 0,
+            "samples": 1600,
+            "sumUs": 63207,
+            "maxUs": 175
+          },
+          "client_authenticate": {
+            "ok": 1600,
+            "error": 0,
+            "cancelled": 0,
+            "samples": 1600,
+            "sumUs": 67706,
+            "maxUs": 259
+          },
+          "client_inspect": {
+            "ok": 1600,
+            "error": 0,
+            "cancelled": 0,
+            "samples": 1600,
+            "sumUs": 476409,
+            "maxUs": 5597
+          },
+          "client_commit": {
+            "ok": 1600,
+            "error": 0,
+            "cancelled": 0,
+            "samples": 1600,
+            "sumUs": 197802,
+            "maxUs": 1180
+          }
+        }
+      }
+    ],
+    "runtimeSamples": {
+      "count": 34,
+      "maximumSampledConnections": 9,
+      "maximumSampledActiveConnections": 2,
+      "maximumSampledWaitingLocks": 0,
+      "interpretation": "Serial samples are observations, not continuous connection peaks."
+    }
+  },
+  "interpretation": [
+    "The unprofiled 200/s, 10-second run returned seven HTTP 503 responses in control-after; the other two phases returned 2,000 HTTP 200 responses each.",
+    "The instrumented 200/s, 8-second run returned 1,600 HTTP 200 responses in each phase, with zero PostgreSQL client-introspection stage errors.",
+    "The shorter profile workload schedules 4,800 measured calls, below the 6,000-per-minute per-client fixed-window budget. It avoids attributing expected rate-limit responses to database availability.",
+    "The runs are not a matched latency comparison. The profiler adds instrumentation and uses a shorter phase; the 10-second 503 observation remains unexplained."
+  ],
+  "limitations": [
+    "Only one instrumented run is published.",
+    "The profiler covers the PostgreSQL client-token introspection stages, not global/caller Redis admission or all pre-database request stages.",
+    "Runtime connection and lock observations are sampled; no true peak, pool wait distribution, or production capacity is established.",
+    "No SLO is inferred. No pool, rate, cache, or security setting was raised or relaxed."
+  ]
+}

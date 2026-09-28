@@ -115,6 +115,46 @@ order, small command samples and variable control tails leave host drift and
 hashing/scheduling contributions unresolved. Broader qualification remains in
 [issue #32](https://github.com/OneTesseractInMultiverse/darkhorse-identity/issues/32).
 
+## September 28, 2026 Compose introspection stage profile
+
+The earlier packaged Compose baseline offered 200 verified HTTPS introspections
+per second for ten seconds in each of three phases. Its first two phases returned
+2,000 HTTP 200 responses each; the final control phase returned 1,993 HTTP 200
+and seven HTTP 503 responses. There were no dropped arrivals, transport errors,
+or authorization mismatches. The 503s remain an availability failure, not a
+successful denial.
+
+To localize later runs, `make benchmark-compose-operator-details-profile` builds
+a separate image with the existing compile-time-only `benchmark-profiling`
+feature. It sends a private Unix signal between phases and retains only fixed
+PostgreSQL stage histograms. The ordinary Docker build leaves profiling disabled;
+the target removes its temporary image tag and Compose project, including named
+volumes, after the run. Its bounded, identifier-free report remains under the
+ignored `.local/benchmarks/` directory. The normal comparison command is
+`make benchmark-compose-operator-details-baseline`.
+
+The instrumented run kept the offered rate at 200 per second and measured three
+eight-second phases. This schedules 4,800 requests, below the client's 6,000
+requests-per-minute fixed-window allowance; the former ten-second phases alone
+scheduled 6,000, before setup calls. Each measured phase returned 1,600 HTTP 200
+responses. Scheduled p95 was 4.77 ms before the CLI reads, 6.86 ms during them,
+and 4.87 ms afterwards. The profiler recorded exactly 1,600 successful samples
+for each client-token introspection stage in each phase, with zero stage errors.
+It covers PostgreSQL pool acquisition, transaction start, security fence, client
+authentication, token inspection, commit, and their total duration. Thirty-four
+serial database observations sampled at most nine runtime connections and no
+waiting locks; these are samples, not continuous peaks.
+
+This is diagnostic evidence, not a matched latency comparison: instrumentation
+adds work and the profiled run is shorter. Its clean PostgreSQL stage profile does
+not explain the seven HTTP 503s in the separate unprofiled ten-second run. Redis
+admission and request stages before PostgreSQL are not included in these histograms.
+No service pool, limiter, cache, or security setting was changed. Keep #32 open;
+do not increase the connection pool based on these samples. The
+[machine-readable results](measurements/operator-details-compose-profile-2026-09-28.json)
+retain source and image fingerprints, exact HTTP status counts, scheduled latency,
+stage outcomes, limits, and the measurement caveats.
+
 A separate three-second `operator-smoke` compatibility run used the historical
 listing workload and owner role. Its burst recorded 533 authorized and 61 unavailable
 responses from 594 dispatched requests, plus six late generator drops out of 600
