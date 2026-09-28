@@ -48,10 +48,10 @@ flowchart TD
 Inactive applications remain inspectable. A missing application produces a fixed
 not-found error after authentication. An existing application with no matching
 records returns an empty page. List and show are read-only and do not change policy.
-`access apply` below can create definitions and change bindings, but does not assign
-principals or return effective-access decisions. Independent delegated management
-permissions remain unfinished; current platform administrators are the only
-supported actors.
+`access apply` can create definitions, change bindings, and assign or remove a
+user's application role. It does not return effective-access decisions.
+Independent delegated management permissions remain unfinished; current platform
+administrators are the only supported actors.
 
 ## Inspect one definition
 
@@ -171,8 +171,11 @@ follow the shared [container execution contract](container-accounts.md).
 
 ## Apply a policy change
 
-`operator access apply` applies one change supported by the management API. It
-requires fresh password authentication by a current platform administrator,
+`operator access apply` applies one bounded access-policy change using the shared
+authorization model. Principal-role changes use the same revision-fenced assignment
+policy as the user-directory management operation. They are parsed only by this
+operator command and do not add a second assignment route to the generic catalog
+HTTP endpoint. The command requires fresh password authentication by a current platform administrator,
 `--auth-stdin`, JSON output, `--yes`, an expected primary policy revision, and a
 reason. Application ownership is contact information and grants no authority.
 Delegated management permissions remain separate; the command uses the same
@@ -280,8 +283,10 @@ darkhorse-server --auth-stdin --output json --yes operator access apply < /priva
 
 ### Mutation authority and audit
 
-The CLI mutation shares the HTTP adapter's reference validation, capacity checks,
-role-binding safety rules, and persistence. It uses the existing password
+Catalog-definition and binding changes use the shared catalog validation, capacity
+checks, role-binding safety rules, and persistence. Principal-role changes use the
+same application-active, expected-user-revision, and expected-policy-revision
+checks as the directory assignment policy. All changes use the existing password
 verification and shared login budget. PostgreSQL holds the exclusive shared
 security fence, checks the administrator proof and expected policy revision,
 applies the change under a savepoint, appends one operator audit, rechecks current
