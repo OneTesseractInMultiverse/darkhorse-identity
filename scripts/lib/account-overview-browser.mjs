@@ -46,4 +46,41 @@ export async function verifyAccountOverview(page) {
     fullPage: true,
   });
   await page.setViewportSize({ width: 1280, height: 900 });
+  await page.getByRole("combobox").selectOption("es");
+  await page.waitForFunction(() => document.documentElement.lang === "es");
+  assert.equal(await page.title(), "Tu cuenta — Darkhorse");
+  await page
+    .getByRole("navigation", { name: "Herramientas de la cuenta" })
+    .waitFor();
+  for (const [name, href] of [
+    ["Abrir consola", "/console/users"],
+    ["Mi perfil", "/account/profile"],
+    ["Administrar sesiones", "/security/sessions"],
+    ["Administrar claves de API", "/security/keys"],
+    ["Verificar correo electrónico", "/security/email"],
+  ]) {
+    assert.equal(
+      await page.getByRole("link", { name }).getAttribute("href"),
+      href,
+    );
+  }
+  await page.screenshot({
+    path: resolve(".local/account-es-desktop.png"),
+    fullPage: true,
+  });
+  await page.setViewportSize({ width: 390, height: 844 });
+  assert.ok(
+    await page.evaluate(
+      () => document.documentElement.scrollWidth <= window.innerWidth,
+    ),
+    "Spanish account navigation fits the mobile viewport without horizontal scrolling",
+  );
+  await page.screenshot({
+    path: resolve(".local/account-es-mobile.png"),
+    fullPage: true,
+  });
+  await page.setViewportSize({ width: 1280, height: 900 });
+  await page.getByRole("combobox").selectOption("en");
+  await page.waitForFunction(() => document.documentElement.lang === "en");
+  await page.evaluate(() => localStorage.removeItem("darkhorse.locale.v1"));
 }

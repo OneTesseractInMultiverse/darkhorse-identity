@@ -50,8 +50,16 @@ export async function verifyLocalization(browser, origin) {
     await expect(page.getByLabel("Contraseña", { exact: true })).toHaveValue(
       "",
     );
+    await page.screenshot({
+      path: resolve(".local/login-es-failure.png"),
+      fullPage: true,
+    });
     await selector.selectOption("en");
     await expect(alert).toHaveText("Unable to sign in with those credentials.");
+    await page.screenshot({
+      path: resolve(".local/login-en-failure.png"),
+      fullPage: true,
+    });
     await page.reload();
     await expect(
       page.getByRole("combobox", { name: "Language", exact: true }),

@@ -18,6 +18,11 @@ The table describes implementation scope, not an approval. Keep review evidence
 linked to the exact commit or issue that owns it. Do not attach credentials,
 personal data, raw service logs, or unredacted screenshots to public evidence.
 
+The full `make test-browser` run writes synthetic login failure captures in both
+languages and signed-in account-overview captures at desktop and mobile sizes
+under the ignored `.local/` directory. These are local review aids, not release
+approval; inspect and redact them before sharing outside the workstation.
+
 ## Required release checks
 
 - [x] `make i18n-check` rejects missing/extra/duplicate keys, placeholder drift,
