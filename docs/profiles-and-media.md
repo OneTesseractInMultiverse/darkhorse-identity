@@ -82,9 +82,19 @@ Two decoder jobs per process are admitted. Their permits stay with the blocking 
 
 Source-defined unit fixtures exercise both PNG and JPEG decoding, exact and
 over-limit dimensions, empty/truncated input, mismatched media types, and removal
-of appended payload bytes when an image is re-encoded. These checks validate
-deterministic input boundaries; they do not replace codec fuzzing or hard resource
-isolation.
+of appended payload bytes when an image is re-encoded. A deterministic mutation
+corpus adds generated PNG/JPEG seeds, short prefixes, sampled byte flips, block
+overwrites/deletions, and trailing bytes. Each seed is at most 4 KiB; each format
+has at most 260 cases, exercised for portraits, logos, and backgrounds. A case
+must return an invalid-input error or a decodable PNG with matching dimensions
+and digest inside the byte and edge limits. Panics fail the test. Separate
+positive and known-invalid cases check successful resizing and rejection of
+damaged signatures and forged media types.
+
+Run these self-contained checks with
+`cargo test -p darkhorse-adapters --lib media::images::tests --locked --offline`
+after installing dependencies. The fixed corpus is regression evidence, not
+coverage-guided codec fuzzing, a CPU-time bound, or hard resource isolation.
 
 Reads obtain the current authorized reference from PostgreSQL before accessing image bytes. A process-local cache retains at most 32 immutable images and 8 MiB of verified content. It caches bytes, not authorization decisions. Cold reads check stored size and SHA-256 integrity. The response uses `image/png`, `nosniff`, a restrictive image CSP, same-origin resource policy, and `no-store`. No bucket URLs, arbitrary redirects, or bearer image links are issued. The bucket must remain private.
 

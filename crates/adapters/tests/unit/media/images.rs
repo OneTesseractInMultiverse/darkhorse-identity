@@ -1,4 +1,7 @@
 use super::*;
+#[path = "images/mutations.rs"]
+mod mutations;
+
 fn png(width: u32, height: u32) -> Vec<u8> {
     let image = image::RgbaImage::from_pixel(width, height, image::Rgba([3, 4, 5, 255]));
     let mut out = std::io::Cursor::new(Vec::new());
