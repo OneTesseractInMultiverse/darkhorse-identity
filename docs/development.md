@@ -113,6 +113,13 @@ Public origin must be HTTPS with no credentials, path, query, or fragment. The d
 
 `make build` produces `target/release/darkhorse-server` and `apps/console/build`. Run the binary from the repository root, or set an absolute static directory. `/health/live` reports process liveness only. It does not claim database or authentication readiness.
 
+Release build dependencies retain their symbols. This avoids the
+`mis-aligned LINKEDIT string pool` loader failure for procedural macros on macOS
+27 with the pinned Rust toolchain; see [Rust #157750](https://github.com/rust-lang/rust/issues/157750).
+The override applies to build scripts, procedural macros, and their dependencies.
+The server's release optimization and debug-info stripping settings stay in effect.
+Reassess the override when upgrading the toolchain.
+
 `make db-setup`, `make db-up`, `make db-migrate`, `make bootstrap`, and `make db-down` manage the local PostgreSQL workflow. `make test-postgres` uses disposable infrastructure instead. `make docker-build` and `make docker-smoke` build and verify the packaged application image. See [persistence](persistence.md) for protected input, state preservation and the separate deployment qualifications.
 
 For independent Redis cache/limiter development instances, use `make redis-setup`, `make redis-up`, `make redis-status`, and `make redis-down`. `make test-redis` owns isolated Redis/PostgreSQL/TLS fault-test infrastructure and requires OpenSSL. Use `make redis-acl-update` for existing local ACL files and `make limiter-fence`, `make limiter-activate`, and `make limiter-status` for the explicit recovery workflow. See [Redis](redis.md) for credentials, loopback ports, resource limits, and the distinction between diagnostics and admission enforcement.

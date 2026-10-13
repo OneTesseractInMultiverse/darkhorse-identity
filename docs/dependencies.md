@@ -209,6 +209,32 @@ Hosted checks pin `actions/checkout` 7.0.1, `actions/setup-node` 7.0.0 and
 require reviewing upstream provenance and permissions. A tag comment is not a
 substitute for the immutable reference.
 
+### October 2026 transitive dependency update
+
+The **2026-10-13 UTC** hosted scan blocked on six `devalue` advisories, one
+`source-map-js` advisory, and the yanked `yoke-derive 0.8.3` release. The lockfiles
+now select compatible patch releases within the existing dependency ranges:
+
+| Package         | Previous | Replacement | Reason                                                                                                                                                                                                                                            |
+| --------------- | -------- | ----------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `devalue`       | 5.9.2    | 5.9.4       | Includes the serialization, parsing, and resource-amplification fixes in [5.9.3](https://github.com/sveltejs/devalue/releases/tag/v5.9.3), plus the tree-shaking annotations in [5.9.4](https://github.com/sveltejs/devalue/releases/tag/v5.9.4). |
+| `source-map-js` | 1.2.1    | 1.2.2       | Fixes excessive work from indexed source-map offsets; see [GHSA-68fv-2mgg-jv7q](https://github.com/advisories/GHSA-68fv-2mgg-jv7q).                                                                                                               |
+| `yoke-derive`   | 0.8.3    | 0.8.4       | Replaces the yanked release after an upstream minimum-Rust-version regression; see [ICU4X #8506](https://github.com/unicode-org/icu4x/issues/8506).                                                                                               |
+
+Svelte/SvelteKit bring in `devalue`; frontend build/test tooling brings in
+`source-map-js`. The ICU dependency graph brings in the `yoke-derive` procedural
+macro. The reviewed macro source change replaces a newer string constructor with
+string repetition. Their licenses remain MIT, BSD-3-Clause, and Unicode-3.0,
+respectively. No package, dependency override, audit exception, or direct dependency
+was added.
+
+The updated full-lockfile scan with cargo-audit 0.22.2 and pnpm 11.19.0 passed for
+353 Rust and 362 JavaScript packages with zero findings. The RustSec database
+revision was `6aed84668c23d7f535077a9fe918bf1fa0f6a5bc`. These results are dated
+dependency evidence; production capacity and exploitability in Darkhorse require
+their own evidence. [Issue #21](https://github.com/OneTesseractInMultiverse/darkhorse-identity/issues/21)
+records the implementation revision and validation results.
+
 ### Phone validator replacement
 
 Reviewed on **2026-09-23 UTC**: the published `phonenumber` 0.3.10 and its
