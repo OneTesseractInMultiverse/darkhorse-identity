@@ -34,6 +34,56 @@ applications or terminate their local sessions. Access and refresh tokens remain
 opaque. This is the session-binding prerequisite for
 [issue #14](https://github.com/OneTesseractInMultiverse/darkhorse-identity/issues/14).
 
+## Implemented: Logout Token signing
+
+The Rust signing adapter can now produce session-specific Logout Tokens through
+the separate `LogoutSigner` application port. This is an internal protocol
+primitive; no HTTP endpoint, revocation trigger or background worker calls it yet.
+It does not authorize a logout, select recipients or send a notification.
+
+Each message contains the exact issuer, one client audience, principal subject,
+RP session reference, token identifier and issuance time supplied by the caller.
+The domain computes expiration at 120 seconds after issuance and rejects overflow
+or dates that cannot be represented exactly by JavaScript receivers. The payload
+contains the back-channel logout event and cannot carry a nonce or authentication
+time through this port. The protected header fixes `RS256`, `logout+jwt` and the
+existing signing key's identifier.
+
+The adapter reuses issuer-bound encrypted signing keys and AWS-LC signing. ID
+tokens and Logout Tokens share the same four-worker admission budget on a signer
+instance. Saturation fails immediately; the blocking operation owns its permit
+until it finishes, including after its waiting caller is cancelled. No database,
+network, cache or additional key storage is introduced. Ordinary requests generate
+no Logout Tokens while notification delivery remains unwired. No throughput
+improvement or production signing capacity is claimed.
+
+The future dispatcher must select a committed logout target and a currently
+authorized signing key from primary state. It must supply a fresh, unpredictable
+`LogoutTokenId` for each newly issued message and retain sufficient delivery state
+to distinguish retrying that message from issuing another. The signer formats the
+provided identifier; it does not generate randomness, consult authority or persist
+replay state. The existing 600-second verification overlap exceeds the message's
+120-second lifetime, but delivery must still handle expiry and key rotation.
+
+```mermaid
+flowchart LR
+    T[Committed target and current key<br/>Dispatcher pending] -.-> C[Typed LogoutClaims]
+    C --> P[Domain expiry policy]
+    P --> J[Separate logout claim schema]
+    J --> S[Shared bounded signer]
+    S --> V[Signed logout+jwt]
+    V -.-> D[HTTPS delivery pending]
+```
+
+The test-only reference client validates the signature using Node's cryptography,
+the exact issuer/audience, required subject/session/token references, integral
+timestamps, the two-minute lifetime and expiry, the event object and absence of
+nonce. Its deterministic profile uses an explicit clock with zero skew allowance.
+It rejects ID tokens as logout messages and Logout Tokens as ID tokens. This is
+validation code, not a deployed receiver: atomic replay handling, matching-session
+termination, HTTP responses and duplicate-delivery behavior remain future work.
+Receiving a valid notification must never terminate a different or newer `sid`.
+
 ```mermaid
 sequenceDiagram
     participant U as User
@@ -72,8 +122,8 @@ notifications need separate trigger integration. [Personal API keys](personal-ap
 are implemented and survive ordinary browser logout. Account epoch changes
 invalidate them. Offline grants remain unsupported.
 
-Remaining #14 work includes registered HTTPS destinations, signed `logout+jwt`
-messages and receiver validation, atomic revocation/audit/outbox intent, bounded
+Remaining #14 work includes registered HTTPS destinations, wiring the signer into
+delivery and implementing the receiver lifecycle, atomic revocation/audit/outbox intent, bounded
 delivery/retry/retention, protected network destinations and DNS handling, separate
 local/remote status, and a reference receiver. Notification failure must never
 reverse local revocation. RP-initiated browser logout is still a separate pending
@@ -95,7 +145,14 @@ fan-out limits and production capacity remain unqualified. No throughput increas
 is claimed for this change. See the [identity record lifecycle map](identity-retention.md)
 for cleanup dependencies and the outstanding delivery-retention decision.
 
-`make test-unit` checks typed identifiers, signed claim construction and the
+`make test-logout` checks typed token identifiers, expiration boundaries, signed
+claim construction, issuer/key corruption, shared admission and reference
+validation failures. An independent Rust cryptographic implementation verifies
+the AWS-LC-produced Logout Token signature. Source-defined inputs need no external
+files or services. The reference validator tests generate their own signing keys;
+cross-process dispatch and interoperability with deployed receivers remain pending.
+
+`make test-unit` includes these unit checks alongside ID-token construction and the
 reference client's signature/session validation. `make test-postgres` covers
 concurrent convergence, persistence across independent pools, client/principal/
 new-login isolation, local revocation, rollback, immutable constraints and upgrade

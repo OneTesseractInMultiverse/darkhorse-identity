@@ -31,3 +31,4 @@ identifier_contract!(
 
 identifier_contract!(asset_identifier_contract, AssetId);
 identifier_contract!(operation_identifier_contract, OperationId);
+identifier_contract!(logout_token_identifier_contract, LogoutTokenId);

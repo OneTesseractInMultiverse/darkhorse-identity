@@ -110,11 +110,13 @@ Provider binding and key changes commit together for these journaled mutations.
   and audit records are retained and cannot be reused or rewritten.
 - Reserved message lifetimes are at most 300 seconds, within the 600-second
   verification overlap. ID-token headers use `typ=JWT`. Back-channel Logout Tokens
-  use `typ=logout+jwt`. Future issuing/validating adapters must keep their claim
-  schemas separate: ID tokens bind nonce/authentication context. Logout
-  Tokens require the logout event and session/subject targeting and prohibit nonce.
-  This milestone issues ID tokens. Logout Token issuance/delivery remains later
-  work. Access credentials are opaque. Refresh credentials use the separate [rotation contract](refresh-tokens.md).
+  use `typ=logout+jwt` and expire after 120 seconds. The signing ports keep their
+  claim schemas separate: ID tokens bind nonce/authentication context; Logout
+  Tokens carry the logout event, subject, session and unique token reference.
+  The Logout Token signing primitive and test-only reference validation are
+  implemented. Production trigger/outbox/delivery integration remains pending;
+  see [back-channel logout](backchannel-logout.md). Access credentials are opaque.
+  Refresh credentials use the separate [rotation contract](refresh-tokens.md).
 
 Key operations and their audit write commit together. Failed audit writes roll back
 all lifecycle changes. The initial implementation uses non-FIPS AWS-LC and does not

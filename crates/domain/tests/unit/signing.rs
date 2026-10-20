@@ -1,4 +1,17 @@
 use super::*;
+
+#[test]
+fn logout_lifetime_is_two_minutes_and_numeric_dates_remain_exact() {
+    assert_eq!(logout_expiration(0), Ok(120));
+    assert_eq!(logout_expiration(1001), Ok(1121));
+    assert_eq!(
+        logout_expiration(9_007_199_254_740_871),
+        Ok(9_007_199_254_740_991)
+    );
+    for issued in [9_007_199_254_740_872, u64::MAX - 119, u64::MAX] {
+        assert_eq!(logout_expiration(issued), Err(KeyError::Invalid));
+    }
+}
 fn staged() -> KeyState {
     KeyState {
         phase: Phase::Staged,

@@ -5,7 +5,10 @@ import { createPublicKey, verify } from "node:crypto";
 function requireValid(condition) {
   if (!condition) throw new Error("Reference client rejected protocol input.");
 }
-export function validateIdToken(token, keys, expected) {
+function object(value) {
+  return value !== null && typeof value === "object" && !Array.isArray(value);
+}
+function validateSignedToken(token, keys, type) {
   requireValid(typeof token === "string" && token.length < 8192);
   const parts = token.split(".");
   requireValid(
@@ -14,12 +17,16 @@ export function validateIdToken(token, keys, expected) {
   const [header, claims] = parts
     .slice(0, 2)
     .map((p) => JSON.parse(Buffer.from(p, "base64url")));
+  requireValid(object(header) && object(claims));
   requireValid(
     header.alg === "RS256" &&
-      header.typ === "JWT" &&
-      !header.crit &&
-      !header.jku &&
-      !header.jwk,
+      header.typ === type &&
+      typeof header.kid === "string" &&
+      header.kid.length > 0 &&
+      header.kid.length <= 128 &&
+      !Object.hasOwn(header, "crit") &&
+      !Object.hasOwn(header, "jku") &&
+      !Object.hasOwn(header, "jwk"),
   );
   const matching = keys.filter(
     (k) =>
@@ -37,6 +44,10 @@ export function validateIdToken(token, keys, expected) {
       Buffer.from(parts[2], "base64url"),
     ),
   );
+  return claims;
+}
+export function validateIdToken(token, keys, expected) {
+  const claims = validateSignedToken(token, keys, "JWT");
   requireValid(
     claims.iss === expected.issuer &&
       claims.aud === expected.client &&
@@ -60,6 +71,48 @@ export function validateIdToken(token, keys, expected) {
       /^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/.test(
         claims.sid,
       ),
+  );
+  return claims;
+}
+// Test-only validator for Darkhorse's session-specific, unencrypted profile.
+// A receiver must separately commit replay handling and matching-session deletion.
+export function validateLogoutToken(token, keys, expected) {
+  const claims = validateSignedToken(token, keys, "logout+jwt");
+  requireValid(
+    typeof expected.issuer === "string" &&
+      expected.issuer.length > 0 &&
+      typeof expected.client === "string" &&
+      expected.client.length > 0 &&
+      claims.iss === expected.issuer &&
+      claims.aud === expected.client &&
+      typeof claims.sub === "string" &&
+      claims.sub.length > 0 &&
+      claims.sub.length <= 255 &&
+      typeof claims.sid === "string" &&
+      claims.sid.length > 0 &&
+      claims.sid.length <= 128 &&
+      typeof claims.jti === "string" &&
+      claims.jti.length > 0 &&
+      claims.jti.length <= 128,
+  );
+  requireValid(
+    [claims.iat, claims.exp, expected.now].every(Number.isSafeInteger) &&
+      claims.iat >= 0 &&
+      claims.iat <= expected.now &&
+      claims.exp > expected.now &&
+      claims.exp > claims.iat &&
+      claims.exp - claims.iat <= 120,
+  );
+  requireValid(
+    object(claims.events) &&
+      Object.hasOwn(
+        claims.events,
+        "http://schemas.openid.net/event/backchannel-logout",
+      ) &&
+      object(
+        claims.events["http://schemas.openid.net/event/backchannel-logout"],
+      ) &&
+      !Object.hasOwn(claims, "nonce"),
   );
   return claims;
 }

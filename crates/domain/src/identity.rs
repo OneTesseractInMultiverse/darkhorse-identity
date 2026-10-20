@@ -35,6 +35,7 @@ identifier!(
     SessionId,
     EmailVerificationId,
     InvitationId,
+    LogoutTokenId,
     RelyingPartySessionId
 );
 

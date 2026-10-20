@@ -2,6 +2,7 @@
 pub const PREPUBLICATION_MS: u64 = 60_000;
 pub const VERIFICATION_OVERLAP_MS: u64 = 600_000;
 pub const MAX_TOKEN_SECONDS: u64 = 300;
+pub const LOGOUT_TOKEN_SECONDS: u64 = 120;
 pub const MAX_PUBLISHED_KEYS: usize = 4;
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum KeyError {
@@ -83,6 +84,13 @@ pub fn message_times(issued: u64, expires: u64) -> Result<(), KeyError> {
         return Err(KeyError::Invalid);
     }
     Ok(())
+}
+pub fn logout_expiration(issued: u64) -> Result<u64, KeyError> {
+    issued
+        .checked_add(LOGOUT_TOKEN_SECONDS)
+        // NumericDate values must remain exact in JavaScript receivers too.
+        .filter(|expires| *expires <= 9_007_199_254_740_991)
+        .ok_or(KeyError::Invalid)
 }
 #[cfg(test)]
 #[path = "../tests/unit/signing.rs"]

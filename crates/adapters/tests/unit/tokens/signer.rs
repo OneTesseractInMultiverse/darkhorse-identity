@@ -1,6 +1,8 @@
 use super::*;
 use crate::signing_fixture as fixture;
 use darkhorse_domain::identity::{ClientId, PrincipalId, RelyingPartySessionId};
+#[path = "signer/logout.rs"]
+mod logout;
 fn claims() -> IdClaims {
     IdClaims {
         issuer: "https://issuer.example".into(),

@@ -20,6 +20,7 @@ pub struct DirectoryCriteria {
 }
 
 pub mod limiting;
+pub mod logout;
 pub mod oidc;
 pub mod oidc_maintenance;
 pub mod refresh;

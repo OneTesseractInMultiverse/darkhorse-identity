@@ -361,6 +361,11 @@ test-provider: ## Test: isolated authorization, signing, code exchange and ident
 	cargo test --workspace --lib --locked --offline tokens
 	cargo test --workspace --lib --locked --offline token_http
 
+.PHONY: test-logout
+test-logout: ## Test: Logout Token claims, signing failures and independent reference validation
+	cargo test --workspace --lib --locked --offline logout
+	$(NODE) --test scripts/tests/unit/reference-client.test.mjs scripts/tests/unit/reference-logout.test.mjs
+
 .PHONY: test-resource-introspection
 
 test-resource-introspection: ## Test: isolated resource credential lifecycle, transport and projections
