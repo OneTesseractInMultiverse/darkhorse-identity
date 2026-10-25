@@ -242,3 +242,6 @@ fn bytes(row: &PgRow, key: &str) -> Result<[u8; 32], Error> {
         .map_err(storage)
 }
 pub(in crate::postgres) mod resources;
+pub(super) async fn logout_key(tx: &mut Tx<'_>, issuer: &str) -> Result<WrappedKey, Error> {
+    reads::key(tx, issuer).await
+}

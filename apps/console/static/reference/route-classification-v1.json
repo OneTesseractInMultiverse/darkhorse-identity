@@ -425,6 +425,24 @@
     },
     {
       "function": "router",
+      "handler": "read",
+      "method": "GET",
+      "path": "/api/admin/applications/{application}/clients/{client}/logout",
+      "rationale": "First-party browser, account, or administration workflow; this route does not grant third-party API authority.",
+      "source": "crates/adapters/src/logout_http.rs",
+      "surface": "first_party_browser"
+    },
+    {
+      "function": "router",
+      "handler": "write",
+      "method": "PUT",
+      "path": "/api/admin/applications/{application}/clients/{client}/logout",
+      "rationale": "First-party browser, account, or administration workflow; this route does not grant third-party API authority.",
+      "source": "crates/adapters/src/logout_http.rs",
+      "surface": "first_party_browser"
+    },
+    {
+      "function": "router",
       "handler": "settings",
       "method": "GET",
       "path": "/api/admin/branding",

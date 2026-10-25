@@ -11,6 +11,7 @@ use darkhorse_domain::{
 };
 use std::sync::Arc;
 use tokio::sync::Semaphore;
+#[derive(Clone)]
 pub struct Signer {
     wrap: Arc<WrapKey>,
     slots: Arc<Semaphore>,

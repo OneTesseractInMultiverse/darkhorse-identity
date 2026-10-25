@@ -21,6 +21,7 @@ mod authentication;
 mod bootstrap;
 mod directory;
 mod limiting;
+mod logout;
 mod personal_keys;
 mod registration;
 mod sessions;

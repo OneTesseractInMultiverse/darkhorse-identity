@@ -108,6 +108,9 @@ pub(super) async fn end(
             .rows_affected();
     if changed > 0 {
         audit(tx, row, Some(actor), event, now).await?;
+        super::super::logout::enqueue(tx, Uuid::from_u128(id(row)?.as_u128()), now)
+            .await
+            .map_err(storage)?;
     }
     Ok(())
 }

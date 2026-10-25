@@ -14,7 +14,14 @@ pub type Media = darkhorse_application::media::Service<
     darkhorse_adapters::media::images::Decoder,
 >;
 
+pub type Logout = (
+    PostgresStore,
+    darkhorse_adapters::tokens::signer::Signer,
+    darkhorse_adapters::logout::sender::HttpsSender,
+);
+
 pub struct Runtime {
+    pub logout: Option<Logout>,
     pub media: Option<Media>,
     pub router: axum::Router,
     pub maintenance: Option<PostgresStore>,
@@ -48,6 +55,7 @@ pub async fn runtime(
                 darkhorse_adapters::readiness::router(darkhorse_adapters::readiness::Disabled),
             ),
             maintenance: None,
+            logout: None,
             media: None,
             email: None,
         });
@@ -92,6 +100,7 @@ pub async fn runtime(
         entropy: OsSessionEntropy,
     };
     let maintenance = Some(store.clone());
+    let mut logout = None;
     let provider = if let Some(wrap) = provider {
         store
             .bind_provider(
@@ -100,10 +109,18 @@ pub async fn runtime(
             )
             .await
             .map_err(|_| "Provider issuer or wrapping key conflicts with persisted state.")?;
+        let sender = darkhorse_adapters::logout::sender::HttpsSender::new(
+            darkhorse_adapters::logout::configuration::load(
+                darkhorse_adapters::deployment_environment::DeploymentEnvironment,
+            )
+            .map_err(|_| "Invalid logout delivery configuration.")?,
+        );
+        let signer = darkhorse_adapters::tokens::signer::Signer::new(wrap);
+        logout = Some((store.clone(), signer.clone(), sender));
         provider_http::router(store.clone(), settings.public_origin.clone()).merge(
             darkhorse_adapters::token_http::router(
                 store.clone(),
-                darkhorse_adapters::tokens::signer::Signer::new(wrap),
+                signer,
                 settings.public_origin.clone(),
                 introspection_admission(&store, authentication.key)?,
             ),
@@ -141,12 +158,17 @@ pub async fn runtime(
         settings.public_origin.clone(),
     );
     Ok(Runtime {
+        logout,
         media,
         maintenance,
         email,
         router: authentication_http::router(service, settings.public_origin.clone())
             .merge(darkhorse_adapters::readiness::router(store.clone()))
             .merge(darkhorse_adapters::profiles_http::router(
+                store.clone(),
+                settings.public_origin.clone(),
+            ))
+            .merge(darkhorse_adapters::logout_http::router(
                 store.clone(),
                 settings.public_origin.clone(),
             ))

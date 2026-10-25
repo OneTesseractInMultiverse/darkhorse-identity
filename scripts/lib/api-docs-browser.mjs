@@ -392,13 +392,13 @@ export async function verifyApiDocumentation(browser, origin, ca) {
     await expect(routeStatus).toHaveAttribute("role", "status");
     await expect(routeStatus).toHaveAttribute("aria-live", "polite");
     await expect(routeStatus).toContainText(
-      "Cantidad de rutas registradas: 80",
+      "Cantidad de rutas registradas: 82",
     );
     await routeSearch.fill("/api/admin/users");
     await expect(page.locator(".api-boundary-entry")).toHaveCount(4);
     await expect(routeStatus).toContainText("Cantidad de rutas registradas: 4");
     await routeSearch.fill("administración");
-    await expect(page.locator(".api-boundary-entry")).toHaveCount(47);
+    await expect(page.locator(".api-boundary-entry")).toHaveCount(49);
     await routeSearch.fill("no-existe-en-la-referencia");
     await expect(page.locator(".api-boundary-entry")).toHaveCount(0);
     await expect(routeStatus).toContainText("Cantidad de rutas registradas: 0");

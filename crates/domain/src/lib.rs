@@ -45,3 +45,4 @@ pub mod operator_clients;
 pub mod policy_map;
 
 pub mod localization;
+pub mod logout;

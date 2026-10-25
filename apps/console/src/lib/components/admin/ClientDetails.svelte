@@ -1,4 +1,5 @@
 <script lang="ts">
+	import ClientLogout from './ClientLogout.svelte';
 	import { useCatalogLocalization } from '$lib/i18n/catalog-context';
 	import { useLocalization } from '$lib/i18n/context';
 	const language = useLocalization();
@@ -68,6 +69,7 @@
 			</div>
 		</dl>
 	</section>
+	<ClientLogout {client} />
 	<details class="catalog-disclosure">
 		<summary
 			>{$catalog.t('allowances')}

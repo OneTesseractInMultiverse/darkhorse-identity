@@ -76,7 +76,7 @@ serving a stale authorization snapshot safe.
 ## Retention work still open
 
 - How session audit keeps its immutable target and actor references if the browser-session row eventually becomes eligible for deletion.
-- How `sid` associations remain available through any future signed logout delivery, retry and terminal-failure window.
+- Archiving RP associations and immutable logout audit/configuration history. Delivery payloads and expanded empty intents now have bounded seven-day cleanup; associations remain available throughout delivery and retry.
 - Which consent snapshots remain in the live table versus an approved immutable archive.
 - Restore-to-service qualification and organization-specific retention for audit, consent and session references. The Compose fixture checks quarantine table presence and row counts only; credential sweeps recompute eligibility against restored primary database time, while stale metrics or pre-restore sweep state is never an authority.
 

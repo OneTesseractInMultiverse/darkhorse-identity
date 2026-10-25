@@ -135,6 +135,7 @@ fn browser_source(source: &str) -> bool {
             | "crates/adapters/src/registration_http/mod.rs"
             | "crates/adapters/src/resource_servers_http/mod.rs"
             | "crates/adapters/src/sessions_http.rs"
+            | "crates/adapters/src/logout_http.rs"
     )
 }
 

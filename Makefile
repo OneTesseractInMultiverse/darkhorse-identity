@@ -362,6 +362,10 @@ test-provider: ## Test: isolated authorization, signing, code exchange and ident
 	cargo test --workspace --lib --locked --offline token_http
 
 .PHONY: test-logout
+.PHONY: test-logout-https
+test-logout-https: ## Test: disposable HTTPS logout delivery, TLS, SSRF, retries and timeouts; requires OpenSSL
+	$(NODE) scripts/logout-https-test.mjs
+
 test-logout: ## Test: Logout Token claims, signing failures and independent reference validation
 	cargo test --workspace --lib --locked --offline logout
 	$(NODE) --test scripts/tests/unit/reference-client.test.mjs scripts/tests/unit/reference-logout.test.mjs

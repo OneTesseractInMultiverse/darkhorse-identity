@@ -52,7 +52,7 @@ export function catalogApi(fetcher: typeof fetch): CatalogApi {
 			write(fetcher, '/api/admin/catalog', { policy_revision: revision, change: command }, written)
 	};
 }
-async function read<T>(
+export async function read<T>(
 	fetcher: typeof fetch,
 	path: string,
 	decode: (v: unknown) => T | null
@@ -78,15 +78,16 @@ async function read<T>(
 		return { kind: 'unavailable' };
 	}
 }
-async function write<T>(
+export async function write<T>(
 	fetcher: typeof fetch,
 	path: string,
 	body: unknown,
-	decode: (v: unknown) => T | null
+	decode: (v: unknown) => T | null,
+	method: 'POST' | 'PUT' = 'POST'
 ): Promise<Write<T>> {
 	try {
 		const response = await fetcher(path, {
-			method: 'POST',
+			method,
 			credentials: 'same-origin',
 			cache: 'no-store',
 			headers: { 'content-type': 'application/json', 'x-darkhorse-csrf': '1' },

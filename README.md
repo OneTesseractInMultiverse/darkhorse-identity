@@ -46,7 +46,9 @@ check reads current primary state, including committed revocation and permission
 | Operations        | Rust CLI, separate database roles, durable limiter activation records, Compose and Kubernetes packaging                     |
 
 Back-channel logout has persisted relying-party session references and signed
-`sid` claims. Notification delivery remains unimplemented. Password recovery,
+`sid` claims, destination registration, and durable notifications for individual
+browser-session termination. Account-wide triggers and receiver qualification remain
+open. Password recovery,
 email changes, passkeys, delegated administration, and authorization computation
 caching remain open work. The [status reference](docs/implementation-status.md)
 links each boundary to its guide and issue.

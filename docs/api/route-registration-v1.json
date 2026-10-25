@@ -331,6 +331,20 @@
     },
     {
       "function": "router",
+      "handler": "read",
+      "method": "GET",
+      "path": "/api/admin/applications/{application}/clients/{client}/logout",
+      "source": "crates/adapters/src/logout_http.rs"
+    },
+    {
+      "function": "router",
+      "handler": "write",
+      "method": "PUT",
+      "path": "/api/admin/applications/{application}/clients/{client}/logout",
+      "source": "crates/adapters/src/logout_http.rs"
+    },
+    {
+      "function": "router",
       "handler": "settings",
       "method": "GET",
       "path": "/api/admin/branding",

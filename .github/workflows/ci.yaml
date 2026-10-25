@@ -125,6 +125,10 @@ jobs:
         id: boundary
         timeout-minutes: ${{ matrix.suite_minutes }}
         run: exec node scripts/ci-boundary.mjs "$BOUNDARY_SUITE"
+      - name: Verify logout HTTPS delivery
+        if: ${{ matrix.suite == 'browser' }}
+        timeout-minutes: 8
+        run: make test-logout-https
       - name: Verify owned resource cleanup
         if: ${{ always() && steps.boundary.outcome != 'skipped' }}
         timeout-minutes: 2

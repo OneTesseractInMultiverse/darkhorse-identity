@@ -64,13 +64,16 @@ GRANT SELECT,INSERT,UPDATE,DELETE ON
  principal_roles,authorization_resource_grants,resource_introspection,
  resource_introspection_secrets,refresh_families,refresh_tokens,invitations,
  email_verifications,relying_party_sessions,personal_keys,personal_key_verifiers,
- personal_key_grants,media_assets,branding_settings
+ personal_key_grants,media_assets,branding_settings,logout_intents,logout_deliveries
  TO darkhorse_runtime;
+
+GRANT SELECT,INSERT ON logout_destinations TO darkhorse_runtime;
+GRANT USAGE ON SEQUENCE logout_order TO darkhorse_runtime;
 
 -- Audit retention: append/read only. Identity columns generate their own values;
 -- callers need no direct sequence privileges. No audit-edit grants.
 GRANT SELECT,INSERT ON
- security_audit,registration_audit,consent_audit,token_audit,
+ logout_audit,security_audit,registration_audit,consent_audit,token_audit,
  authorization_policy_audit,resource_registration_audit,session_audit,
  email_verification_audit,invitation_audit,directory_admin_audit,
  catalog_admin_audit,personal_key_audit,profile_audit,media_audit,operator_account_audit,

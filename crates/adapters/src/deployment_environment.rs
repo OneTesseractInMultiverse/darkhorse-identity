@@ -5,6 +5,7 @@ use zeroize::Zeroizing;
 
 const MAX_BYTES: usize = 32768;
 const FILE_SETTINGS: &[&str] = &[
+    "DARKHORSE_LOGOUT_CA_PEM",
     "DARKHORSE_EMAIL_KEY",
     "DARKHORSE_SMTP_USERNAME",
     "DARKHORSE_SMTP_PASSWORD",

@@ -171,3 +171,23 @@ pub async fn media(runtime: Option<crate::authentication::Media>) {
         }
     }
 }
+
+/// One delivery at a time. Cancellation leaves a recoverable database lease.
+pub async fn logout(runtime: Option<crate::authentication::Logout>) {
+    let Some((store, signer, sender)) = runtime else {
+        return std::future::pending().await;
+    };
+    loop {
+        let result = tokio::time::timeout(
+            Duration::from_secs(25),
+            darkhorse_application::logout::delivery::deliver_next(&store, &signer, &sender),
+        )
+        .await;
+        if matches!(result, Ok(Err(_)) | Err(_)) {
+            eprintln!("Logout delivery unavailable; retrying after a delay.");
+        }
+        if !matches!(result, Ok(Ok(true))) {
+            tokio::time::sleep(Duration::from_secs(2)).await;
+        }
+    }
+}

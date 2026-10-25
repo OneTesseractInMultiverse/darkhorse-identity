@@ -1,0 +1,38 @@
+{
+  "schema": 1,
+  "date": "2026-10-25",
+  "scope": "Static production JavaScript size comparison for logout destination registration and delivery status. No latency, throughput, OIDC-conformance or production-capacity claim.",
+  "node": "v24.19.0",
+  "baselineSourceRevision": "c10e0b3ff13b182c2e180fe472ef8dca6a5238a8",
+  "comparison": "Both source trees built with the same updated frontend dependencies, Node runtime and deterministic revision identifier. Baseline tree was exported from the preceding commit; candidate adds logout settings, status decoding and bilingual guidance.",
+  "baseline": {
+    "files": 45,
+    "rawBytes": 688217,
+    "gzipBytes": 224453,
+    "sha256": "e108aaf18af629144e17ef062f2fe4a302ed93b404192421dc69150be8322496"
+  },
+  "candidate": {
+    "files": 45,
+    "rawBytes": 697189,
+    "gzipBytes": 227085,
+    "sha256": "e8bcfc5fccfe3f9d7a915e58b3e0aa74bbf85c15853a3988872124dc91ddfe5a"
+  },
+  "additionalGzipBytes": 2632,
+  "maximumGzipBytes": 228109,
+  "headroomGzipBytes": 1024,
+  "apiDocumentationRoute": {
+    "gzipBytes": 73905,
+    "maximumGzipBytes": 81920
+  },
+  "inputSha256": {
+    "apps/console/package.json": "b3c6a4c5bc8ebca0035b7f57243719c09ced0cc6f3f5fb7c626f97f19272a9e6",
+    "apps/console/src/lib/admin/logout.ts": "ab6be3c510eca8bc6c5684e6bb9421579d2b7dfc594aacbcb2b5d676cae63074",
+    "apps/console/src/lib/components/admin/ClientLogout.svelte": "fbf85a14884a0b4a8db8f16545a1bddc72024b5c46efb29c41008ba187218607",
+    "apps/console/src/lib/i18n/catalogs/admin-en.json": "0c00ed3c0d03123ff77fe4f80a4b81c8350fe7182b4d19f5c220a15826c9afb2",
+    "apps/console/src/lib/i18n/catalogs/admin-es.json": "2959a44b50efbdbbe86f140c19c6ddee9c7fac0859356e71c89463fc63b8bd7d"
+  },
+  "notes": [
+    "Keep the historical localization differential separate from the whole-application ceiling.",
+    "One process dispatches one HTTPS request at a time; fan-out and cleanup each process at most 100 rows per transaction. Those bounds are policy and test evidence, not load-test measurements."
+  ]
+}

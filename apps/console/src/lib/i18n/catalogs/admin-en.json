@@ -503,5 +503,38 @@
 	["credentials.record", "Secret record ID: {id}"],
 	["credentials.expires", "Expires {time}"],
 	["credentials.confirmRetirement", "Confirm retirement"],
-	["credentials.confirmRotation", "Confirm rotation"]
+	["credentials.confirmRotation", "Confirm rotation"],
+	["logout.heading", "Back-channel logout"],
+	[
+		"logout.help",
+		"Notify this application when a user signs out of Darkhorse, replaces their login, or ends an individual browser session. The application must validate the signed Logout Token and end the matching session. Other account-wide triggers are not enabled yet."
+	],
+	["logout.uri", "Logout notification URL"],
+	[
+		"logout.uriHelp",
+		"Enter the exact HTTPS endpoint that accepts logout_token form posts. Leave empty to disable notifications. Public addresses are allowed; private destinations require deployment approval. Saving does not test delivery."
+	],
+	[
+		"logout.sessionHelp",
+		"Session-specific notifications are always required. Match the issuer, client ID and sid from the original ID token; a newer login must remain active."
+	],
+	[
+		"logout.changeHelp",
+		"Changing or disabling this URL cancels unsent notifications for the previous registration. An already in-flight request may complete. Recent administrator authentication is required."
+	],
+	["logout.configure", "Configure logout"],
+	["logout.save", "Save logout settings"],
+	["logout.cancel", "Cancel"],
+	["logout.refresh", "Refresh delivery status"],
+	["logout.deliveries", "Recent delivery attempts"],
+	[
+		"logout.deliveryHelp",
+		"Darkhorse ends the local session before delivering notifications. These are the latest 20 notifications, retained for seven days. Delivered means the endpoint accepted the request; it does not prove the application ended its session. Temporary failures retry up to eight times within 24 hours. Failed or cancelled notifications are not retried automatically."
+	],
+	["logout.empty", "No recent notifications."],
+	["logout.attempts", "{count, plural, one {# attempt} other {# attempts}}"],
+	["logout.state.queued", "Queued or retrying"],
+	["logout.state.delivered", "Accepted by endpoint"],
+	["logout.state.failed", "Delivery failed"],
+	["logout.state.cancelled", "Cancelled"]
 ]

@@ -95,6 +95,24 @@ zero. Queries, fragments, and encoded socket hosts are rejected. A supplied priv
 trust bundle replaces public roots for that connection. The adapter has no option
 to bypass TLS verification. Read the [continuity contract](redis.md) before recovery.
 
+## Logout delivery
+
+The provider starts a bounded HTTPS worker for registered back-channel logout
+endpoints. Existing clients have no destination until an administrator configures
+one. See [back-channel logout](backchannel-logout.md) for trigger coverage, retry
+semantics and the exact-origin private-network policy.
+
+| Variable                                | Default | Constraint                                                                                                      |
+| --------------------------------------- | ------- | --------------------------------------------------------------------------------------------------------------- |
+| `DARKHORSE_LOGOUT_PRIVATE_DESTINATIONS` | `{}`    | JSON map of exact HTTPS origins to exact private IP addresses; at most 16 origins and 16 IPs each, 16 KiB total |
+| `DARKHORSE_LOGOUT_CA_PEM`               | Empty   | Additional trusted CA bundle; at most 32 KiB and eight certificates                                             |
+| `DARKHORSE_LOGOUT_CA_PEM_FILE`          | Unset   | Protected absolute-path file alternative to the inline CA bundle; both forms together are invalid               |
+
+Public HTTPS endpoints still undergo address validation on every attempt. Private
+exceptions never permit link-local metadata addresses. Certificate and hostname
+verification remain enabled. No proxy, redirect or TLS-verification bypass setting
+is provided.
+
 ## Email
 
 | Setting                   | Default             | Contract                                                      |

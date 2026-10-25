@@ -518,5 +518,38 @@
 	["credentials.record", "ID del registro del secreto: {id}"],
 	["credentials.expires", "Vence {time}"],
 	["credentials.confirmRetirement", "Confirmar retiro"],
-	["credentials.confirmRotation", "Confirmar rotación"]
+	["credentials.confirmRotation", "Confirmar rotación"],
+	["logout.heading", "Cierre de sesión por canal posterior"],
+	[
+		"logout.help",
+		"Notifica a esta aplicación cuando una persona cierra su sesión en Darkhorse, reemplaza su inicio de sesión o termina una sesión de navegador individual. La aplicación debe validar el token de cierre firmado y terminar la sesión correspondiente. Otros eventos de toda la cuenta aún no están habilitados."
+	],
+	["logout.uri", "URL de notificaciones de cierre de sesión"],
+	[
+		"logout.uriHelp",
+		"Indica el endpoint HTTPS exacto que acepta formularios con logout_token. Déjalo vacío para deshabilitar las notificaciones. Se permiten direcciones públicas; los destinos privados requieren aprobación en el despliegue. Guardar no prueba la entrega."
+	],
+	[
+		"logout.sessionHelp",
+		"Las notificaciones siempre corresponden a una sesión específica. Valida el emisor, el ID de cliente y el sid del token de identidad original; un inicio de sesión posterior debe permanecer activo."
+	],
+	[
+		"logout.changeHelp",
+		"Cambiar o deshabilitar esta URL cancela las notificaciones pendientes del registro anterior. Una solicitud en curso puede completarse. Se requiere autenticación reciente de administrador."
+	],
+	["logout.configure", "Configurar cierre de sesión"],
+	["logout.save", "Guardar configuración"],
+	["logout.cancel", "Cancelar"],
+	["logout.refresh", "Actualizar estado de entrega"],
+	["logout.deliveries", "Intentos de entrega recientes"],
+	[
+		"logout.deliveryHelp",
+		"Darkhorse termina la sesión local antes de entregar las notificaciones. Se muestran las últimas 20, conservadas durante siete días. Entregada significa que el endpoint aceptó la solicitud; no demuestra que la aplicación terminó la sesión. Los fallos temporales se reintentan hasta ocho veces en 24 horas. Las notificaciones fallidas o canceladas no se reintentan automáticamente."
+	],
+	["logout.empty", "No hay notificaciones recientes."],
+	["logout.attempts", "{count, plural, one {# intento} other {# intentos}}"],
+	["logout.state.queued", "En cola o reintentando"],
+	["logout.state.delivered", "Aceptada por el endpoint"],
+	["logout.state.failed", "Entrega fallida"],
+	["logout.state.cancelled", "Cancelada"]
 ]

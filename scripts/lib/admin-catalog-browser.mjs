@@ -689,6 +689,7 @@ export async function verifyCatalog(page, origin, ca) {
   await page
     .getByRole("button", { name: "Ver Console web", exact: true })
     .click();
+  await verifyLogoutSettings(page, app.id, client.id);
   await page
     .getByRole("button", { name: "Editar cliente", exact: true })
     .click();
@@ -828,6 +829,45 @@ export async function verifyCatalog(page, origin, ca) {
   await page
     .getByRole("combobox", { name: /^(Language|Idioma)$/ })
     .selectOption("en");
+}
+
+async function verifyLogoutSettings(page, application, client) {
+  await page
+    .getByRole("button", { name: "Configurar cierre de sesión", exact: true })
+    .click();
+  const input = page.getByLabel("URL de notificaciones de cierre de sesión", {
+    exact: true,
+  });
+  await input.fill("https://console.example/logout");
+  assert.equal(await input.getAttribute("aria-describedby"), "logout-help");
+  await page.screenshot({
+    path: resolve(".local/logout-settings-desktop.png"),
+  });
+  await page.setViewportSize({ width: 390, height: 844 });
+  assert.ok(
+    await page
+      .getByRole("dialog")
+      .evaluate((node) => node.scrollWidth <= node.clientWidth),
+  );
+  await page.screenshot({ path: resolve(".local/logout-settings-mobile.png") });
+  await page.setViewportSize({ width: 1280, height: 800 });
+  await page
+    .getByRole("button", { name: "Guardar configuración", exact: true })
+    .click();
+  await page
+    .getByRole("button", { name: "Configurar cierre de sesión", exact: true })
+    .waitFor();
+  const result = await call(
+    page,
+    `/api/admin/applications/${application}/clients/${client}/logout`,
+  );
+  assert.equal(result.status, 200);
+  assert.equal(result.cache, "no-store");
+  assert.deepEqual(result.body.configuration, {
+    revision: "1",
+    backchannel_logout_uri: "https://console.example/logout",
+    backchannel_logout_session_required: true,
+  });
 }
 
 async function discardResponse(original, ca) {

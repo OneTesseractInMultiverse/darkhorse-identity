@@ -9,6 +9,12 @@ BEGIN
  -- Every denial must come from the privilege boundary, even with no target rows.
  -- A constraint/immutable-row trigger failure is not proof of restricted grants.
  FOREACH statement IN ARRAY ARRAY[
+  'UPDATE logout_destinations SET uri=uri WHERE false',
+  'DELETE FROM logout_destinations WHERE false',
+  'TRUNCATE logout_destinations',
+  'UPDATE logout_audit SET event=event WHERE false',
+  'DELETE FROM logout_audit WHERE false',
+  'TRUNCATE logout_audit',
   'SELECT * FROM future_operator_state',
   'UPDATE signing_operation_intents SET operation_id=operation_id WHERE false',
   'DELETE FROM signing_operation_intents WHERE false',
