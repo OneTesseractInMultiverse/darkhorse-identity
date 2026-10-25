@@ -44,6 +44,9 @@ impl Terminal {
             return Err(UNAVAILABLE);
         }
         let original = termios::tcgetattr(&file).map_err(|_| UNAVAILABLE)?;
+        // The owned File keeps the same descriptor alive for the AsyncFd lifetime.
+        // Tokio 1.53.3 fixes reactor safety; its replacement constructor is unsafe.
+        #[allow(deprecated)]
         let fd =
             AsyncFd::with_interest(file, tokio::io::Interest::READABLE).map_err(|_| UNAVAILABLE)?;
         Ok(Self {

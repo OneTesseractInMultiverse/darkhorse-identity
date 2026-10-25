@@ -14,7 +14,7 @@ syn = { version = "=2.0.119", default-features = false, features = ["full", "par
 clap = { version = "=4.6.7", default-features = false, features = ["derive", "std", "help", "usage"] }
 futures-util = "0.3"
 # Keep one Rustls provider across PostgreSQL, Redis, SMTP, and object storage.
-rustls = { version = "=0.23.45", default-features = false, features = ["ring", "std", "tls12"] }
+rustls = { version = "=0.23.46", default-features = false, features = ["ring", "std", "tls12"] }
 reqwest = { version = "=0.13.5", default-features = false, features = ["rustls-no-provider"] }
 isocountry = "=0.3.2"
 rlibphonenumber = { version = "=2.2.12", default-features = false, features = ["builtin_metadata", "global_static", "regex", "protox"] }
