@@ -291,7 +291,7 @@ async function main() {
       throw new Error("Use no arguments, --authority-only, or --image IMAGE.");
   } finally {
     for (const name of owned.reverse())
-      await run("docker", ["rm", "--force", name], {
+      await run("docker", ["rm", "--force", "--volumes", name], {
         capture: true,
         acceptFailure: true,
       });
