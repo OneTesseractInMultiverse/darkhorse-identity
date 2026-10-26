@@ -1,8 +1,8 @@
 <script lang="ts">
-	import { useLocalization } from '$lib/i18n/context';
+	import { useLocalization } from '#lib/i18n/context.ts';
 	const language = useLocalization();
-	import ConsoleShell from '$lib/components/admin/ConsoleShell.svelte';
-	import ApiReferencePanel from '$lib/components/admin/ApiReferencePanel.svelte';
+	import ConsoleShell from '#lib/components/admin/ConsoleShell.svelte';
+	import ApiReferencePanel from '#lib/components/admin/ApiReferencePanel.svelte';
 </script>
 
 <svelte:head>

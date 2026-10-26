@@ -1,22 +1,22 @@
 <script lang="ts">
 	import { onMount } from 'svelte';
-	import { Button } from '$lib/components/ui/button';
+	import { Button } from '#lib/components/ui/button/index.ts';
 	import {
 		type ProfileApi,
 		type Profile,
 		type Options,
 		type Fields,
 		type Failure
-	} from '$lib/profiles';
+	} from '#lib/profiles.ts';
 	import ImageControl from './ImageControl.svelte';
-	import avatar from '$lib/assets/brand/avatar.svg';
-	import type { MediaApi } from '$lib/media';
+	import avatar from '#lib/assets/brand/avatar.svg';
+	import type { MediaApi } from '#lib/media.ts';
 	import Modal from './admin/Modal.svelte';
 	import ProfileEditor from './ProfileEditor.svelte';
 	import LanguageEditor from './LanguageEditor.svelte';
-	import { countries } from '$lib/i18n/display';
-	import { useLocalization } from '$lib/i18n/context';
-	import type { Locale } from '$lib/i18n/locale';
+	import { countries } from '#lib/i18n/display.ts';
+	import { useLocalization } from '#lib/i18n/context.ts';
+	import type { Locale } from '#lib/i18n/locale.ts';
 	const language = useLocalization();
 	let languageEditing = $state(false);
 	let {

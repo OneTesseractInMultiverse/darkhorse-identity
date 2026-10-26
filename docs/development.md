@@ -63,6 +63,15 @@ flowchart LR
 This is the host development topology. Packaged deployments serve static assets
 from Rust and have no Vite process.
 
+## Frontend toolchain
+
+The static console uses SvelteKit 3 with Node 24.19 and pnpm 11.19. Run
+`make deps-install` after upgrading so the locked dependencies and generated
+`$app` TypeScript configuration are synchronized. Use `#lib/...` package imports
+with explicit file extensions; tests continue under `tests/unit`. The
+[dependency migration notes](dependencies.md#sveltekit-3-migration) describe
+compatibility, security review, asset measurements and rollback.
+
 ## Local HTTPS
 
 The canonical host origin is `https://localhost:8443`. Caddy listens on IPv4/IPv6 loopback. Rust uses `127.0.0.1:3001`. Vite uses `127.0.0.1:5173`. Vite only provides frontend development assets and hot reload. Rust owns application behavior. Production frontend output is static and has no Node server.

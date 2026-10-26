@@ -1,9 +1,9 @@
 <script lang="ts">
-	import { useLocalization } from '$lib/i18n/context';
+	import { useLocalization } from '#lib/i18n/context.ts';
 	const language = useLocalization();
 	import { onMount } from 'svelte';
-	import { Button } from '$lib/components/ui/button';
-	import { validImage, type MediaApi, type MediaFailure } from '$lib/media';
+	import { Button } from '#lib/components/ui/button/index.ts';
+	import { validImage, type MediaApi, type MediaFailure } from '#lib/media.ts';
 	let {
 		api,
 		path,

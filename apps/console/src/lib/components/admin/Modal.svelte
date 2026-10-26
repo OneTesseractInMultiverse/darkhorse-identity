@@ -1,5 +1,5 @@
 <script lang="ts">
-	import { useLocalization } from '$lib/i18n/context';
+	import { useLocalization } from '#lib/i18n/context.ts';
 	const language = useLocalization();
 	import { onMount, type Snippet } from 'svelte';
 	let {

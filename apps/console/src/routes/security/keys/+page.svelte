@@ -1,11 +1,11 @@
 <script lang="ts">
-	import { useLocalization } from '$lib/i18n/context';
-	import LanguageSelector from '$lib/components/LanguageSelector.svelte';
+	import { useLocalization } from '#lib/i18n/context.ts';
+	import LanguageSelector from '#lib/components/LanguageSelector.svelte';
 	const language = useLocalization();
 	import { resolve } from '$app/paths';
-	import logo from '$lib/assets/brand/logo.svg';
-	import KeysPanel from '$lib/components/KeysPanel.svelte';
-	import { keyApi } from '$lib/personal-keys';
+	import logo from '#lib/assets/brand/logo.svg';
+	import KeysPanel from '#lib/components/KeysPanel.svelte';
+	import { keyApi } from '#lib/personal-keys.ts';
 	const api = keyApi((input, init) => fetch(input, init));
 </script>
 

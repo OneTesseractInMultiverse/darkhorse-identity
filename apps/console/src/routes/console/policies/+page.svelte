@@ -3,18 +3,18 @@
 	import { page } from '$app/state';
 	import { goto } from '$app/navigation';
 	import { resolve } from '$app/paths';
-	import { useLocalization } from '$lib/i18n/context';
-	import { useCatalogLocalization } from '$lib/i18n/catalog-context';
-	import ConsoleShell from '$lib/components/admin/ConsoleShell.svelte';
-	import PolicyFlow from '$lib/components/admin/PolicyFlow.svelte';
-	import { catalogApi } from '$lib/admin/catalog';
-	import { reference } from '$lib/admin/catalog-decode';
-	import { readPolicyMap } from '$lib/admin/policy-map-api';
+	import { useLocalization } from '#lib/i18n/context.ts';
+	import { useCatalogLocalization } from '#lib/i18n/catalog-context.ts';
+	import ConsoleShell from '#lib/components/admin/ConsoleShell.svelte';
+	import PolicyFlow from '#lib/components/admin/PolicyFlow.svelte';
+	import { catalogApi } from '#lib/admin/catalog.ts';
+	import { reference } from '#lib/admin/catalog-decode.ts';
+	import { readPolicyMap } from '#lib/admin/policy-map-api.ts';
 	import {
 		canRenderPolicyFlow,
 		MAX_POLICY_FLOW_EDGES,
 		MAX_POLICY_FLOW_NODES
-	} from '$lib/admin/policy-flow';
+	} from '#lib/admin/policy-flow.ts';
 	import {
 		visiblePolicyIds,
 		type PolicyMap,
@@ -22,7 +22,7 @@
 		type PolicyNodeType,
 		type Relationship,
 		type PolicyLabels
-	} from '$lib/admin/policy-map';
+	} from '#lib/admin/policy-map.ts';
 	const language = useLocalization();
 	const catalog = useCatalogLocalization();
 	const pageFetch: typeof fetch = (input, init) => fetch(input, init);

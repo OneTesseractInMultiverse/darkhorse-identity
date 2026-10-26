@@ -1,9 +1,9 @@
 <script lang="ts">
-	import { useCatalogLocalization } from '$lib/i18n/catalog-context';
-	import { dateTime } from '$lib/i18n/display';
-	import { Button } from '$lib/components/ui/button';
-	import { logoutApi, type Logout } from '$lib/admin/logout';
-	import type { Failure, Item } from '$lib/admin/catalog';
+	import { useCatalogLocalization } from '#lib/i18n/catalog-context.ts';
+	import { dateTime } from '#lib/i18n/display.ts';
+	import { Button } from '#lib/components/ui/button/index.ts';
+	import { logoutApi, type Logout } from '#lib/admin/logout.ts';
+	import type { Failure, Item } from '#lib/admin/catalog.ts';
 	const catalog = useCatalogLocalization();
 	let { client }: { client: Item } = $props();
 	let record = $state<Logout | null>(null),

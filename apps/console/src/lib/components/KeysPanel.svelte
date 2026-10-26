@@ -1,10 +1,10 @@
 <script lang="ts">
-	import { useLocalization } from '$lib/i18n/context';
+	import { useLocalization } from '#lib/i18n/context.ts';
 	const language = useLocalization();
 	import { onMount } from 'svelte';
 	import { resolve } from '$app/paths';
-	import { Button } from '$lib/components/ui/button';
-	import Modal from '$lib/components/admin/Modal.svelte';
+	import { Button } from '#lib/components/ui/button/index.ts';
+	import Modal from '#lib/components/admin/Modal.svelte';
 	import KeyEditor from './KeyEditor.svelte';
 	import {
 		type KeyApi,
@@ -12,8 +12,8 @@
 		type Key,
 		type Creation,
 		type Failure
-	} from '$lib/personal-keys';
-	import { dateTime } from '$lib/i18n/display';
+	} from '#lib/personal-keys.ts';
+	import { dateTime } from '#lib/i18n/display.ts';
 	const formatTime = $derived(dateTime($language.locale));
 	let { api }: { api: KeyApi } = $props();
 	let page = $state<Page | null>(null);

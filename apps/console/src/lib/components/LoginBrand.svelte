@@ -1,7 +1,7 @@
 <script lang="ts">
 	import { onMount } from 'svelte';
-	import logo from '$lib/assets/brand/logo.svg';
-	import { branding } from '$lib/media';
+	import logo from '#lib/assets/brand/logo.svg';
+	import { branding } from '#lib/media.ts';
 	let { fetcher }: { fetcher: typeof fetch } = $props();
 	let custom = $state(false),
 		background = $state(false);

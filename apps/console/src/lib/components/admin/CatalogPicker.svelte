@@ -1,9 +1,9 @@
 <script lang="ts">
-	import { useCatalogLocalization } from '$lib/i18n/catalog-context';
+	import { useCatalogLocalization } from '#lib/i18n/catalog-context.ts';
 	const catalog = useCatalogLocalization();
 	import { onMount } from 'svelte';
-	import { Button } from '$lib/components/ui/button';
-	import type { Read } from '$lib/admin/directory';
+	import { Button } from '#lib/components/ui/button/index.ts';
+	import type { Read } from '#lib/admin/directory.ts';
 	let {
 		label,
 		load,

@@ -1,10 +1,10 @@
 <script lang="ts">
-	import { useLocalization } from '$lib/i18n/context';
-	import LanguageSelector from '$lib/components/LanguageSelector.svelte';
+	import { useLocalization } from '#lib/i18n/context.ts';
+	import LanguageSelector from '#lib/components/LanguageSelector.svelte';
 	const language = useLocalization();
 	import type { Snippet } from 'svelte';
 	import { resolve } from '$app/paths';
-	import logo from '$lib/assets/brand/logo.svg';
+	import logo from '#lib/assets/brand/logo.svg';
 	let { children, active = 'users' }: { children: Snippet; active?: string } = $props();
 </script>
 

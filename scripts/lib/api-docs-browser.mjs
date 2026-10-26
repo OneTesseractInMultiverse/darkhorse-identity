@@ -118,7 +118,7 @@ function postFormExample(origin, ca, fields) {
 
 async function findApiDocsRouteModule() {
   const generatedPath = resolve(
-    "apps/console/.svelte-kit/generated/client-optimized/nodes",
+    "apps/console/.svelte-kit/generated/build/client-optimized/nodes",
   );
   const nodeFiles = (await readdir(generatedPath)).filter((name) =>
     /^\d+\.js$/.test(name),
@@ -144,7 +144,7 @@ async function findApiDocsRouteModule() {
   if (!metadata.isFile() || metadata.size > 2 * 1024 * 1024)
     throw new Error("Frontend asset manifest is invalid.");
   const manifest = JSON.parse(await readFile(manifestPath, "utf8"));
-  const sourceKey = `.svelte-kit/generated/client-optimized/nodes/${routeFiles[0]}`;
+  const sourceKey = `.svelte-kit/generated/build/client-optimized/nodes/${routeFiles[0]}`;
   const entry = Object.values(manifest).find(
     (candidate) => candidate?.src === sourceKey,
   );

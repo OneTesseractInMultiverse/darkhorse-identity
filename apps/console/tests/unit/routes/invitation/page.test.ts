@@ -1,11 +1,11 @@
 import { cleanup, fireEvent, render, screen } from '@testing-library/svelte';
 import { afterEach, expect, it, vi } from 'vitest';
 import Page from '../../../../src/routes/invitation/+page.svelte';
-import { acceptInvitation } from '$lib/invitations';
+import { acceptInvitation } from '#lib/invitations.ts';
 import { replaceState } from '$app/navigation';
 vi.mock('$app/navigation', () => ({ replaceState: vi.fn() }));
 vi.mock('$app/state', () => ({ page: { state: {} } }));
-vi.mock('$lib/invitations', async (original) => ({
+vi.mock('#lib/invitations.ts', async (original) => ({
 	...(await original<object>()),
 	acceptInvitation: vi.fn().mockResolvedValue('ok')
 }));

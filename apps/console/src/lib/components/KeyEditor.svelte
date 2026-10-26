@@ -1,8 +1,8 @@
 <script lang="ts">
-	import { useLocalization } from '$lib/i18n/context';
+	import { useLocalization } from '#lib/i18n/context.ts';
 	const language = useLocalization();
 	import { onMount } from 'svelte';
-	import { Button } from '$lib/components/ui/button';
+	import { Button } from '#lib/components/ui/button/index.ts';
 	import {
 		type KeyApi,
 		type Failure,
@@ -10,7 +10,7 @@
 		type Eligible,
 		type Selection,
 		type Creation
-	} from '$lib/personal-keys';
+	} from '#lib/personal-keys.ts';
 	let {
 		read,
 		create,

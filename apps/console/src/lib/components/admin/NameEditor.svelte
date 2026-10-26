@@ -1,9 +1,9 @@
 <script lang="ts">
-	import { useLocalization } from '$lib/i18n/context';
+	import { useLocalization } from '#lib/i18n/context.ts';
 	const language = useLocalization();
 	import { onMount, tick } from 'svelte';
-	import { Button } from '$lib/components/ui/button';
-	import type { User, Change } from '$lib/admin/directory';
+	import { Button } from '#lib/components/ui/button/index.ts';
+	import type { User, Change } from '#lib/admin/directory.ts';
 	let {
 		user,
 		pending,

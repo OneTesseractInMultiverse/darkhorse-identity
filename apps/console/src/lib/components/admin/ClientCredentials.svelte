@@ -1,10 +1,10 @@
 <script lang="ts">
-	import { useCatalogLocalization } from '$lib/i18n/catalog-context';
+	import { useCatalogLocalization } from '#lib/i18n/catalog-context.ts';
 	const catalog = useCatalogLocalization();
-	import { dateTime as createDateTimeFormatter } from '$lib/i18n/display';
+	import { dateTime as createDateTimeFormatter } from '#lib/i18n/display.ts';
 	const dateTime = $derived(createDateTimeFormatter($catalog.locale));
-	import { Button } from '$lib/components/ui/button';
-	import type { Item, Command } from '$lib/admin/catalog';
+	import { Button } from '#lib/components/ui/button/index.ts';
+	import type { Item, Command } from '#lib/admin/catalog.ts';
 	let {
 		client,
 		pending,

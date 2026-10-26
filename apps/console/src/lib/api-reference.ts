@@ -1,4 +1,4 @@
-import type { Locale } from '$lib/i18n/locale';
+import type { Locale } from '#lib/i18n/locale.ts';
 
 export const MAX_REFERENCE_BYTES = 2 * 1024 * 1024;
 const METHODS = new Set(['get', 'post', 'put', 'patch', 'delete']);

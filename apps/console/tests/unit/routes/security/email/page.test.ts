@@ -1,18 +1,18 @@
 import { cleanup, fireEvent, render, screen, waitFor } from '@testing-library/svelte';
 import { afterEach, expect, it, vi } from 'vitest';
 import Page from '../../../../../src/routes/security/email/+page.svelte';
-import { emailStatus, requestEmail, confirmEmail } from '$lib/email-verification';
-import { authenticate, currentSession, endSession } from '$lib/authentication';
+import { emailStatus, requestEmail, confirmEmail } from '#lib/email-verification.ts';
+import { authenticate, currentSession, endSession } from '#lib/authentication.ts';
 import { replaceState } from '$app/navigation';
 vi.mock('$app/navigation', () => ({ replaceState: vi.fn() }));
 vi.mock('$app/state', () => ({ page: { state: {} } }));
-vi.mock('$lib/email-verification', async (original) => ({
+vi.mock('#lib/email-verification.ts', async (original) => ({
 	...(await original<object>()),
 	emailStatus: vi.fn(),
 	requestEmail: vi.fn().mockResolvedValue('ok'),
 	confirmEmail: vi.fn().mockResolvedValue('ok')
 }));
-vi.mock('$lib/authentication', () => ({
+vi.mock('#lib/authentication.ts', () => ({
 	authenticate: vi.fn().mockResolvedValue({ kind: 'signed-in', name: 'One' }),
 	currentSession: vi.fn().mockResolvedValue({ kind: 'signed-out' }),
 	endSession: vi.fn().mockResolvedValue(true)

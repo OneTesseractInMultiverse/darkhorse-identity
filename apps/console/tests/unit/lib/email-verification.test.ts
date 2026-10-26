@@ -1,5 +1,5 @@
 import { describe, it, expect, vi } from 'vitest';
-import { fragmentToken, emailStatus, requestEmail, confirmEmail } from '$lib/email-verification';
+import { fragmentToken, emailStatus, requestEmail, confirmEmail } from '#lib/email-verification.ts';
 describe('email verification transport', () => {
 	it('accepts only the complete canonical fragment and no redirect input', () => {
 		const token = `ev1_${'a'.repeat(64)}`;

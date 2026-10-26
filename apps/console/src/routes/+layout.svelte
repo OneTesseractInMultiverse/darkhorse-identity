@@ -1,13 +1,13 @@
 <script lang="ts">
 	import './layout.css';
-	import favicon from '$lib/assets/favicon.svg';
+	import favicon from '#lib/assets/favicon.svg';
 	import { onMount } from 'svelte';
 	import { page } from '$app/state';
-	import { provideLocalization } from '$lib/i18n/context';
-	import { browserStorage, readPreference } from '$lib/i18n/browser';
-	import { localeList } from '$lib/i18n/input';
-	import { documentPresentation, presentation } from '$lib/i18n/presentation';
-	import { currentSession } from '$lib/authentication';
+	import { provideLocalization } from '#lib/i18n/context.ts';
+	import { browserStorage, readPreference } from '#lib/i18n/browser.ts';
+	import { localeList } from '#lib/i18n/input.ts';
+	import { documentPresentation, presentation } from '#lib/i18n/presentation.ts';
+	import { currentSession } from '#lib/authentication.ts';
 	let { children } = $props();
 	const language = provideLocalization();
 	let mounted = $state(false);

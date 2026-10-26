@@ -1,10 +1,10 @@
 <script lang="ts">
-	import { useCatalogLocalization } from '$lib/i18n/catalog-context';
-	import { useLocalization } from '$lib/i18n/context';
+	import { useCatalogLocalization } from '#lib/i18n/catalog-context.ts';
+	import { useLocalization } from '#lib/i18n/context.ts';
 	const language = useLocalization();
 	const catalog = useCatalogLocalization();
 	import { resolve } from '$app/paths';
-	import type { Item } from '$lib/admin/catalog';
+	import type { Item } from '#lib/admin/catalog.ts';
 	let { application }: { application: Item } = $props();
 	const sections = [
 		{ path: 'clients', icon: '↗' },

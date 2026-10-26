@@ -51,3 +51,18 @@ test("rejects Svelte server behavior and colocated test source", () => {
     4,
   );
 });
+
+test("rejects SvelteKit 3 server and remote filename segments", () => {
+  const paths = [
+    "apps/console/src/lib/server.ts",
+    "apps/console/src/lib/session.server.svelte.ts",
+    "apps/console/src/lib/remote.ts",
+    "apps/console/src/lib/forms.remote.svelte.ts",
+    "apps/console/src/private/server/session.ts",
+  ];
+  assert.equal(boundaryErrors([], paths).length, paths.length);
+  assert.deepEqual(
+    boundaryErrors([], ["apps/console/src/lib/server-status.ts"]),
+    [],
+  );
+});

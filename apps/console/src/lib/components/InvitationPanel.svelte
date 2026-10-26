@@ -1,10 +1,10 @@
 <script lang="ts">
-	import { useLocalization } from '$lib/i18n/context';
+	import { useLocalization } from '#lib/i18n/context.ts';
 	const language = useLocalization();
 	import { onMount, tick } from 'svelte';
 	import { resolve } from '$app/paths';
-	import { Button } from '$lib/components/ui/button';
-	import type { InvitationInput, InvitationResult } from '$lib/invitations';
+	import { Button } from '#lib/components/ui/button/index.ts';
+	import type { InvitationInput, InvitationResult } from '#lib/invitations.ts';
 	let {
 		accept,
 		takeToken,

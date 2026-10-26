@@ -1,6 +1,6 @@
 <script lang="ts">
-	import type { Connection, HealthPort } from '$lib/health';
-	import { Button } from '$lib/components/ui/button';
+	import type { Connection, HealthPort } from '#lib/health.ts';
+	import { Button } from '#lib/components/ui/button/index.ts';
 	let { check }: { check: HealthPort } = $props();
 	let state = $state<Connection | 'idle' | 'pending'>('idle');
 	const messages = {

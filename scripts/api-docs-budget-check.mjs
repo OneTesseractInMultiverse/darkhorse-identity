@@ -9,7 +9,7 @@ import {
 } from "./lib/api-docs-budget.mjs";
 
 const generatedNodes =
-  "apps/console/.svelte-kit/generated/client-optimized/nodes";
+  "apps/console/.svelte-kit/generated/build/client-optimized/nodes";
 const clientRoot = resolve("apps/console/.svelte-kit/output/client");
 const manifestPath = join(clientRoot, ".vite/manifest.json");
 const routeMarker = "src/routes/console/api-docs/+page.svelte";
@@ -34,7 +34,7 @@ try {
   if (!manifestMetadata.isFile() || manifestMetadata.size > 2 * 1024 * 1024)
     throw new Error("Frontend asset manifest is invalid.");
   const manifest = JSON.parse(await readFile(manifestPath, "utf8"));
-  const sourceKey = `.svelte-kit/generated/client-optimized/nodes/${routeNodes[0]}`;
+  const sourceKey = `.svelte-kit/generated/build/client-optimized/nodes/${routeNodes[0]}`;
   const entryKey = Object.entries(manifest).find(
     ([, entry]) => entry?.src === sourceKey,
   )?.[0];

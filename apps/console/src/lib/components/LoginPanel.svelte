@@ -1,10 +1,10 @@
 <script lang="ts">
 	import { onMount, tick } from 'svelte';
-	import { useLocalization } from '$lib/i18n/context';
+	import { useLocalization } from '#lib/i18n/context.ts';
 	const language = useLocalization();
-	import { Button } from '$lib/components/ui/button';
+	import { Button } from '#lib/components/ui/button/index.ts';
 	import AccountOverview from './AccountOverview.svelte';
-	import type { AuthState } from '$lib/authentication';
+	import type { AuthState } from '#lib/authentication.ts';
 	let {
 		signIn,
 		checkSession,

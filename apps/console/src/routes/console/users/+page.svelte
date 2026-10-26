@@ -1,9 +1,9 @@
 <script lang="ts">
-	import { useLocalization } from '$lib/i18n/context';
+	import { useLocalization } from '#lib/i18n/context.ts';
 	const language = useLocalization();
-	import ConsoleShell from '$lib/components/admin/ConsoleShell.svelte';
-	import DirectoryPanel from '$lib/components/admin/DirectoryPanel.svelte';
-	import { directoryApi } from '$lib/admin/directory';
+	import ConsoleShell from '#lib/components/admin/ConsoleShell.svelte';
+	import DirectoryPanel from '#lib/components/admin/DirectoryPanel.svelte';
+	import { directoryApi } from '#lib/admin/directory.ts';
 	const api = directoryApi((input, init) => fetch(input, init));
 </script>
 

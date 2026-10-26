@@ -1,17 +1,17 @@
 <script lang="ts">
 	import { onDestroy } from 'svelte';
-	import { emailLink } from '$lib/i18n/email-link';
+	import { emailLink } from '#lib/i18n/email-link.ts';
 	let clearHint: (() => void) | undefined;
 	onDestroy(() => clearHint?.());
-	import { useLocalization } from '$lib/i18n/context';
-	import LanguageSelector from '$lib/components/LanguageSelector.svelte';
+	import { useLocalization } from '#lib/i18n/context.ts';
+	import LanguageSelector from '#lib/components/LanguageSelector.svelte';
 	const language = useLocalization();
 	import { resolve } from '$app/paths';
 	import { replaceState } from '$app/navigation';
 	import { page } from '$app/state';
-	import logo from '$lib/assets/brand/logo.svg';
-	import InvitationPanel from '$lib/components/InvitationPanel.svelte';
-	import { acceptInvitation, type InvitationInput } from '$lib/invitations';
+	import logo from '#lib/assets/brand/logo.svg';
+	import InvitationPanel from '#lib/components/InvitationPanel.svelte';
+	import { acceptInvitation, type InvitationInput } from '#lib/invitations.ts';
 	function takeToken() {
 		const link = emailLink(window.location.hash, 'iv1');
 		clearHint = language.hint(link?.locale);

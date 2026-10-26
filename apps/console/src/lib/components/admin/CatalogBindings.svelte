@@ -1,9 +1,9 @@
 <script lang="ts">
-	import { useCatalogLocalization } from '$lib/i18n/catalog-context';
+	import { useCatalogLocalization } from '#lib/i18n/catalog-context.ts';
 	const catalog = useCatalogLocalization();
-	import { Button } from '$lib/components/ui/button';
-	import type { CatalogApi, View, Command } from '$lib/admin/catalog';
-	import { binding } from '$lib/admin/catalog-changes';
+	import { Button } from '#lib/components/ui/button/index.ts';
+	import type { CatalogApi, View, Command } from '#lib/admin/catalog.ts';
+	import { binding } from '#lib/admin/catalog-changes.ts';
 	import CatalogPicker from './CatalogPicker.svelte';
 	let {
 		view,

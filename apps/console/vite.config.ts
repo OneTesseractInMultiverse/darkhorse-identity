@@ -73,7 +73,7 @@ export default defineConfig({
 		},
 		tailwindcss(),
 		sveltekit({
-			version: { name: buildVersion },
+			version: { name: buildVersion, pollInterval: 0 },
 			compilerOptions: {
 				// Force runes mode for the project, except for libraries. Can be removed in svelte 6.
 				runes: ({ filename }) =>

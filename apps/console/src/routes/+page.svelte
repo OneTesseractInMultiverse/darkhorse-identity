@@ -1,11 +1,11 @@
 <script lang="ts">
-	import { useLocalization } from '$lib/i18n/context';
-	import LanguageSelector from '$lib/components/LanguageSelector.svelte';
+	import { useLocalization } from '#lib/i18n/context.ts';
+	import LanguageSelector from '#lib/components/LanguageSelector.svelte';
 	const language = useLocalization();
 	import { resolve } from '$app/paths';
-	import LoginBrand from '$lib/components/LoginBrand.svelte';
-	import LoginPanel from '$lib/components/LoginPanel.svelte';
-	import { authenticate, currentSession, endSession } from '$lib/authentication';
+	import LoginBrand from '#lib/components/LoginBrand.svelte';
+	import LoginPanel from '#lib/components/LoginPanel.svelte';
+	import { authenticate, currentSession, endSession } from '#lib/authentication.ts';
 	async function signIn(email: string, password: string) {
 		return authenticate(fetch, email, password);
 	}

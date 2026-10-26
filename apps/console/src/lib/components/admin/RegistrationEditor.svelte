@@ -1,12 +1,12 @@
 <script lang="ts">
-	import { useCatalogLocalization } from '$lib/i18n/catalog-context';
-	import { useLocalization } from '$lib/i18n/context';
+	import { useCatalogLocalization } from '#lib/i18n/catalog-context.ts';
+	import { useLocalization } from '#lib/i18n/context.ts';
 	const language = useLocalization();
 	const catalog = useCatalogLocalization();
 	import { untrack } from 'svelte';
-	import { Button } from '$lib/components/ui/button';
-	import type { CatalogApi, Command, Item, Kind } from '$lib/admin/catalog';
-	import { directoryApi } from '$lib/admin/directory';
+	import { Button } from '#lib/components/ui/button/index.ts';
+	import type { CatalogApi, Command, Item, Kind } from '#lib/admin/catalog.ts';
+	import { directoryApi } from '#lib/admin/directory.ts';
 	import CatalogPicker from './CatalogPicker.svelte';
 	let {
 		kind,

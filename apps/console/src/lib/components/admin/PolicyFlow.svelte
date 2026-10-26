@@ -1,8 +1,8 @@
 <script lang="ts">
 	import { SvelteFlow, Background, BackgroundVariant, Controls, MiniMap } from '@xyflow/svelte';
 	import '@xyflow/svelte/dist/style.css';
-	import { policyFlowElements } from '$lib/admin/policy-flow';
-	import type { PolicyLabels, PolicyMap } from '$lib/admin/policy-map';
+	import { policyFlowElements } from '#lib/admin/policy-flow.ts';
+	import type { PolicyLabels, PolicyMap } from '#lib/admin/policy-map.ts';
 	let {
 		graph,
 		labels,

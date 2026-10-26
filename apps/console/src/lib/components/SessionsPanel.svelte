@@ -1,12 +1,12 @@
 <script lang="ts">
-	import { useLocalization } from '$lib/i18n/context';
-	import { dateTime } from '$lib/i18n/display';
+	import { useLocalization } from '#lib/i18n/context.ts';
+	import { dateTime } from '#lib/i18n/display.ts';
 	const language = useLocalization();
 	const formatTime = $derived(dateTime($language.locale));
 	import { onMount, tick } from 'svelte';
 	import { resolve } from '$app/paths';
-	import { Button } from '$lib/components/ui/button';
-	import { type SessionRecord, type SessionsState, type Termination } from '$lib/sessions';
+	import { Button } from '#lib/components/ui/button/index.ts';
+	import { type SessionRecord, type SessionsState, type Termination } from '#lib/sessions.ts';
 	let {
 		read,
 		end

@@ -1,10 +1,10 @@
 <script lang="ts">
-	import { useLocalization } from '$lib/i18n/context';
-	import { countries } from '$lib/i18n/display';
+	import { useLocalization } from '#lib/i18n/context.ts';
+	import { countries } from '#lib/i18n/display.ts';
 	const language = useLocalization();
 	import { untrack } from 'svelte';
-	import { Button } from '$lib/components/ui/button';
-	import { fields, type Profile, type Fields, type Options } from '$lib/profiles';
+	import { Button } from '#lib/components/ui/button/index.ts';
+	import { fields, type Profile, type Fields, type Options } from '#lib/profiles.ts';
 	let {
 		profile,
 		options,

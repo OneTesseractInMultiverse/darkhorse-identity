@@ -1,18 +1,18 @@
 <script lang="ts">
 	import { onDestroy } from 'svelte';
-	import { emailLink } from '$lib/i18n/email-link';
+	import { emailLink } from '#lib/i18n/email-link.ts';
 	let clearHint: (() => void) | undefined;
 	onDestroy(() => clearHint?.());
-	import { useLocalization } from '$lib/i18n/context';
-	import LanguageSelector from '$lib/components/LanguageSelector.svelte';
+	import { useLocalization } from '#lib/i18n/context.ts';
+	import LanguageSelector from '#lib/components/LanguageSelector.svelte';
 	const language = useLocalization();
 	import { resolve } from '$app/paths';
 	import { replaceState } from '$app/navigation';
 	import { page } from '$app/state';
-	import logo from '$lib/assets/brand/logo.svg';
-	import EmailVerificationPanel from '$lib/components/EmailVerificationPanel.svelte';
-	import { emailStatus, requestEmail, confirmEmail } from '$lib/email-verification';
-	import { authenticate, currentSession, endSession } from '$lib/authentication';
+	import logo from '#lib/assets/brand/logo.svg';
+	import EmailVerificationPanel from '#lib/components/EmailVerificationPanel.svelte';
+	import { emailStatus, requestEmail, confirmEmail } from '#lib/email-verification.ts';
+	import { authenticate, currentSession, endSession } from '#lib/authentication.ts';
 	function takeToken() {
 		const link = emailLink(window.location.hash, 'ev1');
 		clearHint = language.hint(link?.locale);

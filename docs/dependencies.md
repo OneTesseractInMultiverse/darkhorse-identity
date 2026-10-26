@@ -11,6 +11,53 @@ Application lockfiles are committed. Update dependencies in a reviewed change, r
 - **Caddy 2.11.4** supplies the pinned Alpine proxy image for [Compose qualification](compose.md). The derived image removes the executable's privileged-port capability. TLS keys and trust material arrive through explicit secret mounts. Its [host matcher](https://caddyserver.com/docs/caddyfile/matchers#host) and [fallback handler](https://caddyserver.com/docs/caddyfile/directives/handle) reject requests for other hostnames. The proxy contains no identity policy or application session logic.
 - **SvelteKit**, **Svelte**, **Tailwind CSS**, and **shadcn-svelte** provide the static TypeScript UI. Exact resolved versions are in `pnpm-lock.yaml`. The button and utility source were installed using shadcn-svelte CLI 1.6.1. Styling uses local system fonts, with no remote font requirement.
 
+## SvelteKit 3 migration
+
+The **2026-10-26** console toolchain uses SvelteKit **3.1.0**, Svelte **5.57.2**,
+`@sveltejs/adapter-static` **4.0.0**, Vite **8.3.5**, the Svelte Vite plugin
+**7.3.0**, and TypeScript **6.0.3**. Node **24.19.0** and pnpm **11.19.0** remain
+pinned. Installation retains the one-day minimum release age; the lockfile records
+the qualified versions. These versions satisfy the requirements in the
+[upstream migration guide](https://svelte.dev/docs/kit/migrating-to-sveltekit-3).
+
+Source and component-generator aliases use the package's `#lib` imports with
+explicit module extensions. Type checking extends `$app/tsconfig`, includes both
+source and parallel tests, and inherits its no-emit mode. Vite performs compilation;
+the obsolete TypeScript import-rewriting option was removed. Browser-environment
+imports use `$app/env`, and documentation downloads use the asset-path helper.
+The asset-budget and browser checks locate route modules in the new
+`generated/build/client-optimized` directory and reject missing manifest entries.
+
+Configuration remains in `vite.config.ts`. The static adapter, prerendered routes
+and hash-based content-security policy remain enabled. Deployment-version polling
+is explicitly disabled to preserve the previous request behavior. The architecture
+check also rejects SvelteKit 3's expanded server/remote filename conventions.
+Rust continues to own authentication, cookies, authorization and all server behavior.
+
+The upgrade resolves
+[GHSA-pfhg-q3qv-9q6r](https://github.com/sveltejs/kit/security/advisories/GHSA-pfhg-q3qv-9q6r)
+and [GHSA-27mw-82g8-phjj](https://github.com/sveltejs/kit/security/advisories/GHSA-27mw-82g8-phjj).
+The historical `cookie 0.7.2` override is removed: SvelteKit now declares and locks
+`cookie 2.0.1`. No advisory ignores or scan exclusions were introduced. A passing
+full-lockfile scan is dated evidence, not a guarantee against future advisories.
+
+The framework's larger client runtime initially exceeded the existing total asset
+budget. The internal translation encoding now stores validated messages in contract
+order, eliminating redundant numeric indices while retaining complete runtime
+validation. Source catalogs remain readable and unchanged. The
+[matched build comparison](measurements/sveltekit-3-2026-10-26.json) records the
+framework-only and final sizes; both asset ceilings are unchanged. The build retains default
+minification and automatic chunk splitting. API documentation remains lazy.
+These are asset measurements, not application latency or throughput benchmarks.
+
+Upgrade through the normal locked dependency installation, then run `make ci`,
+`make test-browser-focused` and `make audit-dependencies`. Publish generated HTML
+and hashed assets together. This frontend migration requires no database change.
+Rollback means restoring the previous complete source/lockfile/build artifact,
+including its translation decoder; do not mix generated assets from different
+versions. The previous SvelteKit release reintroduces the recorded advisories and
+cannot satisfy dependency qualification. Prefer a forward repair for release use.
+
 ## Query parser update
 
 Reviewed on **2026-09-26 UTC**: Darkhorse upgrades to published **restqs 0.2.0**,
@@ -174,12 +221,12 @@ unmaintained-package finding.
 ## Release advisory review
 
 The first complete-lockfile scan on **2026-09-21** found `cookie 0.6.0` through
-SvelteKit 2.70.3. The scoped workspace override `@sveltejs/kit>cookie: 0.7.2`
-retains the parse/serialize API and fixes
+SvelteKit 2.70.3. The historical scoped workspace override `@sveltejs/kit>cookie: 0.7.2`
+retained the parse/serialize API and fixed
 [GHSA-pxg6-pf52-xh8x](https://github.com/advisories/GHSA-pxg6-pf52-xh8x).
 Rust owns Darkhorse's production sessions/cookies. This JavaScript dependency
 belongs to build/development tooling. It still receives security maintenance.
-Review removal of the override when SvelteKit declares a patched dependency.
+The SvelteKit 3 migration above removes this override in favor of its patched declared dependency.
 The post-update pnpm 11.19.0 scan reported no JavaScript advisories. This is dated
 evidence, not a permanent claim. [Upstream release](https://github.com/jshttp/cookie/releases/tag/v0.7.2).
 

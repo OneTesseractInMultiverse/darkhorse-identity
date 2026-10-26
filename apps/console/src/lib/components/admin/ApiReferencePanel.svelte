@@ -1,7 +1,7 @@
 <script lang="ts">
 	import { onMount } from 'svelte';
-	import { base } from '$app/paths';
-	import { useLocalization } from '$lib/i18n/context';
+	import { asset } from '$app/paths';
+	import { useLocalization } from '#lib/i18n/context.ts';
 	import {
 		filterOperations,
 		filterRouteEntries,
@@ -12,8 +12,8 @@
 		type ApiOperation,
 		type ReferenceState,
 		type RouteClassification
-	} from '$lib/api-reference';
-	import { contract } from '$lib/i18n/contract';
+	} from '#lib/api-reference.ts';
+	import { contract } from '#lib/i18n/contract.ts';
 	const language = useLocalization();
 	type PanelState = 'loading' | ReferenceState;
 	let referenceState = $state<PanelState>('loading');
@@ -181,11 +181,11 @@
 			<div class="api-downloads" aria-label={$language.t('apiDocs.title')}>
 				<!-- Static assets under /reference are served by the Rust router. -->
 				<!-- eslint-disable svelte/no-navigation-without-resolve -->
-				<a href={`${base}/reference/openapi-v1.json`} download="darkhorse-openapi.json"
+				<a href={asset('reference/openapi-v1.json')} download="darkhorse-openapi.json"
 					>{$language.t('apiDocs.download')}</a
 				>
 				<a
-					href={`${base}/reference/route-classification-v1.json`}
+					href={asset('reference/route-classification-v1.json')}
 					download="darkhorse-route-boundary.json">{$language.t('apiDocs.downloadRoutes')}</a
 				>
 				<!-- eslint-enable svelte/no-navigation-without-resolve -->

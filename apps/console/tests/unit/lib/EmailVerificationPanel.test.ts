@@ -1,7 +1,7 @@
 import { render, screen, fireEvent, waitFor, cleanup } from '@testing-library/svelte';
 import { afterEach, expect, it, vi } from 'vitest';
-import EmailVerificationPanel from '$lib/components/EmailVerificationPanel.svelte';
-import type { EmailStatus, EmailResult } from '$lib/email-verification';
+import EmailVerificationPanel from '#lib/components/EmailVerificationPanel.svelte';
+import type { EmailStatus, EmailResult } from '#lib/email-verification.ts';
 afterEach(cleanup);
 function props() {
 	return {

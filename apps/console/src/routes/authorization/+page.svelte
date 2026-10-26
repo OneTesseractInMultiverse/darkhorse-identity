@@ -1,16 +1,16 @@
 <script lang="ts">
-	import { useLocalization } from '$lib/i18n/context';
-	import LanguageSelector from '$lib/components/LanguageSelector.svelte';
+	import { useLocalization } from '#lib/i18n/context.ts';
+	import LanguageSelector from '#lib/components/LanguageSelector.svelte';
 	const language = useLocalization();
 	import { resolve } from '$app/paths';
 	import { page } from '$app/state';
 	const reference = $derived(
 		page.url.searchParams.size === 1 ? page.url.searchParams.get('request') : null
 	);
-	import logo from '$lib/assets/brand/logo.svg';
-	import AuthorizationPanel from '$lib/components/AuthorizationPanel.svelte';
-	import { loadAuthorization, decideAuthorization } from '$lib/authorization';
-	import { authenticate } from '$lib/authentication';
+	import logo from '#lib/assets/brand/logo.svg';
+	import AuthorizationPanel from '#lib/components/AuthorizationPanel.svelte';
+	import { loadAuthorization, decideAuthorization } from '#lib/authorization.ts';
+	import { authenticate } from '#lib/authentication.ts';
 	async function load() {
 		return loadAuthorization(fetch, reference);
 	}

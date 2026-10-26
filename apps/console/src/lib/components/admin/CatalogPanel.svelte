@@ -1,11 +1,11 @@
 <script lang="ts">
-	import { useCatalogLocalization } from '$lib/i18n/catalog-context';
-	import { useLocalization } from '$lib/i18n/context';
+	import { useCatalogLocalization } from '#lib/i18n/catalog-context.ts';
+	import { useLocalization } from '#lib/i18n/context.ts';
 	const language = useLocalization();
 	const catalog = useCatalogLocalization();
 	import { onMount, tick } from 'svelte';
 	import { resolve } from '$app/paths';
-	import { Button } from '$lib/components/ui/button';
+	import { Button } from '#lib/components/ui/button/index.ts';
 	import {
 		type CatalogApi,
 		type Kind,
@@ -17,8 +17,8 @@
 		type Failure,
 		type Registered,
 		type Write
-	} from '$lib/admin/catalog';
-	import { reference } from '$lib/admin/catalog-decode';
+	} from '#lib/admin/catalog.ts';
+	import { reference } from '#lib/admin/catalog-decode.ts';
 	import Modal from './Modal.svelte';
 	import CatalogPicker from './CatalogPicker.svelte';
 	import RegistrationEditor from './RegistrationEditor.svelte';

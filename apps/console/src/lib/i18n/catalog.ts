@@ -36,28 +36,20 @@ export function compileCatalog(contract: Contract, value: unknown, locale: Local
 	}
 	return catalog;
 }
-/** Build-only encoding: validate readable source before replacing repeated keys. */
-export function packCatalog(
-	contract: Contract,
-	value: unknown,
-	locale: Locale
-): [number, string][] {
+/** Build-only encoding: validate source, then emit messages in contract order. */
+export function packCatalog(contract: Contract, value: unknown, locale: Locale): string[] {
 	compileCatalog(contract, value, locale);
-	const keys = Object.keys(contract);
-	return (value as [string, string][]).map(([key, text]) => [keys.indexOf(key), text]);
+	const messages = new Map(value as [string, string][]);
+	return Object.keys(contract).map((key) => messages.get(key) ?? invalid());
 }
 
 /** The normal validator still rejects duplicate/missing keys and malformed messages. */
 export function expandCatalog(contract: Contract, value: unknown): unknown {
 	if (!Array.isArray(value) || value.length > 512) return value;
+	if (!value.every((entry) => typeof entry === 'string')) return value;
 	const keys = Object.keys(contract);
-	return value.map((entry) => {
-		if (!Array.isArray(entry) || entry.length !== 2) return entry;
-		const [key, text] = entry;
-		return typeof key === 'number' && Number.isInteger(key) && key >= 0 && key < keys.length
-			? [keys[key], text]
-			: entry;
-	});
+	if (value.length !== keys.length) invalid();
+	return value.map((text, index) => [keys[index], text]);
 }
 function inspect(
 	ast: MessageFormatElement[],

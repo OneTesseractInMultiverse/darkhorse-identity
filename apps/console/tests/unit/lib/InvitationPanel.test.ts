@@ -1,7 +1,7 @@
 import { render, screen, fireEvent, waitFor, cleanup } from '@testing-library/svelte';
 import { afterEach, expect, it, vi } from 'vitest';
-import InvitationPanel from '$lib/components/InvitationPanel.svelte';
-import type { InvitationInput, InvitationResult } from '$lib/invitations';
+import InvitationPanel from '#lib/components/InvitationPanel.svelte';
+import type { InvitationInput, InvitationResult } from '#lib/invitations.ts';
 afterEach(cleanup);
 function props() {
 	return {

@@ -480,11 +480,12 @@ flowchart LR
   Views --> Commands["Original typed commands and revisions"]
 ```
 
-Readable source catalogs retain string keys. The build validates them and replaces
-repeated key names with indices into the same bundled contract. The runtime expands
-those indices and performs the normal complete-catalog validation before formatting.
-Invalid indices, duplicate/missing keys, malformed entries and unsafe ICU content
-remain errors. This internal encoding is not an API or external translation format.
+Readable source catalogs retain string keys. The build validates them and emits
+messages in the bundled contract's key order, independent of source entry order.
+The runtime restores those keys and performs complete-catalog validation before
+formatting. Wrong message counts, malformed entries, invalid readable keys and
+unsafe ICU content remain errors. An invalid Spanish catalog still falls back as
+a whole to English. This internal encoding is not an API or external translation format.
 It uses a build-only [Vite post-transform](https://vite.dev/guide/api-plugin#plugin-ordering)
 for four fixed catalog modules, with ordinary static JavaScript and no dynamic code
 evaluation. Deploy the generated HTML and hashed assets as one build.

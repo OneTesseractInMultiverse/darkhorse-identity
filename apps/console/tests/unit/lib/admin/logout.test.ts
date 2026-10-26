@@ -1,5 +1,5 @@
 import { describe, expect, it, vi } from 'vitest';
-import { configuration, record, logoutApi } from '$lib/admin/logout';
+import { configuration, record, logoutApi } from '#lib/admin/logout.ts';
 const config = {
 	revision: '9223372036854775807',
 	backchannel_logout_uri: 'https://client.example/logout',

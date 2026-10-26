@@ -22,7 +22,7 @@ function frontendErrors(paths) {
     .filter(
       (path) =>
         path.startsWith("apps/console/src/") &&
-        (/(?:\+server|\.server|\.remote)\.[jt]s$/.test(path) ||
+        (/(?:^|\.)(?:\+server|server|remote)\./.test(path.split("/").at(-1)) ||
           path.includes("/server/") ||
           /\.(test|spec)\.[jt]s$/.test(path)),
     )

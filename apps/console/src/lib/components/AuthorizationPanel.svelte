@@ -1,11 +1,11 @@
 <script lang="ts">
-	import { useLocalization } from '$lib/i18n/context';
+	import { useLocalization } from '#lib/i18n/context.ts';
 	const language = useLocalization();
 	import { onMount } from 'svelte';
-	import { Button } from '$lib/components/ui/button';
+	import { Button } from '#lib/components/ui/button/index.ts';
 	import LoginPanel from './LoginPanel.svelte';
-	import type { AuthorizationState } from '$lib/authorization';
-	import type { AuthState } from '$lib/authentication';
+	import type { AuthorizationState } from '#lib/authorization.ts';
+	import type { AuthState } from '#lib/authentication.ts';
 	let {
 		load,
 		decide,

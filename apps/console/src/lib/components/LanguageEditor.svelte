@@ -1,9 +1,9 @@
 <script lang="ts">
-	import { useLocalization } from '$lib/i18n/context';
+	import { useLocalization } from '#lib/i18n/context.ts';
 	const language = useLocalization();
 	import { untrack } from 'svelte';
-	import { Button } from '$lib/components/ui/button';
-	import type { Locale } from '$lib/i18n/locale';
+	import { Button } from '#lib/components/ui/button/index.ts';
+	import type { Locale } from '#lib/i18n/locale.ts';
 	let {
 		locale,
 		pending,

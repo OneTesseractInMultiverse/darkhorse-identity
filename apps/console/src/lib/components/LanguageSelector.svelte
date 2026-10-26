@@ -4,13 +4,13 @@
 	onMount(() => {
 		ready = true;
 	});
-	import { useLocalization } from '$lib/i18n/context';
-	import { browserStorage, writePreference } from '$lib/i18n/browser';
-	import type { Locale } from '$lib/i18n/locale';
+	import { useLocalization } from '#lib/i18n/context.ts';
+	import { browserStorage, writePreference } from '#lib/i18n/browser.ts';
+	import type { Locale } from '#lib/i18n/locale.ts';
 	let {
 		remember = (locale: Locale) => writePreference(browserStorage(), locale)
 	}: { remember?: (locale: Locale) => boolean } = $props();
-	import { localeTag } from '$lib/i18n/input';
+	import { localeTag } from '#lib/i18n/input.ts';
 	const language = useLocalization();
 	let unsaved = $state(false);
 	function change(event: Event) {

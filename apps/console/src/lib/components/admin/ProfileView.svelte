@@ -1,9 +1,9 @@
 <script lang="ts">
-	import { useLocalization } from '$lib/i18n/context';
+	import { useLocalization } from '#lib/i18n/context.ts';
 	const language = useLocalization();
 	import { resolve } from '$app/paths';
-	import { Button } from '$lib/components/ui/button';
-	import type { User } from '$lib/admin/directory';
+	import { Button } from '#lib/components/ui/button/index.ts';
+	import type { User } from '#lib/admin/directory.ts';
 	let { user, edit, close }: { user: User; edit: () => void; close: () => void } = $props();
 </script>
 

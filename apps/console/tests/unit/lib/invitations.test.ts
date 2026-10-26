@@ -1,5 +1,5 @@
 import { describe, it, expect, vi } from 'vitest';
-import { invitationToken, acceptInvitation } from '$lib/invitations';
+import { invitationToken, acceptInvitation } from '#lib/invitations.ts';
 describe('invitation proof boundary', () => {
 	it('accepts only the complete invitation fragment', () => {
 		const token = `iv1_${'a'.repeat(64)}`;

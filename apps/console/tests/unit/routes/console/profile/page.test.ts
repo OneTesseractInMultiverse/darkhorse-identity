@@ -6,7 +6,7 @@ vi.mock('$app/state', () => ({
 		url: new URL('https://localhost/console/profile?user=00000000-0000-0000-0000-000000000002')
 	}
 }));
-vi.mock('$app/environment', () => ({ browser: true }));
+vi.mock('$app/env', () => ({ browser: true }));
 const profile = {
 	id: '00000000-0000-0000-0000-000000000002',
 	revision: '0',

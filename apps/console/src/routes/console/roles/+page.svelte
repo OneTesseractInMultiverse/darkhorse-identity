@@ -1,9 +1,9 @@
 <script lang="ts">
-	import { useLocalization } from '$lib/i18n/context';
+	import { useLocalization } from '#lib/i18n/context.ts';
 	const language = useLocalization();
-	import ConsoleShell from '$lib/components/admin/ConsoleShell.svelte';
-	import CatalogPanel from '$lib/components/admin/CatalogPanel.svelte';
-	import { catalogApi } from '$lib/admin/catalog';
+	import ConsoleShell from '#lib/components/admin/ConsoleShell.svelte';
+	import CatalogPanel from '#lib/components/admin/CatalogPanel.svelte';
+	import { catalogApi } from '#lib/admin/catalog.ts';
 	const api = catalogApi((input, init) => fetch(input, init));
 </script>
 

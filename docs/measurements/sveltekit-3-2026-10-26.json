@@ -1,0 +1,49 @@
+{
+  "schema": 1,
+  "date": "2026-10-26",
+  "scope": "Static asset comparison for the SvelteKit 3 migration; not latency, throughput or production-capacity qualification.",
+  "baselineSourceRevision": "2485801fce7a8ae62dee0af92888bbce1ac3e7bc",
+  "buildVersion": "2485801fce7a8ae62dee0af92888bbce1ac3e7bc",
+  "node": "v24.19.0",
+  "pnpm": "11.19.0",
+  "comparison": "Same host, Node, pnpm and explicit build identifier. Baseline is the preceding source and lockfile. Framework-only candidate uses SvelteKit 3.1.0, adapter-static 4.0.0 and Svelte 5.57.2 with compatibility changes. Final candidate additionally packs translation messages in contract order. Default minification and automatic chunk splitting are retained.",
+  "baseline": {
+    "files": 45,
+    "rawBytes": 697193,
+    "gzipBytes": 226994,
+    "sha256": "756b104a4580f2c6663adfe84f3b2d9b24f40ca092ff69be081fc13b375ae79d"
+  },
+  "frameworkOnly": {
+    "files": 47,
+    "rawBytes": 710437,
+    "gzipBytes": 231311,
+    "sha256": "f85fe5e03166c2af4e86be413cfd4e01739be2d3d96da89c4c7b8882cbcd980f"
+  },
+  "candidate": {
+    "files": 47,
+    "rawBytes": 701827,
+    "gzipBytes": 227871,
+    "sha256": "477907dd29f350d36d5babcecb91dda1e335937adefe032da81fe6b59c513e68"
+  },
+  "additionalGzipBytes": 877,
+  "catalogEncodingSavingsGzipBytes": 3440,
+  "maximumGzipBytes": 228109,
+  "headroomGzipBytes": 238,
+  "apiDocumentationRoute": {
+    "baselineGzipBytes": 73896,
+    "candidateGzipBytes": 61468,
+    "maximumGzipBytes": 81920
+  },
+  "inputSha256": {
+    "pnpm-lock.yaml": "e8cfd3e24c5137235ac380bd236adbf84b0bb3722fec26ad2ad2c1b9131bc68c",
+    "apps/console/package.json": "f30ff2d443032d0f44cd147fd6123f7c286750473664b3a4db267b85926211e1",
+    "apps/console/vite.config.ts": "aeef8e8d01c41653c3a4ddacfc0bfd28fad14d6877df3f56aab39634ea15f9fd",
+    "apps/console/src/lib/i18n/catalog.ts": "f85c095a68a524399def6b7e14dd03d321fcacc728bb71259971dbf83c9ef274",
+    "apps/console/tsconfig.json": "ed672477a2c5f9a1c8be155c59efac11d0bc490dc3e7e9682f63d90835914cb1",
+    "scripts/api-docs-budget-check.mjs": "b97d478f78176972e1052d3eb9540c306c40e900efcfb5e3f689dc43a542417d"
+  },
+  "notes": [
+    "Both budgets are unchanged. A different source revision changes hashed assets and their exact compressed size; each build must pass the same absolute limits.",
+    "Catalog source text and runtime ICU validation are unchanged. Ordered messages remove redundant numeric indices; old and new generated assets must not be mixed."
+  ]
+}
