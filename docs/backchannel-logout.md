@@ -29,7 +29,8 @@ not fabricated. Clients needing a session reference must complete another valid
 authorization-code exchange. Refresh responses continue to omit ID tokens.
 
 Discovery lists `sid` in `claims_supported`. Registered clients can now receive
-notifications for individual browser-session termination. Provider-wide
+notifications for individual browser-session termination and account-wide
+revocation or deactivation. Provider-wide
 `backchannel_logout_supported` metadata remains unadvertised until the remaining
 triggers and receiver qualification are complete. Access and refresh tokens remain
 opaque. This is an incremental implementation of
@@ -147,6 +148,61 @@ the worker the destination revision that existed when logout committed, regardle
 of later edits or wall-clock changes. Cursor progress and delivery inserts commit
 together; a crash cannot skip a partially expanded page.
 
+### Account-wide transitions
+
+Account **revoke-all** and **deactivation** use the same persistence path from the
+management console and authenticated account CLI. The domain transition identifies
+the exact previous credential epoch. An epoch is the account's credential generation:
+advancing it makes previously issued sessions and tokens fail their existing live
+checks. The transaction holds the exclusive security fence while committing the
+account change, required audit and one `logout_account_intents` row. Failure or
+suppression of that insert rolls back the change. Reactivation and unchanged status
+requests create no notification intent.
+
+```mermaid
+flowchart LR
+    Change["Revoke all or deactivate"] --> Commit["Commit epoch + audit + account intent"]
+    Commit --> Local["Old sessions and tokens fail live checks"]
+    Commit --> Sessions["Worker: up to 100 old-epoch sessions"]
+    Sessions --> Clients["Existing worker: up to 100 client bindings"]
+    Clients --> Delivery["Session-specific signed notifications"]
+    New["New login in a later epoch"] --> Excluded["Excluded from old intent"]
+```
+
+Account expansion uses an index on principal, epoch and session identifier. A
+saved cursor advances through at most 100 sessions per transaction, including
+sessions without an RP binding. Only bound sessions need child intents. The request
+that revokes the account does not enumerate sessions or contact applications.
+Independent workers lock different roots; child inserts and cursor advancement
+commit together. Existing per-session intents prevent duplicate work when a browser
+also signs out. A subsequent sign-out of an old-epoch session uses the pending
+account snapshot, rather than a later destination registration.
+
+Every child retains the account transition's registration ordering and termination
+time. Destination edits cancel old work; they cannot redirect it. Delayed expansion
+does not restart the 24-hour delivery window. Sessions from another account or a
+later epoch are excluded even if created before expansion starts. The selected old
+epoch can contain sessions already expired or independently ended; receivers must
+acknowledge valid duplicate session notifications without affecting newer sessions.
+No pre-upgrade account changes are backfilled.
+
+Fully expanded account roots become eligible for seven-day retention cleanup, in
+batches of at most 100. Each child retains its own snapshot after root removal.
+Unexpanded roots are retained until their bounded expansion completes. Account and
+delivery audit remain immutable. This implementation bounds each database batch;
+it does not establish production queue throughput or a maximum delivery delay.
+
+The [dated query-plan evidence](measurements/account-logout-2026-10-26.json)
+compares the first and a deep page with 10,001 target sessions and 10,000 unrelated
+sessions. Both generic plans seek through the epoch index and select 100 sessions.
+The regression test keeps the security fence and rolls back each measured insert.
+Those two fixture samples are not a load benchmark or a runtime speedup claim.
+The new index also adds storage and an index write when a browser session is
+created. Sign-in cost and mixed-workload contention still need representative
+capacity measurements before production sizing.
+
+### Delivery attempts
+
 Each process sends one notification at a time. Workers claim due rows with
 `FOR UPDATE SKIP LOCKED`, increment the attempt number, and commit a 30-second
 lease before signing or network access. The claim checks the current destination
@@ -216,20 +272,20 @@ Every notification identifies an already-selected `sid`. Subject-wide messages
 without a `sid` are not used. A delayed notification must not terminate a newer
 Darkhorse login, which has a different reference.
 
-| Trigger                                                                     | Local effect                                                                | Notification targets                                     |
-| --------------------------------------------------------------------------- | --------------------------------------------------------------------------- | -------------------------------------------------------- |
-| Application-local sign-out                                                  | The application ends its own session. No Darkhorse transition               | None                                                     |
-| Darkhorse sign-out, login replacement or owner-selected session termination | End exactly that browser session. Its code/access/refresh checks fail       | Implemented: participating clients bound to that session |
-| Account revoke-all or deactivation                                          | Existing credential epochs become invalid. Reactivation cannot restore them | Pending: clients of the affected earlier sessions        |
-| Password credential revocation                                              | Sessions bound to that credential fail live checks                          | Pending: clients of those affected sessions              |
-| Access-token revocation or refresh-family revocation                        | Only the selected credential/family is invalidated                          | None. The browser session remains live                   |
+| Trigger                                                                     | Local effect                                                                | Notification targets                                      |
+| --------------------------------------------------------------------------- | --------------------------------------------------------------------------- | --------------------------------------------------------- |
+| Application-local sign-out                                                  | The application ends its own session. No Darkhorse transition               | None                                                      |
+| Darkhorse sign-out, login replacement or owner-selected session termination | End exactly that browser session. Its code/access/refresh checks fail       | Implemented: participating clients bound to that session  |
+| Account revoke-all or deactivation                                          | Existing credential epochs become invalid. Reactivation cannot restore them | Implemented: clients bound to the exact invalidated epoch |
+| Password credential revocation                                              | Sessions bound to that credential fail live checks                          | Pending: clients of those affected sessions               |
+| Access-token revocation or refresh-family revocation                        | Only the selected credential/family is invalidated                          | None. The browser session remains live                    |
 
 Password recovery/change, broader administrator session controls, and expiry
 notifications need separate trigger integration. [Personal API keys](personal-api-keys.md)
 are implemented and survive ordinary browser logout. Account epoch changes
 invalidate them. Offline grants remain unsupported.
 
-Remaining #14 work includes account-wide and credential-wide trigger integration,
+Remaining #14 work includes credential-wide trigger integration,
 a reference receiver with atomic replay/session handling, broader interoperability
 and failure qualification, and production capacity measurements. RP-initiated
 browser logout remains a separate pending profile decision. Provider-wide discovery
@@ -237,9 +293,12 @@ support is not advertised until that work is complete.
 
 ## Upgrade, rollback and verification
 
-Stop application writers, back up PostgreSQL, apply migration `0042`, and reapply
+Stop application writers, back up PostgreSQL, apply migrations through `0043`, and reapply
 `deploy/grant-runtime.sql` as the schema owner before starting this version. It adds
 logout history, intent, delivery and audit tables, a sequence and supporting indexes.
+Migration `0043` adds account intents, the session-epoch paging index and an optional
+original destination ordering on child intents. Existing child records retain their
+own ordering; destination configuration and pending work are preserved.
 The runtime receives only the reviewed grants; destination history and audits are
 append-only. Existing registrations remain disabled until explicitly configured.
 Historical logouts are not backfilled. Migration `0016` remains the prerequisite

@@ -522,7 +522,7 @@
 	["logout.heading", "Cierre de sesión por canal posterior"],
 	[
 		"logout.help",
-		"Notifica a esta aplicación cuando una persona cierra su sesión en Darkhorse, reemplaza su inicio de sesión o termina una sesión de navegador individual. La aplicación debe validar el token de cierre firmado y terminar la sesión correspondiente. Otros eventos de toda la cuenta aún no están habilitados."
+		"Notifica a esta aplicación al cerrar, reemplazar o terminar una sesión, o cuando un administrador desactiva la cuenta o revoca sus sesiones y tokens existentes. La aplicación debe validar cada token de cierre firmado y terminar solo la sesión correspondiente."
 	],
 	["logout.uri", "URL de notificaciones de cierre de sesión"],
 	[

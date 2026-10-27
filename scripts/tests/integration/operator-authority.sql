@@ -42,6 +42,14 @@ BEGIN
   'UPDATE provider_state SET wrap_digest=wrap_digest WHERE false',
   'UPDATE login_budget_policy SET key_digest=key_digest WHERE false',
   'SELECT * FROM browser_sessions',
+  'SELECT * FROM logout_account_intents',
+  'UPDATE logout_account_intents SET expanded=true WHERE false',
+  'DELETE FROM logout_account_intents WHERE false',
+  'TRUNCATE logout_account_intents',
+  'INSERT INTO logout_account_intents(id) VALUES(1)',
+  'INSERT INTO logout_account_intents(cursor) VALUES(NULL)',
+  'SELECT * FROM logout_intents',
+  'SELECT * FROM logout_deliveries',
   'SELECT * FROM access_tokens',
   'SELECT * FROM oauth_client_secrets',
   'SELECT * FROM personal_key_verifiers',
@@ -100,4 +108,7 @@ END $$;
 SELECT singleton FROM security_state FOR UPDATE;
 SELECT credential_id FROM password_credentials FOR SHARE;
 SELECT id FROM credentials FOR SHARE;
+-- An account mutation can append exactly its root without session/queue reads.
+INSERT INTO logout_account_intents(principal_id,credential_epoch,created_ms)
+SELECT id,credential_epoch,0 FROM principals LIMIT 1;
 ROLLBACK;

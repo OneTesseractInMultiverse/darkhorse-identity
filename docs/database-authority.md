@@ -42,6 +42,13 @@ privileges. CHECK constraints need execution of `oidc_identity_scopes`,
 `oidc_identity_claims`, `capability_ceiling_valid` and `resource_token_scopes`.
 These are the only routine grants.
 Identity columns allocate audit identifiers without direct sequence grants.
+Logout destination and intent ordering instead uses the explicitly granted
+`logout_order` sequence. After migration `0043`, runtime workers also maintain
+`logout_account_intents`. The deployment operator can insert only the principal,
+invalidated epoch and creation time into that table, and use the ordering sequence.
+It cannot read, update, delete or truncate account intents or read session and
+delivery tables. The account change and intent still require the application's
+fresh administrator checks and atomic audit. Reapply grants with writers stopped.
 No runtime operation receives schema/database creation, temporary tables,
 ownership, role-management or permission-delegation authority from this script.
 

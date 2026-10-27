@@ -158,6 +158,7 @@ async fn directory_changes_preserve_credentials_and_require_fresh_revisions() {
         .unwrap();
     assert_eq!(row.revision, 3);
     assert_eq!(db.store.account(id(2)).await.unwrap().credential_epoch, 1);
+    assert_eq!(sqlx::query_scalar::<_, i64>("SELECT count(*) FROM logout_account_intents WHERE principal_id=$1 AND credential_epoch=0").bind(Uuid::from_u128(2)).fetch_one(&db.pool).await.unwrap(), 1);
     assert_eq!(
         db.store.session([2; 32]).await,
         Err(darkhorse_application::authentication::AuthError::Denied)

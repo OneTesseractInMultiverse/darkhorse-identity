@@ -15,7 +15,7 @@ mod credential_cleanup;
 pub(super) async fn fixture() -> Database {
     fixture_at_version(i64::MAX).await
 }
-async fn fixture_at_version(version: i64) -> Database {
+pub(super) async fn fixture_at_version(version: i64) -> Database {
     let db = Database::at_version(version).await;
     db.store
         .bootstrap(administrator(1, "one@example.com"))

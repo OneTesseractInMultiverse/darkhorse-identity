@@ -128,6 +128,7 @@ pub(super) async fn persist(
     if inserted.rows_affected() != 1 {
         return Err(sqlx::Error::RowNotFound);
     }
+    super::logout::accounts::enqueue(tx, principal, change.invalidated_epoch).await?;
     Ok(())
 }
 

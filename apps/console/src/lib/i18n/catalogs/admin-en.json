@@ -507,7 +507,7 @@
 	["logout.heading", "Back-channel logout"],
 	[
 		"logout.help",
-		"Notify this application when a user signs out of Darkhorse, replaces their login, or ends an individual browser session. The application must validate the signed Logout Token and end the matching session. Other account-wide triggers are not enabled yet."
+		"Notify this application when a user signs out, replaces or ends a session, or an administrator deactivates the account or revokes its existing sessions and tokens. The application must validate each signed Logout Token and end only the matching session."
 	],
 	["logout.uri", "Logout notification URL"],
 	[

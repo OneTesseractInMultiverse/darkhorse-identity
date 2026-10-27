@@ -64,7 +64,7 @@ GRANT SELECT,INSERT,UPDATE,DELETE ON
  principal_roles,authorization_resource_grants,resource_introspection,
  resource_introspection_secrets,refresh_families,refresh_tokens,invitations,
  email_verifications,relying_party_sessions,personal_keys,personal_key_verifiers,
- personal_key_grants,media_assets,branding_settings,logout_intents,logout_deliveries
+ personal_key_grants,media_assets,branding_settings,logout_intents,logout_deliveries,logout_account_intents
  TO darkhorse_runtime;
 
 GRANT SELECT,INSERT ON logout_destinations TO darkhorse_runtime;
@@ -103,6 +103,9 @@ GRANT UPDATE(bootstrapped,policy_revision) ON security_state TO darkhorse_operat
 -- Credential rechecks use FOR SHARE. Fixed kind columns permit locking without
 -- granting credential revocation, verifier replacement or identity changes.
 GRANT UPDATE(kind) ON credentials,password_credentials TO darkhorse_operator;
+-- Account changes append notification intent without reading sessions or queues.
+GRANT INSERT(principal_id,credential_epoch,created_ms) ON logout_account_intents TO darkhorse_operator;
+GRANT USAGE ON SEQUENCE logout_order TO darkhorse_operator;
 -- The existing principal-change trigger cancels this account's invitations.
 GRANT SELECT(issuer_id,closed),UPDATE(closed,seed,delivery_state) ON invitations
  TO darkhorse_operator;

@@ -18,7 +18,7 @@ pub(super) async fn expand(tx: &mut Tx<'_>) -> Result<(), sqlx::Error> {
         ), eligible AS MATERIALIZED (
             SELECT t.*,d.revision FROM targets t JOIN LATERAL (
                 SELECT revision,uri FROM logout_destinations
-                WHERE client_id=t.client_id AND ordering<$3 ORDER BY ordering DESC LIMIT 1
+                WHERE client_id=t.client_id AND ordering<$5 ORDER BY ordering DESC LIMIT 1
             ) d ON d.uri IS NOT NULL
         ), inserted AS (
             INSERT INTO logout_deliveries(intent_id,sid,client_id,revision,created_ms,next_ms)
@@ -34,6 +34,10 @@ pub(super) async fn expand(tx: &mut Tx<'_>) -> Result<(), sqlx::Error> {
     .bind(root.try_get::<Option<Uuid>, _>("cursor")?)
     .bind(id)
     .bind(root.try_get::<i64, _>("created_ms")?)
+    .bind(
+        root.try_get::<Option<i64>, _>("destination_order")?
+            .unwrap_or(id),
+    )
     .fetch_one(&mut **tx)
     .await?;
     if result.try_get::<i64, _>("eligible")? != result.try_get::<i64, _>("inserted")? {
@@ -52,6 +56,7 @@ pub(super) async fn expand(tx: &mut Tx<'_>) -> Result<(), sqlx::Error> {
 
 pub(super) async fn cleanup(tx: &mut Tx<'_>, now: i64) -> Result<(), sqlx::Error> {
     let cutoff = now.saturating_sub(darkhorse_domain::logout::RETENTION_MS as i64);
+    accounts::cleanup(tx, cutoff).await?;
     // Keep audit and destination history. Delete only terminal payloads and
     // completely expanded roots without remaining work, in bounded batches.
     sqlx::query("DELETE FROM logout_deliveries WHERE id IN (SELECT id FROM logout_deliveries WHERE state<>'queued' AND created_ms<$1 ORDER BY created_ms,id LIMIT 100 FOR UPDATE SKIP LOCKED)")

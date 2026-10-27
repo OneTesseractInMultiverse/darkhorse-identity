@@ -106,6 +106,9 @@ async fn operator_account_commands_record_verified_actor_and_revisions_without_b
     let audit:(i64,i64,i64)=sqlx::query_as("SELECT count(*),count(*) FILTER(WHERE actor_id=$1 AND actor_credential_id=$2),count(*) FILTER(WHERE result='unchanged') FROM operator_account_audit")
         .bind(Uuid::from_u128(1)).bind(Uuid::from_u128(101)).fetch_one(&db.pool).await.unwrap();
     assert_eq!(audit, (5, 5, 1));
+    let epochs: Vec<i64> = sqlx::query_scalar("SELECT credential_epoch FROM logout_account_intents WHERE principal_id=$1 ORDER BY credential_epoch")
+        .bind(Uuid::from_u128(2)).fetch_all(&db.pool).await.unwrap();
+    assert_eq!(epochs, vec![0, 1]);
     assert_eq!(
         sqlx::query_scalar::<_, i64>("SELECT count(*) FROM browser_sessions")
             .fetch_one(&db.pool)
@@ -298,6 +301,13 @@ async fn a_failed_commit_is_reported_as_uncertain_without_retry() {
     ));
     assert_eq!(db.store.account(id(2)).await.unwrap().credential_epoch, 0);
     assert_eq!(count(&db, "security_audit").await, 1);
+    assert_eq!(
+        sqlx::query_scalar::<_, i64>("SELECT count(*) FROM logout_account_intents")
+            .fetch_one(&db.pool)
+            .await
+            .unwrap(),
+        0
+    );
 }
 
 #[tokio::test]

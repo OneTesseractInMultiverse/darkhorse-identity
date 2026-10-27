@@ -1,0 +1,48 @@
+{
+  "schema": 1,
+  "date": "2026-10-26",
+  "sourceBaseline": "e5f872e3ca28b2a8a8f84652f6c52470d7857f47",
+  "scope": "Query-plan regression evidence for account logout expansion; not an end-to-end latency or production-capacity benchmark.",
+  "postgresImage": "percona/percona-distribution-postgresql:18.6@sha256:dae47360e8137cafc1e8d66f9a1be348f1405e3cf51daa383b94e6c277e6b256",
+  "fixture": {
+    "targetSessions": 10001,
+    "otherAccounts": 100,
+    "otherSessions": 10000,
+    "clientBindingsPerTargetSession": 1,
+    "planMode": "force_generic_plan with PREPARE and EXPLAIN ANALYZE EXECUTE",
+    "securityFence": "shared, held through expansion and rollback",
+    "sampleCount": 2
+  },
+  "samples": [
+    {
+      "cursor": null,
+      "selectedSessions": 100,
+      "insertedIntents": 100,
+      "sessionIndex": "browser_sessions_logout_epoch",
+      "sessionIndexSharedHits": 4,
+      "statementSharedHits": 812,
+      "executionMilliseconds": 0.525
+    },
+    {
+      "cursor": "00000000-0000-0000-0000-000000002904",
+      "selectedSessions": 100,
+      "insertedIntents": 100,
+      "sessionIndex": "browser_sessions_logout_epoch",
+      "sessionIndexSharedHits": 6,
+      "statementSharedHits": 808,
+      "executionMilliseconds": 0.553
+    }
+  ],
+  "observations": [
+    "Both plans use principal, exact epoch and cursor as index conditions. The deep page seeks past earlier sessions.",
+    "The statement includes child insertion and its foreign-key check; each sample is rolled back. Database cache state differs between samples.",
+    "Root creation performs one insert without enumerating sessions. Integration checks separately cover 206-session pagination, independent workers, rollback and retention.",
+    "No baseline runtime speedup is claimed. Representative queue throughput, contention, overload and end-to-end delivery latency remain unqualified."
+  ],
+  "inputSha256": {
+    "crates/adapters/migrations/0043_account_logout.sql": "f0d26bfa35473c7bcf628fff41da59b8b48f2293a62c6385b5638b06b4591765",
+    "crates/adapters/src/postgres/logout/accounts-expand.sql": "305195929fc2aaaa0631bc87d794fffdf27335e85da8b15dd66528434506a3d4",
+    "crates/adapters/tests/integration/logout/account_plans.rs": "5de3563eded154a7e069158645eb9866e6b7b598d63af03ea4e2670817329169",
+    "Cargo.lock": "cd960c749cdee3aa0d4a4f67f4acaeb2a97a6429f39996b1a15d385896b421d6"
+  }
+}

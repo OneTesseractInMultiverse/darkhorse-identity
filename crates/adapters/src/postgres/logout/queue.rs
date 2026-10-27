@@ -18,6 +18,7 @@ impl Queue for PostgresStore {
         let now = crate::postgres::sessions::now(&mut tx)
             .await
             .map_err(storage)?;
+        accounts::expand(&mut tx).await.map_err(storage)?;
         maintenance::expand(&mut tx).await.map_err(storage)?;
         maintenance::cleanup(&mut tx, now as i64)
             .await

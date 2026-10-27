@@ -111,6 +111,8 @@ pub struct AccountChange {
     pub status: AccountStatus,
     pub credential_epoch: u64,
     pub revision: u64,
+    /// Exact previously issued epoch invalidated by this transition.
+    pub invalidated_epoch: Option<u64>,
 }
 
 pub fn plan_change(
@@ -141,6 +143,7 @@ pub fn plan_change(
         status,
         credential_epoch,
         revision: advance_counter(snapshot.revision)?,
+        invalidated_epoch: invalidate.then_some(snapshot.credential_epoch),
     }))
 }
 

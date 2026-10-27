@@ -114,7 +114,8 @@ fn deactivation_advances_epoch_and_reactivation_cannot_restore_old_credentials()
         AccountChange {
             status: AccountStatus::Inactive,
             credential_epoch: 6,
-            revision: 8
+            revision: 8,
+            invalidated_epoch: Some(5)
         }
     );
     let inactive = AccountSnapshot {
@@ -128,7 +129,8 @@ fn deactivation_advances_epoch_and_reactivation_cannot_restore_old_credentials()
         Ok(Some(AccountChange {
             status: AccountStatus::Active,
             credential_epoch: 6,
-            revision: 9
+            revision: 9,
+            invalidated_epoch: None
         }))
     );
     assert_eq!(
@@ -136,7 +138,8 @@ fn deactivation_advances_epoch_and_reactivation_cannot_restore_old_credentials()
         Ok(Some(AccountChange {
             status: AccountStatus::Active,
             credential_epoch: 6,
-            revision: 8
+            revision: 8,
+            invalidated_epoch: Some(5)
         }))
     );
     assert_eq!(
