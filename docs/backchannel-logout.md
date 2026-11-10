@@ -69,10 +69,10 @@ The test-only reference client validates the signature using Node's cryptography
 the exact issuer/audience, required subject/session/token references, integral
 timestamps, the two-minute lifetime and expiry, the event object and absence of
 nonce. Its deterministic profile uses an explicit clock with zero skew allowance.
-It rejects ID tokens as logout messages and Logout Tokens as ID tokens. This is
-validation code, not a deployed receiver: atomic replay handling, matching-session
-termination, HTTP responses and duplicate-delivery behavior remain future work.
-Receiving a valid notification must never terminate a different or newer `sid`.
+It rejects ID tokens as logout messages and Logout Tokens as ID tokens. The
+[reference receiver](#reference-receiver-and-application-integration) now combines
+that validation with atomic replay handling and matching-session termination.
+It is test tooling, not a deployed application endpoint or a general OIDC SDK.
 
 ## Destination registration
 
@@ -264,6 +264,86 @@ resolver permits until that resolver actually exits, preventing an unbounded
 accumulation of blocked resolver tasks. Deployment egress controls remain a useful
 additional boundary for network-specific routing and public-address hairpinning.
 
+## Reference receiver and application integration
+
+The receiver fixture exposes two client-specific HTTPS endpoints and validates
+real ID and Logout Tokens produced by Darkhorse. Its transport coordinator lives in
+[`reference-logout-receiver.mjs`](../scripts/lib/reference-logout-receiver.mjs);
+its session and replay adapter uses Node's built-in SQLite module in
+[`reference-logout-store.mjs`](../scripts/lib/reference-logout-store.mjs).
+Neither becomes part of the console, Rust server, or confidential-client example.
+The fixture demonstrates an application contract; it does not supply a production
+session service. Production applications should use a maintained OIDC/JWT library
+and their own authoritative session store.
+
+```mermaid
+sequenceDiagram
+    participant D as Darkhorse delivery worker
+    participant R as Application logout endpoint
+    participant S as Application session primary
+    D->>R: POST signed logout_token
+    R->>R: Validate signature, purpose, issuer, client, time and event
+    R->>S: Begin exclusive writer transaction
+    R->>S: Recheck expiry; check issuer/client/jti replay record
+    R->>S: Record token fingerprint and ended-session tombstone
+    R->>S: Delete sessions with exact issuer/client/subject/sid
+    S-->>R: Commit
+    R-->>D: 204, including an already accepted exact duplicate
+    Note over R,S: Login callbacks use the same transaction boundary and tombstones
+```
+
+The fixture requires one `logout_token` form field, a POST, and the form media
+type. It bounds the body at 16 KiB and the compact token below 8 KiB. Invalid input
+returns 400 without reaching the session writer. Store failure, lock contention or
+capacity exhaustion returns 503. Success returns 204 only after commit. Responses
+are non-cacheable and contain no token or storage details. The endpoint authenticates
+the signed message; it does not require a user's browser cookie or CSRF token.
+
+Replay records are keyed by `(issuer, client, jti)` and retain a SHA-256 fingerprint
+of the accepted compact token through its expiry. An exact, still-valid duplicate
+is acknowledged without repeating session mutation. Reusing a `jti` with different
+signed content fails. A retry with a fresh `jti` can succeed after the sessions have
+already ended. The operation removes **every local session** with the matching
+`(issuer, client, subject, sid)` and preserves unrelated subjects, clients, issuers
+and newer session references. The application's normal requests must consult this
+authoritative session state; an independently valid cookie or cached session must
+not bypass its deletion.
+
+A logout can arrive before an authorization callback has created its local session.
+The transaction therefore also records an ended-session tombstone, even when no
+matching session exists. Callback writers check that tombstone and recheck ID-token
+expiry while holding the same writer boundary. The fixture retains tombstones for
+300 seconds after receipt, covering Darkhorse's maximum five-minute ID-token
+lifetime with zero clock skew. Each fresh valid notification extends that interval.
+Afterward an earlier ID token is expired and cannot create a session. A production
+integration that permits clock skew or longer callback admission must adjust this
+bound and prove that delayed callbacks cannot restore ended sessions.
+
+The SQLite adapter is deliberately bounded: 10,000 records per table, at most 100
+expired records removed per table per operation, indexed binding/expiry lookups,
+and a 250 ms writer-lock wait. Live replay and tombstone records are never evicted
+to admit new work. The local test sessions expire after one hour. These are fixture
+limits, not deployment defaults or capacity measurements. SQLite synchronous calls
+and one local file do not model a distributed application store. All production
+replicas and callback writers need one coherent transactional authority.
+
+The PostgreSQL boundary test drives actual code exchanges, persisted RP bindings,
+logout registration, local revocation, queue claims, signing and verified HTTPS
+delivery. It demonstrates two registered applications, multiple sessions for one
+binding, a newer login, an unrelated principal, receiver unavailability, a lost
+acknowledgment after commit, reopening the receiver store, a new provider connection
+pool, and a retry after prepublished signing-key rotation. Separate SQLite tests
+exercise rollback, process restart, concurrent connections, expiry and full-store
+behavior. No new PostgreSQL migration, Redis use or production dependency is needed.
+
+Public keys enter this fixture through its private test-control pipe from the
+provider's published-key projection. It does not implement discovery or HTTP JWKS
+refresh. Production clients must obtain keys from the configured issuer's trusted
+metadata, bound refresh work, retain overlapping verification keys, and never follow
+key URLs supplied in an incoming token. Automatic JWKS refresh, broader independent
+client interoperability, adversarial load and operational capacity remain separate
+qualification work. Provider-wide discovery support remains unadvertised.
+
 ## Termination contract
 
 The notification implementation uses the session-specific profile from the
@@ -318,6 +398,12 @@ transport inputs, destination policy, delivery outcomes and console decoding.
 `make test-postgres` exercises migration preservation, atomic intent persistence,
 revision conflicts, audit suppression, exclusive claims, stale completion, lease
 recovery, bounded fan-out, cancellation and expiry against real PostgreSQL.
+It also runs the two-application receiver scenario and the SQLite transaction
+checks; the host needs the pinned Node version and OpenSSL in addition to Docker.
+`make test-logout-receiver` runs receiver validation and SQLite persistence,
+concurrency and process-restart checks without Docker. Its unit portion uses
+source-defined keys and fake storage; filesystem and process checks are kept under
+`scripts/tests/integration`.
 `make test-logout-https` creates a temporary CA and HTTPS server to verify TLS trust,
 hostnames, proxy/redirect rejection, private-address approval, acknowledgment
 handling and timeouts. It removes its temporary files and creates no Docker volumes.

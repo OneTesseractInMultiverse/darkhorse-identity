@@ -246,7 +246,7 @@ db-migrate: ## Database: explicitly apply embedded migrations to the local datab
 bootstrap: ## Database: interactively create the one-time local administrator
 	$(NODE) scripts/database.mjs run bootstrap
 
-test-postgres: ## Test: disposable PostgreSQL transactions and operator CLI; requires Docker
+test-postgres: ## Test: PostgreSQL, operator CLI and HTTPS logout receivers; requires Docker, Node and OpenSSL
 	$(NODE) scripts/postgres-test.mjs
 
 .PHONY: test-db-authority test-operator-accounts
@@ -361,14 +361,17 @@ test-provider: ## Test: isolated authorization, signing, code exchange and ident
 	cargo test --workspace --lib --locked --offline tokens
 	cargo test --workspace --lib --locked --offline token_http
 
-.PHONY: test-logout
+.PHONY: test-logout test-logout-receiver
 .PHONY: test-logout-https
 test-logout-https: ## Test: disposable HTTPS logout delivery, TLS, SSRF, retries and timeouts; requires OpenSSL
 	$(NODE) scripts/logout-https-test.mjs
 
 test-logout: ## Test: Logout Token claims, signing failures and independent reference validation
 	cargo test --workspace --lib --locked --offline logout
-	$(NODE) --test scripts/tests/unit/reference-client.test.mjs scripts/tests/unit/reference-logout.test.mjs
+	$(NODE) --test scripts/tests/unit/reference-client.test.mjs scripts/tests/unit/reference-logout.test.mjs scripts/tests/unit/reference-logout-receiver.test.mjs
+
+test-logout-receiver: ## Test: reference receiver validation, atomic sessions, replay, races and restart; no Docker
+	$(NODE) --test scripts/tests/unit/reference-logout-receiver.test.mjs scripts/tests/integration/reference-logout-store.test.mjs
 
 .PHONY: test-resource-introspection
 

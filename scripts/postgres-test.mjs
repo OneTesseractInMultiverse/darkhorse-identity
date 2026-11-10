@@ -81,6 +81,10 @@ async function verifyOperator(invoke) {
 }
 
 async function hostChecks(url) {
+  await command(process.execPath, [
+    "--test",
+    "scripts/tests/integration/reference-logout-store.test.mjs",
+  ]);
   const env = {
     ...process.env,
     DARKHORSE_TEST_DATABASE_URL: url,

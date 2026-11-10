@@ -69,7 +69,7 @@ async fn relying_party_sessions_converge_under_concurrent_redemption_and_survive
     db.store.close().await;
 }
 
-async fn exchange_for(
+pub(super) async fn exchange_for(
     db: &Database,
     signer: &Signer,
     session: u8,
