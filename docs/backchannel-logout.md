@@ -30,7 +30,8 @@ authorization-code exchange. Refresh responses continue to omit ID tokens.
 
 Discovery lists `sid` in `claims_supported`. Registered clients can now receive
 notifications for individual browser-session termination and account-wide
-revocation or deactivation. Provider-wide
+revocation or deactivation. The persistence layer also records password-credential
+revocation for the credential's current account epoch. Provider-wide
 `backchannel_logout_supported` metadata remains unadvertised until the remaining
 triggers and receiver qualification are complete. Access and refresh tokens remain
 opaque. This is an incremental implementation of
@@ -201,6 +202,65 @@ The new index also adds storage and an index write when a browser session is
 created. Sign-in cost and mixed-workload contention still need representative
 capacity measurements before production sizing.
 
+### Password-credential revocation
+
+Migration `0044` records the first `revoked: false → true` transition of a password
+credential. A statement trigger acquires the common security writer fence before
+credential rows are locked. The row trigger then appends an immutable
+`credential_logout_events` record and one `logout_credential_intents` queue root.
+The event records the credential, principal, current account epoch, original
+ordering/time and database role. Event or intent failure rolls back revocation;
+the last-eligible-administrator constraint remains effective at commit.
+
+This is a persistence invariant, not a new password-management API or authorization
+path. Password change/recovery and authenticated credential-administration workflows
+remain pending. Future workflows must authorize their action and atomically revoke
+the replaced credential; changing or deleting a verifier alone does not produce
+this event. Existing deployment-operator grants still cannot revoke credentials.
+Direct database maintenance remains trusted administrative work, not a substitute
+for an authenticated management workflow.
+
+```mermaid
+flowchart LR
+    Revoke["Password credential revoked"] --> Commit["One commit: revocation + immutable event + queue root"]
+    Commit --> Local["Old credential fails primary checks"]
+    Commit --> Page["Worker: at most 100 sessions per page"]
+    Page --> Match["Exact credential + principal + captured epoch"]
+    Match --> Clients["Existing client expansion and delivery"]
+    Replacement["Replacement password credential"] --> Excluded["Excluded even in the same epoch"]
+```
+
+Expansion selects the exact credential, principal and captured epoch through a
+compound cursor index. A closed range over the index prefix keeps the credential,
+epoch and principal fixed, while its final UUID component advances the page.
+This avoids a generic plan that scans unrelated sessions in public-ID order.
+Cursor advancement and child intents commit together. Independent workers cannot
+skip a page or duplicate a session intent. Repeated revocation, non-revoking updates
+and personal API-key revocation produce no password event. Old account epochs,
+replacement credentials and other principals are outside the target set; expired
+or independently ended sessions within the selected set can still receive an
+idempotent notification.
+
+Account-wide expansion and later individual sign-out retain an earlier credential
+event's destination ordering and time. A changed destination cancels the original
+work rather than sending it to a new endpoint. The original 24-hour delivery window
+is never restarted. Expanded credential roots become eligible for seven-day cleanup
+in batches of 100. The immutable event remains after queue cleanup, so a later
+overlapping operation cannot lose that original snapshot. This retained history
+adds one audit row per revoked password credential.
+
+The new session index adds storage and one index write per browser session. The
+worker also checks one credential root per pass. Notification recording adds a
+constant number of writes per credential rather than enumerating sessions. The generic-plan regression
+uses 10,001 matching sessions and 20,000 sessions in another epoch or belonging to
+another credential/principal; it checks the first page, a deep page and the final
+partial page. The [matched query-plan comparison](measurements/credential-logout-2026-11-10.json)
+records both forms under the same security fence and population. On the final
+partial page, the scalar cursor examined 20,000 unrelated rows; the prefix range
+read only its five matching entries. These fixtures verify query shape and isolation, not production
+throughput or mixed-workload contention. Representative capacity measurements
+remain required.
+
 ### Delivery attempts
 
 Each process sends one notification at a time. Workers claim due rows with
@@ -352,39 +412,43 @@ Every notification identifies an already-selected `sid`. Subject-wide messages
 without a `sid` are not used. A delayed notification must not terminate a newer
 Darkhorse login, which has a different reference.
 
-| Trigger                                                                     | Local effect                                                                | Notification targets                                      |
-| --------------------------------------------------------------------------- | --------------------------------------------------------------------------- | --------------------------------------------------------- |
-| Application-local sign-out                                                  | The application ends its own session. No Darkhorse transition               | None                                                      |
-| Darkhorse sign-out, login replacement or owner-selected session termination | End exactly that browser session. Its code/access/refresh checks fail       | Implemented: participating clients bound to that session  |
-| Account revoke-all or deactivation                                          | Existing credential epochs become invalid. Reactivation cannot restore them | Implemented: clients bound to the exact invalidated epoch |
-| Password credential revocation                                              | Sessions bound to that credential fail live checks                          | Pending: clients of those affected sessions               |
-| Access-token revocation or refresh-family revocation                        | Only the selected credential/family is invalidated                          | None. The browser session remains live                    |
+| Trigger                                                                     | Local effect                                                                | Notification targets                                                                                           |
+| --------------------------------------------------------------------------- | --------------------------------------------------------------------------- | -------------------------------------------------------------------------------------------------------------- |
+| Application-local sign-out                                                  | The application ends its own session. No Darkhorse transition               | None                                                                                                           |
+| Darkhorse sign-out, login replacement or owner-selected session termination | End exactly that browser session. Its code/access/refresh checks fail       | Implemented: participating clients bound to that session                                                       |
+| Account revoke-all or deactivation                                          | Existing credential epochs become invalid. Reactivation cannot restore them | Implemented: clients bound to the exact invalidated epoch                                                      |
+| Password credential revocation                                              | Sessions bound to that credential fail live checks                          | Implemented persistence invariant: exact credential and captured current epoch; authenticated workflow pending |
+| Access-token revocation or refresh-family revocation                        | Only the selected credential/family is invalidated                          | None. The browser session remains live                                                                         |
 
 Password recovery/change, broader administrator session controls, and expiry
 notifications need separate trigger integration. [Personal API keys](personal-api-keys.md)
 are implemented and survive ordinary browser logout. Account epoch changes
 invalidate them. Offline grants remain unsupported.
 
-Remaining #14 work includes credential-wide trigger integration,
-a reference receiver with atomic replay/session handling, broader interoperability
+Remaining #14 work includes authenticated password/credential lifecycle workflows and other account-security triggers,
+automatic receiver key refresh, broader independent-client interoperability
 and failure qualification, and production capacity measurements. RP-initiated
 browser logout remains a separate pending profile decision. Provider-wide discovery
 support is not advertised until that work is complete.
 
 ## Upgrade, rollback and verification
 
-Stop application writers, back up PostgreSQL, apply migrations through `0043`, and reapply
+Stop application writers, back up PostgreSQL, apply migrations through `0044`, and reapply
 `deploy/grant-runtime.sql` as the schema owner before starting this version. It adds
 logout history, intent, delivery and audit tables, a sequence and supporting indexes.
 Migration `0043` adds account intents, the session-epoch paging index and an optional
 original destination ordering on child intents. Existing child records retain their
 own ordering; destination configuration and pending work are preserved.
+Migration `0044` adds credential events, disposable credential queue roots, the
+credential/epoch cursor index and invoker-rights revocation triggers. It preserves
+existing sessions and registrations and does not reconstruct past revocations.
 The runtime receives only the reviewed grants; destination history and audits are
 append-only. Existing registrations remain disabled until explicitly configured.
 Historical logouts are not backfilled. Migration `0016` remains the prerequisite
 for RP associations and their immutable redemption audit.
 
-Do not mix old and new server writers: old versions do not enqueue notifications.
+Do not mix old and new server writers or workers. Prior workers cannot expand
+credential roots or preserve their snapshots during overlapping account changes.
 For a code rollback, stop writers and delivery workers first, then keep the additive
 schema and queued work. The old binary cannot deliver these notifications and may
 reject a schema newer than its migration manifest. Restore the matching pre-upgrade

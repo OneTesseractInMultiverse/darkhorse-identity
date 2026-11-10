@@ -19,6 +19,7 @@ impl Queue for PostgresStore {
             .await
             .map_err(storage)?;
         accounts::expand(&mut tx).await.map_err(storage)?;
+        credentials::expand(&mut tx).await.map_err(storage)?;
         maintenance::expand(&mut tx).await.map_err(storage)?;
         maintenance::cleanup(&mut tx, now as i64)
             .await

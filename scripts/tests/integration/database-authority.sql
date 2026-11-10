@@ -15,6 +15,9 @@ BEGIN
   'UPDATE logout_audit SET event=event WHERE false',
   'DELETE FROM logout_audit WHERE false',
   'TRUNCATE logout_audit',
+  'UPDATE credential_logout_events SET created_ms=created_ms WHERE false',
+  'DELETE FROM credential_logout_events WHERE false',
+  'TRUNCATE credential_logout_events',
   'SELECT * FROM future_operator_state',
   'UPDATE signing_operation_intents SET operation_id=operation_id WHERE false',
   'DELETE FROM signing_operation_intents WHERE false',
@@ -113,6 +116,17 @@ INSERT INTO principals(id,email,first_name,last_name)
  VALUES('00000000-0000-0000-0000-000000000123','authority@example.com','Authority','Fixture');
 INSERT INTO security_audit(event,principal_id,principal_revision,credential_epoch)
  VALUES('account.revoked','00000000-0000-0000-0000-000000000123',0,0);
+INSERT INTO credentials(id,principal_id,kind)
+ VALUES('00000000-0000-0000-0000-000000000789','00000000-0000-0000-0000-000000000123','password');
+UPDATE credentials SET revoked=true WHERE id='00000000-0000-0000-0000-000000000789';
+DO $$ BEGIN
+ IF NOT EXISTS(SELECT 1 FROM credential_logout_events e JOIN logout_credential_intents i ON i.id=e.ordering AND i.created_ms=e.created_ms
+   WHERE e.credential_id='00000000-0000-0000-0000-000000000789' AND e.database_role='darkhorse_runtime') THEN
+  RAISE EXCEPTION 'runtime credential logout event, intent or role provenance failed';
+ END IF;
+END $$;
+UPDATE logout_credential_intents SET expanded=true;
+DELETE FROM logout_credential_intents WHERE expanded;
 INSERT INTO operator_access_catalog_audit(operation_id,command,expected_revision,reason,result,occurred_ms)
  VALUES('00000000-0000-0000-0000-000000000999','role.create',0,'runtime grant verification','denied',0);
 INSERT INTO operator_client_secret_rotation_audit(operation_id,application_id,client_id,expected_revision,overlap_seconds,reason,result,occurred_ms)

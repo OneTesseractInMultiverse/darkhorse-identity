@@ -49,6 +49,14 @@ invalidated epoch and creation time into that table, and use the ordering sequen
 It cannot read, update, delete or truncate account intents or read session and
 delivery tables. The account change and intent still require the application's
 fresh administrator checks and atomic audit. Reapply grants with writers stopped.
+Migration `0044` adds runtime read/append access to `credential_logout_events` and
+queue maintenance access to `logout_credential_intents`. Password-revocation
+triggers run with the caller's privileges, capture the current epoch under the
+security fence, and fail the revocation if event or intent persistence fails.
+The immutable event retains the original notification snapshot after queue cleanup.
+The deployment operator receives no access to either relation and no new credential
+update privilege. These triggers record committed facts; they do not authorize
+password-management operations or introduce an authenticated administrative API.
 No runtime operation receives schema/database creation, temporary tables,
 ownership, role-management or permission-delegation authority from this script.
 

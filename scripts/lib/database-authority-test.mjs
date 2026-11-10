@@ -10,6 +10,7 @@ export async function verifyDatabaseAuthority(docker, database, command, port) {
   const grants = await readFile("deploy/grant-runtime.sql", "utf8");
   await verifyGrants(fixture, grants);
   await verifyAudit(fixture, grants);
+  await verifyCredentialLogout(fixture, grants);
   await verifyTopology(fixture, grants);
   await verifyAtomicGrants(fixture, grants);
   await verifyOperatorAuthority(fixture, grants);
@@ -139,7 +140,7 @@ GRANT CONNECT ON DATABASE darkhorse_authority TO darkhorse_runtime,darkhorse_own
     ).stdout,
   ).data;
   assert.equal(absent.recorded_outcome, "absent");
-  assert.equal(inspected.steps.length, 43);
+  assert.equal(inspected.steps.length, 44);
   assert.ok(
     inspected.steps.every(
       (v) => v.completed_ms !== null && !v.already_applied && v.current_matches,
@@ -271,6 +272,27 @@ COMMIT;`;
   }
   await sql("darkhorse_runtime", mutation);
   assert.equal(await state(), "1|1|1");
+}
+
+async function verifyCredentialLogout({ sql }, grants) {
+  const credential = "00000000-0000-0000-0000-000000000457";
+  await sql(
+    "darkhorse_owner",
+    `INSERT INTO credentials(id,principal_id,kind) VALUES('${credential}','00000000-0000-0000-0000-000000000456','password'); REVOKE INSERT ON credential_logout_events FROM darkhorse_runtime;`,
+  );
+  const mutation = `UPDATE credentials SET revoked=true WHERE id='${credential}';`;
+  const failed = await sql("darkhorse_runtime", mutation, true);
+  assert.notEqual(failed.code, 0);
+  assert.match(failed.stderr, /permission denied/);
+  const state = () =>
+    sql(
+      "darkhorse_owner",
+      `SELECT revoked,(SELECT count(*) FROM credential_logout_events WHERE credential_id='${credential}') FROM credentials WHERE id='${credential}';`,
+    );
+  assert.equal((await state()).stdout.trim(), "f|0");
+  await sql("darkhorse_owner", grants);
+  await sql("darkhorse_runtime", mutation);
+  assert.equal((await state()).stdout.trim(), "t|1");
 }
 
 async function verifyTopology({ admin, sql }, grants) {

@@ -3,12 +3,13 @@ use sqlx::{Postgres, Row, Transaction, postgres::PgRow};
 use uuid::Uuid;
 type Tx<'a> = Transaction<'a, Postgres>;
 pub(super) mod accounts;
+mod credentials;
 mod maintenance;
 mod queue;
 mod registration;
 
 pub(super) async fn enqueue(tx: &mut Tx<'_>, session: Uuid, now: u64) -> Result<(), sqlx::Error> {
-    let target = sqlx::query("SELECT a.id AS ordering,COALESCE(a.created_ms,$2) AS created_ms FROM browser_sessions s JOIN principals p ON p.id=s.principal_id LEFT JOIN logout_account_intents a ON a.principal_id=s.principal_id AND a.credential_epoch=s.credential_epoch WHERE s.public_id=$1 AND (s.credential_epoch=p.credential_epoch OR a.id IS NOT NULL) AND EXISTS(SELECT 1 FROM relying_party_sessions WHERE session_id=$1) AND NOT EXISTS(SELECT 1 FROM logout_intents WHERE session_id=$1)")
+    let target = sqlx::query("SELECT origin.ordering,COALESCE(origin.created_ms,$2) AS created_ms FROM browser_sessions s JOIN principals p ON p.id=s.principal_id LEFT JOIN LATERAL (SELECT a.id AS ordering,a.created_ms FROM logout_account_intents a WHERE a.principal_id=s.principal_id AND a.credential_epoch=s.credential_epoch UNION ALL SELECT e.ordering,e.created_ms FROM credential_logout_events e WHERE e.credential_id=s.credential_id AND e.principal_id=s.principal_id AND e.credential_epoch=s.credential_epoch ORDER BY ordering LIMIT 1) origin ON true WHERE s.public_id=$1 AND (s.credential_epoch=p.credential_epoch OR origin.ordering IS NOT NULL) AND EXISTS(SELECT 1 FROM relying_party_sessions WHERE session_id=$1) AND NOT EXISTS(SELECT 1 FROM logout_intents WHERE session_id=$1)")
     .bind(session)
     .bind(now as i64)
     .fetch_optional(&mut **tx)

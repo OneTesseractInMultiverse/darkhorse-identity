@@ -2,6 +2,8 @@ use super::tokens::{ISSUER, code, input, setup};
 use super::*;
 mod account_plans;
 mod accounts;
+mod credential_plans;
+mod credentials;
 mod receiver;
 mod receiver_fixture;
 use darkhorse_adapters::tokens::material;

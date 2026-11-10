@@ -57,6 +57,7 @@ pub(super) async fn expand(tx: &mut Tx<'_>) -> Result<(), sqlx::Error> {
 pub(super) async fn cleanup(tx: &mut Tx<'_>, now: i64) -> Result<(), sqlx::Error> {
     let cutoff = now.saturating_sub(darkhorse_domain::logout::RETENTION_MS as i64);
     accounts::cleanup(tx, cutoff).await?;
+    credentials::cleanup(tx, cutoff).await?;
     // Keep audit and destination history. Delete only terminal payloads and
     // completely expanded roots without remaining work, in bounded batches.
     sqlx::query("DELETE FROM logout_deliveries WHERE id IN (SELECT id FROM logout_deliveries WHERE state<>'queued' AND created_ms<$1 ORDER BY created_ms,id LIMIT 100 FOR UPDATE SKIP LOCKED)")

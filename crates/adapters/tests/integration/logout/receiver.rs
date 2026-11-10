@@ -42,7 +42,7 @@ async fn publish(db: &Database, receiver: &mut Receiver) {
         receiver.command(json!({"command":"configure", "path":format!("/{client}"), "issuer":ISSUER,"client":Uuid::from_u128(client).to_string(),"keys":keys}));
     }
 }
-async fn second_application(db: &Database) {
+pub(super) async fn second_application(db: &Database) {
     sqlx::raw_sql("INSERT INTO applications(id,name,owner_id,active) VALUES('00000000-0000-0000-0000-000000000011','Second app','00000000-0000-0000-0000-000000000001',true); INSERT INTO oauth_clients(id,application_id,name,active) VALUES('00000000-0000-0000-0000-000000000021','00000000-0000-0000-0000-000000000011','Second client',true); INSERT INTO client_redirects VALUES('00000000-0000-0000-0000-000000000021','https://client.example/callback?fixed=1');").execute(&db.pool).await.unwrap();
     sqlx::query("INSERT INTO oauth_client_secrets(id,client_id,verifier,created_ms) VALUES('00000000-0000-0000-0000-000000000061','00000000-0000-0000-0000-000000000021',$1,0)").bind([10u8;32].as_slice()).execute(&db.pool).await.unwrap();
 }

@@ -7,6 +7,14 @@ BEGIN
   RAISE EXCEPTION 'test requires a real operator login';
  END IF;
  FOREACH statement IN ARRAY ARRAY[
+  'SELECT * FROM credential_logout_events',
+  'INSERT INTO credential_logout_events(credential_id) VALUES(''00000000-0000-0000-0000-000000000001'')',
+  'UPDATE credential_logout_events SET created_ms=created_ms WHERE false',
+  'DELETE FROM credential_logout_events WHERE false',
+  'SELECT * FROM logout_credential_intents',
+  'INSERT INTO logout_credential_intents(id,created_ms) VALUES(1,0)',
+  'UPDATE logout_credential_intents SET expanded=true WHERE false',
+  'DELETE FROM logout_credential_intents WHERE false',
   'SELECT * FROM future_operator_state',
   'UPDATE signing_operation_intents SET operation_id=operation_id WHERE false',
   'DELETE FROM signing_operation_intents WHERE false',
