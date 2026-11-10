@@ -220,6 +220,31 @@ unmaintained-package finding.
 
 ## Release advisory review
 
+### November 2026 findings
+
+The **2026-11-10 UTC** [hosted scan](https://github.com/OneTesseractInMultiverse/darkhorse-identity/actions/runs/42908245816)
+is blocked for the unchanged lockfiles by `libsqlite3-sys` 0.37.0
+([RUSTSEC-2026-0459](https://rustsec.org/advisories/RUSTSEC-2026-0459.html)),
+`deepmerge` 4.3.1
+([GHSA-gcqx-w48m-w2h4](https://github.com/advisories/GHSA-gcqx-w48m-w2h4)), and
+`minimatch` 10.2.6
+([GHSA-g3hv-75wg-m249](https://github.com/advisories/GHSA-g3hv-75wg-m249)).
+The report covers 353 Rust and 356 JavaScript packages. SQLx retains the optional
+SQLite crate in the lockfile despite Darkhorse's PostgreSQL-only enabled Rust
+graph. The JavaScript findings enter through the Svelte build plugin and lint
+tooling. Those boundaries do not exempt packages from the full-lockfile gate.
+Node's built-in SQLite used in test tooling is separately supplied by the pinned
+Node binary; the Rust crate advisory is not a scan of that binary.
+
+The published SQLite crate fix starts at 0.39.0 and the minimatch fix at 11.0.1;
+these require compatible parent updates or separately qualified alternatives.
+No patched deepmerge release is published. [Issue #47](https://github.com/OneTesseractInMultiverse/darkhorse-identity/issues/47)
+tracks remediation, compatibility tests and hosted requalification. No ignore,
+severity exclusion or scan narrowing is introduced. Earlier dated passing scans
+below remain historical evidence, not current release clearance.
+
+### Earlier findings
+
 The first complete-lockfile scan on **2026-09-21** found `cookie 0.6.0` through
 SvelteKit 2.70.3. The historical scoped workspace override `@sveltejs/kit>cookie: 0.7.2`
 retained the parse/serialize API and fixed

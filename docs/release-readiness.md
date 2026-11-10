@@ -59,6 +59,12 @@ finding. It does not qualify the open release gates below.
 
 ## Hosted checks
 
+The **2026-11-10 UTC** hosted run passed source, PostgreSQL, Redis/native and HTTPS
+browser/delivery verification, but dependency qualification failed on new
+transitive findings. [Issue #47](https://github.com/OneTesseractInMultiverse/darkhorse-identity/issues/47)
+records remediation. The strict dependency gate remains blocked; functional passes
+do not clear it. See the [current advisory findings](dependencies.md#november-2026-findings).
+
 [CI](../.github/workflows/ci.yaml) runs on pushes to `main`, pull requests targeting
 `main`, and manual dispatch. **Source verification** runs the source checks above
 plus POSIX CLI and account-launcher process tests. It runs the real restricted-role
