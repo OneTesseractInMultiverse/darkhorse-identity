@@ -8,7 +8,7 @@ function requireValid(condition) {
 function object(value) {
   return value !== null && typeof value === "object" && !Array.isArray(value);
 }
-function validateSignedToken(token, keys, type) {
+function inspectSignedToken(token, type) {
   requireValid(typeof token === "string" && token.length < 8192);
   const parts = token.split(".");
   requireValid(
@@ -26,8 +26,14 @@ function validateSignedToken(token, keys, type) {
       header.kid.length <= 128 &&
       !Object.hasOwn(header, "crit") &&
       !Object.hasOwn(header, "jku") &&
+      !Object.hasOwn(header, "x5u") &&
+      !Object.hasOwn(header, "x5c") &&
       !Object.hasOwn(header, "jwk"),
   );
+  return { header, claims, parts };
+}
+function validateSignedToken(token, keys, type) {
+  const { header, claims, parts } = inspectSignedToken(token, type);
   const matching = keys.filter(
     (k) =>
       k.kid === header.kid &&
@@ -48,6 +54,15 @@ function validateSignedToken(token, keys, type) {
 }
 export function validateIdToken(token, keys, expected) {
   const claims = validateSignedToken(token, keys, "JWT");
+  return validateIdClaims(claims, expected);
+}
+// Unverified claims can reject work, but never authorize a session mutation.
+export function idTokenKeyId(token, expected) {
+  const { header, claims } = inspectSignedToken(token, "JWT");
+  validateIdClaims(claims, expected);
+  return header.kid;
+}
+function validateIdClaims(claims, expected) {
   requireValid(
     claims.iss === expected.issuer &&
       claims.aud === expected.client &&
@@ -78,6 +93,14 @@ export function validateIdToken(token, keys, expected) {
 // A receiver must separately commit replay handling and matching-session deletion.
 export function validateLogoutToken(token, keys, expected) {
   const claims = validateSignedToken(token, keys, "logout+jwt");
+  return validateLogoutClaims(claims, expected);
+}
+export function logoutTokenKeyId(token, expected) {
+  const { header, claims } = inspectSignedToken(token, "logout+jwt");
+  validateLogoutClaims(claims, expected);
+  return header.kid;
+}
+function validateLogoutClaims(claims, expected) {
   requireValid(
     typeof expected.issuer === "string" &&
       expected.issuer.length > 0 &&

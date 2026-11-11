@@ -396,13 +396,72 @@ pool, and a retry after prepublished signing-key rotation. Separate SQLite tests
 exercise rollback, process restart, concurrent connections, expiry and full-store
 behavior. No new PostgreSQL migration, Redis use or production dependency is needed.
 
-Public keys enter this fixture through its private test-control pipe from the
-provider's published-key projection. It does not implement discovery or HTTP JWKS
-refresh. Production clients must obtain keys from the configured issuer's trusted
-metadata, bound refresh work, retain overlapping verification keys, and never follow
-key URLs supplied in an incoming token. Automatic JWKS refresh, broader independent
-client interoperability, adversarial load and operational capacity remain separate
-qualification work. Provider-wide discovery support remains unadvertised.
+### Trusted JWKS retrieval and rotation
+
+The test-only receiver now obtains keys over HTTPS from an explicitly configured
+JWKS URL bound to the exact issuer. Both application endpoints and ID-token callback
+validation share that issuer's cache. The fixture accepts one trust configuration
+and at most two application contexts. Configuration is private test setup; an
+incoming token cannot select or change the issuer, URL, TLS trust or algorithm.
+There is no discovery lookup. Protected headers containing `jku`, `jwk`, `x5u`,
+`x5c` or `crit` are rejected before retrieval. Invalid purpose, issuer, audience,
+session claims or time bounds also fail before network access. An invalid signature
+under a known key never forces a refresh.
+
+The authority boundary is the configured HTTPS endpoint with certificate and
+hostname verification enabled. A fixture CA is supplied explicitly. It is not an
+address chosen by a delivery sender or an assertion of public-network reachability;
+deployment configuration must select an appropriate trusted endpoint. The transport
+uses no proxy configuration, redirects, retries or shared HTTP agent. Its policy,
+cache coordinator and HTTPS coordinator live in `reference-jwks-policy.mjs`,
+`reference-jwks.mjs` and `reference-jwks-https.mjs` respectively.
+
+| Bound          | Fixture policy                                                                                                             |
+| -------------- | -------------------------------------------------------------------------------------------------------------------------- |
+| Fetch deadline | 2 seconds total, including DNS, connection, TLS, headers and body                                                          |
+| Response       | HTTP 200 JSON/JWK-set JSON only; no compression; at most 64 KiB, 8 KiB of headers and 32 headers                           |
+| Key set        | 1–8 distinct `kid` values; RSA public signing keys, RS256, 2048–4096-bit modulus and exponent 65537                        |
+| Trust input    | HTTPS issuer/URL strings at most 2048 characters each; optional CA PEM at most 32 KiB                                      |
+| Cache          | One immutable snapshot; 60 seconds from fetch start, without stale fallback or sliding extension                           |
+| Refresh        | One in-flight fetch; at most 32 waiting validations; 5-second cooldown after every completed attempt, successful or failed |
+
+An unknown `kid` triggers a refresh only after the cooldown. A missing `kid` is
+invalid and cannot trigger retrieval. Concurrent
+requests join the same fetch, including requests for different unknown IDs; there
+is no per-ID retry map or queue. Requests beyond the waiter limit fail immediately.
+A timed-out OS DNS lookup retains the transport's sole permit until its callback
+and the request have both finished, while callers are released at the deadline.
+Repeated input therefore cannot accumulate outstanding DNS work. A fresh known key
+remains usable while a refresh is in progress or the publisher is unavailable.
+
+Every successful response replaces the entire cache. Overlapping keys remain
+usable only while present in that trusted response; removed keys are not merged
+back from an older snapshot. Invalid JSON, duplicate JSON members, duplicate key
+IDs, private key material, unsupported metadata, inappropriate key operations and
+malformed or unusable RSA keys reject the entire response. Failure never advances
+the prior snapshot's expiry. HTTP cache headers cannot extend the fixed lifetime.
+Claims and expiry are validated again after retrieval, then the existing store
+transaction rechecks expiry and commits replay handling and session removal.
+
+An unavailable, expired or refresh-suppressed key source returns 503 without session
+mutation. A successful fetch with no matching key, or a bad signature/claim, returns 400. After an outage, a later delivery can refresh and succeed once the cooldown
+has elapsed. This bounds outbound fetch starts to at most 12 per minute per source,
+with at most one active transport; it does not establish adversarial request CPU
+capacity, event-loop latency or production throughput.
+
+The private fixture pipe now updates a separate simulated provider JWKS publisher
+using the provider's published-key projection. It never installs keys into the
+receiver cache. The receiver fetches that publisher over verified local HTTPS.
+Focused Node integration checks exercise two applications through rotation,
+publisher outage/recovery, shared refresh, retained overlapping keys, replay,
+store restart and delayed callbacks, preserving newer and unrelated sessions.
+Separate HTTPS checks cover CA/hostname failures, redirects, header/body bounds,
+truncation, stalled headers and a trickling body. The PostgreSQL scenario also exercises this path with actual provider-issued
+tokens. It verifies the shared initial cache, an unavailable publisher, continued
+validation with a fresh overlapping key, and a successful rotated-key retry after
+the cooldown. Broader independent-client interoperability, adversarial
+load and operational capacity remain qualification work. Provider-wide discovery
+support remains unadvertised.
 
 ## Termination contract
 
@@ -426,7 +485,7 @@ are implemented and survive ordinary browser logout. Account epoch changes
 invalidate them. Offline grants remain unsupported.
 
 Remaining #14 work includes authenticated password/credential lifecycle workflows and other account-security triggers,
-automatic receiver key refresh, broader independent-client interoperability
+provider-backed qualification of automatic receiver key refresh, broader independent-client interoperability
 and failure qualification, and production capacity measurements. RP-initiated
 browser logout remains a separate pending profile decision. Provider-wide discovery
 support is not advertised until that work is complete.
@@ -464,10 +523,22 @@ revision conflicts, audit suppression, exclusive claims, stale completion, lease
 recovery, bounded fan-out, cancellation and expiry against real PostgreSQL.
 It also runs the two-application receiver scenario and the SQLite transaction
 checks; the host needs the pinned Node version and OpenSSL in addition to Docker.
-`make test-logout-receiver` runs receiver validation and SQLite persistence,
-concurrency and process-restart checks without Docker. Its unit portion uses
+`make test-logout-receiver` runs receiver/JWKS validation, verified local HTTPS
+rotation/outage and SQLite persistence, concurrency and process-restart checks
+without Docker. It requires the pinned Node version and OpenSSL. Its unit portion uses
 source-defined keys and fake storage; filesystem and process checks are kept under
 `scripts/tests/integration`.
+The JWKS slice has focused commands, independent of Docker:
+
+```sh
+node --test scripts/tests/unit/reference-jwks*.test.mjs scripts/tests/unit/reference-client.test.mjs scripts/tests/unit/reference-logout*.test.mjs
+node --test scripts/tests/integration/reference-jwks*.test.mjs scripts/tests/integration/reference-logout-store.test.mjs
+```
+
+The latter uses temporary loopback HTTPS listeners, OpenSSL and explicit fixture CA
+trust. `make test-logout` includes the JWKS unit checks. `make test-postgres` runs
+each local receiver/JWKS integration file once before the provider-backed tests.
+
 `make test-logout-https` creates a temporary CA and HTTPS server to verify TLS trust,
 hostnames, proxy/redirect rejection, private-address approval, acknowledgment
 handling and timeouts. It removes its temporary files and creates no Docker volumes.

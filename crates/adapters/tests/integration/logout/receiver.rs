@@ -38,9 +38,7 @@ async fn publish(db: &Database, receiver: &mut Receiver) {
         .into_iter()
         .map(|key| json!({"kid":key.kid,"n":key.n,"e":key.e,"kty":"RSA","alg":"RS256","use":"sig"}))
         .collect();
-    for client in [32, 33] {
-        receiver.command(json!({"command":"configure", "path":format!("/{client}"), "issuer":ISSUER,"client":Uuid::from_u128(client).to_string(),"keys":keys}));
-    }
+    receiver.command(json!({"command":"publish", "keys":keys}));
 }
 pub(super) async fn second_application(db: &Database) {
     sqlx::raw_sql("INSERT INTO applications(id,name,owner_id,active) VALUES('00000000-0000-0000-0000-000000000011','Second app','00000000-0000-0000-0000-000000000001',true); INSERT INTO oauth_clients(id,application_id,name,active) VALUES('00000000-0000-0000-0000-000000000021','00000000-0000-0000-0000-000000000011','Second client',true); INSERT INTO client_redirects VALUES('00000000-0000-0000-0000-000000000021','https://client.example/callback?fixed=1');").execute(&db.pool).await.unwrap();
@@ -69,6 +67,9 @@ async fn durable_logout_reaches_two_receivers_with_replay_restart_rotation_and_l
     let (db, signer) = setup().await;
     second_application(&db).await;
     publish(&db, &mut receiver).await;
+    for client in [32, 33] {
+        receiver.configure(ISSUER, client);
+    }
     for (application, client) in [(16, 32), (17, 33)] {
         db.store
             .configure_logout(
@@ -106,6 +107,7 @@ async fn durable_logout_reaches_two_receivers_with_replay_restart_rotation_and_l
     db.store.establish(&other, [3; 32], None).await.unwrap();
     let unrelated = exchange_for(&db, &signer, 3, 6, 32).await.id_token.unwrap();
     assert!(bind(&mut receiver, 32, 2, "unrelated", &unrelated));
+    assert_eq!(receiver.command(json!({"command":"jwks-requests"})), 1);
     let sender = HttpsSender::new(
         configuration::load(Network {
             origin: receiver.origin.clone(),
@@ -160,7 +162,7 @@ async fn durable_logout_reaches_two_receivers_with_replay_restart_rotation_and_l
     assert!(!bind(&mut receiver, 32, 1, "late-callback", &first));
     assert!(!bind(&mut receiver, 33, 1, "late-callback-other", &second));
 
-    // Prepublish then activate a different key while one accepted notification remains queued.
+    // Publish to HTTPS, without injecting keys into the receiver's existing cache.
     let wrap = WrapKey::from_hex(&"12".repeat(32)).unwrap();
     let key = crypto::generate(ISSUER, &wrap).unwrap();
     let kid = key.public.kid.clone();
@@ -185,8 +187,29 @@ async fn durable_logout_reaches_two_receivers_with_replay_restart_rotation_and_l
     assert_eq!(retry.key.public.kid, kid);
     assert_ne!(retry.claims.token, original_jti);
     let retry_token = signer.sign_logout(retry.key, retry.claims).await.unwrap();
+    receiver.refresh_window().await;
+    receiver.command(json!({"command":"jwks-unavailable","value":true}));
+    assert_eq!(
+        sender.send(&retry.destination, &retry_token).await,
+        DeliveryResult::Retry
+    );
+    assert_eq!(receiver.command(json!({"command":"jwks-requests"})), 2);
+    receiver.sessions(&["newer", "unrelated"]);
+    // A fresh cached overlapping key still validates while JWKS is unavailable.
+    assert_eq!(
+        sender.send(&attempt.destination, &token).await,
+        DeliveryResult::Accepted
+    );
+    assert_eq!(
+        sender.send(&retry.destination, &retry_token).await,
+        DeliveryResult::Retry
+    );
+    assert_eq!(receiver.command(json!({"command":"jwks-requests"})), 2);
+    receiver.command(json!({"command":"jwks-unavailable","value":false}));
+    receiver.refresh_window().await;
     let result = sender.send(&retry.destination, &retry_token).await;
     assert_eq!(result, DeliveryResult::Accepted);
+    assert_eq!(receiver.command(json!({"command":"jwks-requests"})), 3);
     independent
         .finish(retry.id, retry.attempt, result)
         .await

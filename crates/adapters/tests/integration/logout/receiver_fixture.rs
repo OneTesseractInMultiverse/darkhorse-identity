@@ -10,6 +10,8 @@ pub(super) struct Receiver {
     output: BufReader<ChildStdout>,
     pub origin: String,
     pub ca: String,
+    pub jwks_url: String,
+    refresh_cooldown_ms: u64,
 }
 impl Receiver {
     pub fn start() -> Self {
@@ -32,11 +34,25 @@ impl Receiver {
             output,
             origin: String::new(),
             ca: String::new(),
+            jwks_url: String::new(),
+            refresh_cooldown_ms: 0,
         };
         let ready = receiver.read();
         receiver.origin = ready["origin"].as_str().unwrap().into();
         receiver.ca = ready["ca"].as_str().unwrap().into();
+        receiver.jwks_url = ready["jwksUrl"].as_str().unwrap().into();
+        receiver.refresh_cooldown_ms = ready["refreshCooldownMs"].as_u64().unwrap();
         receiver
+    }
+    pub fn configure(&mut self, issuer: &str, client: u128) {
+        self.command(json!({"command":"configure", "path":format!("/{client}"), "issuer":issuer,
+            "client":uuid::Uuid::from_u128(client).to_string(), "jwksUrl":self.jwks_url,"ca":self.ca}));
+    }
+    pub async fn refresh_window(&self) {
+        tokio::time::sleep(std::time::Duration::from_millis(
+            self.refresh_cooldown_ms + 100,
+        ))
+        .await;
     }
     fn read(&mut self) -> Value {
         let mut line = String::new();

@@ -4,10 +4,89 @@ import { generateKeyPairSync, sign } from "node:crypto";
 import {
   parseLogoutRequest,
   receiveLogout,
+  receiveLogoutWithJwks,
 } from "../../lib/reference-logout-receiver.mjs";
 
 const { privateKey, publicKey } = generateKeyPairSync("rsa", {
   modulusLength: 3072,
+});
+
+test("JWKS receiver rejects invalid envelopes and token key URLs before network work", async () => {
+  const source = {
+    getKeys: () => assert.fail("untrusted input triggered retrieval"),
+  };
+  const store = {
+    accept: () => assert.fail("invalid input reached persistence"),
+  };
+  for (const input of [
+    request({ iss: "https://other.example" }),
+    request({ aud: "other" }),
+    request({ exp: 1000 }),
+    request({ sid: "" }),
+    request({ nonce: null }),
+    request({}, { typ: "JWT" }),
+    request({}, { alg: "none" }),
+    request({}, { jku: "https://attacker.example/jwks" }),
+    request({}, { x5u: "https://attacker.example/certificate" }),
+    request({}, { jwk: key }),
+    request({}, { x5c: [] }),
+    { ...request(), body: "logout_token=forged" },
+  ])
+    assert.equal(
+      await receiveLogoutWithJwks(input, context, store, source, () => 1000),
+      400,
+    );
+});
+
+test("JWKS receiver revalidates after I/O and preserves atomic success and retry outcomes", async () => {
+  let now = 1000,
+    calls = 0;
+  const source = {
+    getKeys: async (issuer, kid) => {
+      assert.equal(issuer, context.issuer);
+      assert.equal(kid, key.kid);
+      calls++;
+      return [key];
+    },
+  };
+  const store = { accept: () => "accepted" };
+  const receive = (provider = source, storage = store, input = request()) =>
+    receiveLogoutWithJwks(input, context, storage, provider, () => now);
+  assert.equal(await receive(), 204);
+  assert.equal(calls, 1);
+  assert.equal(await receive(source, { accept: () => "duplicate" }), 204);
+  assert.equal(await receive(source, { accept: () => "invalid" }), 400);
+  assert.equal(await receive({ getKeys: async () => [] }), 400);
+  assert.equal(
+    await receive({
+      getKeys: async () => {
+        throw new Error("outage");
+      },
+    }),
+    503,
+  );
+  assert.equal(
+    await receive(source, {
+      accept: () => {
+        throw new Error("store");
+      },
+    }),
+    503,
+  );
+  assert.equal(
+    await receive(
+      {
+        getKeys: async () => {
+          now = 1120;
+          return [key];
+        },
+      },
+      {
+        accept: () => assert.fail("expired during fetch"),
+      },
+    ),
+    400,
+  );
 });
 const key = {
   ...publicKey.export({ format: "jwk" }),

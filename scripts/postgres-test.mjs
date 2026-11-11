@@ -84,6 +84,8 @@ async function hostChecks(url) {
   await command(process.execPath, [
     "--test",
     "scripts/tests/integration/reference-logout-store.test.mjs",
+    "scripts/tests/integration/reference-jwks-https.test.mjs",
+    "scripts/tests/integration/reference-jwks-receiver.test.mjs",
   ]);
   const env = {
     ...process.env,

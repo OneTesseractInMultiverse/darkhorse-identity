@@ -1,6 +1,6 @@
 // Test-only reference receiver; never included in the deployed Rust server.
 import { createHash } from "node:crypto";
-import { validateLogoutToken } from "./reference-client.mjs";
+import { logoutTokenKeyId, validateLogoutToken } from "./reference-client.mjs";
 
 export function parseLogoutRequest({ method, type, body }) {
   if (
@@ -39,4 +39,28 @@ export function receiveLogout(request, context, store) {
 function acknowledgment(result) {
   if (result === "accepted" || result === "duplicate") return 204;
   return result === "invalid" ? 400 : 503;
+}
+export async function receiveLogoutWithJwks(
+  request,
+  context,
+  store,
+  source,
+  clock,
+) {
+  let kid;
+  try {
+    kid = logoutTokenKeyId(parseLogoutRequest(request), {
+      ...context,
+      now: clock(),
+    });
+  } catch {
+    return 400;
+  }
+  let keys;
+  try {
+    keys = await source.getKeys(context.issuer, kid);
+  } catch {
+    return 503;
+  }
+  return receiveLogout(request, { ...context, keys, now: clock() }, store);
 }

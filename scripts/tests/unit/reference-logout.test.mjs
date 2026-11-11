@@ -133,6 +133,8 @@ test("logout validation rejects forged signatures, unknown keys and token-type s
     { kid: "" },
     { kid: "x".repeat(129) },
     { jku: "https://evil.example" },
+    { x5u: "https://evil.example/certificate" },
+    { x5c: [] },
     { jwk: key },
     { crit: [] },
   ])
