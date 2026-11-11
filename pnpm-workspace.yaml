@@ -2,5 +2,10 @@ packages:
   - apps/console
   - examples/*
 minimumReleaseAge: 1440
+overrides:
+  # GHSA-g3hv-75wg-m249; remove when these parents adopt patched minimatch.
+  "@eslint/config-array@0.23.5>minimatch": 11.0.5
+  "@typescript-eslint/typescript-estree@8.70.0>minimatch": 11.0.5
+  "eslint@10.10.0>minimatch": 11.0.5
 onlyBuiltDependencies:
   - esbuild

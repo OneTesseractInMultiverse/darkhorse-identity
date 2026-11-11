@@ -1,0 +1,240 @@
+{
+  "schema": 1,
+  "date": "2026-11-11",
+  "scope": "Dated full-lockfile audit and scoped minimatch caller/static-asset qualification. Local evidence from modified source; not hosted or production release qualification.",
+  "source": {
+    "revision": "a67b049630b422ee439e4d0eb79f9ecaed5a9f11",
+    "fileCount": 197,
+    "sha256": "906d12a101e9833f6c4086812a9c10dcae86f17917207bbb142b77d5443a61e9",
+    "algorithm": "SHA-256 of sorted tracked apps/console paths, each followed by NUL and file bytes; all bytes match sourceRevision.",
+    "baselineLockSha256": "e8cfd3e24c5137235ac380bd236adbf84b0bb3722fec26ad2ad2c1b9131bc68c",
+    "baselineWorkspaceSha256": "6fd9be5ef2099ec5834c5ca6157d7061714f363c0850138a57231a53ae89c446",
+    "candidateChange": "Only pnpm-workspace.yaml and pnpm-lock.yaml differ for this dependency change. Unrelated concurrent working changes are not qualified by the audit revision field.",
+    "verifierSha256": {
+      "Cargo.toml": "2ac52730a9f1fc995c98565f7c24d86d342b411a9e944ab935521d6d059023e1",
+      "scripts/security-audit.mjs": "eb7171a8afe3b6c5e8273fddea21f64d71115f2987ddfc2a7f9780137204b05b",
+      "scripts/lib/security-audit.mjs": "206d7d48006886875073086e287406adf0d772e91d7c44cf777dbcdb6e27e245",
+      "scripts/lib/security-command.mjs": "a11bd881a4da05c522da216b918006998f538a124aaa4cf26d6db85370b5d07a"
+    }
+  },
+  "audit": {
+    "version": 1,
+    "startedAt": "2026-11-11T01:27:25.120Z",
+    "revision": "a67b049630b422ee439e4d0eb79f9ecaed5a9f11",
+    "trackedChanges": true,
+    "inputs": {
+      "Cargo.lock": "cd960c749cdee3aa0d4a4f67f4acaeb2a97a6429f39996b1a15d385896b421d6",
+      "pnpm-lock.yaml": "e50bc1a212c29d5609571dee44bf57df16c451eae5f24099d69b7f50a36be6a0",
+      "pnpm-workspace.yaml": "9035ee93176c07ce410b42ec42580f92ecf5401a6374de117d43750927afa7b2",
+      "package.json": "8ae7dfa57490bc6b34c381e19e8b5da29bf101f50309a63ddd7b79d32e3f8139",
+      "apps/console/package.json": "f30ff2d443032d0f44cd147fd6123f7c286750473664b3a4db267b85926211e1",
+      ".cargo/audit.toml": "fd5980a47436b944c705c0347401493ec270676385a12964640d05bbf5d42b4e"
+    },
+    "tools": {
+      "cargoAudit": "0.22.2",
+      "pnpm": "11.19.0"
+    },
+    "completedAt": "2026-11-11T01:27:28.400Z",
+    "status": "blocked",
+    "rust": {
+      "dependencies": 353,
+      "databaseRevision": "28d73fc95e5972af3403225a217def57dcaba3c4",
+      "databaseUpdated": "2026-11-10T14:45:03+01:00",
+      "findings": [
+        {
+          "id": "RUSTSEC-2026-0459",
+          "package": "libsqlite3-sys",
+          "version": "0.37.0",
+          "kind": "vulnerability"
+        }
+      ],
+      "exitCode": 1,
+      "status": "blocked"
+    },
+    "node": {
+      "dependencies": 357,
+      "findings": [
+        {
+          "id": "GHSA-gcqx-w48m-w2h4",
+          "package": "deepmerge",
+          "kind": "low"
+        }
+      ],
+      "exitCode": 1,
+      "status": "blocked"
+    }
+  },
+  "scanPolicy": {
+    "command": "make audit-dependencies",
+    "makeExitCode": 2,
+    "auditWrapperExitCode": 1,
+    "rustCommand": "cargo audit --json --deny warnings --db .local/security/advisory-db --url https://github.com/RustSec/advisory-db.git",
+    "nodeCommand": "pnpm audit --json --registry=https://registry.npmjs.org",
+    "scope": "Entire lockfiles, including development, optional and platform-specific packages; no target/severity filters or ignores; informational and yanked warnings retained.",
+    "rustWarnings": 0,
+    "rawNormalizedReportSha256": "e172a729c1a554680d0f1b37b4019c9f2f405fb10e4781737ea9dc8524e0cae4"
+  },
+  "minimatch": {
+    "version": "11.0.5",
+    "advisory": "GHSA-g3hv-75wg-m249",
+    "fixedRange": ">=11.0.1",
+    "overrides": {
+      "@eslint/config-array@0.23.5>minimatch": "11.0.5",
+      "@typescript-eslint/typescript-estree@8.70.0>minimatch": "11.0.5",
+      "eslint@10.10.0>minimatch": "11.0.5"
+    },
+    "addedDependency": "@isaacs/nonrecursive-glob-match@1.1.0",
+    "unchangedDependency": "brace-expansion@5.0.12",
+    "registryCheckedAt": "2026-11-10T23:53:40Z",
+    "publishedAt": "2026-11-05T23:30:59.365Z",
+    "matcherPublishedAt": "2026-11-05T21:38:25.286Z",
+    "minimumReleaseAgeMinutes": 1440,
+    "removalCondition": "Use a maintained parent declaring patched minimatch; review the exact locked graph and callers, remove its override, and pass the full audit. Exact parent changes require requalification.",
+    "retainedCallerApis": [
+      "named minimatch()",
+      "new Minimatch()",
+      ".pattern",
+      ".match(path)",
+      ".match(path, true)"
+    ],
+    "matcherComparison": {
+      "paths": 265,
+      "patterns": [
+        "**",
+        "**/*",
+        "**/*.js",
+        "**/*.mjs",
+        "**/*.cjs",
+        "**/*.ts",
+        "**/*.svelte",
+        "**/*.svelte.ts",
+        "**/*.svelte.js",
+        "**/*.{ts,svelte}",
+        "src/lib/components/ui/**/*.svelte",
+        "tests/unit/**/*.test.ts",
+        "**/node_modules/**",
+        "**/.svelte-kit/**",
+        "**/build/**",
+        "!**/build/**",
+        "src/**",
+        "vite.config.ts"
+      ],
+      "options": [
+        {
+          "dot": true
+        },
+        {
+          "dot": true,
+          "flipNegate": true
+        },
+        {
+          "dot": true,
+          "nocase": true
+        }
+      ],
+      "methods": [
+        "minimatch(path, pattern, options)",
+        "new Minimatch(pattern, options).match(path)",
+        "new Minimatch(pattern, options).match(path, true)"
+      ],
+      "pathConstruction": "Insertion-ordered set: synthetic paths below, then git ls-files apps/console in output order, strip apps/console/ from each file and add it followed by each nonempty directory prefix.",
+      "syntheticPaths": [
+        ".",
+        "",
+        ".hidden.ts",
+        "src/.hidden.ts",
+        "build/index.js",
+        ".svelte-kit/types/index.ts",
+        "node_modules/package/index.js"
+      ],
+      "comparisons": 42930,
+      "unchanged": 42918,
+      "expectedDifferences": "Only partial matching of '.' against **/node_modules/**, **/.svelte-kit/**, **/build/** and !**/build/** across the three option sets. v11 returns false for the positive patterns; negation follows flipNegate. Real child paths and complete matches are unchanged.",
+      "boundedAmplification": "new Minimatch('**/../a/b/'.repeat(12) + 'x', { optimizationLevel: 2, braceExpandMax: 1000 }) throws RangeError in 11.0.5.",
+      "configs": 176,
+      "configSha256": "2c7a41d3305e1c3db590368794da2897114809fe06c366a5e618a6cc0f6cf8e5",
+      "configHashAlgorithm": "SHA-256 of JSON.stringify of [console-relative linted file, effective rules, effective parserOptions] in ESLint output order. Before/after configurations and complete lint JSON were identical."
+    }
+  },
+  "frontend": {
+    "evidenceCompletedAt": "2026-11-11T00:25:48.774Z",
+    "node": "v24.19.0",
+    "pnpm": "11.19.0",
+    "buildVersion": "a67b049630b422ee439e4d0eb79f9ecaed5a9f11",
+    "frozenInstall": "pass",
+    "svelteErrors": 0,
+    "svelteWarnings": 0,
+    "lintedFiles": 176,
+    "lintErrors": 0,
+    "lintWarnings": 0,
+    "unitFiles": 71,
+    "unitTests": 268,
+    "architecture": "pass",
+    "baselineAndCandidateJavaScript": {
+      "files": 47,
+      "rawBytes": 701780,
+      "gzipBytes": 227848,
+      "maximumGzipBytes": 228109,
+      "headroomGzipBytes": 261,
+      "sha256": "7bcf26d77866a6fd490cba36cd598bf07562b43123587f85bb9bd8fd1e1cbb5d"
+    },
+    "baselineAndCandidateApiDocs": {
+      "files": 10,
+      "rawBytes": 187127,
+      "gzipBytes": 61468,
+      "maximumGzipBytes": 81920
+    },
+    "reproduction": [
+      "pnpm install --frozen-lockfile",
+      "pnpm --filter @darkhorse/console check",
+      "pnpm --filter @darkhorse/console exec eslint . --format json",
+      "pnpm --filter @darkhorse/console test:unit",
+      "DARKHORSE_BUILD_VERSION=a67b049630b422ee439e4d0eb79f9ecaed5a9f11 make build-web",
+      "node scripts/architecture-check.mjs",
+      "make audit-dependencies"
+    ],
+    "comparison": "For the baseline, use source.revision and its baseline lock/workspace hashes. For the candidate, keep the same 197 console files and build identifier with the audit.inputs dependency files. make build-web measures and enforces both budgets. No frontend builds or tests were rerun solely for this documentation update.",
+    "warnings": [
+      "Existing @testing-library/jest-dom@6.10.0 deprecation during lock resolution.",
+      "Both static builds reported NO_COLOR ignored because FORCE_COLOR was set; not suppressed."
+    ]
+  },
+  "sqlx": {
+    "registryReviewDate": "2026-11-10",
+    "facadeAndDriver": "0.9.0",
+    "lockedBinding": "0.37.0",
+    "publishedDriverRange": ">=0.30.1, <0.38.0",
+    "patchedBindingRange": ">=0.39.0",
+    "publishedPatchedBindings": ["0.39.0", "0.39.1"],
+    "officialSourceFix": "10462fa4414c6c7f1ed1d39bb31678e3b726878c",
+    "sourceFixPullRequest": "https://github.com/transact-rs/sqlx/pull/4502",
+    "qualification": "Published-compatible resolution remains blocked. Official source admits 0.39.x; selective driver patch dry run adds a second core source identity. A coherent Git-family change requires separate review of migrations, pooling, TLS and PostgreSQL source delta; none was installed.",
+    "activeGraph": "Host cargo tree -i libsqlite3-sys --locked --offline had no active path. All-target feature inspection was incomplete because a package was not cached. Neither observation narrows the full-lockfile audit."
+  },
+  "remaining": [
+    "deepmerge 4.3.1: no published patch in the dated registry check; npm audit patched range >=4.3.2 is not a published release.",
+    "RUSTSEC-2026-0459 in libsqlite3-sys 0.37.0 remains blocked by released SQLx bounds.",
+    "Issue #47 remains open. Strict dependency qualification is blocked; hosted checks for the resulting commits and broader release gates remain separate."
+  ],
+  "integration": {
+    "scope": "Local final working changes; hosted verification of the resulting commits remains separate. No production capacity or complete coverage claim.",
+    "make ci": {
+      "status": "pass",
+      "rustUnitTests": 496,
+      "frontendTests": 268,
+      "toolingTests": 210,
+      "exampleTests": 13
+    },
+    "make test-postgres": {
+      "status": "pass",
+      "postgresTests": 320,
+      "nodeIntegrationTests": 11,
+      "restrictedRuntimeAndOperatorAuthority": "pass"
+    },
+    "make test-browser-focused": {
+      "status": "pass",
+      "scope": "HTTPS console, authentication, OIDC, session and logout flows with configured shared security controls"
+    },
+    "independentReview": "No actionable finding in the recorded receiver and scoped dependency changes; runner wiring reviewed separately during integration."
+  }
+}

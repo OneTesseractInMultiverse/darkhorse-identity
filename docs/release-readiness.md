@@ -57,13 +57,37 @@ See the [dependency decision](dependencies.md#phone-validator-replacement) and
 the issue's exact revision/hosted evidence. This clears that dated advisory
 finding. It does not qualify the open release gates below.
 
+The [November dependency qualification record](measurements/dependency-qualification-2026-11-11.json)
+ties the scoped minimatch 11.0.5 remediation to exact source/lock hashes and the
+unchanged bundle comparison. Its frontend qualification passed frozen installation,
+types, lint of the same 176 files, 268 tests and static output. The complete
+production JavaScript remains 227,848 gzip bytes against the 228,109-byte limit;
+the API documentation route remains 61,468 against 81,920. These measurements do
+not establish application latency, coverage completeness or release readiness.
+
+The completed **2026-11-11 UTC** strict local audit checked 353 Rust and 357
+JavaScript packages with the pinned auditors. Its remaining findings are
+`deepmerge 4.3.1` and `libsqlite3-sys 0.37.0`; both scanners exited 1. Local
+`make ci`, the complete PostgreSQL suite and `make test-browser-focused` passed
+for the integrated changes. These functional results do not clear the audit.
+Deepmerge has no published fix at the dated review. The patched SQLite binding
+is published, but SQLx 0.9.0 excludes it. SQLx's official unpublished source admits
+the fix; adopting a coherent source family needs separate migration, TLS, pooling
+and PostgreSQL qualification. See the [dependency review](dependencies.md#remaining-upstream-blockers)
+for the release/source distinction and the minimatch override removal conditions.
+Keep [#47](https://github.com/OneTesseractInMultiverse/darkhorse-identity/issues/47)
+open until the strict audit and applicable integration/hosted criteria pass.
+
 ## Hosted checks
 
-The **2026-11-10 UTC** hosted run passed source, PostgreSQL, Redis/native and HTTPS
+The **2026-11-10 UTC** [hosted run](https://github.com/OneTesseractInMultiverse/darkhorse-identity/actions/runs/42915211680)
+passed source, PostgreSQL, Redis/native and HTTPS
 browser/delivery verification, but dependency qualification failed on new
 transitive findings. [Issue #47](https://github.com/OneTesseractInMultiverse/darkhorse-identity/issues/47)
-records remediation. The strict dependency gate remains blocked; functional passes
-do not clear it. See the [current advisory findings](dependencies.md#november-2026-findings).
+records remediation. That run predates the scoped minimatch change and does not
+qualify it. The local dependency evidence is separate from hosted verification
+of the final changes. The strict dependency gate remains blocked; functional
+passes do not clear it. See the [current advisory findings](dependencies.md#november-2026-findings).
 
 [CI](../.github/workflows/ci.yaml) runs on pushes to `main`, pull requests targeting
 `main`, and manual dispatch. **Source verification** runs the source checks above

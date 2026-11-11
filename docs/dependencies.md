@@ -222,26 +222,112 @@ unmaintained-package finding.
 
 ### November 2026 findings
 
-The **2026-11-10 UTC** [hosted scan](https://github.com/OneTesseractInMultiverse/darkhorse-identity/actions/runs/42908245816)
-is blocked for the unchanged lockfiles by `libsqlite3-sys` 0.37.0
+The initial **2026-11-10 UTC** [hosted scan](https://github.com/OneTesseractInMultiverse/darkhorse-identity/actions/runs/42908245816)
+reported `libsqlite3-sys` 0.37.0
 ([RUSTSEC-2026-0459](https://rustsec.org/advisories/RUSTSEC-2026-0459.html)),
 `deepmerge` 4.3.1
 ([GHSA-gcqx-w48m-w2h4](https://github.com/advisories/GHSA-gcqx-w48m-w2h4)), and
 `minimatch` 10.2.6
 ([GHSA-g3hv-75wg-m249](https://github.com/advisories/GHSA-g3hv-75wg-m249)).
-The report covers 353 Rust and 356 JavaScript packages. SQLx retains the optional
+That report covered 353 Rust and 356 JavaScript packages. SQLx retains the optional
 SQLite crate in the lockfile despite Darkhorse's PostgreSQL-only enabled Rust
 graph. The JavaScript findings enter through the Svelte build plugin and lint
 tooling. Those boundaries do not exempt packages from the full-lockfile gate.
 Node's built-in SQLite used in test tooling is separately supplied by the pinned
 Node binary; the Rust crate advisory is not a scan of that binary.
 
-The published SQLite crate fix starts at 0.39.0 and the minimatch fix at 11.0.1;
-these require compatible parent updates or separately qualified alternatives.
-No patched deepmerge release is published. [Issue #47](https://github.com/OneTesseractInMultiverse/darkhorse-identity/issues/47)
-tracks remediation, compatibility tests and hosted requalification. No ignore,
-severity exclusion or scan narrowing is introduced. Earlier dated passing scans
-below remain historical evidence, not current release clearance.
+#### Scoped minimatch remediation
+
+The qualified resolution is **minimatch 11.0.5**, which fixes
+[GHSA-g3hv-75wg-m249](https://github.com/advisories/GHSA-g3hv-75wg-m249), with
+**@isaacs/nonrecursive-glob-match 1.1.0** as its only added dependency. The existing
+`brace-expansion 5.0.12` is unchanged. The workspace overrides only these inspected
+parent edges:
+
+```yaml
+"@eslint/config-array@0.23.5>minimatch": 11.0.5
+"@typescript-eslint/typescript-estree@8.70.0>minimatch": 11.0.5
+"eslint@10.10.0>minimatch": 11.0.5
+```
+
+Official registry metadata checked on **2026-11-10 UTC** still had ESLint 10.14.0,
+config-array 0.23.5 and TypeScript-estree 8.72.2 declaring minimatch 10 ranges.
+Updating those parents alone would not remediate the finding. Minimatch 11.0.5
+was published Nov 5, as was its new matcher dependency; both meet the unchanged
+one-day minimum release age. The newer Nov 10 minimatch 11.0.6 and 11.0.7 releases
+were ineligible at qualification time. Both selected packages use BlueOak-1.0.0;
+their distributed notices remain applicable. [Minimatch registry](https://registry.npmjs.org/minimatch),
+[matcher registry](https://registry.npmjs.org/@isaacs%2Fnonrecursive-glob-match).
+
+The [v11 API changes](https://raw.githubusercontent.com/isaacs/minimatch/v11.0.5/changelog.md)
+remove RegExp/AST and internal matching APIs. The inspected parents use only the
+retained named `minimatch` function, `Minimatch` constructor, `.pattern` and
+complete/partial `.match()` methods. None reads the changed `.set` entries.
+CommonJS and ESM loading work with pinned Node 24.19.0. A comparison of 42,930
+matching results found only twelve documented partial-matching corrections for
+the synthetic `.` path; all real child-path results were unchanged. ESLint's walk
+visits child entries, while configuration ignores use complete matching. The
+same 176 files and effective rule/parser configurations passed lint before and
+after. A bounded amplification probe confirms the patched `RangeError` guard.
+This is qualification of these callers, not a claim of universal v10/v11 equivalence.
+
+Frozen installation, strict types, 268 frontend tests and static builds passed.
+The before/after production JavaScript digest is identical: 47 files, **227,848
+gzip bytes** under the unchanged **228,109-byte** ceiling. The API documentation
+route remains **61,468 gzip bytes** under **81,920**. Rust authority, transactions,
+static SvelteKit output and deployed JavaScript are unchanged; no application
+latency or capacity improvement is claimed. The [qualification record](measurements/dependency-qualification-2026-11-11.json)
+contains source/lock hashes, commands, matcher comparison inputs, bundle digests
+and dated scan results.
+
+Review each override when its exact parent version changes. Remove it when the
+maintained parent declares a patched minimatch range and the resulting locked
+graph, caller compatibility and full audit pass. Do not widen the override
+silently or treat a new parent version as qualified by this evidence.
+
+The completed **2026-11-11 UTC** strict scan used cargo-audit 0.22.2 and pnpm
+11.19.0 against these locked inputs. It checked 353 Rust and 357 JavaScript
+packages and found only the SQLite and deepmerge advisories below; minimatch
+was absent from the findings. Both scanners exited 1, so qualification remains
+blocked. The RustSec database revision was
+`28d73fc95e5972af3403225a217def57dcaba3c4`. The final local source, PostgreSQL
+and HTTPS browser checks passed; those results do not clear the advisory gate.
+
+#### Remaining upstream blockers
+
+The **2026-11-10 UTC** package review found no published patched deepmerge:
+the latest registry release is 4.3.1, and Svelte Vite plugin 7.3.1 still declares
+`deepmerge ^4.3.1`. The locked plugin remains 7.3.0. npm's audit response names
+`>=4.3.2` as a patched range, but 4.3.2 is not published; that range is not an
+installable fix. The plugin merges build configuration with array-replacement
+semantics, so replacing the merge library requires explicit compatibility evidence.
+[Deepmerge registry](https://registry.npmjs.org/deepmerge),
+[plugin registry](https://registry.npmjs.org/@sveltejs%2Fvite-plugin-svelte).
+
+Patched `libsqlite3-sys` **0.39.0 and 0.39.1 are published**. The released
+SQLx 0.9.0 family is the constraint: its SQLite driver requires
+`>=0.30.1, <0.38.0`, excluding the advisory's patched `>=0.39.0` range. The facade
+pins its driver/core/macro family to `=0.9.0`. A precise 0.39.1 resolver dry run
+fails that bound. The host's enabled PostgreSQL feature graph has no active
+SQLite path; the complete lockfile still includes it and remains in the audit.
+[Published driver manifest](https://docs.rs/crate/sqlx-sqlite/0.9.0/source/Cargo.toml),
+[official registry entry](https://github.com/rust-lang/crates.io-index/blob/master/sq/lx/sqlx-sqlite).
+
+An official source fix exists in [SQLx PR #4502](https://github.com/transact-rs/sqlx/pull/4502),
+merged Nov 8 at [`10462fa4`](https://github.com/transact-rs/sqlx/commit/10462fa4414c6c7f1ed1d39bb31678e3b726878c).
+It admits 0.39.x, but is not in the published 0.9.0 metadata. A dry run patching
+only the driver to that revision resolves 0.39.1 while adding a second
+`sqlx-core` source identity; those core types are not interchangeable. A coherent
+Git-source family update avoids that split but also changes pooling, TLS,
+PostgreSQL execution and migrations relative to the published crates. It is an
+available source-level alternative requiring separate review and boundary
+qualification, not a qualified drop-in release. No Git override was installed.
+
+[Issue #47](https://github.com/OneTesseractInMultiverse/darkhorse-identity/issues/47)
+remains open for these blockers, integration evidence and hosted requalification.
+No ignore, severity exclusion, warning suppression or scan narrowing is introduced.
+Earlier dated passing scans below remain historical evidence, not current
+release clearance.
 
 ### Earlier findings
 
