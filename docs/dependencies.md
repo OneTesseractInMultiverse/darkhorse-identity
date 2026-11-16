@@ -293,6 +293,25 @@ blocked. The RustSec database revision was
 `28d73fc95e5972af3403225a217def57dcaba3c4`. The final local source, PostgreSQL
 and HTTPS browser checks passed; those results do not clear the advisory gate.
 
+#### Rustix build-dependency correction
+
+On **2026-11-13 UTC**, the lockfile updates rustix from **1.1.5 to 1.1.6** to
+address [RUSTSEC-2026-0486](https://rustsec.org/advisories/RUSTSEC-2026-0486.html).
+The published patch corrects extended-attribute calls that could mark unwritten
+bytes initialized for a zero-length buffer. It is accepted by tempfile's existing
+version requirement. The enabled dependency chain is tempfile → prost-build →
+rlibphonenumber, used when building the bundled phone metadata. No workspace
+manifest or feature changes, advisory exceptions, or unrelated Windows dependency
+updates are included.
+
+Locked offline resolution and the actual local HTTPS browser gate passed with
+the patched version. The strict scan checked 353 Rust and 357 JavaScript packages;
+rustix is absent from its findings. The two existing SQLite and deepmerge findings
+remain, and both scanners still exit 1. Updating this build dependency does not
+clear the release gate or establish application performance improvements. The
+[dated qualification record](measurements/dependency-qualification-2026-11-13.json)
+records exact audit inputs, tool versions and remaining findings.
+
 #### Remaining upstream blockers
 
 The **2026-11-10 UTC** package review found no published patched deepmerge:

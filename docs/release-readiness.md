@@ -78,6 +78,13 @@ for the release/source distinction and the minimatch override removal conditions
 Keep [#47](https://github.com/OneTesseractInMultiverse/darkhorse-identity/issues/47)
 open until the strict audit and applicable integration/hosted criteria pass.
 
+The **2026-11-13 UTC** refresh removes the newly reported rustix advisory through
+a compatible lockfile update to 1.1.6. The subsequent strict scan still reports
+only the two blockers above. The actual Rust discovery/JWKS browser scenario also
+passed locally, including unknown-key refresh at the retrieval boundary and
+targeted logout after supported signing-key activation. These results do not
+establish independent-client conformance or make the dependency gate pass.
+
 ## Hosted checks
 
 The **2026-11-10 UTC** [hosted run](https://github.com/OneTesseractInMultiverse/darkhorse-identity/actions/runs/42915211680)

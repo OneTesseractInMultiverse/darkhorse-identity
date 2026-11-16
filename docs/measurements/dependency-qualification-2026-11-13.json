@@ -1,0 +1,100 @@
+{
+  "schema": 1,
+  "date": "2026-11-13",
+  "scope": "Scoped rustix lockfile correction and strict full-lockfile audit; local working-source evidence. Hosted verification and production release qualification remain separate.",
+  "baseRevision": "571e33e5fbb7c6b2c8034fb1d7af664c10fc7c2e",
+  "patch": {
+    "package": "rustix",
+    "before": "1.1.5",
+    "after": "1.1.6",
+    "advisory": "RUSTSEC-2026-0486",
+    "source": "https://rustsec.org/advisories/RUSTSEC-2026-0486.html",
+    "enabledPath": ["tempfile", "prost-build", "rlibphonenumber"],
+    "exposure": "Build-time phone-metadata generation; no workspace feature changes. This does not narrow full-lockfile audit scope.",
+    "lockfileDelta": "Only rustix version and checksum; original compatible Windows dependency resolutions retained.",
+    "manifestSha256": "2ac52730a9f1fc995c98565f7c24d86d342b411a9e944ab935521d6d059023e1",
+    "lockedOfflineMetadata": "pass"
+  },
+  "audit": {
+    "version": 1,
+    "startedAt": "2026-11-13T06:48:55.856Z",
+    "revision": "571e33e5fbb7c6b2c8034fb1d7af664c10fc7c2e",
+    "trackedChanges": true,
+    "inputs": {
+      "Cargo.lock": "0e727a077eeed14becd8daa1e37a228163394f3fb8756ca516a0b52e02fc04d7",
+      "pnpm-lock.yaml": "e50bc1a212c29d5609571dee44bf57df16c451eae5f24099d69b7f50a36be6a0",
+      "pnpm-workspace.yaml": "9035ee93176c07ce410b42ec42580f92ecf5401a6374de117d43750927afa7b2",
+      "package.json": "8ae7dfa57490bc6b34c381e19e8b5da29bf101f50309a63ddd7b79d32e3f8139",
+      "apps/console/package.json": "f30ff2d443032d0f44cd147fd6123f7c286750473664b3a4db267b85926211e1",
+      ".cargo/audit.toml": "fd5980a47436b944c705c0347401493ec270676385a12964640d05bbf5d42b4e"
+    },
+    "tools": {
+      "cargoAudit": "0.22.2",
+      "pnpm": "11.19.0"
+    },
+    "completedAt": "2026-11-13T06:48:58.219Z",
+    "status": "blocked",
+    "rust": {
+      "dependencies": 353,
+      "databaseRevision": "af7b3ec33460b8e2de8d422e16d628518891a519",
+      "databaseUpdated": "2026-11-12T15:21:59+01:00",
+      "findings": [
+        {
+          "id": "RUSTSEC-2026-0459",
+          "package": "libsqlite3-sys",
+          "version": "0.37.0",
+          "kind": "vulnerability"
+        }
+      ],
+      "exitCode": 1,
+      "status": "blocked"
+    },
+    "node": {
+      "dependencies": 357,
+      "findings": [
+        {
+          "id": "GHSA-gcqx-w48m-w2h4",
+          "package": "deepmerge",
+          "kind": "low"
+        }
+      ],
+      "exitCode": 1,
+      "status": "blocked"
+    }
+  },
+  "policy": {
+    "command": "make audit-dependencies",
+    "exitCode": 2,
+    "scope": "Entire Rust and JavaScript lockfiles, including development, optional and platform-specific packages. No ignores, severity filters or warning suppression.",
+    "normalizedReportSha256": "9d76b534ea8ca709e1d71563f9fee15251c86c492c135c74e82b95190ff66110"
+  },
+  "validation": {
+    "make test-browser-focused": {
+      "status": "pass",
+      "scope": "Real Rust HTTPS discovery/JWKS, supported key activation, unknown-key refresh, two-application logout delivery, and the existing managed browser suite."
+    },
+    "make ci": {
+      "status": "pass",
+      "rustUnitTests": 496,
+      "frontendTests": 268,
+      "toolingTests": 233,
+      "exampleTests": 13,
+      "productionJavaScriptGzipBytes": 227848,
+      "productionJavaScriptCeilingGzipBytes": 228109
+    },
+    "packagedQualificationDate": "2026-11-15",
+    "make docker-build": {
+      "status": "pass",
+      "imageId": "sha256:40e696b060335f37f01b4cc071b9ad871dd4afb174141bc45fbcdeb5341fde58"
+    },
+    "make test-compose": {
+      "status": "pass",
+      "scope": "Packaged TLS/OIDC, restricted runtime/account/catalog commands, outages, durable restart and exact quarantined logout archive restoration. No restored server or delivery worker starts."
+    }
+  },
+  "remaining": [
+    "RUSTSEC-2026-0459 in libsqlite3-sys 0.37.0.",
+    "GHSA-gcqx-w48m-w2h4 in deepmerge.",
+    "Issue #47 remains open; successful functional checks do not clear the dependency gate."
+  ]
+}
