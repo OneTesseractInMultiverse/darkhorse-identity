@@ -30,6 +30,12 @@ export async function objectService(command, docker) {
         "768m",
         "--cpus",
         "2",
+        "--tmpfs",
+        "/data:size=512m,mode=1777",
+        "--log-opt",
+        "max-size=10m",
+        "--log-opt",
+        "max-file=2",
         objectsImage,
       ],
       {

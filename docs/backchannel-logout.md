@@ -416,14 +416,14 @@ uses no proxy configuration, redirects, retries or shared HTTP agent. Its policy
 cache coordinator and HTTPS coordinator live in `reference-jwks-policy.mjs`,
 `reference-jwks.mjs` and `reference-jwks-https.mjs` respectively.
 
-| Bound          | Fixture policy                                                                                                             |
-| -------------- | -------------------------------------------------------------------------------------------------------------------------- |
-| Fetch deadline | 2 seconds total, including DNS, connection, TLS, headers and body                                                          |
-| Response       | HTTP 200 JSON/JWK-set JSON only; no compression; at most 64 KiB, 8 KiB of headers and 32 headers                           |
-| Key set        | 1–8 distinct `kid` values; RSA public signing keys, RS256, 2048–4096-bit modulus and exponent 65537                        |
-| Trust input    | HTTPS issuer/URL strings at most 2048 characters each; optional CA PEM at most 32 KiB                                      |
-| Cache          | One immutable snapshot; 60 seconds from fetch start, without stale fallback or sliding extension                           |
-| Refresh        | One in-flight fetch; at most 32 waiting validations; 5-second cooldown after every completed attempt, successful or failed |
+| Bound          | Fixture policy                                                                                                                                    |
+| -------------- | ------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Fetch deadline | 2 seconds total, including DNS, connection, TLS, headers and body                                                                                 |
+| Response       | HTTP 200 JSON/JWK-set JSON only; no compression; at most 64 KiB, 8 KiB of headers and 32 headers                                                  |
+| Key set        | 1–8 distinct `kid` values; RSA public signing keys, RS256, 2048–4096-bit modulus and exponent 65537                                               |
+| Trust input    | HTTPS issuer/URL strings at most 2048 characters each; optional CA PEM at most 32 KiB                                                             |
+| Cache          | One immutable snapshot; 60 seconds by default, explicitly configurable up to 120 seconds from fetch start; no stale fallback or sliding extension |
+| Refresh        | One in-flight fetch; at most 32 waiting validations; 5-second cooldown after every completed attempt, successful or failed                        |
 
 An unknown `kid` triggers a refresh only after the cooldown. A missing `kid` is
 invalid and cannot trigger retrieval. Concurrent
@@ -463,6 +463,60 @@ the cooldown. Broader independent-client interoperability, adversarial
 load and operational capacity remain qualification work. Provider-wide discovery
 support remains unadvertised.
 
+### Actual provider discovery and JWKS routes
+
+The managed HTTPS browser fixture also includes a scenario in
+[`logout-jwks-browser.mjs`](../scripts/lib/logout-jwks-browser.mjs) that uses the
+running Rust server's discovery, `/jwks`, authorization, token and logout routes.
+The scenario passed the managed local HTTPS browser gate on 2026-11-13, including
+the receiver's refresh-cause assertion and teardown completion.
+The earlier PostgreSQL scenario and its simulated publisher remain available for
+outage, restart and delivery qualification.
+
+The browser scenario independently configures the canonical HTTPS issuer and exact
+`<issuer>/jwks` location. Discovery is read over verified HTTPS and must return both
+values exactly. Relative URLs, other origins, alternate paths, query/fragment
+substitutions and ambiguous JSON fail before a key source is configured. Discovery
+and key retrieval share the bounded transport above; no token-provided location is
+used. The receiver reuses the standalone fixture's listener bounds, token
+validators, JWKS cache and atomic SQLite store. Its explicit private destination
+exception and fixture CA are configured in the Rust delivery worker before startup.
+
+Each run registers two applications, performs normal consent and PKCE code
+exchanges, and creates multiple local sessions from the resulting signed bindings.
+It stages and activates a new key through the supported operator commands. Both
+initial fixture setup and rotation wait through the actual 60-second publication
+guard; signing timestamps and triggers are never modified. The new key must appear
+on the real `/jwks` route before activation, and the prior key must retain its full
+600-second verification overlap afterward.
+
+This scenario explicitly uses a 120-second receiver cache, within the enforced
+maximum, so a safely activated key can still be unknown to a fresh cache. The
+default 60-second cache would expire during the provider's 60-second publication
+wait and exercise expiry refresh instead. The case checks that the old snapshot
+remains fresh and lacks the newly published key, then requires the two actual
+Logout Tokens to cause exactly one additional fetch. Bounded evidence at the
+retrieval decision must identify an unknown key in a still-fresh snapshot; expiry
+between the preflight check and notification delivery cannot satisfy this claim.
+It also checks that the
+intended sessions are removed, older and rotated delayed callbacks cannot restore
+them, and a newer login and an unrelated principal's actual login remain active.
+Only an unrelated test identity is seeded in the disposable database; its login,
+consent, tokens and RP associations use the normal server paths.
+
+Publication waits receive the owning run's cancellation signal and check it before
+activation. Teardown attempts every owned browser, server, receiver and service
+even if an earlier close fails, and reports those failures. Disposable native
+fixtures use bounded temporary storage for every image-declared volume path and
+bounded container logs; they do not retain anonymous database or object volumes.
+
+Retirement is deliberately outside this case: the retiring key remains published
+for its required overlap, and no timer or database transition is bypassed to remove
+it early. Production DNS/ingress topology, independent application libraries,
+full OIDC conformance, emergency key compromise and sustained-load behavior remain
+separate qualification. This scenario does not enable provider-wide logout
+discovery advertisement.
+
 ## Termination contract
 
 The notification implementation uses the session-specific profile from the
@@ -485,7 +539,7 @@ are implemented and survive ordinary browser logout. Account epoch changes
 invalidate them. Offline grants remain unsupported.
 
 Remaining #14 work includes authenticated password/credential lifecycle workflows and other account-security triggers,
-provider-backed qualification of automatic receiver key refresh, broader independent-client interoperability
+broader independent-client interoperability
 and failure qualification, and production capacity measurements. RP-initiated
 browser logout remains a separate pending profile decision. Provider-wide discovery
 support is not advertised until that work is complete.
@@ -531,8 +585,8 @@ source-defined keys and fake storage; filesystem and process checks are kept und
 The JWKS slice has focused commands, independent of Docker:
 
 ```sh
-node --test scripts/tests/unit/reference-jwks*.test.mjs scripts/tests/unit/reference-client.test.mjs scripts/tests/unit/reference-logout*.test.mjs
-node --test scripts/tests/integration/reference-jwks*.test.mjs scripts/tests/integration/reference-logout-store.test.mjs
+node --test scripts/tests/unit/reference-*.test.mjs scripts/tests/unit/logout-jwks*.test.mjs
+node --test scripts/tests/integration/reference-jwks*.test.mjs scripts/tests/integration/reference-logout-store.test.mjs scripts/tests/integration/logout-jwks*.test.mjs
 ```
 
 The latter uses temporary loopback HTTPS listeners, OpenSSL and explicit fixture CA
@@ -542,7 +596,11 @@ each local receiver/JWKS integration file once before the provider-backed tests.
 `make test-logout-https` creates a temporary CA and HTTPS server to verify TLS trust,
 hostnames, proxy/redirect rejection, private-address approval, acknowledgment
 handling and timeouts. It removes its temporary files and creates no Docker volumes.
-`make test-browser-focused` verifies the existing management and login workflows.
+`make test-browser-focused` also runs the actual provider discovery/JWKS scenario
+inside its provider phase, alongside the management and login workflows. Its
+initial signing setup and the rotation case each allow the natural publication wait;
+the added setup/wait budget is approximately two minutes. The receiver listener
+and in-memory store are closed by the managed browser fixture's cleanup.
 These checks do not establish full OIDC conformance or production readiness.
 
 ## Source reference

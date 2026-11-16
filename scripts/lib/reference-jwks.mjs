@@ -5,6 +5,7 @@ import {
   trustedJwksConfiguration,
   parseJwks,
   jwksAction,
+  jwksRefreshEvidence,
 } from "./reference-jwks-policy.mjs";
 export {
   JWKS_LIMITS,
@@ -14,9 +15,19 @@ export {
 
 export function createJwksSource(
   configuration,
-  { clock = () => performance.now(), transport = createJwksTransport() } = {},
+  {
+    clock = () => performance.now(),
+    transport = createJwksTransport(),
+    cacheMs = JWKS_LIMITS.cacheMs,
+  } = {},
 ) {
   const trusted = trustedJwksConfiguration(configuration);
+  if (
+    !Number.isSafeInteger(cacheMs) ||
+    cacheMs <= 0 ||
+    cacheMs > JWKS_LIMITS.maxCacheMs
+  )
+    throw new Error("Invalid receiver cache lifetime.");
   const state = {
     keys: [],
     expiresAt: 0,
@@ -24,11 +35,13 @@ export function createJwksSource(
     pending: null,
     waiters: 0,
   };
-  function refresh(started) {
+  let lastRefresh = null;
+  function refresh(started, kid) {
+    lastRefresh = jwksRefreshEvidence(state, kid, started);
     return (async () => parseJwks(await transport(trusted)))()
       .then((keys) => {
         state.keys = keys;
-        state.expiresAt = started + JWKS_LIMITS.cacheMs;
+        state.expiresAt = started + cacheMs;
       })
       .finally(() => {
         state.refreshAt = clock() + JWKS_LIMITS.cooldownMs;
@@ -36,6 +49,7 @@ export function createJwksSource(
       });
   }
   return Object.freeze({
+    lastRefresh: () => lastRefresh,
     async getKeys(issuer, kid) {
       if (
         issuer !== trusted.issuer ||
@@ -49,7 +63,7 @@ export function createJwksSource(
       if (action === "cached") return state.keys;
       if (action === "unavailable")
         throw new Error("Trusted JWKS unavailable.");
-      if (action === "refresh") state.pending = refresh(now);
+      if (action === "refresh") state.pending = refresh(now, kid);
       state.waiters++;
       try {
         await state.pending;

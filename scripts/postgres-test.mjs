@@ -86,6 +86,7 @@ async function hostChecks(url) {
     "scripts/tests/integration/reference-logout-store.test.mjs",
     "scripts/tests/integration/reference-jwks-https.test.mjs",
     "scripts/tests/integration/reference-jwks-receiver.test.mjs",
+    "scripts/tests/integration/logout-jwks-browser-receiver.test.mjs",
   ]);
   const env = {
     ...process.env,

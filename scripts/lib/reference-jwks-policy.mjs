@@ -9,6 +9,7 @@ export const JWKS_LIMITS = Object.freeze({
   keys: 8,
   cooldownMs: 5000,
   cacheMs: 60000,
+  maxCacheMs: 120000,
   waiters: 32,
 });
 function requireValid(condition) {
@@ -109,7 +110,7 @@ function publicKey(value) {
   );
   return Object.freeze(key);
 }
-export function parseJwks(body) {
+export function parseTrustedJson(body) {
   requireValid(
     (typeof body === "string" || Buffer.isBuffer(body)) &&
       Buffer.byteLength(body) <= JWKS_LIMITS.responseBytes,
@@ -119,7 +120,10 @@ export function parseJwks(body) {
       ? body
       : new TextDecoder("utf-8", { fatal: true }).decode(body);
   uniqueMembers(text);
-  const value = JSON.parse(text);
+  return JSON.parse(text);
+}
+export function parseJwks(body) {
+  const value = parseTrustedJson(body);
   requireValid(
     object(value) &&
       Object.keys(value).length === 1 &&
@@ -137,6 +141,19 @@ export function jwksAction(state, kid, now) {
   if (state.waiters >= JWKS_LIMITS.waiters) return "unavailable";
   if (state.pending) return "join";
   return now < state.refreshAt ? "unavailable" : "refresh";
+}
+export function jwksRefreshEvidence(state, kid, now) {
+  return Object.freeze({
+    reason:
+      state.keys.length === 0
+        ? "initial"
+        : now < state.expiresAt
+          ? "unknown-key"
+          : "expired",
+    kid,
+    startedAt: now,
+    previousExpiresAt: state.expiresAt,
+  });
 }
 export function validJwksResponse(status, headers, count) {
   const length = headers["content-length"];

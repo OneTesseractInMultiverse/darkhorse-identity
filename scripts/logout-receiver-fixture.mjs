@@ -12,6 +12,10 @@ import { idTokenKeyId, validateIdToken } from "./lib/reference-client.mjs";
 import { receiveLogoutWithJwks } from "./lib/reference-logout-receiver.mjs";
 import { createLogoutStore } from "./lib/reference-logout-store.mjs";
 import {
+  createLogoutServer,
+  readLogoutBody as body,
+} from "./lib/reference-logout-http.mjs";
+import {
   createJwksSource,
   trustedJwksConfiguration,
   parseJwks,
@@ -35,16 +39,6 @@ let database,
 function openStore() {
   database = new DatabaseSync(join(directory, "sessions.sqlite"));
   store = createLogoutStore(database, clock);
-}
-async function body(request) {
-  const chunks = [];
-  let bytes = 0;
-  for await (const chunk of request) {
-    bytes += chunk.length;
-    if (bytes > 16384) throw new Error("Body limit.");
-    chunks.push(chunk);
-  }
-  return Buffer.concat(chunks).toString("utf8");
 }
 async function receive(request, response) {
   try {
@@ -162,7 +156,7 @@ try {
     cert: await readFile(join(directory, "edge.pem")),
     maxHeaderSize: 8192,
   };
-  server = createServer(tls, receive);
+  server = createLogoutServer(tls, receive);
   jwksServer = createServer(tls, (request, response) => {
     if (request.method !== "GET" || request.url !== "/jwks") {
       response.writeHead(404).end();

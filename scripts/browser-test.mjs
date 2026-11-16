@@ -4,6 +4,7 @@ import {
   browserCompleted,
 } from "./lib/browser-evidence.mjs";
 import { verifyConsoleLanguages } from "./lib/console-localization-browser.mjs";
+import { closeBrowserResources } from "./lib/browser-cleanup.mjs";
 import assert from "node:assert/strict";
 import { createHash, X509Certificate, randomBytes } from "node:crypto";
 import { createServer } from "node:net";
@@ -20,6 +21,8 @@ import { runBenchmarkCommand } from "./lib/benchmark-command.mjs";
 import { restrictBenchmarkDatabase } from "./lib/benchmark-database.mjs";
 import { startProcess } from "./lib/process.mjs";
 import { seedSigning, verifyProvider } from "./lib/provider-browser.mjs";
+import { startDeployedLogoutReceiver } from "./lib/logout-jwks-browser-receiver.mjs";
+import { verifyDeployedJwks } from "./lib/logout-jwks-browser.mjs";
 import { verifyRegistration } from "./lib/registration-browser.mjs";
 import { verificationMailbox } from "./lib/email-test-smtp.mjs";
 import { verifyEmail } from "./lib/email-verification-browser.mjs";
@@ -91,10 +94,10 @@ export async function verifyBrowser(
 ) {
   const fullBrowser = exercise === exerciseBrowser && !profiling;
   if (fullBrowser) console.log(browserMarker("setup", "started"));
+  const url = new URL(env.DARKHORSE_DATABASE_URL);
   const port = await freePort();
   const tls = await tlsProxy(port, directory, command);
   const origin = `https://localhost:${tls.port}`;
-  const url = new URL(env.DARKHORSE_DATABASE_URL);
   url.pathname = "/browser_test";
   const runtime = {
     ...runtimeEnvironment(env),
@@ -134,7 +137,7 @@ export async function verifyBrowser(
       );
     return result;
   };
-  let server, browser, mailbox, objects;
+  let server, browser, mailbox, objects, logoutReceiver, failure;
   try {
     if (!profiling && exercise === exerciseBrowser) {
       objects = await objectService(command, docker);
@@ -179,7 +182,15 @@ export async function verifyBrowser(
       mailbox.messages.length = 0;
     }
     const { password, principal } = await seedDatabase(db, invoke, docker);
-    await seedSigning(invoke, docker, db);
+    await seedSigning(invoke, { signal });
+    if (fullBrowser) {
+      logoutReceiver = await startDeployedLogoutReceiver(
+        directory,
+        origin,
+        tls.ca,
+      );
+      Object.assign(runtime, logoutReceiver.settings);
+    }
     if (restrictedDatabase)
       runtime.DARKHORSE_DATABASE_URL = await restrictBenchmarkDatabase(
         docker,
@@ -223,6 +234,8 @@ export async function verifyBrowser(
       ]);
     if (fullBrowser) console.log(browserMarker("setup", "passed"));
     await exercise({
+      signal,
+      logoutReceiver,
       mailbox,
       browser,
       origin,
@@ -252,12 +265,21 @@ export async function verifyBrowser(
       authorizationCacheEnabled,
       cleanupEvents,
     });
+  } catch (error) {
+    failure = error;
+    throw error;
   } finally {
-    await browser?.close();
-    await server?.stop();
-    await mailbox?.close();
-    await objects?.close();
-    await tls.close();
+    await closeBrowserResources(
+      [
+        () => browser?.close(),
+        () => server?.stop(),
+        () => logoutReceiver?.close(),
+        () => mailbox?.close(),
+        () => objects?.close(),
+        () => tls.close(),
+      ],
+      failure,
+    );
   }
   if (fullBrowser) console.log(browserCompleted);
 }
@@ -349,6 +371,8 @@ async function launchBrowser(directory) {
 }
 
 async function exerciseBrowser({
+  signal,
+  logoutReceiver,
   mailbox,
   browser,
   origin,
@@ -379,9 +403,21 @@ async function exerciseBrowser({
     verifyRotation(page, context, origin, ca, password, initial),
   );
   await browserPhase("registration", () => verifyRegistration(page, principal));
-  await browserPhase("provider", () =>
-    verifyProvider(page, context, origin, principal, ca, runSql),
-  );
+  await browserPhase("provider", async () => {
+    await verifyProvider(page, context, origin, principal, ca, runSql);
+    await verifyDeployedJwks({
+      signal,
+      browser,
+      page,
+      origin,
+      ca,
+      password,
+      principal,
+      invoke,
+      runSql,
+      receiver: logoutReceiver,
+    });
+  });
   await browserPhase("directory", () =>
     verifyDirectory(page, origin, principal, runSql),
   );

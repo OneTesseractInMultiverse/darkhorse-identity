@@ -368,10 +368,10 @@ test-logout-https: ## Test: disposable HTTPS logout delivery, TLS, SSRF, retries
 
 test-logout: ## Test: Logout Token claims, signing failures and independent reference validation
 	cargo test --workspace --lib --locked --offline logout
-	$(NODE) --test scripts/tests/unit/reference-client.test.mjs scripts/tests/unit/reference-logout.test.mjs scripts/tests/unit/reference-logout-receiver.test.mjs scripts/tests/unit/reference-jwks*.test.mjs
+	$(NODE) --test scripts/tests/unit/reference-*.test.mjs scripts/tests/unit/logout-jwks*.test.mjs
 
 test-logout-receiver: ## Test: receiver/JWKS validation, HTTPS rotation/outage, atomic sessions and replay; Node/OpenSSL, no Docker
-	$(NODE) --test scripts/tests/unit/reference-client.test.mjs scripts/tests/unit/reference-logout.test.mjs scripts/tests/unit/reference-logout-receiver.test.mjs scripts/tests/unit/reference-jwks*.test.mjs scripts/tests/integration/reference-logout-store.test.mjs scripts/tests/integration/reference-jwks*.test.mjs
+	$(NODE) --test scripts/tests/unit/reference-*.test.mjs scripts/tests/unit/logout-jwks*.test.mjs scripts/tests/integration/reference-logout-store.test.mjs scripts/tests/integration/reference-jwks*.test.mjs scripts/tests/integration/logout-jwks*.test.mjs
 
 .PHONY: test-resource-introspection
 

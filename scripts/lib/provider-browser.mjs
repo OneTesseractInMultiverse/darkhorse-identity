@@ -1,4 +1,5 @@
 import { verifyOidcLanguages } from "./oidc-language-browser.mjs";
+import { activatePublishedKey } from "./logout-jwks-signing.mjs";
 import assert from "node:assert/strict";
 import { lstat, readFile } from "node:fs/promises";
 import {
@@ -63,26 +64,10 @@ export async function call(page, path, body) {
     { path, body },
   );
 }
-export async function seedSigning(invoke, docker, db) {
+export async function seedSigning(invoke, { signal } = {}) {
   const staged = JSON.parse((await invoke(["signing-generate", "0"])).stdout);
   assert.match(staged.kid, /^[A-Za-z0-9_-]{43}$/);
-  // Advance only this disposable database's publication fixture.
-  await docker([
-    "exec",
-    db.name,
-    "psql",
-    "-U",
-    "postgres",
-    "-d",
-    "browser_test",
-    "-v",
-    "ON_ERROR_STOP=1",
-    "-c",
-    "ALTER TABLE signing_keys DISABLE TRIGGER signing_transition; UPDATE signing_keys SET created_ms=created_ms-60001; ALTER TABLE signing_keys ENABLE TRIGGER signing_transition;",
-  ]);
-  const active = JSON.parse(
-    (await invoke(["signing-activate", staged.kid, "1"])).stdout,
-  );
+  const active = await activatePublishedKey(invoke, staged, { signal });
   assert.equal(active.phase, "active");
   const status = JSON.parse((await invoke(["signing-status"])).stdout);
   assert.equal(status.revision, 2);

@@ -67,9 +67,13 @@ async function service(role, directory) {
     "--publish",
     `127.0.0.1:${requestedPort}:6379`,
     "--tmpfs",
-    "/run/redis",
+    "/run/redis:size=16m",
     "--tmpfs",
-    "/data",
+    "/data:size=128m",
+    "--log-opt",
+    "max-size=10m",
+    "--log-opt",
+    "max-file=2",
     "--volume",
     `${resolve("config/redis", `${role}.conf`)}:/usr/local/etc/redis/redis.conf:ro`,
     "--volume",
@@ -107,6 +111,22 @@ async function database(network, profiling) {
       "POSTGRES_PASSWORD",
       "--env",
       "POSTGRES_INITDB_ARGS=--encoding=UTF8",
+      "--tmpfs",
+      "/data/db:size=2g,uid=26,gid=26,mode=0700",
+      "--tmpfs",
+      "/backrestrepo:size=16m,uid=26,gid=26",
+      "--tmpfs",
+      "/pgconf:size=16m,uid=26,gid=26",
+      "--tmpfs",
+      "/pgdata:size=16m,uid=26,gid=26",
+      "--tmpfs",
+      "/pgwal:size=16m,uid=26,gid=26",
+      "--tmpfs",
+      "/sshd:size=16m,uid=26,gid=26",
+      "--log-opt",
+      "max-size=10m",
+      "--log-opt",
+      "max-file=2",
       postgresImage,
       ...(profiling
         ? [
@@ -265,7 +285,7 @@ async function hostChecks(
               benchmark.profile,
             ),
         }
-      : undefined;
+      : { signal: abort.signal };
     await verifyBrowser(env, db, directory, command, docker, options);
   }
   return invoke("redis-status");

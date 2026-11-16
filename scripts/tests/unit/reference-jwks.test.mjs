@@ -21,6 +21,72 @@ const key = {
 };
 const rotated = { ...key, kid: "new" };
 const document = (keys = [key]) => JSON.stringify({ keys });
+test("refresh evidence distinguishes an unknown key from expiry at the retrieval boundary", async () => {
+  let now = 0;
+  let calls = 0;
+  const source = createJwksSource(configuration, {
+    cacheMs: 120000,
+    clock: () => now,
+    transport: async () => document(++calls === 1 ? [key] : [key, rotated]),
+  });
+  await source.getKeys(configuration.issuer, key.kid);
+  assert.equal(source.lastRefresh().reason, "initial");
+  now = 119999;
+  await source.getKeys(configuration.issuer, key.kid);
+  now = 120000;
+  await source.getKeys(configuration.issuer, rotated.kid);
+  assert.equal(calls, 2);
+  assert.equal(source.lastRefresh().reason, "expired");
+  assert.equal(source.lastRefresh().kid, rotated.kid);
+  now += 5000;
+  await source.getKeys(configuration.issuer, "not-published");
+  const evidence = source.lastRefresh();
+  assert.equal(evidence.reason, "unknown-key");
+  assert.equal(evidence.kid, "not-published");
+  assert.ok(evidence.startedAt < evidence.previousExpiresAt);
+  assert.throws(() => {
+    evidence.reason = "expired";
+  });
+  assert.equal(source.lastRefresh().reason, "unknown-key");
+});
+test("explicit receiver cache lifetime stays bounded and can span safe provider publication", async () => {
+  for (const cacheMs of [0, -1, 120001, Infinity, "120000", 1.5])
+    assert.throws(() => createJwksSource(configuration, { cacheMs }));
+  let now = 0,
+    calls = 0;
+  const source = createJwksSource(configuration, {
+    cacheMs: 120000,
+    clock: () => now,
+    transport: async () => {
+      calls++;
+      return document(calls === 1 ? [key] : [key, rotated]);
+    },
+  });
+  await source.getKeys(configuration.issuer, key.kid);
+  now = 60100;
+  assert.deepEqual(await source.getKeys(configuration.issuer, key.kid), [key]);
+  assert.equal(
+    calls,
+    1,
+    "old snapshot is still fresh after the publication wait",
+  );
+  assert.deepEqual(await source.getKeys(configuration.issuer, rotated.kid), [
+    key,
+    rotated,
+  ]);
+  assert.equal(
+    calls,
+    2,
+    "unknown kid, not cache expiry, triggers this refresh",
+  );
+  now += 120000;
+  await source.getKeys(configuration.issuer, key.kid);
+  assert.equal(
+    calls,
+    3,
+    "explicit lifetime still expires exactly at its bound",
+  );
+});
 function fixture(transport) {
   let now = 0,
     calls = 0;
