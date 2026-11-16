@@ -17,7 +17,17 @@ import {
   migrate,
   check,
   backup,
+  stopped,
 } from "./lib/deployment-operations.mjs";
+import {
+  assertLogoutArchive,
+  assertLogoutRestore,
+} from "./lib/logout-restore-snapshot.mjs";
+import {
+  logoutRestoreFixture,
+  readLogoutSnapshot,
+  assertQuarantinedLogoutHistory,
+} from "./lib/logout-restore-fixture.mjs";
 import {
   accountCommand,
   accountResult,
@@ -799,6 +809,9 @@ async function archive() {
       });
     }
   }
+  await stopped(stack);
+  await sql(logoutRestoreFixture);
+  const logoutBefore = await readLogoutSnapshot(compose, stack, "darkhorse");
   const archive = await backup(stack);
   const auditCountsQuery =
     "SELECT (SELECT count(*) FROM principals),(SELECT count(*) FROM operator_catalog_audit),(SELECT count(*) FROM operator_catalog_detail_audit),(SELECT count(*) FROM operator_access_detail_audit),(SELECT count(*) FROM operator_application_audit),(SELECT count(*) FROM operator_client_audit),(SELECT count(*) FROM operator_client_secret_audit),(SELECT count(*) FROM operator_client_creation_audit),(SELECT count(*) FROM operator_client_secret_rotation_audit)";
@@ -822,6 +835,7 @@ async function archive() {
     ["exec", "-T", "postgres", "pg_restore", "--list"],
     { input: bytes, capture: true },
   );
+  assertLogoutArchive(inventory.stdout);
   assert.match(inventory.stdout, /browser_sessions/);
   for (const table of [
     "session_audit",
@@ -889,8 +903,13 @@ async function archive() {
     captured,
   );
   assert.equal(restoredLifecycle.stdout.trim(), lifecycleCounts);
+  await assertQuarantinedLogoutHistory(compose, stack);
+  assertLogoutRestore(
+    logoutBefore,
+    await readLogoutSnapshot(compose, stack, "quarantine"),
+  );
   console.log(
-    "Cache degradation, restrictive limiter restart/recovery, database outage, durable restart and quarantined lifecycle/audit archive restore passed.",
+    "Cache degradation, restrictive limiter restart/recovery, database outage, durable restart and quarantined lifecycle/audit/logout archive restore passed. No restored worker or server was started.",
   );
 }
 
@@ -1249,6 +1268,35 @@ async function main() {
   console.log(
     "Compose fixture: isolated credentials, immutable image and private TLS certificates prepared.",
   );
+  // Bound retained test-service logs without changing deployment defaults.
+  const logLimits = join(stack.directory, "test-log-limits.json");
+  await writeFile(
+    logLimits,
+    JSON.stringify({
+      services: Object.fromEntries(
+        [
+          "api",
+          "edge",
+          "postgres",
+          "cache",
+          "limiter",
+          "operator",
+          "account",
+          "migrator",
+        ].map((service) => [
+          service,
+          {
+            logging: {
+              driver: "json-file",
+              options: { "max-size": "10m", "max-file": "2" },
+            },
+          },
+        ]),
+      ),
+    }),
+    { mode: 0o600 },
+  );
+  stack.args.push("--file", logLimits);
   const { principal, password } = await prepare();
   await compose(
     stack,
@@ -1292,11 +1340,41 @@ try {
   }
   process.exitCode = 1;
 } finally {
-  if (stack)
-    await compose(stack, ["down", "--volumes", "--remove-orphans"], {
-      ...captured,
-      acceptFailure: true,
-      signal: undefined,
-    });
+  if (stack) {
+    const stopped = await compose(
+      stack,
+      ["down", "--volumes", "--remove-orphans"],
+      {
+        ...captured,
+        acceptFailure: true,
+        signal: undefined,
+      },
+    );
+    assert.equal(
+      stopped.code,
+      0,
+      "owned Compose cleanup failed; fixture state retained",
+    );
+    for (const resource of [
+      ["ps", "-aq"],
+      ["network", "ls", "-q"],
+      ["volume", "ls", "-q"],
+    ]) {
+      const remaining = await command(
+        "docker",
+        [
+          ...resource,
+          "--filter",
+          `label=com.docker.compose.project=${stack.settings.project}`,
+        ],
+        { ...captured, signal: undefined },
+      );
+      assert.equal(
+        remaining.stdout.trim(),
+        "",
+        "owned Compose resources remain; fixture state retained",
+      );
+    }
+  }
   await rm(stackDirectory(name), { recursive: true, force: true });
 }
