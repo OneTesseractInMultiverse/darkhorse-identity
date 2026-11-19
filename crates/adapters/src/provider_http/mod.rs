@@ -1,5 +1,7 @@
 //! Browser-bound consent and one-time code redirects; token exchange is a separate transport.
 mod context;
+mod continuation;
+pub use continuation::ContinuationKey;
 pub(crate) mod request;
 mod response;
 use crate::{authentication_http, json::SafeJson, session_secret};
@@ -23,14 +25,17 @@ use std::sync::Arc;
 struct Provider<S> {
     store: S,
     issuer: String,
+    continuation_key: ContinuationKey,
 }
 pub fn router<S: AuthorizationStore + CodeStore + SigningStore + 'static>(
     store: S,
     origin: url::Url,
+    continuation_key: ContinuationKey,
 ) -> Router {
     let state = Arc::new(Provider {
         store,
         issuer: origin.origin().ascii_serialization(),
+        continuation_key,
     });
     let public = Router::new()
         .route("/authorize", get(begin::<S>))
@@ -83,20 +88,33 @@ async fn begin<S: AuthorizationStore + CodeStore>(
         {
             complete(&state, digest, session, false).await
         }
-        Ok(Outcome::Pending(_)) => {
-            let reference = session_secret::hex(&digest);
-            let cookie = match context::cookie(&reference, &secret, 300) {
-                Ok(cookie) => cookie,
-                Err(error) => return response::error(error),
-            };
-            let mut response =
-                Redirect::to(&format!("/authorization?request={reference}")).into_response();
-            response.headers_mut().insert(header::SET_COOKIE, cookie);
-            response
+        Ok(Outcome::Pending(_)) => pending_redirect(digest, &secret, None),
+        Ok(Outcome::Login(pending)) => {
+            match state
+                .continuation_key
+                .seal(*pending, &state.issuer, &digest)
+            {
+                Ok(envelope) => pending_redirect(digest, &secret, Some(envelope)),
+                Err(error) => response::error(error),
+            }
         }
         Ok(Outcome::Return { target, error }) => response::redirect(target, error, &state.issuer),
         Err(error) => response::error(error),
     }
+}
+fn pending_redirect(digest: [u8; 32], secret: &str, envelope: Option<String>) -> Response {
+    let selector = session_secret::hex(&digest);
+    let cookie = match context::cookie(&selector, secret, 300) {
+        Ok(cookie) => cookie,
+        Err(error) => return response::error(error),
+    };
+    let reference = match envelope {
+        Some(envelope) => format!("{selector}.{envelope}"),
+        None => selector,
+    };
+    let mut response = Redirect::to(&format!("/authorization?request={reference}")).into_response();
+    response.headers_mut().insert(header::SET_COOKIE, cookie);
+    response
 }
 async fn inspect<S: AuthorizationStore + CodeStore>(
     State(state): State<Arc<Provider<S>>>,
@@ -132,7 +150,11 @@ async fn decide<S: AuthorizationStore + CodeStore>(
     SafeJson(body): SafeJson<Submission>,
 ) -> Response {
     let reference = match context::reference(query.as_deref()) {
-        Ok(reference) if reference == body.request_id => reference,
+        Ok(reference)
+            if context::parts(reference).is_ok_and(|(selector, _)| selector == body.request_id) =>
+        {
+            reference
+        }
         _ => return response::error(Error::InvalidTransaction),
     };
     let decision = match body.decision {
@@ -155,7 +177,25 @@ async fn resume<S: AuthorizationStore + CodeStore>(
         Ok(value) => value,
         Err(_) => return response::error(Error::InvalidTransaction),
     };
-    match state.store.resume(digest, session, decision).await {
+    let outcome = match context::parts(reference) {
+        Ok((_, Some(envelope))) => {
+            match state
+                .continuation_key
+                .open(envelope, &state.issuer, &digest)
+            {
+                Ok(pending) => {
+                    state
+                        .store
+                        .continue_login(pending, digest, session, decision)
+                        .await
+                }
+                Err(error) => Err(error),
+            }
+        }
+        Ok((_, None)) => state.store.resume(digest, session, decision).await,
+        Err(error) => Err(error),
+    };
+    match outcome {
         Ok(Outcome::Pending(view))
             if view.interaction == darkhorse_domain::oidc::Interaction::Ready =>
         {
@@ -167,6 +207,7 @@ async fn resume<S: AuthorizationStore + CodeStore>(
             reference,
         ),
         Err(error) => response::error(error),
+        Ok(Outcome::Login(_)) => response::error(Error::Unavailable),
     }
 }
 async fn complete<S: CodeStore>(

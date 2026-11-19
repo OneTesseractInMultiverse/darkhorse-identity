@@ -14,7 +14,19 @@ pub struct ReturnTo {
 }
 pub enum Outcome {
     Pending(View),
+    Login(Box<Preauthorization>),
     Return { target: ReturnTo, error: Error },
+}
+/// Immutable pre-login facts, authenticated by the transport before continuation.
+/// These facts are not authority: the store rechecks current primary state.
+#[derive(Clone)]
+pub struct Preauthorization {
+    pub request: Request,
+    pub created_ms: u64,
+    pub initial_session: Option<[u8; 32]>,
+    pub client_revision: u64,
+    pub application_revision: u64,
+    pub resource_policy_revision: Option<u64>,
 }
 pub use darkhorse_domain::oidc::Decision;
 pub trait AuthorizationStore: Send + Sync {
@@ -23,6 +35,13 @@ pub trait AuthorizationStore: Send + Sync {
         request: Request,
         handle: [u8; 32],
         session: Option<[u8; 32]>,
+    ) -> impl Future<Output = Result<Outcome, Error>> + Send;
+    fn continue_login(
+        &self,
+        pending: Preauthorization,
+        handle: [u8; 32],
+        session: Option<[u8; 32]>,
+        decision: Decision,
     ) -> impl Future<Output = Result<Outcome, Error>> + Send;
     fn resume(
         &self,

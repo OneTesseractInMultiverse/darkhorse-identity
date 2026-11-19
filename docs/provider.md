@@ -257,14 +257,16 @@ Each OS-generated 256-bit browser handle lives only in a `Secure`, `HttpOnly`,
 Only its purpose-separated SHA-256 digest is stored. Neither handles nor protocol
 credentials enter frontend storage. Each flow has a distinct cookie. Its public
 digest selects the pending transaction through `?request=<reference>` on the
-portal and internal API URLs; the matching cookie proves possession. A separate
-body confirmation must equal that selector, binding each consent submission to
+portal and internal API URLs; the matching cookie proves possession. Before login,
+the reference also carries an encrypted continuation after the digest and a dot.
+A separate body confirmation must equal the 64-character digest, binding each consent submission to
 the request actually displayed. Another tab cannot overwrite this flow's cookie.
 
 `GET /api/authorization?request=<reference>` reads the selected interaction; HEAD
 cannot resume it. The decision endpoint requires the same query selector and
 accepts only that confirmation identifier and `approve`/`deny` in its body. The actor, client, callback,
-challenge, nonce and requested access come from the cookie-bound stored request.
+challenge, nonce and requested access come from the cookie-bound request, either
+in the authenticated continuation or in its materialized database record.
 Unsafe methods require exact Origin, the CSRF header and same-origin Fetch Metadata
 when supplied. Route admission is bounded and responses carry `no-store`,
 `no-referrer`, frame protection and the existing CSP. There is no frontend server.
@@ -275,18 +277,51 @@ application, exact allowances, live credential epoch/session, request lifetime a
 immutable binding. Revoked, expired or changed bindings fail closed. Redis cannot
 make them valid. Requests started after a committed change observe it.
 
-Requests expire after five minutes. Capacity is atomically limited to 100 retained
-requests per client and 5000 overall, with indexed cleanup of at most 100 expired
-rows per new request. A separate capacity row serializes creation. Resumes lock
-only their request after the shared authority lock. These conservative limits bound
+Pre-login requests consume no retained transaction capacity. Rust protects their
+immutable request fields, original creation time, initial session digest and
+registration revisions with AES-256-GCM through AWS-LC. A purpose-separated key
+is derived from the shared deployment login limiter key; additional authenticated
+data binds the envelope to this issuer and this browser proof. Replicas therefore
+share the same continuation protection. Rotating the deployment key invalidates
+outstanding continuations. The browser carries opaque ciphertext and never receives
+the key. The original authorization query remains limited to 8192 bytes; serialized
+plaintext is limited to 16,384 bytes and the complete continuation reference to
+24,576 bytes. Proxies must accommodate that bounded request-target size. The
+consent JSON body remains limited to 1024 bytes. Keep continuation URLs out of
+access logs and analytics, as with other protocol URLs.
+
+On continuation, Rust rechecks current primary authority, the original five-minute
+deadline, registration revisions and, for resource requests, the original policy
+revision. An existing session cannot satisfy forced reauthentication. Only a
+session that satisfies the original request can materialize a database transaction.
+Repeated continuations resume the same record without resetting its expiry or
+rebinding its session. Decisions before authentication are rejected; closing the
+login page does not create a durable cancellation record.
+
+Requests expire after five minutes, including time spent before login. Capacity is atomically limited to 100 retained
+authenticated requests per client and 5000 overall, with indexed cleanup of at most 100 expired
+rows per new record. A separate capacity row serializes creation and first
+materialization. Resuming an existing record locks only its request after the
+shared authority lock; it does not take the global capacity lock. A missing record
+is checked again under that capacity lock before insertion, so concurrent
+continuations cannot allocate duplicate records. These conservative limits bound
 memory and work but are not a throughput guarantee or abuse-rate limiter. Ingress
 flood protection, production sizing and contention/load benchmarks remain release
-work. Sustained quotas can deny new requests. Code, access-token, consent and audit retention need
+work. Authenticated callers can still fill these shared quotas; anonymous traffic
+still incurs request parsing, cryptography and primary reads. This design prevents
+anonymous reservation of retained capacity, not general request-flood denial of
+service. Code, access-token, consent and audit retention need
 an operational policy. Expiry cleanup does not erase those records. Expired refresh families have [bounded cleanup](refresh-tokens.md#migration-and-maintenance).
 Other code and token records currently accumulate. Retention and sustained-load qualification are release
 requirements. Token HTTP admission is capped at 16 concurrent requests per replica
 with a 4096-byte body limit and the shared transport deadline. These are bounds,
 not a distributed token-endpoint abuse limiter or a measured throughput guarantee.
+
+During an upgrade, existing database-backed transactions remain usable for their
+original lifetime. Replace or drain every older replica: an older process can
+still allocate pre-login database rows. Previously allocated rows expire within
+their original five-minute lifetime and are removed by bounded cleanup. No schema
+migration or deletion of active transactions is required for this change.
 
 ## Verification
 
@@ -295,7 +330,10 @@ contracts with source-defined inputs, including a public test-only RSA key. No
 files, settings or services are needed for unit tests. `make test-postgres` covers
 atomic issuance/redemption, one-winner races, replay after expiry, wrong proofs,
 current-state revocation, immutable ceilings and signing/audit rollback alongside
-the earlier persistence contracts. It exercises the resource HTTP flow, frozen
+the earlier persistence contracts. It also checks that repeated anonymous HTTP
+starts leave transaction storage empty while a fresh browser sign-in still obtains
+a code, plus continuation tampering, replay, expiry, forced login, concurrent
+materialization and registration changes. It exercises the resource HTTP flow, frozen
 consent, permission-change races and bounded policy projections. See
 [resource verification](resource-issuance.md#verification-and-remaining-work).
 

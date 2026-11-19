@@ -1,9 +1,13 @@
 use super::*;
-pub(super) async fn capacity(tx: &mut Tx<'_>, client: ClientId) -> Result<(), Error> {
+pub(super) async fn capacity_lock(tx: &mut Tx<'_>) -> Result<(), Error> {
     sqlx::query("SELECT singleton FROM authorization_capacity WHERE singleton FOR UPDATE")
         .fetch_one(&mut **tx)
         .await
         .map_err(storage)?;
+    Ok(())
+}
+pub(super) async fn capacity(tx: &mut Tx<'_>, client: ClientId) -> Result<(), Error> {
+    capacity_lock(tx).await?;
     let now = authority::now(tx).await?;
     sqlx::query("WITH expired AS (SELECT digest FROM authorization_requests WHERE expires_ms<=$1 ORDER BY expires_ms,digest LIMIT $2 FOR UPDATE SKIP LOCKED) DELETE FROM authorization_requests r USING expired e WHERE r.digest=e.digest")
         .bind(integer(now)?)

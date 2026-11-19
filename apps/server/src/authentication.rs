@@ -117,14 +117,19 @@ pub async fn runtime(
         );
         let signer = darkhorse_adapters::tokens::signer::Signer::new(wrap);
         logout = Some((store.clone(), signer.clone(), sender));
-        provider_http::router(store.clone(), settings.public_origin.clone()).merge(
-            darkhorse_adapters::token_http::router(
-                store.clone(),
-                signer,
-                settings.public_origin.clone(),
-                introspection_admission(&store, authentication.key)?,
-            ),
+        let continuation_key = provider_http::ContinuationKey::derive(&authentication.key)
+            .map_err(|_| "Cannot initialize authorization continuation protection.")?;
+        provider_http::router(
+            store.clone(),
+            settings.public_origin.clone(),
+            continuation_key,
         )
+        .merge(darkhorse_adapters::token_http::router(
+            store.clone(),
+            signer,
+            settings.public_origin.clone(),
+            introspection_admission(&store, authentication.key)?,
+        ))
     } else {
         axum::Router::new()
     };

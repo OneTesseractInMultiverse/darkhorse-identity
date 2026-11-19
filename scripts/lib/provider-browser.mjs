@@ -1,4 +1,5 @@
 import { verifyOidcLanguages } from "./oidc-language-browser.mjs";
+import { verifyPreauthorization } from "./preauthorization-browser.mjs";
 import { activatePublishedKey } from "./logout-jwks-signing.mjs";
 import assert from "node:assert/strict";
 import { lstat, readFile } from "node:fs/promises";
@@ -101,6 +102,7 @@ export async function verifyProvider(
   principal,
   ca,
   runSql,
+  password,
 ) {
   const metadata = await call(page, "/.well-known/openid-configuration");
   assertApiJsonResponse("get", "/.well-known/openid-configuration", metadata);
@@ -166,6 +168,16 @@ export async function verifyProvider(
   });
   assert.equal(registered.status, 200);
   assert.equal(registered.body.record.refresh_tokens, false);
+  await verifyPreauthorization({
+    page,
+    context,
+    origin,
+    application: app.body.record.id,
+    password,
+    call,
+    source: principal,
+    runSql,
+  });
   await verifyOidcLanguages({
     page,
     context,

@@ -9,7 +9,32 @@ const pending = {
 	resource: null,
 	ui_locale: 'es'
 };
-const response = (value: unknown) => vi.fn().mockResolvedValue(new Response(JSON.stringify(value)));
+const response = (value: unknown) =>
+	vi.fn().mockImplementation(async () => new Response(JSON.stringify(value)));
+it('carries a bounded sealed continuation while confirming only the compact transaction ID', async () => {
+	const reference = `${id}.${'A'.repeat(20_000)}`;
+	const fetcher = response(pending);
+	expect(await loadAuthorization(fetcher, reference)).toMatchObject({
+		kind: 'pending',
+		request_id: id
+	});
+	expect(await decideAuthorization(fetcher, reference, id, 'approve')).toMatchObject({
+		kind: 'pending'
+	});
+	const [path, init] = fetcher.mock.calls[1];
+	expect(path).toBe(`/api/authorization/decision?request=${reference}`);
+	expect(JSON.parse(init.body)).toEqual({ request_id: id, decision: 'approve' });
+	for (const invalid of [
+		`${id}.short`,
+		`${id}.${'A'.repeat(24_576)}`,
+		`${reference}&x=y`,
+		`${reference}.extra`
+	]) {
+		const unused = vi.fn();
+		expect(await loadAuthorization(unused, invalid)).toEqual({ kind: 'unavailable' });
+		expect(unused).not.toHaveBeenCalled();
+	}
+});
 it('binds a decision to both the page reference and reviewed request with same-origin CSRF', async () => {
 	const fetcher = response(pending);
 	const result = await decideAuthorization(fetcher, id, id, 'approve');

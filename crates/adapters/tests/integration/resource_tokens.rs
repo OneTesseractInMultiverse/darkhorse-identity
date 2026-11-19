@@ -485,7 +485,11 @@ async fn http_resource_flow_binds_the_target_and_separates_userinfo_from_api_aut
         .await
         .unwrap();
     let origin = url::Url::parse(ISSUER).unwrap();
-    let browser = darkhorse_adapters::provider_http::router(db.store.clone(), origin.clone());
+    let browser = darkhorse_adapters::provider_http::router(
+        db.store.clone(),
+        origin.clone(),
+        darkhorse_adapters::provider_http::ContinuationKey::derive(&[9; 32]).unwrap(),
+    );
     let backend = darkhorse_adapters::token_http::router(
         db.store.clone(),
         signer,

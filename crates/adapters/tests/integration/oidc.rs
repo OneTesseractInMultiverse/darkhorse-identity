@@ -11,6 +11,10 @@ use darkhorse_domain::{
 
 #[path = "oidc/credential_cleanup.rs"]
 mod credential_cleanup;
+#[path = "oidc/preauthorization.rs"]
+mod preauthorization;
+#[path = "oidc/preauthorization_http.rs"]
+mod preauthorization_http;
 
 pub(super) async fn fixture() -> Database {
     fixture_at_version(i64::MAX).await
@@ -44,7 +48,10 @@ async fn transaction_row_size(db: &Database, handle: [u8; 32]) -> i32 {
 #[tokio::test]
 async fn expired_authorization_request_cleanup_is_bounded_and_preserves_live_rows() {
     let db = fixture().await;
-    db.store.begin(request(), [127; 32], None).await.unwrap();
+    db.store
+        .begin(request(), [127; 32], Some([1; 32]))
+        .await
+        .unwrap();
     sqlx::query(
         "INSERT INTO authorization_requests(digest,client_id,client_revision,application_revision,redirect_uri,challenge,scopes,prompt,created_ms,expires_ms) SELECT decode(lpad(to_hex(n),64,'0'),'hex'),$1,0,0,$2,$3,ARRAY['openid'],'default',0,300000 FROM generate_series(1,105) n",
     )
@@ -398,13 +405,12 @@ fn pending(outcome: Outcome, expected: Interaction) {
 #[tokio::test]
 async fn requests_are_browser_bound_immutable_and_recheck_committed_revocation() {
     let db = fixture().await;
-    pending(
-        db.store.begin(request(), [3; 32], None).await.unwrap(),
-        Interaction::Login,
-    );
+    let Outcome::Login(prelogin) = db.store.begin(request(), [3; 32], None).await.unwrap() else {
+        panic!("pre-login continuation")
+    };
     pending(
         db.store
-            .resume([3; 32], Some([1; 32]), Decision::Inspect)
+            .continue_login(*prelogin, [3; 32], Some([1; 32]), Decision::Inspect)
             .await
             .unwrap(),
         Interaction::Consent,
@@ -558,10 +564,9 @@ async fn forced_reauthentication_consent_expansion_and_failed_audit_preserve_aut
     let mut r = request();
     r.prompt = Prompt::LoginConsent;
     r.max_age = Some(0);
-    pending(
-        db.store.begin(r, [3; 32], Some([1; 32])).await.unwrap(),
-        Interaction::Login,
-    );
+    let Outcome::Login(prelogin) = db.store.begin(r, [3; 32], Some([1; 32])).await.unwrap() else {
+        panic!("forced pre-login continuation")
+    };
     let candidate = db
         .store
         .candidate("one@example.com")
@@ -571,7 +576,7 @@ async fn forced_reauthentication_consent_expansion_and_failed_audit_preserve_aut
     db.store.establish(&candidate, [2; 32], None).await.unwrap();
     pending(
         db.store
-            .resume([3; 32], Some([2; 32]), Decision::Inspect)
+            .continue_login(*prelogin.clone(), [3; 32], Some([2; 32]), Decision::Inspect)
             .await
             .unwrap(),
         Interaction::Consent,
@@ -635,14 +640,47 @@ async fn forced_reauthentication_consent_expansion_and_failed_audit_preserve_aut
     db.store.close().await;
 }
 #[tokio::test]
+async fn anonymous_authorization_starts_do_not_reserve_shared_capacity() {
+    let db = fixture().await;
+    for n in 0..110u8 {
+        db.store.begin(request(), [n; 32], None).await.unwrap();
+        let count: i64 = sqlx::query_scalar("SELECT count(*) FROM authorization_requests")
+            .fetch_one(&db.pool)
+            .await
+            .unwrap();
+        assert_eq!(
+            count, 0,
+            "pre-login requests must not reserve shared capacity"
+        );
+    }
+    pending(
+        db.store
+            .begin(request(), [200; 32], Some([1; 32]))
+            .await
+            .unwrap(),
+        Interaction::Consent,
+    );
+    pending(
+        db.store
+            .resume([200; 32], Some([1; 32]), Decision::Approve)
+            .await
+            .unwrap(),
+        Interaction::Ready,
+    );
+    db.store.close().await;
+}
+#[tokio::test]
 async fn concurrent_capacity_checks_and_duplicate_handles_never_overfill_requests() {
     let db = fixture().await;
     for n in 1..100 {
-        db.store.begin(request(), [n; 32], None).await.unwrap();
+        db.store
+            .begin(request(), [n; 32], Some([1; 32]))
+            .await
+            .unwrap();
     }
     let (left, right) = tokio::join!(
-        db.store.begin(request(), [100; 32], None),
-        db.store.begin(request(), [101; 32], None)
+        db.store.begin(request(), [100; 32], Some([1; 32])),
+        db.store.begin(request(), [101; 32], Some([1; 32]))
     );
     assert_eq!(usize::from(left.is_ok()) + usize::from(right.is_ok()), 1);
     assert_eq!(
@@ -652,10 +690,15 @@ async fn concurrent_capacity_checks_and_duplicate_handles_never_overfill_request
             .unwrap(),
         100
     );
-    assert!(db.store.begin(request(), [1; 32], None).await.is_err());
+    assert!(
+        db.store
+            .begin(request(), [1; 32], Some([1; 32]))
+            .await
+            .is_err()
+    );
     db.store.close().await;
     assert!(matches!(
-        db.store.begin(request(), [102; 32], None).await,
+        db.store.begin(request(), [102; 32], Some([1; 32])).await,
         Err(Error::Unavailable)
     ));
 }
@@ -687,6 +730,7 @@ async fn transport_enforces_origin_cookie_confirmation_and_no_false_discovery() 
     let router = provider_http::router(
         db.store.clone(),
         url::Url::parse("https://issuer.example").unwrap(),
+        provider_http::ContinuationKey::derive(&[9; 32]).unwrap(),
     );
     let path = format!(
         "/authorize?client_id=00000000-0000-0000-0000-000000000020&redirect_uri=https%3A%2F%2Fclient.example%2Fcallback%3Ffixed%3D1&response_type=code&scope=openid&code_challenge={}&code_challenge_method=S256",
@@ -799,14 +843,13 @@ async fn language_is_immutable_per_transaction_and_never_changes_authority() {
         ([51; 32], english, Some(Locale::English)),
         ([52; 32], request(), None),
     ] {
-        let Outcome::Pending(view) = db.store.begin(request, handle, None).await.unwrap() else {
-            panic!("pending request")
+        let Outcome::Login(prelogin) = db.store.begin(request, handle, None).await.unwrap() else {
+            panic!("pre-login request")
         };
-        assert_eq!(view.ui_locale, expected);
-        assert_eq!(view.interaction, Interaction::Login);
+        assert_eq!(prelogin.request.ui_locale, expected);
         let Outcome::Pending(view) = db
             .store
-            .resume(handle, Some([1; 32]), Decision::Inspect)
+            .continue_login(*prelogin, handle, Some([1; 32]), Decision::Inspect)
             .await
             .unwrap()
         else {
@@ -909,16 +952,16 @@ async fn locale_column_storage_is_measured_and_existing_rows_are_not_rewritten()
     assert_eq!(retained.ui_locale, None);
 
     for (handle, locale) in [
-        ([54; 32], None),
+        ([54u8; 32], None),
         ([55; 32], Some(Locale::English)),
         ([56; 32], Some(Locale::Spanish)),
     ] {
-        let mut localized = request();
-        localized.ui_locale = locale;
-        assert!(matches!(
-            db.store.begin(localized, handle, None).await.unwrap(),
-            Outcome::Pending(_)
-        ));
+        // Compare identical unbound tuples: authentication binding has its own storage cost.
+        sqlx::query("INSERT INTO authorization_requests(digest,client_id,client_revision,application_revision,redirect_uri,challenge,state,nonce,scopes,prompt,created_ms,expires_ms,ui_locale) SELECT $1,client_id,client_revision,application_revision,redirect_uri,challenge,state,nonce,scopes,prompt,created_ms,expires_ms,$2 FROM authorization_requests WHERE digest=$3")
+            .bind(handle.as_slice())
+            .bind(locale.map(|locale| match locale { Locale::English => "en", Locale::Spanish => "es" }))
+            .bind([53u8; 32].as_slice())
+            .execute(&db.pool).await.unwrap();
     }
 
     let null_bytes = transaction_row_size(&db, [54; 32]).await;

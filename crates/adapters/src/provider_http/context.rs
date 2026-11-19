@@ -9,10 +9,30 @@ pub(super) fn reference(query: Option<&str>) -> Result<&str, Error> {
     let reference = query
         .and_then(|q| q.strip_prefix("request="))
         .ok_or(Error::InvalidTransaction)?;
-    session_secret::decode(reference).map_err(|_| Error::InvalidTransaction)?;
+    parts(reference)?;
     Ok(reference)
 }
+pub(super) fn parts(reference: &str) -> Result<(&str, Option<&str>), Error> {
+    if reference.len() > continuation::MAX_REFERENCE_BYTES {
+        return Err(Error::InvalidTransaction);
+    }
+    let (selector, envelope) = match reference.split_once('.') {
+        Some((selector, envelope))
+            if envelope.len() >= 38
+                && envelope
+                    .bytes()
+                    .all(|b| b.is_ascii_alphanumeric() || b == b'-' || b == b'_') =>
+        {
+            (selector, Some(envelope))
+        }
+        Some(_) => return Err(Error::InvalidTransaction),
+        None => (reference, None),
+    };
+    session_secret::decode(selector).map_err(|_| Error::InvalidTransaction)?;
+    Ok((selector, envelope))
+}
 pub(super) fn select(headers: &HeaderMap, reference: &str) -> Result<[u8; 32], Error> {
+    let (reference, _) = parts(reference)?;
     let expected = session_secret::decode(reference).map_err(|_| Error::InvalidTransaction)?;
     let proofs = proofs(headers)?;
     match proofs.get(reference) {
@@ -69,7 +89,7 @@ pub(super) fn cookie(reference: &str, secret: &str, seconds: u16) -> Result<Head
     .map_err(|_| Error::Unavailable)
 }
 pub(super) fn clear(mut response: Response, reference: &str) -> Response {
-    match cookie(reference, "", 0) {
+    match parts(reference).and_then(|(selector, _)| cookie(selector, "", 0)) {
         Ok(cookie) => {
             response.headers_mut().append(header::SET_COOKIE, cookie);
             response

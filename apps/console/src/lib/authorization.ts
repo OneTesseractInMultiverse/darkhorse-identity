@@ -23,7 +23,8 @@ export async function decideAuthorization(
 	request_id: string,
 	decision: 'approve' | 'deny'
 ): Promise<AuthorizationState> {
-	if (!validReference(reference) || reference !== request_id) return { kind: 'unavailable' };
+	if (!validReference(reference) || reference.slice(0, 64) !== request_id)
+		return { kind: 'unavailable' };
 	return request(
 		fetcher,
 		`/api/authorization/decision?request=${reference}`,
@@ -50,7 +51,7 @@ async function request(
 		const result = response.ok
 			? project(await response.json())
 			: ({ kind: 'unavailable' } as const);
-		return result.kind === 'pending' && result.request_id !== reference
+		return result.kind === 'pending' && result.request_id !== reference.slice(0, 64)
 			? { kind: 'unavailable' }
 			: result;
 	} catch {
@@ -98,5 +99,9 @@ function project(value: unknown): AuthorizationState {
 }
 
 function validReference(reference: string | null): reference is string {
-	return typeof reference === 'string' && /^[a-f0-9]{64}$/.test(reference);
+	return (
+		typeof reference === 'string' &&
+		reference.length <= 24_576 &&
+		/^[a-f0-9]{64}(?:\.[A-Za-z0-9_-]{38,})?$/.test(reference)
+	);
 }

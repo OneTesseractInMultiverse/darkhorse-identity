@@ -404,7 +404,15 @@ async function exerciseBrowser({
   );
   await browserPhase("registration", () => verifyRegistration(page, principal));
   await browserPhase("provider", async () => {
-    await verifyProvider(page, context, origin, principal, ca, runSql);
+    await verifyProvider(
+      page,
+      context,
+      origin,
+      principal,
+      ca,
+      runSql,
+      password,
+    );
     await verifyDeployedJwks({
       signal,
       browser,

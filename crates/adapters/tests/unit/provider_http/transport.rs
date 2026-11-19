@@ -22,6 +22,15 @@ impl AuthorizationStore for Store {
         self.0.lock().unwrap().insert(handle, request.ui_locale);
         Ok(pending(request.ui_locale))
     }
+    async fn continue_login(
+        &self,
+        _: Preauthorization,
+        _: [u8; 32],
+        _: Option<[u8; 32]>,
+        _: Decision,
+    ) -> Result<Outcome, Error> {
+        Err(Error::InvalidTransaction)
+    }
     async fn resume(
         &self,
         handle: [u8; 32],
@@ -83,6 +92,7 @@ fn app() -> Router {
     let state = Arc::new(Provider {
         store: Store::default(),
         issuer: origin.origin().ascii_serialization(),
+        continuation_key: ContinuationKey::derive(&[9; 32]).unwrap(),
     });
     authentication_http::protect_with_queries(
         Router::new()
