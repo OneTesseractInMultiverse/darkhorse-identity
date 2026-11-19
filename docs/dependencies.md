@@ -220,6 +220,41 @@ unmaintained-package finding.
 
 ## Release advisory review
 
+### November 18, 2026 update
+
+The console now resolves SvelteKit **3.1.1** and adapter-static **4.0.1**. These
+compatible patches address [GHSA-mw6w-2fmv-pvw3](https://github.com/advisories/GHSA-mw6w-2fmv-pvw3)
+and [GHSA-jf9x-2fg2-hx4w](https://github.com/advisories/GHSA-jf9x-2fg2-hx4w).
+Their dependency and peer requirements are unchanged. The minimum release age,
+toolchain, static deployment model, asset ceilings and audit policy remain intact.
+The previously reported deepmerge advisory was withdrawn by upstream; the new
+strict JavaScript scan passes without an override or advisory exception.
+
+The Rust SMTP adapter now pins **lettre 0.11.24**, with its required
+**email-encoding 0.4.3** dependency. The Lettre patch addresses
+[RUSTSEC-2026-0560](https://rustsec.org/advisories/RUSTSEC-2026-0560.html)
+through [RUSTSEC-2026-0565](https://rustsec.org/advisories/RUSTSEC-2026-0565.html).
+Both published crates require Rust 1.85, below the pinned compiler version.
+SMTP continues to require implicit TLS, hostname verification and bounded requests;
+message construction keeps validated addresses and encoded string bodies. Those
+application constraints do not exempt the dependency from the full-lockfile scan.
+Unrelated Windows dependency resolutions are preserved.
+
+The strict Rust scan still fails for SQLx's optional **libsqlite3-sys 0.37.0**
+and the newly published unmaintained-package findings for **chrono 0.4.45**
+([RUSTSEC-2026-0543](https://rustsec.org/advisories/RUSTSEC-2026-0543.html)) and
+**humantime 2.4.0**
+([RUSTSEC-2026-0542](https://rustsec.org/advisories/RUSTSEC-2026-0542.html)).
+The latter dependencies enter through object_store 0.14.2 and have no patched
+versions in the advisory database. They require a reviewed upstream dependency
+transition, not an audit ignore. The
+[dated record](measurements/dependency-qualification-2026-11-18.json) includes
+exact inputs and scan results. Issue #47 and release qualification remain open.
+
+Earlier dated findings below are historical checkpoints, not the current audit
+result. Restore a complete source/lockfile/build artifact for rollback; returning
+to the previous package versions reintroduces the recorded advisories.
+
 ### November 2026 findings
 
 The initial **2026-11-10 UTC** [hosted scan](https://github.com/OneTesseractInMultiverse/darkhorse-identity/actions/runs/42908245816)

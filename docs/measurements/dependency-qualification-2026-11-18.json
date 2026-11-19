@@ -1,0 +1,106 @@
+{
+  "schema": 1,
+  "date": "2026-11-18",
+  "scope": "Compatible frontend and SMTP dependency patches; strict full-lockfile scan of working source. Hosted and production release qualification remain separate.",
+  "baseRevision": "e6bd41fc1a42edb26a74b30d665bcf5bbb3d9941",
+  "patches": [
+    {
+      "package": "@sveltejs/kit",
+      "before": "3.1.0",
+      "after": "3.1.1"
+    },
+    {
+      "package": "@sveltejs/adapter-static",
+      "before": "4.0.0",
+      "after": "4.0.1"
+    },
+    {
+      "package": "lettre",
+      "before": "0.11.23",
+      "after": "0.11.24"
+    },
+    {
+      "package": "email-encoding",
+      "before": "0.4.2",
+      "after": "0.4.3",
+      "reason": "Required by lettre 0.11.24"
+    }
+  ],
+  "audit": {
+    "version": 1,
+    "startedAt": "2026-11-19T03:18:31.357Z",
+    "revision": "e6bd41fc1a42edb26a74b30d665bcf5bbb3d9941",
+    "trackedChanges": true,
+    "inputs": {
+      "Cargo.lock": "7f2c667fea7643ec0e1c1cc649223cc1d7a5f53e7424247c7508793514e95371",
+      "pnpm-lock.yaml": "d068ca39c512745549129fbc252833539afc3f7ec98e481647a16e2c6da809a2",
+      "pnpm-workspace.yaml": "9035ee93176c07ce410b42ec42580f92ecf5401a6374de117d43750927afa7b2",
+      "package.json": "8ae7dfa57490bc6b34c381e19e8b5da29bf101f50309a63ddd7b79d32e3f8139",
+      "apps/console/package.json": "6417fbfd86beb6ed7cc9f3af9dc3d473892042880af7867d9bc90dc6f98908fe",
+      ".cargo/audit.toml": "fd5980a47436b944c705c0347401493ec270676385a12964640d05bbf5d42b4e"
+    },
+    "tools": {
+      "cargoAudit": "0.22.2",
+      "pnpm": "11.19.0"
+    },
+    "completedAt": "2026-11-19T03:18:34.164Z",
+    "status": "blocked",
+    "rust": {
+      "dependencies": 353,
+      "databaseRevision": "472a4c9a785030434f15d7da84964d60fbe789ab",
+      "databaseUpdated": "2026-11-18T10:14:42+01:00",
+      "findings": [
+        {
+          "id": "RUSTSEC-2026-0459",
+          "package": "libsqlite3-sys",
+          "version": "0.37.0",
+          "kind": "vulnerability"
+        },
+        {
+          "id": "RUSTSEC-2026-0543",
+          "package": "chrono",
+          "version": "0.4.45",
+          "kind": "unmaintained"
+        },
+        {
+          "id": "RUSTSEC-2026-0542",
+          "package": "humantime",
+          "version": "2.4.0",
+          "kind": "unmaintained"
+        }
+      ],
+      "exitCode": 1,
+      "status": "blocked"
+    },
+    "node": {
+      "dependencies": 357,
+      "findings": [],
+      "exitCode": 0,
+      "status": "pass"
+    }
+  },
+  "constraints": [
+    "No advisory ignores or excluded packages",
+    "Existing Windows resolutions preserved",
+    "Static TypeScript UI with Rust server authority",
+    "Existing compiler, package-release-age and asset-budget requirements retained"
+  ],
+  "registry": [
+    {
+      "source": "https://crates.io/api/v1/crates/lettre/0.11.24",
+      "num": "0.11.24",
+      "created_at": "2026-11-17T16:58:40.930952Z",
+      "yanked": false,
+      "rust_version": "1.85",
+      "checksum": "f294f3d7cdb313e578acef7d7727d4e8d897e0fcd0d6d58c19959cec95073f19"
+    },
+    {
+      "source": "https://crates.io/api/v1/crates/email-encoding/0.4.3",
+      "num": "0.4.3",
+      "created_at": "2026-11-10T09:23:22.552267Z",
+      "yanked": false,
+      "rust_version": "1.85",
+      "checksum": "9f690ae2169f2ceb3f45b28b6fcd8fa16839f2f5c8818546774b9425f5f71004"
+    }
+  ]
+}

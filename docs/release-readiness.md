@@ -85,6 +85,14 @@ passed locally, including unknown-key refresh at the retrieval boundary and
 targeted logout after supported signing-key activation. These results do not
 establish independent-client conformance or make the dependency gate pass.
 
+The **2026-11-18** review supersedes those dated dependency findings. SvelteKit
+3.1.1, adapter-static 4.0.1 and lettre 0.11.24 address the new framework and SMTP
+advisories; upstream withdrew the deepmerge advisory. The strict JavaScript scan
+passes. Rust remains blocked by libsqlite3-sys and the newly reported unmaintained
+chrono/humantime dependencies of object_store. No audit exceptions were added.
+See the [current dependency evidence](measurements/dependency-qualification-2026-11-18.json)
+for exact inputs and remaining findings. Functional checks do not clear this gate.
+
 ## Hosted checks
 
 The **2026-11-10 UTC** [hosted run](https://github.com/OneTesseractInMultiverse/darkhorse-identity/actions/runs/42915211680)
