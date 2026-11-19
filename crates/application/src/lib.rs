@@ -44,4 +44,5 @@ pub mod operator_accounts;
 
 pub mod introspection_admission;
 pub mod operator_client_secrets;
+pub mod password_change;
 pub mod signing_operations;

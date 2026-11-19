@@ -71,6 +71,13 @@ return `503`. Failed logout does not report success or discard the cookie.
 
 ## Password work and limits
 
+Password-replacement preparation produces a fresh credential ID and independently
+salted verifier without creating a principal. It shares the existing bounded hash
+worker and its cancellation-safe permit with sign-in, bootstrap and invitations.
+Callers must validate password policy before preparation. The authenticated change
+coordinator, atomic credential/epoch/audit/logout transaction and user interface
+remain unfinished in issue #13; this preparation port is not a password-change API.
+
 - Argon2id v19, 64 MiB, three iterations, one lane, 16-byte random salt and 32-byte
   output. Stored PHC parameters must match exactly before verification can run.
   Only this policy exists today. Accepting an older policy requires an explicit

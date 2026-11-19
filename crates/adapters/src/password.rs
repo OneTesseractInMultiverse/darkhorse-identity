@@ -5,6 +5,9 @@ use argon2::{
 };
 use darkhorse_application::authentication::{AuthError, PasswordVerification};
 use darkhorse_application::bootstrap::{BootstrapError, CredentialPreparation, PreparedCredential};
+use darkhorse_application::password_change::{
+    PasswordReplacementPreparation, PreparedPasswordReplacement,
+};
 use darkhorse_domain::identity::{CredentialId, PrincipalId};
 use std::sync::Arc;
 use tokio::sync::Semaphore;
@@ -41,8 +44,34 @@ impl CredentialPreparation for PasswordPreparation {
     }
 }
 
-fn random_material() -> Result<[u8; 48], BootstrapError> {
-    let mut bytes = [0; 48];
+impl PasswordReplacementPreparation for PasswordPreparation {
+    async fn prepare_replacement(
+        &self,
+        password: &str,
+    ) -> Result<PreparedPasswordReplacement, AuthError> {
+        let password = Zeroizing::new(password.to_owned());
+        bounded_work(self.slots.clone(), move || {
+            let bytes = random_material().map_err(|_| AuthError::Unavailable)?;
+            replacement_with_material(&password, bytes)
+        })
+        .await
+    }
+}
+
+fn replacement_with_material(
+    password: &str,
+    bytes: [u8; 32],
+) -> Result<PreparedPasswordReplacement, AuthError> {
+    let mut credential = [0; 16];
+    credential.copy_from_slice(&bytes[..16]);
+    Ok(PreparedPasswordReplacement {
+        credential_id: credential_id(credential).map_err(|_| AuthError::Unavailable)?,
+        verifier: hash(password, &bytes[16..]).map_err(|_| AuthError::Unavailable)?,
+    })
+}
+
+fn random_material<const N: usize>() -> Result<[u8; N], BootstrapError> {
+    let mut bytes = [0; N];
     getrandom::fill(&mut bytes).map_err(|_| BootstrapError::SecretPreparation)?;
     Ok(bytes)
 }
@@ -61,17 +90,20 @@ fn prepare_with_material(
             .as_u128(),
     )
     .map_err(|_| BootstrapError::SecretPreparation)?;
-    let credential_id = CredentialId::from_u128(
-        uuid::Builder::from_random_bytes(credential)
+    Ok(PreparedCredential {
+        principal_id,
+        credential_id: credential_id(credential)?,
+        verifier: hash(password, &bytes[32..])?,
+    })
+}
+
+fn credential_id(bytes: [u8; 16]) -> Result<CredentialId, BootstrapError> {
+    CredentialId::from_u128(
+        uuid::Builder::from_random_bytes(bytes)
             .into_uuid()
             .as_u128(),
     )
-    .map_err(|_| BootstrapError::SecretPreparation)?;
-    Ok(PreparedCredential {
-        principal_id,
-        credential_id,
-        verifier: hash(password, &bytes[32..])?,
-    })
+    .map_err(|_| BootstrapError::SecretPreparation)
 }
 
 fn hash(password: &str, salt: &[u8]) -> Result<String, BootstrapError> {

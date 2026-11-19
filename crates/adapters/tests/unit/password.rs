@@ -1,6 +1,103 @@
 use super::*;
 use argon2::{PasswordVerifier, password_hash::phc::PasswordHash};
 use darkhorse_application::authentication::{AuthError, PasswordVerification};
+use darkhorse_application::invitations::PasswordPreparation as InvitationPasswordPreparation;
+use darkhorse_application::password_change::{
+    PasswordReplacementPreparation, PreparedPasswordReplacement,
+};
+
+#[tokio::test]
+async fn replacement_prepares_only_a_fresh_credential_and_verifier() {
+    let worker = PasswordPreparation::default();
+    let password = "  test-only café passphrase  ";
+    let PreparedPasswordReplacement {
+        credential_id,
+        verifier,
+    } = worker.prepare_replacement(password).await.unwrap();
+    let second = worker.clone().prepare_replacement(password).await.unwrap();
+    let id = uuid::Uuid::from_u128(credential_id.as_u128());
+    assert_eq!(id.get_version_num(), 4);
+    assert_eq!(id.get_variant(), uuid::Variant::RFC4122);
+    assert_ne!(credential_id, second.credential_id);
+    let parsed = checked_verifier(&verifier).unwrap();
+    let second_parsed = checked_verifier(&second.verifier).unwrap();
+    assert_ne!(parsed.salt, second_parsed.salt);
+    assert_eq!(worker.verify(password, Some(&verifier)).await, Ok(true));
+    assert_eq!(
+        worker.verify(password.trim(), Some(&verifier)).await,
+        Ok(false)
+    );
+    assert_eq!(worker.slots.available_permits(), 1);
+}
+
+#[test]
+fn replacement_separates_identifier_entropy_from_salt() {
+    let material = std::array::from_fn(|index| index as u8);
+    let prepared = replacement_with_material("test-only passphrase", material).unwrap();
+    assert_eq!(
+        prepared.credential_id.as_u128(),
+        0x00010203_0405_4607_8809_0a0b0c0d0e0f
+    );
+    let parsed = checked_verifier(&prepared.verifier).unwrap();
+    assert_eq!(parsed.salt.unwrap().as_ref(), &material[16..]);
+}
+
+#[tokio::test]
+async fn replacement_leaves_password_policy_to_the_caller() {
+    // Like account creation, preparation does not enforce the caller's policy.
+    let worker = PasswordPreparation::default();
+    let prepared = worker.prepare_replacement("").await.unwrap();
+    let parsed = checked_verifier(&prepared.verifier).unwrap();
+    assert!(Argon2::default().verify_password(b"", &parsed).is_ok());
+    // Verification keeps its distinct existing input policy.
+    assert_eq!(
+        worker.verify("", Some(&prepared.verifier)).await,
+        Err(AuthError::Denied)
+    );
+}
+
+async fn assert_all_password_operations_at_capacity(worker: &PasswordPreparation) {
+    let clone = worker.clone();
+    assert!(matches!(
+        clone.prepare_replacement("test-only passphrase").await,
+        Err(AuthError::Unavailable)
+    ));
+    assert!(matches!(
+        clone.prepare("test-only passphrase").await,
+        Err(BootstrapError::SecretPreparation)
+    ));
+    assert!(matches!(
+        clone.prepare_password("test-only passphrase").await,
+        Err(darkhorse_domain::invitations::Error::Unavailable)
+    ));
+    assert_eq!(
+        clone.verify("wrong", None).await,
+        Err(AuthError::Unavailable)
+    );
+}
+
+#[tokio::test]
+async fn worker_failures_release_capacity_and_closed_capacity_fails_closed() {
+    let worker = PasswordPreparation::default();
+    assert_eq!(
+        bounded_work(worker.slots.clone(), || Err::<(), _>(
+            AuthError::Unavailable
+        ))
+        .await,
+        Err(AuthError::Unavailable)
+    );
+    assert_eq!(worker.slots.available_permits(), 1);
+    assert_eq!(
+        bounded_work(worker.slots.clone(), || -> Result<(), AuthError> {
+            panic!("synthetic worker failure");
+        })
+        .await,
+        Err(AuthError::Unavailable)
+    );
+    assert_eq!(worker.slots.available_permits(), 1);
+    worker.slots.close();
+    assert_all_password_operations_at_capacity(&worker).await;
+}
 
 #[tokio::test]
 async fn verification_pins_policy_and_unknown_users_take_real_hash_work() {
@@ -57,10 +154,7 @@ async fn cancellation_retains_slot_until_blocking_work_finishes() {
     task.abort();
     assert!(task.await.unwrap_err().is_cancelled());
     assert_eq!(worker.slots.available_permits(), 0);
-    assert_eq!(
-        worker.verify("wrong", None).await,
-        Err(AuthError::Unavailable)
-    );
+    assert_all_password_operations_at_capacity(&worker).await;
     release.send(()).unwrap();
     let permit = tokio::time::timeout(std::time::Duration::from_secs(2), worker.slots.acquire())
         .await
@@ -107,8 +201,5 @@ fn production_hash_parameters_verify_and_wrong_password_fails() {
 async fn admission_failure_does_not_schedule_or_consume_entropy() {
     let preparation = PasswordPreparation::default();
     let _permit = preparation.slots.clone().acquire_owned().await.unwrap();
-    assert!(matches!(
-        preparation.prepare("test-only passphrase").await,
-        Err(BootstrapError::SecretPreparation)
-    ));
+    assert_all_password_operations_at_capacity(&preparation).await;
 }
