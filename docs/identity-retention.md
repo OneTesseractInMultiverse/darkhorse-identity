@@ -53,6 +53,23 @@ Principals, credentials, applications, OAuth clients and access-catalog records 
 
 ## Logout dependencies and retention
 
+The PostgreSQL regression suite exercises cleanup across all four disposable
+queues: batch limits, held row locks, queued children, rollback, immutable history
+and later expansion from a retained credential event. A harness gated by the
+`postgres-tests` feature calls the same cleanup coordinator with an explicit time
+to check the exact seven-day boundary and one millisecond beyond it. It holds the
+normal authority fence and transaction; default builds do not expose the harness,
+and the production claim path continues to read primary database time.
+
+Each integration fixture owns a randomly named database and removes it on normal
+completion or unwinding, including when an independent connection remains open.
+Cleanup targets that exact database, has a five-second deadline, and fails the
+test if removal fails. The standalone runner checks that no owned test databases
+remain before proceeding. Its Percona storage uses bounded tmpfs mounts for all
+six image-declared volumes, with a 2 GiB database limit and rotated container logs.
+The outer runner still removes the owned container and network on failure or
+interruption. These test-resource controls do not delete operational databases.
+
 Migrations [0042](../crates/adapters/migrations/0042_logout_delivery.sql), [0043](../crates/adapters/migrations/0043_account_logout.sql) and [0044](../crates/adapters/migrations/0044_credential_logout.sql) add notification work and retained history. These records do not replace primary session, account or credential authority. A local revocation takes effect independently of delivery success.
 
 ```mermaid

@@ -12,6 +12,7 @@ use sqlx::{PgPool, postgres::PgPoolOptions};
 use uuid::Uuid;
 mod admin_directory;
 mod authentication;
+mod database_cleanup;
 mod logout;
 mod operator_directory;
 mod personal_keys;
@@ -24,6 +25,7 @@ mod signing;
 struct Database {
     pool: PgPool,
     store: PostgresStore,
+    cleanup: database_cleanup::DatabaseCleanup,
 }
 impl Database {
     async fn new() -> Self {
@@ -39,6 +41,10 @@ impl Database {
             .execute(&admin)
             .await
             .unwrap();
+        let cleanup = database_cleanup::DatabaseCleanup {
+            name: name.clone(),
+            admin_url: url.clone(),
+        };
         let mut url = url::Url::parse(&url).unwrap();
         url.set_path(&name);
         let pool = PgPoolOptions::new()
@@ -56,7 +62,11 @@ impl Database {
             .collect::<Vec<_>>()
             .into();
         migrations.run(&pool).await.unwrap();
-        Self { pool, store }
+        Self {
+            pool,
+            store,
+            cleanup,
+        }
     }
 }
 fn id(n: u128) -> PrincipalId {

@@ -6,6 +6,7 @@ mod credential_plans;
 mod credentials;
 mod receiver;
 mod receiver_fixture;
+mod retention;
 use darkhorse_adapters::tokens::material;
 use darkhorse_application::{
     authentication::AuthenticationStore,

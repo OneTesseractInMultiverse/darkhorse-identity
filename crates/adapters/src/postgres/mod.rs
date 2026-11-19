@@ -27,6 +27,10 @@ mod registration;
 mod sessions;
 mod signing;
 
+#[cfg(feature = "postgres-tests")]
+#[doc(hidden)]
+pub use logout::cleanup_logout_at_for_test;
+
 #[derive(Clone)]
 pub struct PostgresStore {
     pool: PgPool,
