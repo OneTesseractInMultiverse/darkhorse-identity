@@ -85,13 +85,25 @@ passed locally, including unknown-key refresh at the retrieval boundary and
 targeted logout after supported signing-key activation. These results do not
 establish independent-client conformance or make the dependency gate pass.
 
-The **2026-11-18** review supersedes those dated dependency findings. SvelteKit
+The **2026-11-18** checkpoint superseded those earlier dependency findings. SvelteKit
 3.1.1, adapter-static 4.0.1 and lettre 0.11.24 address the new framework and SMTP
 advisories; upstream withdrew the deepmerge advisory. The strict JavaScript scan
-passes. Rust remains blocked by libsqlite3-sys and the newly reported unmaintained
+passed. Rust was still blocked by libsqlite3-sys and the newly reported unmaintained
 chrono/humantime dependencies of object_store. No audit exceptions were added.
-See the [current dependency evidence](measurements/dependency-qualification-2026-11-18.json)
+See the [November 18 evidence](measurements/dependency-qualification-2026-11-18.json)
 for exact inputs and remaining findings. Functional checks do not clear this gate.
+
+The **2026-11-19** transition resolves the remaining Rust findings: released
+SQLx 0.9.1 admits the explicitly locked libsqlite3-sys 0.40.0, and the media
+adapter replaces object_store with official AWS signing and the existing HTTP
+client. Chrono and humantime are absent from the resolved graph. The strict local
+scan passes for all 351 Rust and 357 JavaScript dependencies, including optional
+and platform-specific lock entries, without ignores or warning suppression.
+The [new qualification record](measurements/dependency-qualification-2026-11-19.json)
+contains provenance, compatibility checks and the bounded performance comparison.
+[Issue #47](https://github.com/OneTesseractInMultiverse/darkhorse-identity/issues/47)
+records hosted verification of the committed change. This clears no unrelated
+coverage, protocol-conformance, deployment or production-capacity gate.
 
 ## Hosted checks
 

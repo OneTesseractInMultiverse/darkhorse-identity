@@ -5,6 +5,7 @@ use darkhorse_adapters::media::{
 };
 use darkhorse_application::media::{Asset, Images, Objects};
 use darkhorse_domain::{identity::AssetId, media::Kind};
+mod object_http;
 #[tokio::test]
 async fn real_s3_stores_reencoded_images_and_rejects_corruption_or_missing_objects() {
     let settings = configuration::load(envbind::ProcessEnvironment)

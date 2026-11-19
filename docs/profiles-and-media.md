@@ -134,7 +134,21 @@ Supply the following through deployment environment/secrets. The web console nev
 
 The first startup with storage configured pins endpoint, bucket, and region to the database. A mismatching storage identity fails startup. It cannot silently strand or reinterpret existing references. Credential rotation on the same storage identity does not change the binding. Moving buckets/providers requires a future explicit migration workflow with verified object transfer. The settings page shows only active status and bucket name.
 
-The first adapter uses the Apache `object_store` S3 implementation. Local development and integration use pinned RustFS 1.0.0. Compatibility with an individual cloud provider, IAM policy, versioning configuration, TLS trust environment, and disaster recovery procedure must be qualified before deployment.
+The adapter uses the official AWS SigV4 signing library and the existing Rust HTTP
+client for path-style PUT, GET and DELETE requests. It preserves the configured
+endpoint and uses only the explicitly configured access and secret keys. It does
+not discover credentials, assume roles, follow redirects or retry requests.
+Failed response bodies are discarded. Successful reads require the recorded
+length and SHA-256 digest, with bounded streaming before cache insertion. Automatic
+HTTP decompression and environment proxy discovery are disabled. The connection
+deadline is two seconds and the complete request, including its body, has a
+five-second deadline.
+
+Local development and integration use pinned RustFS 1.0.0. Compatibility with an
+individual cloud provider, IAM policy, versioning configuration, TLS trust
+environment, and disaster recovery procedure must be qualified before deployment.
+The configured endpoint must be the intended regional service origin; the adapter
+does not perform region discovery, endpoint rewriting or S3 Express sessions.
 
 ## Local commands
 

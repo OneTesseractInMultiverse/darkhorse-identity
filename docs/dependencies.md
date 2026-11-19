@@ -5,7 +5,7 @@ Application lockfiles are committed. Update dependencies in a reviewed change, r
 - **Axum 0.8.9**, Serde, Tokio, and Tower are confined to HTTP/runtime adapters and composition. Transport rejections redact malformed request contents. Request body limits remain explicit at consuming routes.
 - **envbind 0.1.0** is pinned at the configuration adapter. Tests use `MapEnvironment`. Complete settings, including library defaults, are validated before listener binding. Process environment access is restricted to the server/operator boundary. Core logic receives explicit inputs. [API documentation](https://docs.rs/envbind/0.1.0/envbind/)
 - **restqs 0.2.0** stays in the query adapter, pinned with default features disabled. Administrative directory and catalog routes reuse its allowlisted status and limit parsing. The adapter handles literal search and keyset cursors separately. Query criteria never establish caller authority. Mandatory owner and administrator predicates come from authenticated use cases. The source-defined `DirectoryCriteria` example remains isolated from HTTP publication. See the [compatibility review](#query-parser-update) and [API documentation](https://docs.rs/restqs/0.2.0/restqs/).
-- **SQLx 0.9.0** is confined to the PostgreSQL adapter (MIT/Apache-2.0). Selected functionality is PostgreSQL, Tokio, rustls with ring, migrations/macros and UUIDs. Runtime parameterized queries avoid a compile-time database requirement. Only embedded migration macros are used. No query schema is fetched during unit compilation. SQL/client errors map to project-owned redacted failures. [SQLx documentation](https://docs.rs/sqlx/0.9.0/sqlx/)
+- **SQLx 0.9.1** is confined to the PostgreSQL adapter (MIT/Apache-2.0). Selected functionality is PostgreSQL, Tokio, rustls with ring, migrations/macros and UUIDs. Runtime parameterized queries avoid a compile-time database requirement. Only embedded migration macros are used. No query schema is fetched during unit compilation. SQL/client errors map to project-owned redacted failures. [SQLx documentation](https://docs.rs/sqlx/0.9.1/sqlx/)
 - **RustCrypto argon2 0.6.0** (MIT/Apache-2.0), **getrandom 0.4**, **zeroize 1**, and **uuid 1.26.1** implement the password/entropy boundary. Argon2 uses allocation, PHC formatting and zeroization features. Hashing parameters and bounded worker admission are explicit. No custom cryptographic primitive is implemented. Exact transitive versions are locked. The selected memory/work profile exceeds the OWASP minimum but still needs workload-specific measurement for future login capacity. [Argon2 API](https://docs.rs/argon2/0.6.0/argon2/), [password storage guidance](https://cheatsheetseries.owasp.org/cheatsheets/Password_Storage_Cheat_Sheet.html)
 - **Percona Distribution for PostgreSQL**, using Percona Server **18.6.1** based on PostgreSQL **18.6**, supplies the local Compose and integration database image, pinned by multi-platform digest. It uses the PostgreSQL License plus the licenses of bundled components. Preserve their notices. The container includes more than the database server. Rust, Node and Debian image stages are pinned. Image updates require a reviewed digest change and compatibility/smoke checks. See the [container and migration contract](percona.md), [release notes](https://docs.percona.com/postgresql/18/release-notes/release-notes-v18.6.1.html), and [licensing information](https://docs.percona.com/postgresql/18/licensing.html).
 - **Caddy 2.11.4** supplies the pinned Alpine proxy image for [Compose qualification](compose.md). The derived image removes the executable's privileged-port capability. TLS keys and trust material arrive through explicit secret mounts. Its [host matcher](https://caddyserver.com/docs/caddyfile/matchers#host) and [fallback handler](https://caddyserver.com/docs/caddyfile/directives/handle) reject requests for other hostnames. The proxy contains no identity policy or application session logic.
@@ -162,12 +162,12 @@ an independent cryptographic audit or license review.
 
 ## Email delivery
 
-**Lettre 0.11.23** (MIT) stays in the SMTP adapter. Defaults are disabled. The
+**Lettre 0.11.24** (MIT) stays in the SMTP adapter. Defaults are disabled. The
 selected features are `builder`, `smtp-transport`, `tokio1-rustls`, `ring`, and
 `webpki-roots`. There is no sendmail, tracing, connection pool or Boring TLS
 backend. SMTP uses implicit TLS with certificate and hostname validation. An
 optional explicit private CA adds a trust anchor. SHA-256, HMAC, OS entropy and
-zeroization reuse existing dependencies. [Pinned API](https://docs.rs/lettre/0.11.23/lettre/).
+zeroization reuse existing dependencies. [Pinned API](https://docs.rs/lettre/0.11.24/lettre/).
 
 The three published Lettre RustSec advisories were reviewed on 2026-09-19.
 The pinned version is outside their affected ranges: the Boring TLS hostname
@@ -181,7 +181,7 @@ complete transitive advisory or license audit. [Lettre advisories](https://rusts
 
 - `isocountry` 0.3.2 (MIT) supplies the compiled ISO country list. `rlibphonenumber` 2.2.12 (Apache-2.0, libphonenumber 9.0.39 metadata) validates canonical international contact numbers. [Country API](https://docs.rs/isocountry/0.3.2/isocountry/), [phone API](https://docs.rs/rlibphonenumber/2.2.12/rlibphonenumber/). See the [replacement review](#phone-validator-replacement).
 - `image` 0.25.10 (MIT/Apache-2.0), default features disabled, activates only PNG and JPEG decoding/encoding. Width/height limits are strict. Allocation limits are best effort. [Decoder limits](https://docs.rs/image/0.25.10/image/struct.Limits.html).
-- Apache `object_store` 0.14.2 (MIT/Apache-2.0), default features disabled with S3/TLS support, supplies signed object requests. `futures-util` provides bounded stream consumption. Exact transitive dependencies are locked. [Object store API](https://docs.rs/object_store/0.14.2/object_store/).
+- Official AWS `aws-sigv4` 1.6.6 and `aws-credential-types` 1.3.1 (Apache-2.0) supply S3 HTTP signing and explicit static credentials inside the media adapter. Defaults are disabled; only HTTP signing and HTTP 1.x request types are selected. Existing `reqwest` 0.13.5 supplies rustls/ring HTTP transport, including streaming and HTTP/2 support. `futures-util` provides bounded stream consumption. No custom cryptographic primitive or ambient credential-provider chain is implemented. Exact transitive dependencies are locked. [Signing API](https://docs.rs/aws-sigv4/1.6.6/aws_sigv4/http_request/index.html).
 - RustFS 1.0.0 (Apache-2.0) is the pinned local/disposable S3-compatible service. It is not the required production provider. [Upstream release](https://github.com/rustfs/rustfs/releases/tag/1.0.0).
 
 ## Local Kubernetes verifier
@@ -220,7 +220,41 @@ unmaintained-package finding.
 
 ## Release advisory review
 
-### November 18, 2026 update
+### November 19, 2026 Rust dependency transition
+
+The released SQLx **0.9.1** family admits the patched SQLite binding. The lockfile
+explicitly resolves **libsqlite3-sys 0.40.0**; the broader upstream range alone
+would still permit affected versions. SQLite remains outside the enabled
+PostgreSQL runtime and inside the complete lockfile audit. No unsupported patch,
+source fork, advisory ignore or warning exception is used.
+
+The object-storage adapter replaces `object_store` with official AWS HTTP signing
+and the existing HTTP transport. This removes its mandatory `chrono` and
+`humantime` dependencies, for which no patched versions exist. The application
+port, object keys, storage fingerprint, image limits and immutable cache remain.
+The adapter signs the exact path-style request using explicit credentials and a
+precomputed payload digest, keeping image bytes out of optional SDK trace formatting;
+it disables redirects, retries, proxy discovery and automatic
+decompression. GET validates the declared size before bounded consumption and
+checks the final length and digest before caching. PUT, DELETE and failed GET
+responses are not collected. See [media behavior](profiles-and-media.md#storage-configuration).
+
+SQLx changes active PostgreSQL connection, pool and prepared-statement behavior.
+Configuration rejects nonempty inherited `PGHOSTADDR` so it cannot replace the
+explicit database host. TLS still requires certificate and hostname validation;
+its connector is now cached, so replacing certificate files requires a process
+restart. Existing transaction, authority and migration checks remain applicable.
+The dedicated regressions exercise prepared-plan invalidation outside a transaction
+and explicit failure/rollback inside one, plus trusted TLS, rejected peers and
+fresh-pool reconnection. No transaction replay is added to Darkhorse.
+
+The [qualification record](measurements/dependency-qualification-2026-11-19.json)
+records exact dependency inputs, published-crate provenance, strict audit results,
+compatibility checks and the bounded performance comparison. It supersedes the
+dated dependency findings below. Release readiness still depends on the other
+open qualification gates; a passing advisory scan is not an independent audit.
+
+### November 18, 2026 update (historical)
 
 The console now resolves SvelteKit **3.1.1** and adapter-static **4.0.1**. These
 compatible patches address [GHSA-mw6w-2fmv-pvw3](https://github.com/advisories/GHSA-mw6w-2fmv-pvw3)
@@ -240,7 +274,7 @@ message construction keeps validated addresses and encoded string bodies. Those
 application constraints do not exempt the dependency from the full-lockfile scan.
 Unrelated Windows dependency resolutions are preserved.
 
-The strict Rust scan still fails for SQLx's optional **libsqlite3-sys 0.37.0**
+That dated Rust scan failed for SQLx's optional **libsqlite3-sys 0.37.0**
 and the newly published unmaintained-package findings for **chrono 0.4.45**
 ([RUSTSEC-2026-0543](https://rustsec.org/advisories/RUSTSEC-2026-0543.html)) and
 **humantime 2.4.0**
@@ -249,7 +283,7 @@ The latter dependencies enter through object_store 0.14.2 and have no patched
 versions in the advisory database. They require a reviewed upstream dependency
 transition, not an audit ignore. The
 [dated record](measurements/dependency-qualification-2026-11-18.json) includes
-exact inputs and scan results. Issue #47 and release qualification remain open.
+exact inputs and scan results from that checkpoint.
 
 Earlier dated findings below are historical checkpoints, not the current audit
 result. Restore a complete source/lockfile/build artifact for rollback; returning

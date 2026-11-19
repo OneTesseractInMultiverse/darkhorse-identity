@@ -2,6 +2,28 @@ use super::*;
 use envbind::MapEnvironment;
 
 #[test]
+fn explicit_database_destination_rejects_inherited_host_address_overrides() {
+    let url = "postgres://unit:fixture@localhost/directory";
+    for address in ["127.0.0.2", "::1", "invalid", " "] {
+        assert!(
+            load(MapEnvironment::from_pairs([
+                ("DARKHORSE_DATABASE_URL", url),
+                ("PGHOSTADDR", address),
+            ]))
+            .is_err(),
+            "an inherited address must not override the explicit URL"
+        );
+    }
+    let settings = load(MapEnvironment::from_pairs([
+        ("DARKHORSE_DATABASE_URL", url),
+        ("PGHOSTADDR", ""),
+    ]))
+    .unwrap();
+    assert_eq!(settings.url.host_str(), Some("localhost"));
+    assert!(!settings.insecure);
+}
+
+#[test]
 fn requires_explicit_connection_and_bounds_configuration_without_a_database() {
     assert!(load(MapEnvironment::new()).is_err());
     for url in [

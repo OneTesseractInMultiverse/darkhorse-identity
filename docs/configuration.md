@@ -52,6 +52,11 @@ Database TLS verifies the certificate and hostname. Private CA deployments use
 SQLx's PostgreSQL trust configuration, including `PGSSLROOTCERT`. The adapter sets
 a five-second statement limit, three-second lock limit, ten-second idle-transaction
 limit, and five-second pool-acquisition limit. SQL statement logging is off.
+Unset `PGHOSTADDR`: a nonempty inherited value rejects configuration because it
+would override the TCP destination in `DARKHORSE_DATABASE_URL`. An empty value is
+accepted. SQLx caches its TLS connector within connection options; restart the
+process after replacing trust roots or client certificate/key files so new pools
+load the new material.
 
 The public origin becomes the provider issuer and participates in persistent
 bindings. Changing proxy routes alone does not migrate those bindings. See

@@ -13,6 +13,7 @@ use uuid::Uuid;
 mod admin_directory;
 mod authentication;
 mod database_cleanup;
+mod dependency_compatibility;
 mod logout;
 mod operator_directory;
 mod personal_keys;

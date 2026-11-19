@@ -7,6 +7,7 @@ import assert from "node:assert/strict";
 import { run } from "./lib/command.mjs";
 import { verifySecretFiles } from "./lib/configuration-file-test.mjs";
 import { verifyDatabaseAuthority } from "./lib/database-authority-test.mjs";
+import { verifyPostgresTls } from "./lib/postgres-tls-test.mjs";
 
 process.chdir(resolve(import.meta.dirname, ".."));
 const image = postgresImage;
@@ -138,6 +139,18 @@ async function hostChecks(url) {
     "debug/darkhorse-server",
   );
   await verifySecretFiles(executable, env, command);
+  for (const address of ["127.0.0.2", "::1", "invalid"]) {
+    const rejected = await command(executable, ["migrate", "--yes"], {
+      env: { ...env, PGHOSTADDR: address },
+      input: "",
+      capture: true,
+      acceptFailure: true,
+    });
+    assert.notEqual(rejected.code, 0);
+    assert.match(rejected.stderr, /Invalid database configuration/);
+    assert.ok(!rejected.stderr.includes(url));
+    assert.ok(!rejected.stderr.includes(address));
+  }
   const secure = await command(executable, ["migrate", "--yes"], {
     env: { ...env, DARKHORSE_DATABASE_INSECURE: "false" },
     input: "",
@@ -161,6 +174,7 @@ async function hostChecks(url) {
       capture: true,
     }),
   );
+  await verifyPostgresTls(docker, database, command, executable, env);
 }
 
 async function imageChecks(tag) {

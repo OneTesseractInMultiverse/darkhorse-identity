@@ -9,6 +9,7 @@ pub struct DatabaseConfigurationError;
 
 struct Raw {
     url: String,
+    host_address_override: String,
     max_connections: u16,
     insecure: bool,
 }
@@ -16,6 +17,8 @@ impl ParameterSource for Raw {
     fn bind<E: Environment>(binder: &Binder<E>) -> Result<Self, envbind::BindError> {
         Ok(Self {
             url: binder.bind(&StringVar::new("DARKHORSE_DATABASE_URL").max_bytes(4096))?,
+            host_address_override: binder
+                .bind(&StringVar::new("PGHOSTADDR").default("").max_bytes(256))?,
             max_connections: binder
                 .bind(&U16Var::new("DARKHORSE_DATABASE_POOL_SIZE").default(5))?,
             insecure: binder.bind(&BoolVar::new("DARKHORSE_DATABASE_INSECURE").default(false))?,
@@ -28,7 +31,8 @@ pub fn load(environment: impl Environment) -> Result<DatabaseSettings, DatabaseC
 }
 fn validate(raw: Raw) -> Result<DatabaseSettings, DatabaseConfigurationError> {
     let parsed = url::Url::parse(&raw.url).map_err(|_| DatabaseConfigurationError)?;
-    if !matches!(parsed.scheme(), "postgres" | "postgresql")
+    if !raw.host_address_override.is_empty()
+        || !matches!(parsed.scheme(), "postgres" | "postgresql")
         || parsed.host_str().is_none()
         || parsed.host_str().is_some_and(|host| host.contains('%'))
         || parsed.username().is_empty()
