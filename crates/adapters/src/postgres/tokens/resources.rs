@@ -75,6 +75,7 @@ async fn introspect(
     profiling::measure(Stage::Commit, tx.commit())
         .await
         .map_err(storage)?;
+    drop(connection);
     if let (Some(cache), Some(key), Some(entry)) = (&store.computation_cache, cache_key, cache_fill)
         && (refresh_cache
             || cache_lookup

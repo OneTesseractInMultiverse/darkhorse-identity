@@ -18,6 +18,9 @@ use std::{
 };
 use tokio::sync::Notify;
 
+#[cfg(feature = "redis-tests")]
+mod paused_fill;
+
 #[derive(Default)]
 struct MemoryComputationCache {
     entries: Mutex<HashMap<(u128, [u8; 32]), ComputationCacheEntry>>,
@@ -351,14 +354,12 @@ async fn redis_cache_outage_keeps_postgres_introspection_authoritative() {
     ]);
 
     assert_eq!(
-        store
-            .introspect_resource(check(), ISSUER)
+        paused_fill::warm_cache(&db.pool, cache.clone(), check())
             .await
-            .unwrap()
-            .unwrap()
             .capabilities,
         full
     );
+    assert_eq!(cache.outcomes().stored, 1);
     assert_eq!(
         store
             .introspect_resource(check(), ISSUER)
