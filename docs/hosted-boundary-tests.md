@@ -1,13 +1,13 @@
 # Hosted database, native security and browser tests
 
-The CI workflow runs the complete PostgreSQL, Redis/native and HTTPS browser suites in three
+The CI workflow divides PostgreSQL, Redis/native and HTTPS browser verification across three
 independent jobs on `ubuntu-24.04`:
 
-| Check                                   | Underlying target    | Boundary                                                                                                                         |
-| --------------------------------------- | -------------------- | -------------------------------------------------------------------------------------------------------------------------------- |
-| PostgreSQL boundary verification        | `make test-postgres` | Migrations, transactions, races, authority, operator persistence and restricted database roles                                   |
-| Redis and native security verification  | `make test-redis`    | Real Redis/TLS/failure behavior, shared attempt budgets, separate-process enforcement and authenticated native operator commands |
-| HTTPS browser and delivery verification | `make test-browser`  | Redis/native checks plus the production static portal, Rust server, PostgreSQL, TLS Redis, TLS SMTP and S3-compatible storage    |
+| Check                                   | Underlying target           | Boundary                                                                                                                          |
+| --------------------------------------- | --------------------------- | --------------------------------------------------------------------------------------------------------------------------------- |
+| PostgreSQL boundary verification        | `make test-postgres`        | Migrations, transactions, races, authority, operator persistence and restricted database roles                                    |
+| Redis and native security verification  | `make test-redis`           | Real Redis/TLS/failure behavior, shared attempt budgets, separate-process enforcement and authenticated native operator commands  |
+| HTTPS browser and delivery verification | `make test-browser-focused` | Production static portal and Rust server over HTTPS, with PostgreSQL, TLS Redis, authenticated TLS SMTP and S3-compatible storage |
 
 All run for pushes to `main`, pull requests targeting `main`, and manual dispatch.
 The matrix does not cancel one suite because the other fails. These jobs complement
@@ -41,8 +41,7 @@ executes scenarios sequentially against disposable services; it preserves natura
 limiter expiry waits. There are no blanket TLS bypasses: an independent HTTPS probe
 validates the fixture CA and hostname before Chromium trusts the disposable leaf key.
 
-The wrapper invokes the ordinary Make target once. It does not filter tests,
-retry failures, enable a positive authorization cache or disable security checks.
+The wrapper invokes the target assigned to each job once. The Redis job owns the native Redis and limiter suites and the focused PostgreSQL introspection test. The browser job runs the object-storage, SMTP and browser scenarios. The workflow policy check requires all three matrix entries.
 It bounds combined child stdout/stderr to 2 MiB in memory. Overflow, interruption,
 missing commands, nonzero exit or malformed/incomplete summaries fail the check.
 Raw output is not published by the wrapper. Reports include bounded failed test
@@ -60,17 +59,18 @@ report with `incomplete` before execution, so an interrupted run cannot reuse a
 previous pass. These are test summaries, not signed provenance attestations.
 
 PostgreSQL must report one nonempty libtest suite without failures, ignored,
-measured or filtered tests. Redis must report two nonempty suites. Its limiter
+measured or filtered tests. Redis must report three summaries. The Redis adapter suite runs in full. The limiter
 binary has one deliberate ignored entry: `multiprocess_worker`. The parent test
 `separate_processes_share_one_budget_without_shared_connection_pools` invokes that
 entry twice as independent processes and verifies their exits and shared budget.
 The report accepts this exclusion only when both the specific ignored entry and
-the passing parent are present. No other skipped or filtered case qualifies.
+the passing parent are present. A third invocation selects the PostgreSQL
+introspection test for a Redis outage. It must report one passing test under
+its exact name. The parser rejects other skips or filters.
 Adding another test binary or a legitimate worker requires reviewed parser tests
 and an updated contract, not a blanket ignored-test exemption.
 
-The browser target must report four nonempty native suites in order: Redis, limiter,
-objects and email. Only the limiter worker described above may be ignored. Every
+The hosted browser target must report two nonempty, unfiltered native suites and successful results for the real S3 round-trip and authenticated SMTP tests. Every
 fixed browser phase must start and pass in order, followed by the completion marker
 after browser, server, SMTP, object-storage and TLS teardown. Missing, duplicate,
 unknown or out-of-order markers fail qualification even with a zero process exit.

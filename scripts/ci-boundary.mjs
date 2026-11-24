@@ -19,6 +19,7 @@ import { successful } from "./lib/security-command.mjs";
 process.chdir(resolve(import.meta.dirname, ".."));
 const cleanupOnly = process.argv[2] === "cleanup";
 const suite = boundarySuite(process.argv.slice(cleanupOnly ? 3 : 2));
+const target = suite === "browser" ? "test-browser-focused" : `test-${suite}`;
 const directory = resolve(".local/ci-boundary", suite);
 const abort = new AbortController();
 for (const signal of ["SIGINT", "SIGTERM"])
@@ -37,6 +38,8 @@ async function provenance() {
     ".github/workflows/ci.yaml",
     "scripts/postgres-test.mjs",
     "scripts/redis-test.mjs",
+    "scripts/ci-boundary.mjs",
+    "scripts/lib/boundary-ci.mjs",
     "scripts/browser-test.mjs",
     "scripts/lib/browser-evidence.mjs",
     "scripts/lib/objects-test-service.mjs",
@@ -56,6 +59,7 @@ async function provenance() {
           "--untracked-files=no",
         ])
       ).length > 0,
+    target,
     inputs,
     runner: {
       os: platform(),
@@ -126,11 +130,11 @@ async function run() {
     cleanup: { status: "pending" },
   });
   console.log(
-    `Running full ${suite} boundary suite; private child output is bounded and is not published.`,
+    `Running make ${target}; private child output is bounded and is not published.`,
   );
   let report;
   try {
-    const result = await boundaryProcess("make", [`test-${suite}`], {
+    const result = await boundaryProcess("make", [target], {
       env: {
         ...process.env,
         DARKHORSE_TEST_RUN_ID: owner,

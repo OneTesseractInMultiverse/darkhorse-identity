@@ -196,6 +196,24 @@ function jobBlocks(source) {
   return blocks;
 }
 
+function findingsForBoundaryMatrix(source, findings) {
+  const job =
+    jobBlocks(source).find((block) => block.startsWith("  boundaries:")) ?? "";
+  const matrix =
+    /^      matrix:\n((?:(?: {8}[^\n]*|[ \t]*)\n)+)/m.exec(job)?.[1] ?? "";
+  const keys = [...matrix.matchAll(/^ {8}([^ #\s].*)$/gm)].map((m) => m[1]);
+  const entries = [...matrix.matchAll(/^ {10}-\s+(.+)$/gm)].map((m) => m[1]);
+  if (
+    keys.join(",") !== "include:" ||
+    entries.sort().join(",") !== "suite: browser,suite: postgres,suite: redis"
+  ) {
+    findings.push({
+      code: "boundary-matrix-incomplete",
+      message: "Run PostgreSQL, Redis and browser verification once each.",
+    });
+  }
+}
+
 function findingsForTimeouts(source, findings) {
   const timeouts = [
     ...source.matchAll(/^\s*timeout-minutes:\s*(.+?)\s*$/gm),
@@ -258,5 +276,6 @@ export function ciWorkflowPolicyFindings(source) {
   findingsForActions(source, findings);
   findingsForArtifacts(source, findings);
   findingsForTimeouts(source, findings);
+  findingsForBoundaryMatrix(source, findings);
   return findings;
 }

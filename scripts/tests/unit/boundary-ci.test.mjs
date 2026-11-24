@@ -159,15 +159,11 @@ const browserPhases = [
   "logout-revocation",
   "page-security",
 ];
-const browserNative =
-  summary(5) +
-  worker +
-  parent +
-  summary(39, 1) +
-  summary(4) +
-  summary(3) +
-  outageTest +
-  summary(1, 0, 0, 289);
+const objectTest =
+  "test real_s3_stores_reencoded_images_and_rejects_corruption_or_missing_objects ... ok\n";
+const emailTest =
+  "test smtp_requires_trusted_chain_correct_hostname_and_valid_credentials ... ok\n";
+const browserNative = objectTest + summary(4) + emailTest + summary(1);
 const browserMarkers = browserPhases
   .map(
     (phase) =>
@@ -179,12 +175,11 @@ test("browser qualification requires every native binary, ordered browser phases
   const raw = browserNative + browserMarkers + browserComplete;
   const report = boundaryResult(
     "browser",
-    result(raw.replace(outageTest, ""), 0, outageTest),
+    result(raw.replace(emailTest, ""), 0, emailTest),
   );
   assert.equal(report.status, "passed");
-  assert.equal(report.suites.length, 5);
+  assert.equal(report.suites.length, 2);
   assert.equal(report.browser.status, "completed");
-  assert.equal(report.worker, "executed by passing parent scenario");
   for (const stdout of [
     browserNative,
     browserNative + browserMarkers,
@@ -197,13 +192,17 @@ test("browser qualification requires every native binary, ordered browser phases
       "DARKHORSE_BROWSER:secret:started",
     ),
     raw.replace(summary(4), summary(4, 0, 0, 1)),
-    raw.replace(summary(3), summary(0)),
-    raw.replace(outageTest, "test some_other_test ... ok"),
-    raw.replace(outageTest, `${outageTest}${outageTest}`),
-    raw.replace(worker, `${worker}${worker}`),
-    raw.replace(parent, `${parent}${parent}`),
-    raw.replace(summary(1, 0, 0, 289), summary(1)),
-    raw.replace(worker, ""),
+    raw.replace(summary(1), summary(0)),
+    raw.replace(summary(1), summary(1, 1)),
+    raw.replace(emailTest, objectTest),
+    raw.replace(objectTest, emailTest),
+    raw +
+      worker +
+      parent +
+      outageTest +
+      summary(5) +
+      summary(39, 1) +
+      summary(1, 0, 0, 289),
     raw.replace(browserComplete, "DARKHORSE_BROWSER_COMPLETED:2\n"),
     browserComplete + browserNative + browserMarkers,
   ])

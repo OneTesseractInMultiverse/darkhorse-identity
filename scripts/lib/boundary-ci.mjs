@@ -48,22 +48,36 @@ export function boundaryResult(suite, result) {
       ),
     ];
   const worker = workerRecords.length === 1 && parentRecords.length === 1;
-  const expectedSuites = { postgres: 1, redis: 3, browser: 5 }[suite];
-  const isolatedOutage = suite !== "postgres" && outageTests.length === 1;
   const counts =
-    matches.length === expectedSuites &&
-    suites.length === expectedSuites &&
-    suites.every((s) => s.passed > 0 && s.failed === 0 && s.measured === 0) &&
-    (suite === "postgres"
-      ? suites.every((s) => s.ignored === 0 && s.filtered === 0)
-      : isolatedOutage &&
-        suites.filter((s) => s.ignored === 1 && s.filtered === 0).length ===
-          1 &&
-        suites.filter((s) => s.ignored > 0).length === 1 &&
-        suites.filter((s) => s.filtered > 0).length === 1 &&
-        suites.filter(
-          (s) => s.passed === 1 && s.ignored === 0 && s.filtered > 0,
-        ).length === 1);
+    matches.length === suites.length &&
+    suites.every((s) => s.passed > 0 && s.failed === 0 && s.measured === 0);
+  const complete = (s) => s.ignored === 0 && s.filtered === 0;
+  let suiteEvidence;
+  switch (suite) {
+    case "postgres":
+      suiteEvidence = suites.length === 1 && complete(suites[0]);
+      break;
+    case "redis":
+      suiteEvidence =
+        suites.length === 3 &&
+        worker &&
+        outageTests.length === 1 &&
+        suites.some(complete) &&
+        suites.some((s) => s.ignored === 1 && s.filtered === 0) &&
+        suites.some((s) => s.passed === 1 && s.ignored === 0 && s.filtered > 0);
+      break;
+    case "browser":
+      suiteEvidence =
+        suites.length === 2 &&
+        suites.every(complete) &&
+        testOutput.match(
+          /^test real_s3_stores_reencoded_images_and_rejects_corruption_or_missing_objects \.\.\. ok$/gm,
+        )?.length === 1 &&
+        testOutput.match(
+          /^test smtp_requires_trusted_chain_correct_hostname_and_valid_credentials \.\.\. ok$/gm,
+        )?.length === 1;
+      break;
+  }
   const browser =
     suite === "browser" ? browserEvidence(result.stdout) : undefined;
   const passed =
@@ -72,7 +86,7 @@ export function boundaryResult(suite, result) {
     !result.overflow &&
     counts &&
     matches.every((m) => m[1] === "ok") &&
-    (suite === "postgres" || worker) &&
+    suiteEvidence === true &&
     (!browser || browser.status === "completed");
   return {
     status: passed ? "passed" : "failed",
@@ -82,7 +96,7 @@ export function boundaryResult(suite, result) {
     suites,
     ...(browser ? { browser } : {}),
     worker:
-      suite !== "postgres" && worker
+      suite === "redis" && worker
         ? "executed by passing parent scenario"
         : "not applicable or not verified",
     failedTests: [

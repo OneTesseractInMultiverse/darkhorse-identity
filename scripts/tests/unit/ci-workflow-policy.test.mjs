@@ -32,8 +32,16 @@ jobs:
     timeout-minutes: \${{ matrix.job_minutes }}
     strategy:
       matrix:
-        job_minutes: 40
-        suite_minutes: 27
+        include:
+          - suite: postgres
+            job_minutes: 40
+            suite_minutes: 27
+          - suite: redis
+            job_minutes: 40
+            suite_minutes: 27
+          - suite: browser
+            job_minutes: 60
+            suite_minutes: 37
     steps:
       - uses: actions/checkout@${checkout}
         with:
@@ -159,4 +167,34 @@ test("requires every job and boundary suite timeout to stay within sixty minutes
       "suite-timeout-unbounded",
     ),
   );
+});
+
+test("a missing or duplicate boundary job cannot qualify the split suites", () => {
+  for (const suite of ["postgres", "redis", "browser"]) {
+    assert.ok(
+      codes(workflow([[`- suite: ${suite}`, "- suite: other"]])).includes(
+        "boundary-matrix-incomplete",
+      ),
+    );
+  }
+  assert.ok(
+    codes(workflow([["- suite: postgres", "- suite: redis"]])).includes(
+      "boundary-matrix-incomplete",
+    ),
+  );
+});
+
+test("a second matrix dimension, an excluded suite or an extra row requires review", () => {
+  for (const entry of [
+    "        os: [linux, macos]",
+    "        exclude:\n          - suite: redis",
+    "          - {suite: redis, job_minutes: 40, suite_minutes: 27}",
+  ]) {
+    const boundary = "            suite_minutes: 37";
+    assert.ok(
+      codes(workflow([[boundary, boundary + "\n\n" + entry]])).includes(
+        "boundary-matrix-incomplete",
+      ),
+    );
+  }
 });
