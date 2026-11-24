@@ -220,6 +220,17 @@ unmaintained-package finding.
 
 ## Release advisory review
 
+### November 24, 2026 URL dependency update
+
+The Rust workspace now locks `url` 2.5.9, the first release that fixes the
+reported stack overflow in origin calculation. It requires `form_urlencoded`
+1.2.3. Only those two version and checksum pairs changed in the lockfile.
+Both published crate archives matched their registry checksums. The strict
+audit on November 24 checked 351 Rust and 357 JavaScript packages and reported
+zero findings. Darkhorse uses origin calculation for issuer, HTTP and logout
+destination checks. [RustSec advisory](https://rustsec.org/advisories/RUSTSEC-2026-0592.html)
+and [qualification issue](https://github.com/OneTesseractInMultiverse/darkhorse-identity/issues/48).
+
 ### November 19, 2026 Rust dependency transition
 
 The released SQLx **0.9.1** family admits the patched SQLite binding. The lockfile
