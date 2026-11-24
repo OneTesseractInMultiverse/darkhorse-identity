@@ -7,10 +7,12 @@ import {
   readdir,
   copyFile,
   chmod,
+  open,
 } from "node:fs/promises";
-import { randomBytes } from "node:crypto";
+import { randomBytes, randomUUID } from "node:crypto";
 import { settings, secretFiles, environment } from "./deployment-plan.mjs";
 import { createCertificates } from "./deployment-tls.mjs";
+import { syncDirectory } from "./deployment-recovery.mjs";
 export function stackDirectory(name) {
   if (!/^[a-z][a-z0-9-]{0,31}$/.test(name))
     throw new Error("Invalid stack name.");
@@ -59,6 +61,24 @@ export async function setupStack(name, origin, image, command) {
   return existing;
 }
 async function createStack(directory, value, command) {
+  const label = `label=com.docker.compose.project=${value.project}`;
+  const [containers, labelled, named] = await Promise.all(
+    [
+      ["container", "ls", "--all", "--quiet", "--filter", label],
+      ["volume", "ls", "--quiet", "--filter", label],
+      ["volume", "ls", "--quiet", "--filter", `name=${value.project}_`],
+    ].map((args) => command("docker", args, { capture: true })),
+  );
+  const names = new Set(named.stdout.trim().split("\n"));
+  if (
+    containers.stdout.trim() ||
+    labelled.stdout.trim() ||
+    names.has(`${value.project}_postgres-data`) ||
+    names.has(`${value.project}_limiter-data`)
+  )
+    throw new Error(
+      "Cannot initialize a fresh stack over existing Docker resources.",
+    );
   process.umask(0o077);
   await mkdir(resolve(".local/stacks"), { recursive: true, mode: 0o700 });
   await mkdir(directory, { mode: 0o700 });
@@ -89,12 +109,30 @@ async function createStack(directory, value, command) {
     await copyFile(join(pki, name), join(secrets, name));
     await chmod(join(secrets, name), 0o444);
   }
+  // Only a genuinely fresh stack receives serving permission.
+  const recovery = join(directory, "recovery");
+  await mkdir(recovery, { mode: 0o700 });
+  const identity = `${randomUUID()}\n${value.origin}\n`;
+  for (const name of ["deployment", "serving"]) {
+    const file = await open(join(recovery, name), "wx", 0o600);
+    try {
+      await file.writeFile(identity);
+      await file.chmod(0o444);
+      await file.sync();
+    } finally {
+      await file.close();
+    }
+  }
+  await chmod(recovery, 0o755);
+  await syncDirectory(recovery);
   // Commit the manifest last: interrupted setup never silently rotates credentials.
   await writeFile(
     join(directory, "settings.json"),
     JSON.stringify(value, null, 2) + "\n",
-    { flag: "wx", mode: 0o600 },
+    { flag: "wx", mode: 0o600, flush: true },
   );
+  await syncDirectory(directory);
+  await syncDirectory(resolve(".local/stacks"));
   return loadStack(value.name);
 }
 export async function loadStack(name) {

@@ -4,10 +4,13 @@ use darkhorse_domain::{AccountStatus, directory::AccountAction};
 pub(super) fn invocation(options: Options) -> Result<Invocation, Failure> {
     let command = match options.command {
         None | Some(Root::Serve) => Command::Serve,
+        Some(Root::ServeManaged) => Command::ServeManaged,
         Some(Root::Operator(value)) => operator(value)?,
         Some(Root::Legacy(value)) => legacy(value)?,
     };
-    if command == Command::Serve && (options.output != Format::Human || options.yes) {
+    if matches!(command, Command::Serve | Command::ServeManaged)
+        && (options.output != Format::Human || options.yes)
+    {
         return Err(Failure::usage());
     }
     if options.output == Format::Json && matches!(command, Command::Bootstrap { stdin: false }) {
@@ -53,6 +56,7 @@ pub(super) fn invocation(options: Options) -> Result<Invocation, Failure> {
 }
 fn operator(value: Operator) -> Result<Command, Failure> {
     Ok(match value {
+        Operator::Recovery(Recovery::Begin) => Command::RecoveryBegin,
         Operator::Resource(ResourceCatalog::List { application, query }) => catalog(
             darkhorse_domain::operator_catalog::Target::Resources(application),
             query,

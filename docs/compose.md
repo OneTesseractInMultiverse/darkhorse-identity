@@ -16,8 +16,9 @@ The existing [development portal](development.md) remains a separate workflow wi
 | `operator` | Explicit one-shot container. No HTTP listener or published port            | Nonowner operator login and limiter recovery credential                        |
 | `account`  | Explicit one-shot authenticated account command. No HTTP or published port | Runtime database and limiter credentials. Fresh administrator password         |
 | `migrator` | Explicit one-shot container. Database network only                         | Schema-owner login and public CA only                                          |
+| `recovery` | One-shot command with networking disabled                                  | Write access to the external recovery directory and a signed request on stdin  |
 
-Infrastructure images are pinned by digest. Setup resolves the locally built application and proxy to immutable image IDs and records them in a private manifest. The proxy image removes the upstream executable's port-binding capability so it can run with all capabilities dropped. Application/proxy/cache containers use nonroot users, read-only root filesystems, bounded writable temporary mounts, and no new privileges. PostgreSQL and limiter entrypoints initialize volume ownership before dropping to their database users. Every service has memory, CPU, and process limits. The database/cache/limiter networks are marked internal. No Docker socket or repository tree is mounted.
+Infrastructure images are pinned by digest. Setup resolves the locally built application and proxy to immutable image IDs and records them in a private manifest. The proxy image removes the upstream executable's port-binding capability so it can run with all capabilities dropped. Application/proxy/cache containers use nonroot users, read-only root filesystems, bounded writable temporary mounts, and no new privileges. PostgreSQL and limiter entrypoints initialize volume ownership before dropping to their database users. Every service has memory, CPU and process limits. Docker rotates JSON logs at 10 MB and retains up to two files per container. The database/cache/limiter networks are marked internal. No Docker socket or repository tree is mounted.
 
 Application, account, operator and migrator share the same binary. Only the migrator receives the owner URL. Only the operator receives the operator URL and limiter recovery credential. `stack-migrate` selects the migrator. Other stack operator commands select the nonowner operator. Runtime cannot create schema, inspect migration history, insert administrator membership, change signing keys, or update limiter authority. The runtime grant script is reapplied explicitly after reviewed migrations. Runtime still has broad DML access required by existing application workflows. This is **partial privilege separation**, not containment of every action a compromised runtime could take. The complete authenticated/operator authority contract remains in [#23](https://github.com/OneTesseractInMultiverse/darkhorse-identity/issues/23) and [#27](https://github.com/OneTesseractInMultiverse/darkhorse-identity/issues/27). Host/Docker administrators remain trusted.
 
@@ -130,7 +131,7 @@ make stack-stop STACK=trial
 make stack-backup STACK=trial
 ```
 
-Migration and backup commands reject a running API, proxy, account, operator or migrator job. Per-stack deployment, account and catalog Make commands acquire a host lock before acting. This prevents two managed commands from passing the stopped-stack check at the same time. `make stack-lock-status STACK=trial` reports the recorded operation, host, process ID and start time; it does not verify process liveness or remove locks. Direct `docker compose` commands bypass this coordination and must not overlap managed Make operations.
+Migration, backup and recovery admission require the API, proxy and all account, operator, migrator and recovery jobs to be stopped. Per-stack deployment, account and catalog Make commands acquire a host lock before acting. This prevents two managed commands from passing the stopped-stack check at the same time. `make stack-lock-status STACK=trial` reports the recorded operation, host, process ID and start time; it does not verify process liveness or remove locks. Direct `docker compose` commands bypass this coordination and must not overlap managed Make operations.
 
 An interrupted process can leave a lock behind. First inspect it with `stack-lock-status`, verify on the recorded host that the process is gone, and inspect the selected Compose project with `stack-status` or Docker before removing `.local/stacks/.operation-trial.lock`. Never remove a lock solely because it is old: Docker or an operator action may still be running, and backups or migrations must not overlap writes. Malformed lock files fail closed and require the same review. There is deliberately no automatic expiry or force-unlock command.
 
@@ -144,19 +145,94 @@ Logout qualification additionally compares secret-free projections of all seven 
 
 After restoration, the fixture attempts `UPDATE` and `DELETE` against the nonempty credential-event, destination and audit tables as the restoring administrator. It checks that the immutable-history triggers reject each change and rolls back the probes. The API and delivery workers stay offline throughout inspection.
 
+### Enroll the independent recovery administrator
+
+Before taking a backup, designate a recovery administrator through your organization's
+independent identity-verification process. The holder of the enrolled Ed25519 key can
+authorize quarantine for one deployment and archive. Ordinary administrator passwords
+and restored database roles confer no recovery authority. Protect the Docker host and
+the external recovery directory (`.local/stacks/<stack>/recovery/`) separately from
+the database and its backups.
+
+On the administrator's independently controlled machine, generate a key pair. Store the
+private key under that administrator's custody. Transfer only the public key to the
+deployment host over an authenticated channel and verify it with the administrator.
+
+```sh
+umask 077
+openssl genpkey -algorithm ED25519 -out recovery.key
+openssl pkey -in recovery.key -pubout -out recovery.pub.pem
+```
+
+On the deployment host, enroll that public key while the original deployment is healthy.
+
+```sh
+make stack-recovery-enroll STACK=trial RECOVERY_PUBLIC_KEY=/absolute/path/recovery.pub.pem
+```
+
+The pin is write-once. If enrollment is interrupted, repeat it with the same public key. Preserve the administrator's identity, their public key,
+the deployment UUID and its canonical issuer in independent operational records.
+A stack created before recovery controls existed cannot acquire a serving permit
+by repeating setup or enrolling a key. Before upgrading a legacy stack, stop it
+on its original release and take a verified backup. Preserve its pinned image and
+state while planning an offline transition. A legacy stack or a deployment that
+has lost its external control directory must stay offline during recovery.
+
+### Enter quarantine before importing an archive
+
+Stop the API and edge and finish outstanding operator jobs. On the deployment host,
+select the actual PostgreSQL dump and produce a request for the administrator.
+
+```sh
+make stack-stop STACK=trial
+make -s stack-recovery-request STACK=trial RECOVERY_ARCHIVE=/absolute/path/database.dump >request.json
+```
+
+The administrator checks the action, deployment UUID, HTTPS issuer, operation UUID
+and SHA-256 of the archive against independent records. On the administrator's
+machine, sign the exact request bytes, including the final newline. Return the
+signature to the deployment host. Editing or reformatting the request changes
+what the signature authenticates. [OpenSSL signing command](https://docs.openssl.org/3.3/man1/openssl-pkeyutl/).
+
+```sh
+openssl pkeyutl -sign -rawin -inkey recovery.key -in request.json -out request.sig
+```
+
+On the deployment host, submit the same request and signature with the selected archive.
+
+```sh
+make stack-recovery-begin STACK=trial RECOVERY_ARCHIVE=/absolute/path/database.dump \
+  RECOVERY_REQUEST=/absolute/path/request.json RECOVERY_SIGNATURE=/absolute/path/request.sig
+```
+
+The host hashes the archive again. A network-isolated recovery process verifies the
+signature and the deployment binding, takes exclusive control, and atomically replaces
+the serving permit with a quarantine receipt. It acknowledges the operation after
+syncing the directory. If acknowledgement is lost, retry with the **same request,
+signature and archive**. Wait for successful acknowledgement before importing any data. Preserve those files and the original receipt. A fresh
+request represents a different operation.
+
+The managed API holds a shared lock for its lifetime. It reads the permit before
+binding a listener or starting any delivery workers. Operator workloads use the
+same gate. After quarantine, stopping or restarting containers preserves this
+decision. A missing or inconsistent control directory also denies startup. Use a
+local filesystem with working directory locks, atomic renames and directory sync.
+Keep the directory outside archive rotation. Replacing it with an older copy would
+roll back the decision. The host administrator and Docker daemon are trusted.
+
 ### Returning to service
 
 **Current support ends at inspection in quarantine.** A backup can predate a disabled account, a revoked client secret or a removed role. Restoring intact rows alone cannot establish who should have access today. Keep the original backup and its audit history intact.
 
 Darkhorse’s recovery design requires forced reauthentication and credential replacement. Reopening a deployment will require the following steps.
 
-1. Establish the recovery administrator’s identity and authority through a trust source independent of the restored database, its credentials and the backup. Keep the API, operator workflows, and outbound notification workers isolated during reconciliation.
+1. Use the enrolled independent recovery authority to enter quarantine before importing the archive. Keep the API, operator workflows and outbound notification workers offline during reconciliation.
 2. Reconcile account status, administrator eligibility, application and resource ownership, grants, callback URLs and logout destinations against independent current records. Keep unverified accounts and integrations disabled.
 3. Invalidate restored sessions, authorization requests and codes, opaque access and refresh tokens, personal API keys, password verifiers, client and resource secrets, and outstanding invitations or recovery links. Re-enroll verified users and integrations with fresh credentials. Coordinate session invalidation with relying parties that maintain their own cookies.
 4. Reconcile signing keys and their publication windows, rotate affected deployment credentials, and re-establish the limiter with its full recovery wait. Verify external objects and review queued notifications against current destinations before enabling delivery.
 5. Prove that a crash or retry at each stage leaves service closed, that pre-recovery credentials are denied, and that newly approved credentials receive only reconciled access. Record the recovery decision and its evidence outside the restored snapshot.
 
-The recovery administrator, credential replacement and reopening procedure are pending implementation in [#33](https://github.com/OneTesseractInMultiverse/darkhorse-identity/issues/33). `stack-backup` produces the archive for inspection. Never restore over a serving database.
+Access reconciliation, credential replacement and the reopening procedure are pending implementation in [#33](https://github.com/OneTesseractInMultiverse/darkhorse-identity/issues/33). `stack-backup` produces the archive for inspection. Never restore over a serving database.
 
 ## Rotation, migrations and upgrades
 

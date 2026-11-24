@@ -37,6 +37,7 @@ pub mod invitations;
 pub mod personal_keys;
 
 pub mod profiles;
+pub mod recovery;
 
 pub mod limiter_activation;
 pub mod media;

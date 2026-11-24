@@ -138,6 +138,8 @@ fixture passed locally on **2026-11-24**. The restored database stayed offline f
 See [the Compose qualification and limits](compose.md#backup-and-quarantined-restoration).
 
 A later revocation or permission reduction can be absent from a valid archive.
+The managed Compose recovery command verifies an archive-bound request against an Ed25519 key enrolled outside the backup. Its quarantine receipt survives process and container restarts. [Recovery enrollment and procedure](compose.md#enroll-the-independent-recovery-administrator).
+
 Keep service quarantined until an independently trusted recovery administrator
 has reconciled current authority and invalidated restored credentials. The
 reopening design requires credential replacement and fresh authentication.

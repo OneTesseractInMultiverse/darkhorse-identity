@@ -267,6 +267,16 @@ pub(in crate::operator) fn spanish(english: &str) -> Option<&'static str> {
         "Cannot install benchmark profiling signal handler." => {
             "No se puede instalar el manejador de señales del perfil de rendimiento."
         }
+        "Run the HTTP server under the deployment recovery fence." => {
+            "Ejecutar el servidor HTTP bajo el control de recuperación del despliegue."
+        }
+        "Manage offline disaster recovery." => "Administrar la recuperación sin conexión.",
+        "Admit a signed recovery request and keep the deployment offline." => {
+            "Autorizar una solicitud de recuperación firmada y mantener el despliegue sin conexión."
+        }
+        "Recovery control denies startup." => "El control de recuperación impide el inicio.",
+        "Recovery request denied." => "Solicitud de recuperación denegada.",
+        "Recovery outcome uncertain." => "El resultado de la recuperación es incierto.",
         "Run the HTTP server (also the default with no arguments)." => {
             "Ejecutar el servidor HTTP; también es la acción predeterminada sin argumentos."
         }

@@ -77,7 +77,17 @@ pub async fn run(command: Command, auth_stdin: bool, locale: Locale) -> Result<O
         Command::LimiterStatus => limiter::run(limiter::Operation::Status).await,
         Command::LimiterInspect(id) => limiter::run(limiter::Operation::Inspect(id)).await,
         Command::Signing(operation) => signing::run(operation).await,
-        Command::Serve => Err("Use the HTTP composition root for serve.".into()),
+        Command::Serve | Command::ServeManaged => {
+            Err("Use the HTTP composition root for serve.".into())
+        }
+        Command::RecoveryBegin => {
+            crate::recovery::begin()?;
+            Ok(Output::localized_message(
+                "Recovery admitted. The deployment is quarantined.".to_owned(),
+                "Recuperación autorizada. El despliegue está en cuarentena.".to_owned(),
+                serde_json::json!({"quarantined": true}),
+            ))
+        }
         Command::Bootstrap { stdin: false } => {
             cancellation::run(run_bootstrap(false, locale)).await
         }

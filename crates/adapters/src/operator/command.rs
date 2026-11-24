@@ -6,6 +6,8 @@ use darkhorse_domain::{
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum Command {
     Serve,
+    ServeManaged,
+    RecoveryBegin,
     Migrate,
     MigrationInspect(OperationId),
     RedisStatus,
@@ -65,6 +67,7 @@ pub fn requires_confirmation(command: &Command) -> bool {
     !matches!(
         command,
         Command::Serve
+            | Command::ServeManaged
             | Command::MigrationInspect(_)
             | Command::Account(_)
             | Command::Accounts(_)

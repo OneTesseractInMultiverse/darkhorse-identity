@@ -32,6 +32,8 @@ pub(super) struct Options {
 pub(super) enum Root {
     /// Run the HTTP server (also the default with no arguments).
     Serve,
+    /// Run the HTTP server under the deployment recovery fence.
+    ServeManaged,
     /// Existing local tools using trusted deployment credentials; see docs/operator-authority.md.
     #[command(subcommand)]
     Operator(Operator),
@@ -40,6 +42,9 @@ pub(super) enum Root {
 }
 #[derive(Subcommand)]
 pub(super) enum Operator {
+    /// Manage offline disaster recovery.
+    #[command(subcommand)]
+    Recovery(Recovery),
     /// Apply embedded database migrations, or inspect an earlier operation, using the database owner.
     Migrate(Migration),
     /// Create the single initial administrator.
@@ -67,6 +72,12 @@ pub(super) enum Operator {
     #[command(subcommand)]
     Redis(Redis),
 }
+#[derive(Subcommand)]
+pub(super) enum Recovery {
+    /// Admit a signed recovery request and keep the deployment offline.
+    Begin,
+}
+
 #[derive(Args)]
 pub(super) struct Bootstrap {
     /// Read bounded protected JSON from standard input.

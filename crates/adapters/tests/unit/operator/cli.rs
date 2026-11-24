@@ -900,3 +900,21 @@ fn access_mutation_requires_protected_json_and_confirmation() {
         assert!(parse(&args).is_err());
     }
 }
+
+#[test]
+fn recovery_operations_have_separate_startup_and_admission_semantics() {
+    let managed = run(&["serve-managed"]);
+    assert!(!super::super::command::requires_confirmation(
+        &managed.command
+    ));
+    for args in [
+        &["serve-managed", "--yes"][..],
+        &["serve-managed", "--output", "json"],
+        &["operator", "recovery", "begin", "--auth-stdin"],
+    ] {
+        assert!(parse(args).is_err());
+    }
+    let begin = run(&["operator", "recovery", "begin", "--yes"]);
+    assert!(begin.confirmed && super::super::command::requires_confirmation(&begin.command));
+    assert_ne!(begin.command, managed.command);
+}

@@ -55,11 +55,13 @@ export async function stopped(stack) {
   ).stdout.split("\n");
   if (
     running.some((v) =>
-      ["api", "edge", "operator", "migrator", "account"].includes(v),
+      ["api", "edge", "operator", "migrator", "account", "recovery"].includes(
+        v,
+      ),
     )
   )
     throw new Error(
-      "Stop the application and finish operator jobs before migrations or backup.",
+      "Stop the application and finish operator jobs before migration, backup or recovery admission.",
     );
 }
 export async function migrate(stack) {

@@ -33,6 +33,11 @@ import {
   assertQuarantineConnectionsDenied,
 } from "./lib/restore-quarantine-fixture.mjs";
 import {
+  admitRecoveryFixture,
+  checkServingRecoveryLock,
+  enrollRecoveryFixture,
+} from "./lib/recovery-test.mjs";
+import {
   accountCommand,
   accountResult,
   directoryPage,
@@ -162,6 +167,20 @@ async function prepare() {
       )
     ).stdout,
   ).services;
+  for (const service of Object.values(operations))
+    assert.deepEqual(service.logging, {
+      driver: "json-file",
+      options: { "max-size": "10m", "max-file": "2" },
+    });
+  assert.deepEqual(operations.api.command, ["serve-managed"]);
+  assert.equal(operations.recovery.network_mode, "none");
+  assert.deepEqual(operations.recovery.secrets ?? [], []);
+  for (const name of ["api", "account", "migrator", "operator", "recovery"]) {
+    const [mount] = operations[name].volumes;
+    assert.equal(mount.target, "/run/darkhorse-recovery");
+    assert.equal(mount.source, join(stack.directory, "recovery"));
+    assert.equal(Boolean(mount.read_only), name !== "recovery");
+  }
   assert.deepEqual(operations.migrator.secrets.map((s) => s.source).sort(), [
     "ca",
     "owner_db",
@@ -784,9 +803,9 @@ async function stoppedAccountChecks(settings, input, exec) {
     "t",
   );
 }
-async function archive() {
+async function archive(recovery) {
   await compose(stack, ["stop", "edge", "api"], captured);
-  for (const role of ["operator", "migrator", "account"]) {
+  for (const role of ["operator", "migrator", "account", "recovery"]) {
     const job = (
       await compose(
         stack,
@@ -852,6 +871,11 @@ async function archive() {
     "token_audit",
   ])
     assert.ok(inventory.stdout.includes(table), `archive table ${table}`);
+  await admitRecoveryFixture(stack, recovery, archive, bytes);
+  assertLogoutRestore(
+    logoutBefore,
+    await readLogoutSnapshot(compose, stack, "darkhorse"),
+  );
   await sql(createQuarantine);
   await assertQuarantineConnectionsDenied(compose, stack);
   await compose(
@@ -910,7 +934,7 @@ async function archive() {
     await readLogoutSnapshot(compose, stack, "quarantine"),
   );
   console.log(
-    "Cache degradation, restrictive limiter restart/recovery, database outage, durable restart and quarantined lifecycle/audit/logout archive restore passed. No restored worker or server was started.",
+    "Cache degradation, limiter recovery, database outage, durable restart, independently signed recovery admission and quarantined lifecycle/audit/logout archive restore passed.",
   );
 }
 
@@ -1269,52 +1293,29 @@ async function main() {
   console.log(
     "Compose fixture: isolated credentials, immutable image and private TLS certificates prepared.",
   );
-  // Bound retained test-service logs without changing deployment defaults.
-  const logLimits = join(stack.directory, "test-log-limits.json");
-  await writeFile(
-    logLimits,
-    JSON.stringify({
-      services: Object.fromEntries(
-        [
-          "api",
-          "edge",
-          "postgres",
-          "cache",
-          "limiter",
-          "operator",
-          "account",
-          "migrator",
-        ].map((service) => [
-          service,
-          {
-            logging: {
-              driver: "json-file",
-              options: { "max-size": "10m", "max-file": "2" },
-            },
-          },
-        ]),
-      ),
-    }),
-    { mode: 0o600 },
-  );
-  stack.args.push("--file", logLimits);
   const { principal, password } = await prepare();
+  const performanceOnly =
+    process.env.DARKHORSE_TEST_COMPOSE_PERFORMANCE_ONLY === "true";
+  const recovery = performanceOnly
+    ? undefined
+    : await enrollRecoveryFixture(stack);
   await compose(
     stack,
     ["up", "--detach", "--wait", "--wait-timeout", "60", "api", "edge"],
     captured,
   );
   await check(stack);
+  if (recovery) await checkServingRecoveryLock(stack, recovery);
   const ca = await readFile(join(stack.directory, "secrets/ca.pem"));
   await transport(origin, ca);
   const client = await sso(origin, ca, principal, password);
-  if (process.env.DARKHORSE_TEST_COMPOSE_PERFORMANCE_ONLY === "true") {
+  if (performanceOnly) {
     await composeRuntimeBenchmark(client, { principal, password });
     return;
   }
   await outages(client);
   await accounts({ principal, password });
-  await archive();
+  await archive(recovery);
 }
 try {
   await main();

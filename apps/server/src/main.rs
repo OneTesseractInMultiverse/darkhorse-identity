@@ -74,6 +74,11 @@ fn execute(
     locale: Locale,
 ) -> Result<(), operator::output::Failure> {
     operator::confirmation::confirm(&command, confirmed, format, auth_stdin, locale)?;
+    // Hold the shared directory lock through the entire runtime, including worker shutdown.
+    let _serving_lease = match command {
+        Command::RecoveryBegin => None,
+        _ => darkhorse_adapters::recovery::serving_lease(command == Command::ServeManaged)?,
+    };
     let runtime = tokio::runtime::Builder::new_multi_thread()
         .enable_all()
         .build()
@@ -87,7 +92,7 @@ async fn dispatch(
     locale: Locale,
 ) -> Result<(), operator::output::Failure> {
     match command {
-        Command::Serve => serve().await.map_err(Into::into),
+        Command::Serve | Command::ServeManaged => serve().await.map_err(Into::into),
         command => operator::output::emit_in(
             &operator::run(command, auth_stdin, locale).await?,
             format,

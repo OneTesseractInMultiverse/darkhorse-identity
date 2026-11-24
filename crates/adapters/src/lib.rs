@@ -63,3 +63,4 @@ pub mod localization_http;
 pub mod locale_hint;
 pub mod logout;
 pub mod logout_http;
+pub mod recovery;

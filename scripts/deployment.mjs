@@ -1,6 +1,11 @@
 import { resolve } from "node:path";
 import { setupStack, loadStack } from "./lib/deployment-state.mjs";
 import {
+  beginRecovery,
+  enrollRecovery,
+  makeRecoveryRequest,
+} from "./lib/deployment-recovery.mjs";
+import {
   inspectStackOperation,
   withStackOperation,
 } from "./lib/deployment-lock.mjs";
@@ -15,6 +20,36 @@ import { run } from "./lib/command.mjs";
 process.chdir(resolve(import.meta.dirname, ".."));
 async function main() {
   const [mode, name, ...args] = process.argv.slice(2);
+  if (
+    ["recovery-enroll", "recovery-request", "recovery-begin"].includes(mode)
+  ) {
+    if (name !== undefined)
+      throw new Error(
+        "Select the stack and recovery input files via the environment.",
+      );
+    const selected = process.env.STACK ?? "local";
+    await withStackOperation(selected, mode, async () => {
+      const stack = await loadStack(selected);
+      if (mode === "recovery-enroll") {
+        const status = await enrollRecovery(
+          stack,
+          process.env.RECOVERY_PUBLIC_KEY,
+        );
+        console.log(`Recovery administrator public key ${status}.`);
+      } else if (mode === "recovery-request") {
+        process.stdout.write(
+          await makeRecoveryRequest(stack, process.env.RECOVERY_ARCHIVE),
+        );
+      } else {
+        await beginRecovery(stack, {
+          archive: process.env.RECOVERY_ARCHIVE,
+          request: process.env.RECOVERY_REQUEST,
+          signature: process.env.RECOVERY_SIGNATURE,
+        });
+      }
+    });
+    return;
+  }
   if (
     ["limiter-inspect", "signing-inspect", "migration-inspect"].includes(mode)
   ) {

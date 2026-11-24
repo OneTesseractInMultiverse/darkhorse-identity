@@ -53,7 +53,9 @@ fn prompt(locale: Locale) -> Result<(), Failure> {
 fn consumes_stdin(command: &Command) -> bool {
     matches!(
         command,
-        Command::Bootstrap { stdin: true } | Command::Signing(super::signing::Operation::Import(_))
+        Command::Bootstrap { stdin: true }
+            | Command::RecoveryBegin
+            | Command::Signing(super::signing::Operation::Import(_))
     )
 }
 fn accept(line: &str) -> Result<(), Failure> {

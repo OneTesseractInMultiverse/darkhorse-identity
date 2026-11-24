@@ -506,6 +506,19 @@ stack-check: ## Compose: verify canonical HTTPS, signing and current shared atte
 	$(NODE) scripts/deployment.mjs check "$(STACK)"
 stack-backup: ## Compose: back up a stopped stack's database and identity material; no automatic restore
 	$(NODE) scripts/deployment.mjs backup "$(STACK)"
+# Preserve literal path bytes when Make exports environment or command-line values.
+override RECOVERY_PUBLIC_KEY := $(value RECOVERY_PUBLIC_KEY)
+override RECOVERY_ARCHIVE := $(value RECOVERY_ARCHIVE)
+override RECOVERY_REQUEST := $(value RECOVERY_REQUEST)
+override RECOVERY_SIGNATURE := $(value RECOVERY_SIGNATURE)
+export RECOVERY_PUBLIC_KEY RECOVERY_ARCHIVE RECOVERY_REQUEST RECOVERY_SIGNATURE
+.PHONY: stack-recovery-enroll stack-recovery-request stack-recovery-begin
+stack-recovery-enroll: ## Compose: enroll the independent administrator's Ed25519 PUBLIC KEY PEM (RECOVERY_PUBLIC_KEY)
+	@$(NODE) scripts/deployment.mjs recovery-enroll
+stack-recovery-request: ## Compose: print the exact offline signing request for RECOVERY_ARCHIVE
+	@$(NODE) scripts/deployment.mjs recovery-request
+stack-recovery-begin: ## Compose: begin quarantine with RECOVERY_ARCHIVE, RECOVERY_REQUEST and RECOVERY_SIGNATURE
+	@$(NODE) scripts/deployment.mjs recovery-begin
 stack-signing-status: ## Compose: inspect signing inventory using an explicit operator container
 	$(NODE) scripts/deployment.mjs operator "$(STACK)" signing-status
 stack-signing-generate: ## Compose: stage a signing key; requires REVISION, preserves publication wait

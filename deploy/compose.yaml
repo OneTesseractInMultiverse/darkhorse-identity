@@ -1,4 +1,8 @@
+x-logging: &logging
+  driver: json-file
+  options: { max-size: "10m", max-file: "2" }
 x-server: &server
+  logging: *logging
   image: ${DARKHORSE_STACK_IMAGE:?select an immutable application image}
   pull_policy: never
   user: "10001:10001"
@@ -6,13 +10,23 @@ x-server: &server
   cap_drop: [ALL]
   security_opt: [no-new-privileges:true]
   tmpfs: ["/tmp:size=16m,mode=1777"]
+  volumes:
+    - &recovery-control
+      type: bind
+      source: "${DARKHORSE_STACK_DIR}/recovery"
+      target: /run/darkhorse-recovery
+      read_only: true
+      bind: { create_host_path: false }
   mem_limit: 512m
   cpus: 2
   pids_limit: 128
   stop_grace_period: 20s
-x-environment: &environment
-  DARKHORSE_DEFAULT_LOCALE: ${DARKHORSE_DEFAULT_LOCALE:-en}
+x-managed: &managed
+  DARKHORSE_RECOVERY_REQUIRED: "true"
   DARKHORSE_PUBLIC_ORIGIN: ${DARKHORSE_STACK_ORIGIN:?set the canonical HTTPS issuer}
+x-environment: &environment
+  <<: *managed
+  DARKHORSE_DEFAULT_LOCALE: ${DARKHORSE_DEFAULT_LOCALE:-en}
   DARKHORSE_LOGIN_ENABLED: "true"
   DARKHORSE_LOGIN_LIMIT_KEY_FILE: /run/secrets/login_key
   DARKHORSE_PROVIDER_ENABLED: "true"
@@ -28,6 +42,7 @@ x-environment: &environment
 services:
   api:
     <<: *server
+    command: [serve-managed]
     environment:
       <<: *environment
       DARKHORSE_DATABASE_URL_FILE: /run/secrets/runtime_db
@@ -49,6 +64,7 @@ services:
       timeout: 3s
       retries: 3
   edge:
+    logging: *logging
     image: ${DARKHORSE_STACK_EDGE_IMAGE:?build and select the restricted proxy image}
     pull_policy: never
     user: "10001:10001"
@@ -88,6 +104,7 @@ services:
     pids_limit: 64
     stop_grace_period: 20s
   postgres:
+    logging: *logging
     image: percona/percona-distribution-postgresql:18.6@sha256:dae47360e8137cafc1e8d66f9a1be348f1405e3cf51daa383b94e6c277e6b256
     user: "0:0"
     entrypoint: [sh, /opt/darkhorse/postgres-entrypoint.sh]
@@ -134,6 +151,7 @@ services:
     pids_limit: 128
     stop_grace_period: 30s
   cache:
+    logging: *logging
     image: redis:8.10.1@sha256:298e5b3bc566bade82f46ad5511777a4a07a294097ce16ada2f6a42be5239df5
     user: "999:999"
     read_only: true
@@ -149,6 +167,7 @@ services:
     cpus: 1
     pids_limit: 64
   limiter:
+    logging: *logging
     image: redis:8.10.1@sha256:298e5b3bc566bade82f46ad5511777a4a07a294097ce16ada2f6a42be5239df5
     # The vendor entrypoint initializes volume ownership then drops to redis.
     read_only: true
@@ -187,6 +206,7 @@ services:
     profiles: [operations]
     command: ["operator", "account", "--help"]
     environment:
+      <<: *managed
       DARKHORSE_DATABASE_URL_FILE: /run/secrets/runtime_db
       DARKHORSE_DATABASE_POOL_SIZE: "2"
       DARKHORSE_LOGIN_ENABLED: "true"
@@ -206,11 +226,23 @@ services:
     profiles: [operations]
     command: ["--yes", "operator", "migrate"]
     environment:
+      <<: *managed
       DARKHORSE_DATABASE_URL_FILE: /run/secrets/owner_db
       DARKHORSE_DATABASE_POOL_SIZE: "2"
       PGSSLROOTCERT: /run/secrets/ca
     secrets: [owner_db, ca]
     networks: [database]
+    restart: "no"
+  recovery:
+    <<: *server
+    profiles: [operations]
+    command: ["operator", "recovery", "--help"]
+    environment:
+      DARKHORSE_PUBLIC_ORIGIN: ${DARKHORSE_STACK_ORIGIN}
+    network_mode: none
+    volumes:
+      - <<: *recovery-control
+        read_only: false
     restart: "no"
 
 networks:
