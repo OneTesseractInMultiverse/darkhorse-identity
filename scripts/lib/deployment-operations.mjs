@@ -148,7 +148,7 @@ export async function backup(stack) {
   );
   await writeFile(
     join(directory, "RECOVERY.txt"),
-    "Quarantined backup. Do not restore to a serving identity server. Restored credentials can resurrect revoked access. Recovery requires an independently reviewed revocation/reconciliation procedure; see docs/compose.md.\n",
+    "Quarantined backup. Do not restore to a serving identity server. Restored credentials can resurrect revoked access. Keep the API and delivery workers offline. Reopening requires an independently trusted recovery administrator, reconciled access, credential replacement and fresh authentication. See docs/compose.md, Returning to service.\n",
     { mode: 0o600 },
   );
   console.log(

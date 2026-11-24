@@ -125,7 +125,7 @@ Expansion copies the original time into delivery `created_ms` and `next_ms`. The
 6. Add only aggregate, bounded backlog/age/deletion/failure metrics. Do not label metrics with principals, clients, identifiers, queries or credentials.
 
 The packaged Compose boundary test backs up a stopped identity stack, restores the
-archive only into a separate database with no HTTP configuration, and compares
+archive into a separate database that denies the runtime, operator and migration-owner logins, and compares
 the source/restored table inventory and row counts for sessions, session audits,
 codes, access and refresh credentials, consents, relying-party session references
 and token audits. It also compares all seven logout tables through bounded,
@@ -134,16 +134,15 @@ account/credential/session intents, delivery state and audit. Session and creden
 bindings, copied source order/times, pending/completed expansion cursors and both
 sequence positions must survive exactly. Real UPDATE and DELETE probes confirm
 that restored immutable-history triggers still reject mutation. The packaged
-fixture passed locally on **2026-11-15**; no restored worker or server is started.
+fixture passed locally on **2026-11-24**. The restored database stayed offline from the API and delivery workers.
 See [the Compose qualification and limits](compose.md#backup-and-quarantined-restoration).
 
-This verifies the tested logical checkpoint. It does not establish point-in-time
-recovery, safe restoration into service, or preservation of revocations made after
-the archive. A restored database must remain quarantined
-until an independently reviewed recovery procedure reconciles credentials,
-signing material, limiter state and external objects. The periodic sweeps use
-restored primary-database time when run; their eligibility checks do not make
-serving a stale authorization snapshot safe.
+A later revocation or permission reduction can be absent from a valid archive.
+Keep service quarantined until an independently trusted recovery administrator
+has reconciled current authority and invalidated restored credentials. The
+reopening design requires credential replacement and fresh authentication.
+The periodic sweeps use restored primary-database time and cannot reconstruct a
+missing revocation. See the [recovery acceptance criteria](compose.md#returning-to-service).
 
 ## Retention work still open
 

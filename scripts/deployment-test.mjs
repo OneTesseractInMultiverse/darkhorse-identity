@@ -29,6 +29,10 @@ import {
   assertQuarantinedLogoutHistory,
 } from "./lib/logout-restore-fixture.mjs";
 import {
+  createQuarantine,
+  assertQuarantineConnectionsDenied,
+} from "./lib/restore-quarantine-fixture.mjs";
+import {
   accountCommand,
   accountResult,
   directoryPage,
@@ -848,12 +852,8 @@ async function archive() {
     "token_audit",
   ])
     assert.ok(inventory.stdout.includes(table), `archive table ${table}`);
-  // Restore only to a separate quarantined database with no HTTP configuration.
-  await compose(
-    stack,
-    ["exec", "-T", "postgres", "createdb", "-U", "postgres", "quarantine"],
-    captured,
-  );
+  await sql(createQuarantine);
+  await assertQuarantineConnectionsDenied(compose, stack);
   await compose(
     stack,
     [
@@ -869,6 +869,7 @@ async function archive() {
     ],
     { input: bytes, capture: true },
   );
+  await assertQuarantineConnectionsDenied(compose, stack);
   const restored = await compose(
     stack,
     [
